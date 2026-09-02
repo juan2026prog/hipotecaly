@@ -10,6 +10,15 @@ import { LoginPage } from './pages/auth/LoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { HowItWorksPage, FaqPage, SaaSPricingPage, ContactPage } from './pages/MarketingPages';
+
+// Backoffice Pages (Fase 3)
+import { DashboardPage } from './pages/backoffice/DashboardPage';
+import { ApplicationsPage } from './pages/backoffice/ApplicationsPage';
+import { ApplicationDetailPage } from './pages/backoffice/ApplicationDetailPage';
+import { ClientsPage } from './pages/backoffice/ClientsPage';
+import { PropertiesPage } from './pages/backoffice/PropertiesPage';
+import { DocumentsPage } from './pages/backoffice/DocumentsPage';
+import { ValuationsPage, TasksPage, ReportsPage, SettingsPage } from './pages/backoffice/OtherBackofficePages';
 import { OfflineNotice } from './components/ui/OfflineNotice';
 
 export const App: React.FC = () => {
@@ -36,33 +45,24 @@ export const App: React.FC = () => {
           <Route path="/plataforma/white-label" element={<SaaSHome />} />
           <Route path="/plataforma/precios" element={<SaaSPricingPage />} />
 
-          {/* Rutas de Autenticación y Solicitud (Fase 2) */}
+          {/* Autenticación y Solicitante (Fase 2) */}
           <Route path="/solicitar" element={<ApplicationWizard />} />
           <Route path="/mi-cuenta" element={<ApplicantAccount />} />
           <Route path="/ingresar" element={<LoginPage />} />
           <Route path="/registro" element={<RegisterPage />} />
           <Route path="/recuperar-password" element={<ForgotPasswordPage />} />
 
-          {/* Rutas de Backoffice (Fase 3) */}
-          <Route
-            path="/app/*"
-            element={
-              <div className="min-h-screen flex items-center justify-center p-6 text-center bg-slate-bg">
-                <div className="max-w-md bg-white p-8 rounded-card border border-slate-border shadow-card space-y-4">
-                  <div className="w-12 h-12 rounded-xl bg-navy text-white flex items-center justify-center mx-auto font-bold text-lg">
-                    BO
-                  </div>
-                  <h2 className="text-2xl font-bold text-navy">Panel Operativo Backoffice</h2>
-                  <p className="text-sm text-slate-muted">
-                    El backoffice administrativo multi-tenant se implementará en la Fase 3.
-                  </p>
-                  <a href="/plataforma" className="inline-block text-sm font-semibold text-brand-green hover:underline">
-                    ← Ir a HIPOTECALY SaaS
-                  </a>
-                </div>
-              </div>
-            }
-          />
+          {/* Backoffice Operativo Multi-Tenant (Fase 3) */}
+          <Route path="/app" element={<DashboardPage />} />
+          <Route path="/app/solicitudes" element={<ApplicationsPage />} />
+          <Route path="/app/solicitudes/:id" element={<ApplicationDetailPage />} />
+          <Route path="/app/clientes" element={<ClientsPage />} />
+          <Route path="/app/propiedades" element={<PropertiesPage />} />
+          <Route path="/app/documentos" element={<DocumentsPage />} />
+          <Route path="/app/tasaciones" element={<ValuationsPage />} />
+          <Route path="/app/tareas" element={<TasksPage />} />
+          <Route path="/app/reportes" element={<ReportsPage />} />
+          <Route path="/app/configuracion" element={<SettingsPage />} />
 
           {/* Fallback 404 */}
           <Route path="*" element={<Navigate to="/" replace />} />
