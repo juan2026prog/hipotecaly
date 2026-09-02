@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <!-- Outer rounded shield/hexagon -->
+  <rect width="100" height="100" rx="24" fill="#071A35"/>
+  <!-- Emerald Green Modern House Symbol -->
+  <path d="M50 22L24 43V74C24 76.2 25.8 78 28 78H72C74.2 78 76 76.2 76 74V43L50 22Z" stroke="#2DA674" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Interior Arch / Keyhole -->
+  <path d="M43 78V56C43 52.1 46.1 49 50 49C53.9 49 57 52.1 57 56V78" stroke="#2DA674" stroke-width="8" stroke-linecap="round"/>
+</svg>

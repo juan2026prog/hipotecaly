@@ -1,0 +1,20 @@
+User-agent: *
+Allow: /
+Allow: /como-funciona
+Allow: /prestamos
+Allow: /simulador
+Allow: /preguntas-frecuentes
+Allow: /nosotros
+Allow: /plataforma
+Allow: /plataforma/*
+Allow: /contacto
+
+# Rutas privadas no indexables
+Disallow: /app/
+Disallow: /mi-cuenta/
+Disallow: /ingresar
+Disallow: /solicitar/
+Disallow: /storage/
+Disallow: /api/
+
+Sitemap: https://hipotecaly.uy/sitemap.xml

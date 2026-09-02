@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-slate-bg text-slate-text min-h-screen overflow-x-hidden;
+  }
+}
+
+/* Touch friendly minimums for mobile */
+@layer components {
+  .btn-touch {
+    min-height: 48px;
+    min-width: 48px;
+  }
+}
