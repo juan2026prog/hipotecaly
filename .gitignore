@@ -50,3 +50,7 @@ Thumbs.db
 # Supabase local generated / temporary
 .supabase/temp
 supabase/.temp
+
+# Test outputs
+test-results/
+playwright-report/

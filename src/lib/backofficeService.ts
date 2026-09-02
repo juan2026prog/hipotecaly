@@ -5,6 +5,15 @@
 import { supabase } from './supabase';
 import { PropertyValuation } from './types';
 
+function withTimeout<T>(promise: PromiseLike<T>, ms = 800): Promise<T> {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout de conexión')), ms)
+    ),
+  ]);
+}
+
 // Dataset DEMO oficial separado (Reglas 5, 36, 62)
 export const DEMO_APPLICATIONS = [
   {
@@ -267,7 +276,9 @@ export async function getBackofficeMetrics(useDemoMode = false) {
   }
 
   try {
-    const { data, error } = await supabase.from('applications').select('status, requested_amount');
+    const { data, error } = await withTimeout(
+      supabase.from('applications').select('status, requested_amount')
+    );
     if (!error && data && data.length > 0) {
       return {
         newRequests: data.filter((d) => d.status === 'submitted').length,
@@ -318,7 +329,7 @@ export async function getApplicationsList(filters?: {
       query = query.eq('status', filters.status);
     }
 
-    const { data, error } = await query;
+    const { data, error } = await withTimeout(query);
     if (!error && data && data.length > 0) {
       return data;
     }
@@ -348,11 +359,13 @@ function filterApplicationsLocally(list: any[], filters?: { status?: string; dep
  */
 export async function getApplicationDetail(idOrPublicId: string) {
   try {
-    const { data, error } = await supabase
-      .from('applications')
-      .select('*, properties(*, property_photos(*), property_documents(*)), borrowers(*), property_valuations(*), tasks(*), application_status_history(*)')
-      .or(`id.eq.${idOrPublicId},public_id.eq.${idOrPublicId}`)
-      .maybeSingle();
+    const { data, error } = await withTimeout(
+      supabase
+        .from('applications')
+        .select('*, properties(*, property_photos(*), property_documents(*)), borrowers(*), property_valuations(*), tasks(*), application_status_history(*)')
+        .or(`id.eq.${idOrPublicId},public_id.eq.${idOrPublicId}`)
+        .maybeSingle()
+    );
 
     if (!error && data) {
       return data;

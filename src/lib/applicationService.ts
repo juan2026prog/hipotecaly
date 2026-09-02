@@ -7,6 +7,15 @@ import { Application, Property, PropertyPhoto, PropertyDocument, PropertyType, L
 
 const DRAFT_STORAGE_KEY = 'hipotecaly_active_draft_v1';
 
+function withTimeout<T>(promise: PromiseLike<T>, ms = 800): Promise<T> {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout')), ms)
+    ),
+  ]);
+}
+
 export interface ApplicationDraftPayload {
   id?: string;
   publicId?: string;
@@ -62,20 +71,22 @@ export async function saveApplicationDraft(
 
     if (!appId) {
       const generatedPublicId = `HIP-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
-      const { data: newApp, error: appErr } = await supabase
-        .from('applications')
-        .insert({
-          organization_id: orgId,
-          status: 'draft',
-          current_step: payload.currentStep,
-          requested_amount: payload.requestedAmount,
-          currency: payload.currency || 'USD',
-          term_months: payload.termMonths,
-          purpose: payload.purpose || 'Financiación con garantía hipotecaria',
-          public_id: generatedPublicId,
-        })
-        .select()
-        .single();
+      const { data: newApp, error: appErr } = await withTimeout(
+        supabase
+          .from('applications')
+          .insert({
+            organization_id: orgId,
+            status: 'draft',
+            current_step: payload.currentStep,
+            requested_amount: payload.requestedAmount,
+            currency: payload.currency || 'USD',
+            term_months: payload.termMonths,
+            purpose: payload.purpose || 'Financiación con garantía hipotecaria',
+            public_id: generatedPublicId,
+          })
+          .select()
+          .single()
+      );
 
       if (!appErr && newApp) {
         appId = newApp.id;
@@ -86,40 +97,44 @@ export async function saveApplicationDraft(
         publicId = publicId || generatedPublicId;
       }
     } else {
-      await supabase
-        .from('applications')
-        .update({
-          current_step: payload.currentStep,
-          requested_amount: payload.requestedAmount,
-          term_months: payload.termMonths,
-          purpose: payload.purpose,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', appId);
+      await withTimeout(
+        supabase
+          .from('applications')
+          .update({
+            current_step: payload.currentStep,
+            requested_amount: payload.requestedAmount,
+            term_months: payload.termMonths,
+            purpose: payload.purpose,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', appId)
+      );
     }
 
     // 2. Crear o actualizar registro en tabla properties
     let propId = payload.property.id;
     if (appId) {
       if (!propId) {
-        const { data: newProp, error: propErr } = await supabase
-          .from('properties')
-          .insert({
-            application_id: appId,
-            property_type: payload.property.propertyType,
-            department: payload.property.department,
-            city: payload.property.city,
-            neighborhood: payload.property.neighborhood,
-            address: payload.property.address,
-            cadastral_number: payload.property.cadastralNumber,
-            surface_m2: payload.property.surfaceM2,
-            bedrooms: payload.property.bedrooms,
-            bathrooms: payload.property.bathrooms,
-            estimated_value: payload.property.estimatedValue,
-            legal_status: payload.property.legalStatus,
-          })
-          .select()
-          .single();
+        const { data: newProp, error: propErr } = await withTimeout(
+          supabase
+            .from('properties')
+            .insert({
+              application_id: appId,
+              property_type: payload.property.propertyType,
+              department: payload.property.department,
+              city: payload.property.city,
+              neighborhood: payload.property.neighborhood,
+              address: payload.property.address,
+              cadastral_number: payload.property.cadastralNumber,
+              surface_m2: payload.property.surfaceM2,
+              bedrooms: payload.property.bedrooms,
+              bathrooms: payload.property.bathrooms,
+              estimated_value: payload.property.estimatedValue,
+              legal_status: payload.property.legalStatus,
+            })
+            .select()
+            .single()
+        );
 
         if (!propErr && newProp) {
           propId = newProp.id;
@@ -390,22 +405,26 @@ export async function submitFinalApplication(
   applicationId: string
 ): Promise<{ success: boolean; error: Error | null }> {
   try {
-    await supabase
-      .from('applications')
-      .update({
-        status: 'submitted',
-        submitted_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', applicationId);
+    await withTimeout(
+      supabase
+        .from('applications')
+        .update({
+          status: 'submitted',
+          submitted_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', applicationId)
+    );
 
     // Registro en historial de estados
-    await supabase.from('application_status_history').insert({
-      application_id: applicationId,
-      from_status: 'draft',
-      to_status: 'submitted',
-      notes: 'Solicitud enviada formalmente por el solicitante',
-    });
+    await withTimeout(
+      supabase.from('application_status_history').insert({
+        application_id: applicationId,
+        from_status: 'draft',
+        to_status: 'submitted',
+        notes: 'Solicitud enviada formalmente por el solicitante',
+      })
+    );
 
     // Limpiar caché de borrador
     localStorage.removeItem(DRAFT_STORAGE_KEY);
