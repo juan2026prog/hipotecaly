@@ -203,13 +203,18 @@ export const SaaSHome: React.FC = () => {
                 </ul>
               </div>
 
-              <div className="pt-8">
+              <div className="pt-8 space-y-2">
                 <Link to="/saas/integracion">
                   <Button variant="primary" size="lg" fullWidth className="shadow-md">
                     QUIERO INTEGRARLO <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </Link>
-                <Link to="/saas/integracion" className="block text-center text-xs font-semibold text-navy hover:text-brand-green mt-3">
+                <Link to="/demo/nova/legacy">
+                  <Button variant="outline" size="md" fullWidth className="text-xs font-bold border-navy text-navy hover:bg-slate-50">
+                    VER DEMO — INTEGRACIÓN <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                  </Button>
+                </Link>
+                <Link to="/saas/integracion" className="block text-center text-xs font-semibold text-navy hover:text-brand-green pt-1">
                   Ver detalles de la modalidad de integración →
                 </Link>
               </div>
@@ -281,13 +286,18 @@ export const SaaSHome: React.FC = () => {
                 </ul>
               </div>
 
-              <div className="pt-8">
+              <div className="pt-8 space-y-2">
                 <Link to="/saas/plataforma-completa">
                   <Button variant="primary" size="lg" fullWidth className="shadow-lg">
                     QUIERO MI PLATAFORMA <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </Link>
-                <Link to="/saas/plataforma-completa" className="block text-center text-xs font-semibold text-slate-300 hover:text-white mt-3">
+                <Link to="/demo/nova/full">
+                  <Button variant="outline" size="md" fullWidth className="text-xs font-bold border-white/30 text-white hover:bg-white/10">
+                    VER DEMO — PLATAFORMA COMPLETA <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                  </Button>
+                </Link>
+                <Link to="/saas/plataforma-completa" className="block text-center text-xs font-semibold text-slate-300 hover:text-white pt-1">
                   Ver detalles de la plataforma completa →
                 </Link>
               </div>

@@ -17,41 +17,102 @@ import {
   FileCheck,
 } from 'lucide-react';
 import { acceptOffer, Offer } from '../../lib/offersService';
+import { useTenant } from '../../contexts/TenantContext';
+import { getTenantModules, DEFAULT_MODULES_MAP } from '../../lib/tenantModulesService';
+import { getActiveDraft } from '../../lib/applicationService';
+import { supabase } from '../../lib/supabase';
 
 export const ApplicantAccount: React.FC = () => {
   const { user, borrower, signOut } = useAuth();
+  const { tenant } = useTenant();
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState<'inicio' | 'ofertas' | 'solicitud' | 'documentos' | 'mensajes' | 'cuenta'>('inicio');
+  const [modules, setModules] = useState(DEFAULT_MODULES_MAP);
+
+  const [activeTab, setActiveTab] = useState<'inicio' | 'ofertas' | 'solicitud' | 'documentos' | 'mensajes' | 'cuenta' | 'creditos'>('inicio');
   const [acceptedOfferId, setAcceptedOfferId] = useState<string | null>(null);
 
-  // Ofertas presentadas disponibles para el solicitante
-  const [presentedOffers] = useState<Offer[]>([
-    {
-      id: 'off-1',
-      application_id: 'e0000000-0000-0000-0000-000000000001',
-      lender_id: 'c0000000-0000-0000-0000-000000000001',
-      lender_name: 'Prestamista Asociado Hipotecaly',
-      amount: 80000,
-      currency: 'USD',
-      term_months: 36,
-      interest_rate: 9.5,
-      rate_type: 'fixed',
-      repayment_type: 'amortizing',
-      estimated_monthly_payment: 2562,
-      estimated_costs: 1800,
-      lender_fees: 1500,
-      other_costs: 300,
-      early_cancellation_terms: 'Permite cancelación anticipada sin penalización a partir del mes 12.',
-      notes_for_borrower: 'Propuesta de financiamiento con amortización mensual en dólares.',
-      expires_at: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
-      status: 'presented',
-      created_at: new Date().toISOString(),
-    },
-  ]);
+  // Solicitud activa
+  const [activeApp, setActiveApp] = useState<{ publicId: string; status: string } | null>(null);
+  const [hasLoadedApp, setHasLoadedApp] = useState(false);
 
-  // Datos de la solicitud activa
-  const publicId = (location.state as { publicId?: string } | null)?.publicId || 'HIP-2026-00124';
-  const displayName = borrower?.first_name || user?.user_metadata?.first_name || 'Ignacio';
+  React.useEffect(() => {
+    getTenantModules(tenant.id).then((m) => setModules(m));
+  }, [tenant.id]);
+
+  React.useEffect(() => {
+    async function resolveActiveApp() {
+      const stateId = (location.state as { publicId?: string } | null)?.publicId;
+      if (stateId) {
+        setActiveApp({ publicId: stateId, status: 'info_review' });
+        setHasLoadedApp(true);
+        return;
+      }
+
+      if (tenant.demo_mode) {
+        setActiveApp({ publicId: 'HPT-2026-00124', status: 'info_review' });
+        setHasLoadedApp(true);
+        return;
+      }
+
+      const draft = await getActiveDraft();
+      if (draft && draft.publicId) {
+        setActiveApp({ publicId: draft.publicId, status: 'draft' });
+        setHasLoadedApp(true);
+        return;
+      }
+
+      try {
+        const { data } = await supabase
+          .from('applications')
+          .select('public_id, status')
+          .eq('organization_id', tenant.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (data) {
+          setActiveApp({ publicId: data.public_id, status: data.status });
+        } else {
+          setActiveApp(null);
+        }
+      } catch {
+        setActiveApp(null);
+      }
+      setHasLoadedApp(true);
+    }
+    resolveActiveApp();
+  }, [tenant.id, tenant.demo_mode, location.state]);
+
+  // Ofertas presentadas disponibles para el solicitante
+  const [presentedOffers] = useState<Offer[]>(
+    tenant.demo_mode
+      ? [
+          {
+            id: 'off-1',
+            application_id: 'e0000000-0000-0000-0000-000000000001',
+            lender_id: 'c0000000-0000-0000-0000-000000000001',
+            lender_name: 'Prestamista Asociado Hipotecaly',
+            amount: 80000,
+            currency: 'USD',
+            term_months: 36,
+            interest_rate: 9.5,
+            rate_type: 'fixed',
+            repayment_type: 'amortizing',
+            estimated_monthly_payment: 2562,
+            estimated_costs: 1800,
+            lender_fees: 1500,
+            other_costs: 300,
+            early_cancellation_terms: 'Permite cancelación anticipada sin penalización a partir del mes 12.',
+            notes_for_borrower: 'Propuesta de financiamiento con amortización mensual en dólares.',
+            expires_at: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+            status: 'presented',
+            created_at: new Date().toISOString(),
+          },
+        ]
+      : []
+  );
+
+  const displayName = borrower?.first_name || user?.user_metadata?.first_name || 'Solicitante';
 
   // Timeline de estados según Regla 28
   const timelineSteps = [
@@ -82,15 +143,23 @@ export const ApplicantAccount: React.FC = () => {
             <h1 className="text-2xl sm:text-3xl font-extrabold text-navy tracking-tight mt-1">
               Hola, {displayName}
             </h1>
-            <p className="text-xs sm:text-sm text-slate-muted mt-0.5">
-              Expediente activo: <strong className="font-mono text-navy">{publicId}</strong>
-            </p>
+            {activeApp ? (
+              <p className="text-xs sm:text-sm text-slate-muted mt-0.5">
+                Expediente activo: <strong className="font-mono text-navy">{activeApp.publicId}</strong>
+              </p>
+            ) : hasLoadedApp ? (
+              <p className="text-xs sm:text-sm text-slate-muted mt-0.5">
+                No tenés solicitudes activas en este momento.
+              </p>
+            ) : (
+              <p className="text-xs text-slate-400 mt-0.5">Cargando expediente...</p>
+            )}
           </div>
 
           <div className="flex items-center space-x-3 w-full sm:w-auto">
             <Link to="/solicitar" className="flex-1 sm:flex-initial">
               <Button variant="primary" size="md" className="w-full">
-                Continuar solicitud <ArrowRight className="w-4 h-4 ml-2" />
+                {activeApp ? 'Continuar solicitud' : 'Iniciar solicitud'} <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
           </div>
@@ -99,26 +168,28 @@ export const ApplicantAccount: React.FC = () => {
         {/* Desktop Tabs Header */}
         <div className="hidden lg:flex space-x-2 border-b border-slate-border mb-6">
           {[
-            { id: 'inicio', label: 'Inicio', icon: Home },
-            { id: 'ofertas', label: 'Ofertas de Préstamo', icon: FileCheck },
-            { id: 'solicitud', label: 'Mi Solicitud', icon: FileText },
-            { id: 'documentos', label: 'Documentación', icon: Upload },
-            { id: 'mensajes', label: 'Mensajes', icon: MessageSquare },
-            { id: 'cuenta', label: 'Cuenta', icon: User },
-          ].map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setActiveTab(t.id as any)}
-              className={`flex items-center space-x-1.5 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors ${
-                activeTab === t.id
-                  ? 'border-brand-green text-navy'
-                  : 'border-transparent text-slate-400 hover:text-navy'
-              }`}
-            >
-              <t.icon className="w-4 h-4" />
-              <span>{t.label}</span>
-            </button>
-          ))}
+            { id: 'inicio', label: 'Inicio', icon: Home, visible: true },
+            { id: 'ofertas', label: 'Ofertas de Préstamo', icon: FileCheck, visible: true },
+            { id: 'solicitud', label: 'Mi Solicitud', icon: FileText, visible: true },
+            { id: 'documentos', label: 'Documentación', icon: Upload, visible: modules.documents_enabled },
+            { id: 'mensajes', label: 'Mensajes', icon: MessageSquare, visible: modules.notifications_enabled },
+            { id: 'cuenta', label: 'Cuenta', icon: User, visible: true },
+          ]
+            .filter((t) => t.visible)
+            .map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setActiveTab(t.id as any)}
+                className={`flex items-center space-x-1.5 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors ${
+                  activeTab === t.id
+                    ? 'border-brand-green text-navy'
+                    : 'border-transparent text-slate-400 hover:text-navy'
+                }`}
+              >
+                <t.icon className="w-4 h-4" />
+                <span>{t.label}</span>
+              </button>
+            ))}
         </div>
 
         {/* ============================================================ */}
@@ -464,25 +535,29 @@ export const ApplicantAccount: React.FC = () => {
           <span className="text-[10px]">Solicitud</span>
         </button>
 
-        <button
-          onClick={() => setActiveTab('documentos')}
-          className={`flex flex-col items-center justify-center flex-1 h-full text-xs font-semibold ${
-            activeTab === 'documentos' ? 'text-brand-green' : 'text-slate-400'
-          }`}
-        >
-          <Upload className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px]">Documentos</span>
-        </button>
+        {modules.documents_enabled && (
+          <button
+            onClick={() => setActiveTab('documentos')}
+            className={`flex flex-col items-center justify-center flex-1 h-full text-xs font-semibold ${
+              activeTab === 'documentos' ? 'text-brand-green' : 'text-slate-400'
+            }`}
+          >
+            <Upload className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px]">Documentos</span>
+          </button>
+        )}
 
-        <button
-          onClick={() => setActiveTab('mensajes')}
-          className={`flex flex-col items-center justify-center flex-1 h-full text-xs font-semibold ${
-            activeTab === 'mensajes' ? 'text-brand-green' : 'text-slate-400'
-          }`}
-        >
-          <MessageSquare className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px]">Mensajes</span>
-        </button>
+        {modules.notifications_enabled && (
+          <button
+            onClick={() => setActiveTab('mensajes')}
+            className={`flex flex-col items-center justify-center flex-1 h-full text-xs font-semibold ${
+              activeTab === 'mensajes' ? 'text-brand-green' : 'text-slate-400'
+            }`}
+          >
+            <MessageSquare className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px]">Mensajes</span>
+          </button>
+        )}
 
         <button
           onClick={() => setActiveTab('cuenta')}

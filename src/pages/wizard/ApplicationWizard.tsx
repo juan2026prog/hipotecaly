@@ -11,9 +11,11 @@ import {
   uploadPropertyPhoto,
   uploadPrivateDocument,
   submitFinalApplication,
+  generateApplicationPublicId,
   ApplicationDraftPayload,
 } from '../../lib/applicationService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTenant } from '../../contexts/TenantContext';
 import {
   ArrowRight,
   ArrowLeft,
@@ -28,15 +30,21 @@ export const ApplicationWizard: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, borrower } = useAuth();
+  const { tenant } = useTenant();
 
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [savingDraft, setSavingDraft] = useState(false);
   const [draftSavedToast, setDraftSavedToast] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // Estados de origen y modalidad
+  const [source, setSource] = useState<string>('native_white_label');
+  const [sourceMode, setSourceMode] = useState<string>('full');
+  const [repaymentMode, setRepaymentMode] = useState<string>('solo_intereses');
+
   // Estados del Formulario
   const [appId, setAppId] = useState<string | undefined>(undefined);
-  const [publicId, setPublicId] = useState<string | undefined>(undefined);
+  const [publicId, setPublicId] = useState<string>(() => generateApplicationPublicId());
   const [propertyId, setPropertyId] = useState<string | undefined>(undefined);
 
   // Paso 1: Necesidad
@@ -81,6 +89,14 @@ export const ApplicationWizard: React.FC = () => {
 
   // Inicialización y recuperación de draft
   useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const queryAmount = Number(searchParams.get('monto') || searchParams.get('amount'));
+    const queryVal = Number(searchParams.get('valor_propiedad') || searchParams.get('property_value'));
+    const queryTerm = Number(searchParams.get('plazo') || searchParams.get('term'));
+    const queryMode = searchParams.get('modalidad') || searchParams.get('repayment_mode');
+    const querySource = searchParams.get('source');
+    const querySourceMode = searchParams.get('source_mode');
+
     const simState = location.state as {
       requestedAmount?: number;
       propertyValue?: number;
@@ -88,20 +104,41 @@ export const ApplicationWizard: React.FC = () => {
       department?: string;
       legalStatus?: string;
       incomeType?: string;
+      termMonths?: number;
+      repaymentMode?: string;
+      source?: string;
+      sourceMode?: string;
     } | null;
-    if (simState?.requestedAmount) {
-      setRequestedAmount(simState.requestedAmount);
-      if (simState.propertyValue) setEstimatedValue(simState.propertyValue);
-      if (simState.propertyType) setPropertyType(simState.propertyType);
-      if (simState.department) setDepartment(simState.department);
-      if (simState.legalStatus) setLegalStatus(simState.legalStatus);
-      if (simState.incomeType) setIncomeType(simState.incomeType);
-    } else {
+
+    if (querySource) setSource(querySource);
+    else if (simState?.source) setSource(simState.source);
+
+    if (querySourceMode) setSourceMode(querySourceMode);
+    else if (simState?.sourceMode) setSourceMode(simState.sourceMode);
+
+    if (queryMode) setRepaymentMode(queryMode);
+    else if (simState?.repaymentMode) setRepaymentMode(simState.repaymentMode);
+
+    if (queryAmount > 0) setRequestedAmount(queryAmount);
+    else if (simState?.requestedAmount) setRequestedAmount(simState.requestedAmount);
+
+    if (queryVal > 0) setEstimatedValue(queryVal);
+    else if (simState?.propertyValue) setEstimatedValue(simState.propertyValue);
+
+    if (queryTerm > 0) setTermMonths(queryTerm);
+    else if (simState?.termMonths) setTermMonths(simState.termMonths);
+
+    if (simState?.propertyType) setPropertyType(simState.propertyType);
+    if (simState?.department) setDepartment(simState.department);
+    if (simState?.legalStatus) setLegalStatus(simState.legalStatus);
+    if (simState?.incomeType) setIncomeType(simState.incomeType);
+
+    if (!simState && !queryAmount) {
       // Intentar cargar borrador previo
       getActiveDraft().then((draft) => {
         if (draft) {
           setAppId(draft.id);
-          setPublicId(draft.publicId);
+          if (draft.publicId) setPublicId(draft.publicId);
           setCurrentStep(draft.currentStep || 1);
           setRequestedAmount(draft.requestedAmount || 60000);
           setTermMonths(draft.termMonths || 36);
@@ -134,7 +171,7 @@ export const ApplicationWizard: React.FC = () => {
       setFirstName(user.user_metadata?.first_name || '');
       setLastName(user.user_metadata?.last_name || '');
     }
-  }, [borrower, user, location.state]);
+  }, [borrower, user, location.state, location.search]);
 
   // Persistir en cada cambio de paso (Regla 15)
   const persistStep = async (step: number) => {
@@ -142,11 +179,15 @@ export const ApplicationWizard: React.FC = () => {
     const payload: ApplicationDraftPayload = {
       id: appId,
       publicId,
+      organizationId: tenant.id,
       currentStep: step,
       requestedAmount,
       currency: 'USD',
       termMonths,
       purpose,
+      source,
+      sourceMode,
+      repaymentMode,
       property: {
         id: propertyId,
         propertyType,

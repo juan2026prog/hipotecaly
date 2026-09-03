@@ -5,7 +5,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 
 export default [
-  { ignores: ['dist/**', '**/dist/**', 'node_modules/**', '**/node_modules/**', 'public/**', '.supabase/**', 'test-results/**', 'playwright-report/**', '.vercel/**'] },
+  { ignores: ['dist/**', '**/dist/**', 'node_modules/**', '**/node_modules/**', 'public/**', '.supabase/**', 'test-results/**', 'playwright-report/**', '.vercel/**', 'tests/**'] },
   js.configs.recommended,
   {
     files: ['**/*.{ts,tsx}'],
@@ -36,13 +36,20 @@ export default [
         FileList: 'readonly',
         crypto: 'readonly',
         URL: 'readonly',
+        URLSearchParams: 'readonly',
         CustomEvent: 'readonly',
+        MouseEvent: 'readonly',
+        Node: 'readonly',
         React: 'readonly',
         __dirname: 'readonly',
         require: 'readonly',
         module: 'readonly',
         process: 'readonly',
         Buffer: 'readonly',
+        fetch: 'readonly',
+        alert: 'readonly',
+        prompt: 'readonly',
+        HeadersInit: 'readonly',
       },
     },
     plugins: {

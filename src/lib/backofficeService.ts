@@ -262,8 +262,11 @@ export const DEMO_APPLICATIONS = [
 /**
  * Métricas operativas del backoffice en tiempo real
  */
-export async function getBackofficeMetrics(useDemoMode = false) {
-  if (useDemoMode) {
+export async function getBackofficeMetrics(options?: { organizationId?: string; isDemoMode?: boolean } | boolean) {
+  const isDemo = typeof options === 'boolean' ? options : (options?.isDemoMode ?? false);
+  const orgId = typeof options === 'object' ? options.organizationId : undefined;
+
+  if (isDemo && !orgId) {
     return {
       newRequests: 2,
       inAnalysis: 1,
@@ -276,10 +279,12 @@ export async function getBackofficeMetrics(useDemoMode = false) {
   }
 
   try {
-    const { data, error } = await withTimeout(
-      supabase.from('applications').select('status, requested_amount')
-    );
-    if (!error && data && data.length > 0) {
+    let query = supabase.from('applications').select('status, requested_amount');
+    if (orgId) {
+      query = query.eq('organization_id', orgId);
+    }
+    const { data, error } = await withTimeout(query);
+    if (!error && data) {
       return {
         newRequests: data.filter((d) => d.status === 'submitted').length,
         inAnalysis: data.filter((d) => d.status === 'info_review' || d.status === 'property_analysis').length,
@@ -291,31 +296,59 @@ export async function getBackofficeMetrics(useDemoMode = false) {
       };
     }
   } catch {
-    // Fallback a demo si el backend local no está disponible
+    // Si no es demo, retornar ceros sin inventar métricas
+    if (!isDemo) {
+      return {
+        newRequests: 0,
+        inAnalysis: 0,
+        waitingDocs: 0,
+        offerAvailable: 0,
+        approved: 0,
+        totalRequested: 0,
+        isDemo: false,
+      };
+    }
   }
 
-  // Fallback con demo claramente identificado
+  if (isDemo) {
+    return {
+      newRequests: 2,
+      inAnalysis: 1,
+      waitingDocs: 1,
+      offerAvailable: 1,
+      approved: 1,
+      totalRequested: 270000,
+      isDemo: true,
+    };
+  }
+
   return {
-    newRequests: 2,
-    inAnalysis: 1,
-    waitingDocs: 1,
-    offerAvailable: 1,
-    approved: 1,
-    totalRequested: 270000,
-    isDemo: true,
+    newRequests: 0,
+    inAnalysis: 0,
+    waitingDocs: 0,
+    offerAvailable: 0,
+    approved: 0,
+    totalRequested: 0,
+    isDemo: false,
   };
 }
 
 /**
  * Listado de solicitudes con filtros y búsqueda
+ * REGLA TÉCNICA: NO_PRODUCTION_MOCK_DATA.
+ * Si useDemoMode = false, NUNCA retorna DEMO_APPLICATIONS.
  */
 export async function getApplicationsList(filters?: {
+  organizationId?: string;
   status?: string;
   department?: string;
   search?: string;
   useDemoMode?: boolean;
 }) {
-  if (filters?.useDemoMode) {
+  const isDemo = filters?.useDemoMode ?? false;
+  const orgId = filters?.organizationId;
+
+  if (isDemo && !orgId) {
     return filterApplicationsLocally(DEMO_APPLICATIONS, filters);
   }
 
@@ -325,19 +358,27 @@ export async function getApplicationsList(filters?: {
       .select('*, properties(*), borrowers(*)')
       .order('created_at', { ascending: false });
 
+    if (orgId) {
+      query = query.eq('organization_id', orgId);
+    }
     if (filters?.status && filters.status !== 'all') {
       query = query.eq('status', filters.status);
     }
 
     const { data, error } = await withTimeout(query);
-    if (!error && data && data.length > 0) {
-      return data;
+    if (!error && data) {
+      return filterApplicationsLocally(data, filters);
     }
   } catch {
-    // Continuar a fallback demo
+    // Error en base de datos
   }
 
-  return filterApplicationsLocally(DEMO_APPLICATIONS, filters);
+  if (isDemo) {
+    return filterApplicationsLocally(DEMO_APPLICATIONS, filters);
+  }
+
+  // En producción sin demo: retornar lista vacía (empty state legítimo)
+  return [];
 }
 
 function filterApplicationsLocally(list: any[], filters?: { status?: string; department?: string; search?: string }) {
@@ -357,28 +398,39 @@ function filterApplicationsLocally(list: any[], filters?: { status?: string; dep
 /**
  * Detalle completo de un expediente para `/app/solicitudes/:id`
  */
-export async function getApplicationDetail(idOrPublicId: string) {
+export async function getApplicationDetail(
+  idOrPublicId: string,
+  options?: { isDemoMode?: boolean; organizationId?: string }
+) {
   try {
-    const { data, error } = await withTimeout(
-      supabase
-        .from('applications')
-        .select('*, properties(*, property_photos(*), property_documents(*)), borrowers(*), property_valuations(*), tasks(*), application_status_history(*)')
-        .or(`id.eq.${idOrPublicId},public_id.eq.${idOrPublicId}`)
-        .maybeSingle()
-    );
+    let query = supabase
+      .from('applications')
+      .select('*, properties(*, property_photos(*), property_documents(*)), borrowers(*), property_valuations(*), tasks(*), application_status_history(*)')
+      .or(`id.eq.${idOrPublicId},public_id.eq.${idOrPublicId}`);
+
+    if (options?.organizationId) {
+      query = query.eq('organization_id', options.organizationId);
+    }
+
+    const { data, error } = await withTimeout(query.maybeSingle());
 
     if (!error && data) {
       return data;
     }
   } catch {
-    // Fallback a demo
+    // Continuar a fallback de demo controlado
   }
 
-  // Buscar en DEMO
-  const found = DEMO_APPLICATIONS.find(
-    (a) => a.id === idOrPublicId || a.public_id === idOrPublicId
-  );
-  return found || DEMO_APPLICATIONS[0];
+  // Buscar en DEMO únicamente si se solicita explícitamente o si es el expediente oficial demo de NOVA
+  if (options?.isDemoMode || idOrPublicId.includes('demo') || idOrPublicId === 'e0000000-0000-0000-0000-000000000001') {
+    const found = DEMO_APPLICATIONS.find(
+      (a) => a.id === idOrPublicId || a.public_id === idOrPublicId
+    );
+    return found || null;
+  }
+
+  // En producción: No revelar expedientes ficticios
+  return null;
 }
 
 /**

@@ -27,6 +27,10 @@ export interface ApplicationDraftPayload {
   currency: string;
   termMonths: number;
   purpose?: string;
+  source?: string;
+  sourceMode?: string;
+  repaymentMode?: string;
+  rawSimulatorParams?: Record<string, unknown>;
   property: {
     id?: string;
     propertyType: string;
@@ -69,6 +73,15 @@ export interface SaveDraftResult {
 }
 
 /**
+ * Genera el identificador público unificado oficial de la plataforma: HPT-YYYY-XXXXX
+ */
+export function generateApplicationPublicId(): string {
+  const year = new Date().getFullYear();
+  const randomNum = Math.floor(10000 + Math.random() * 90000);
+  return `HPT-${year}-${randomNum}`;
+}
+
+/**
  * Guarda un borrador de solicitud.
  * PostgreSQL es la fuente autoritativa. Si Supabase falla, se almacena una copia
  * temporal en localStorage explícitamente marcada como NO sincronizada.
@@ -88,7 +101,7 @@ export async function saveApplicationDraft(
   try {
     // 1. Intentar persistencia autoritativa en Supabase
     if (!appId) {
-      const generatedPublicId = `HIP-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+      const generatedPublicId = payload.publicId || generateApplicationPublicId();
       const { data: newApp, error: appErr } = await withTimeout(
         supabase
           .from('applications')
@@ -100,6 +113,10 @@ export async function saveApplicationDraft(
             currency: payload.currency || 'USD',
             term_months: payload.termMonths,
             purpose: payload.purpose || 'Financiación con garantía hipotecaria',
+            source: payload.source || 'native_white_label',
+            source_mode: payload.sourceMode || 'full',
+            repayment_mode: payload.repaymentMode || 'solo_intereses',
+            raw_simulator_params: payload.rawSimulatorParams || {},
             public_id: generatedPublicId,
           })
           .select()
@@ -122,6 +139,7 @@ export async function saveApplicationDraft(
             requested_amount: payload.requestedAmount,
             term_months: payload.termMonths,
             purpose: payload.purpose,
+            repayment_mode: payload.repaymentMode || 'solo_intereses',
             updated_at: new Date().toISOString(),
           })
           .eq('id', appId)

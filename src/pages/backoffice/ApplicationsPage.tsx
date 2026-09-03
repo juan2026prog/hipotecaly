@@ -10,8 +10,10 @@ import {
   Home,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { useTenant } from '../../contexts/TenantContext';
 
 export const ApplicationsPage: React.FC = () => {
+  const { tenant } = useTenant();
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -21,7 +23,10 @@ export const ApplicationsPage: React.FC = () => {
   useEffect(() => {
     async function fetchApps() {
       setLoading(true);
+      const isDemo = Boolean(tenant.demo_mode);
       const data = await getApplicationsList({
+        organizationId: tenant.id,
+        useDemoMode: isDemo,
         status: statusFilter,
         department: deptFilter,
         search,
@@ -30,7 +35,7 @@ export const ApplicationsPage: React.FC = () => {
       setLoading(false);
     }
     fetchApps();
-  }, [statusFilter, deptFilter, search]);
+  }, [tenant.id, tenant.demo_mode, statusFilter, deptFilter, search]);
 
   return (
     <BackofficeLayout>

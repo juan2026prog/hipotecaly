@@ -51,10 +51,16 @@ Thumbs.db
 .supabase/temp
 supabase/.temp
 
-# Test outputs
-test-results/
-playwright-report/
+# Test artifacts and screenshots
+test-results
+playwright-report
+*.png
+blob-report
 screenshots/
 
 .vercel
 .env*
+temp_*.json
+*.dump
+*.sql.dump
+*.bak

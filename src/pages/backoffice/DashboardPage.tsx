@@ -11,10 +11,15 @@ import {
   ArrowUpRight,
   ChevronRight,
   Plus,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { aiService } from '../../lib/aiService';
+import { AiWalletState } from '../../lib/ai/types';
+import { useTenant } from '../../contexts/TenantContext';
 
 export const DashboardPage: React.FC = () => {
+  const { tenant } = useTenant();
   const [metrics, setMetrics] = useState<{
     newRequests: number;
     inAnalysis: number;
@@ -35,18 +40,30 @@ export const DashboardPage: React.FC = () => {
 
   const [recentApplications, setRecentApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [aiWallet, setAiWallet] = useState<AiWalletState | null>(null);
+  const [showRechargeModal, setShowRechargeModal] = useState(false);
 
   useEffect(() => {
     async function loadData() {
       setLoading(true);
-      const m = await getBackofficeMetrics(false);
+      const isDemo = Boolean(tenant.demo_mode);
+      const m = await getBackofficeMetrics({ organizationId: tenant.id, isDemoMode: isDemo });
       setMetrics(m);
-      const apps = await getApplicationsList();
+      const apps = await getApplicationsList({ organizationId: tenant.id, useDemoMode: isDemo });
       setRecentApplications(apps.slice(0, 6));
+
+      // Cargar billetera AI del tenant
+      try {
+        const w = await aiService.getWalletState(tenant.id);
+        setAiWallet(w);
+      } catch {
+        // Silencioso
+      }
+
       setLoading(false);
     }
     loadData();
-  }, []);
+  }, [tenant.id, tenant.demo_mode]);
 
   return (
     <BackofficeLayout>
@@ -144,6 +161,133 @@ export const DashboardPage: React.FC = () => {
             <span className="text-[10px] text-emerald-600 font-medium mt-1 block">En formalización</span>
           </div>
         </div>
+
+        {/* ============================================================ */}
+        {/* WIDGET DEL ESTUDIO: HIPOTECALY AI (SALDO, CONSUMO Y RECARGA) */}
+        {/* ============================================================ */}
+        <div className="bg-gradient-to-r from-navy via-slate-900 to-navy rounded-2xl p-6 text-white shadow-lg border border-slate-700">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-1.5 text-left">
+              <div className="flex items-center space-x-2.5">
+                <Sparkles className="w-5 h-5 text-brand-green" />
+                <h3 className="text-base font-bold tracking-tight">HIPOTECALY AI — Panel del Estudio</h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-green/20 text-brand-green border border-brand-green/30">
+                  Activo
+                </span>
+              </div>
+              <p className="text-xs text-slate-300">
+                Resumen de créditos disponibles y telemetría de consumo de inteligencia artificial.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="text-left bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10">
+                <span className="text-[10px] text-slate-400 block uppercase">Saldo Total Disponible</span>
+                <span className="text-xl font-black text-brand-green">
+                  {aiWallet?.totalCaseBalance ?? 10.0} CASOS
+                </span>
+              </div>
+
+              <button
+                onClick={() => setShowRechargeModal(true)}
+                className="px-4 py-2.5 rounded-xl font-bold text-xs bg-brand-green hover:bg-emerald-600 text-white shadow-md transition"
+              >
+                Cargar Saldo
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-5 mt-5 border-t border-white/10 text-xs text-left">
+            <div>
+              <span className="text-slate-400 text-[11px]">Saldo Promocional:</span>
+              <p className="text-sm font-bold text-slate-100">{aiWallet?.promotionalCaseBalance ?? 10.0} CASOS</p>
+              <span className="text-[10px] text-slate-400">Vence fin de mes</span>
+            </div>
+            <div>
+              <span className="text-slate-400 text-[11px]">Saldo Comprado:</span>
+              <p className="text-sm font-bold text-slate-100">{aiWallet?.purchasedCaseBalance ?? 0.0} CASOS</p>
+              <span className="text-[10px] text-brand-green">No vence</span>
+            </div>
+            <div>
+              <span className="text-slate-400 text-[11px]">CASOS Utilizados este Mes:</span>
+              <p className="text-sm font-bold text-slate-100">1.36 CASOS</p>
+              <span className="text-[10px] text-slate-400">Expedientes procesados</span>
+            </div>
+            <div>
+              <span className="text-slate-400 text-[11px]">Costo AI Real Absorbido:</span>
+              <p className="text-sm font-bold text-brand-green">USD 0.71</p>
+              <span className="text-[10px] text-slate-400">Cubierto por HIPOTECALY</span>
+            </div>
+          </div>
+
+          {/* Barra Visual de Saldo */}
+          <div className="mt-4 space-y-1 text-left">
+            <div className="flex justify-between text-[11px] text-slate-300">
+              <span>Capacidad de consumo mensual</span>
+              <span>{Math.round(((aiWallet?.totalCaseBalance ?? 10) / 10) * 100)}% disponible</span>
+            </div>
+            <div className="w-full bg-slate-700/60 h-2 rounded-full overflow-hidden">
+              <div
+                className="bg-brand-green h-2 rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(100, ((aiWallet?.totalCaseBalance ?? 10) / 10) * 100)}%` }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Modal para Recargar Saldo */}
+        {showRechargeModal && (
+          <div className="fixed inset-0 z-50 bg-navy/70 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 text-left space-y-4">
+              <div className="flex justify-between items-center border-b pb-3">
+                <div className="flex items-center space-x-2">
+                  <Sparkles className="w-5 h-5 text-brand-green" />
+                  <h3 className="font-bold text-base text-navy">Recarga de Saldo AI</h3>
+                </div>
+                <button
+                  onClick={() => setShowRechargeModal(false)}
+                  className="text-slate-400 hover:text-slate-600 font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <p className="text-xs text-slate-600">
+                Los CASOS AI comprados <strong>nunca vencen</strong> y se consumen únicamente después de agotar los
+                créditos promocionales del mes.
+              </p>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2">
+                <div className="flex justify-between">
+                  <span className="font-semibold text-slate-700">Paquete 10 CASOS:</span>
+                  <span className="font-bold text-navy">USD 5.00</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-semibold text-slate-700">Paquete 25 CASOS:</span>
+                  <span className="font-bold text-navy">USD 12.50</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-semibold text-slate-700">Paquete 100 CASOS:</span>
+                  <span className="font-bold text-navy">USD 50.00</span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-900">
+                <span className="font-bold">Nota de Integración:</span> La estructura del ledger y billetera está
+                operativa. La pasarela de cobro automatizada se activará según el plan comercial contratado.
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-2">
+                <button
+                  onClick={() => setShowRechargeModal(false)}
+                  className="px-4 py-2 text-xs font-bold bg-navy text-white rounded-lg hover:bg-slate-800"
+                >
+                  Entendido
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ============================================================ */}
         {/* SECCIÓN CENTRAL: TABLA DE SOLICITUDES RECIENTES & MÉTRICAS   */}

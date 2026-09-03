@@ -23,14 +23,30 @@ import {
   FileCheck,
   Plus,
   Lock,
+  Sparkles,
+  ShieldAlert,
 } from 'lucide-react';
 import { ApplicationMatchingTab } from '../../components/backoffice/ApplicationMatchingTab';
+import { HipotecalyAiTab } from '../../components/ai/HipotecalyAiTab';
+import { maskPhone, maskEmail } from '../../lib/sensitiveDataService';
 
 export const ApplicationDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [app, setApp] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('resumen');
+
+  // Acciones sobre documentos (observar / aprobar)
+  const handleDocumentAction = (docId: string, action: 'verified' | 'observed') => {
+    if (!app) return;
+    const updated = (app.documents || []).map((d: any) => {
+      if (d.id === docId) {
+        return { ...d, status: action };
+      }
+      return d;
+    });
+    setApp({ ...app, documents: updated });
+  };
 
   // Estados para valuación preliminar (Regla 22 & 40)
   const [preliminaryValue, setPreliminaryValue] = useState<number>(0);
@@ -46,24 +62,25 @@ export const ApplicationDetailPage: React.FC = () => {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [addingTask, setAddingTask] = useState(false);
 
-  useEffect(() => {
-    async function load() {
-      if (!id) return;
-      setLoading(true);
-      const data = await getApplicationDetail(id);
-      setApp(data);
-      if (data?.valuation) {
-        setPreliminaryValue(data.valuation.preliminary_value || 0);
-        setValMin(data.valuation.valuation_min || 0);
-        setValMax(data.valuation.valuation_max || 0);
-        setValConfidence(data.valuation.confidence || 'alta');
-        setValMethodology(data.valuation.methodology || 'comparables_de_mercado');
-        setValNotes(data.valuation.notes || '');
-      } else if (data?.property?.estimated_value) {
-        setPreliminaryValue(data.property.estimated_value);
-      }
-      setLoading(false);
+  const load = async (silent = false) => {
+    if (!id) return;
+    if (!silent) setLoading(true);
+    const data = await getApplicationDetail(id);
+    setApp(data);
+    if (data?.valuation) {
+      setPreliminaryValue(data.valuation.preliminary_value || 0);
+      setValMin(data.valuation.valuation_min || 0);
+      setValMax(data.valuation.valuation_max || 0);
+      setValConfidence(data.valuation.confidence || 'alta');
+      setValMethodology(data.valuation.methodology || 'comparables_de_mercado');
+      setValNotes(data.valuation.notes || '');
+    } else if (data?.property?.estimated_value) {
+      setPreliminaryValue(data.property.estimated_value);
     }
+    if (!silent) setLoading(false);
+  };
+
+  useEffect(() => {
     load();
   }, [id]);
 
@@ -99,6 +116,7 @@ export const ApplicationDetailPage: React.FC = () => {
     const { task } = await createApplicationTask({
       application_id: app.id,
       title: newTaskTitle,
+      due_date: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0],
     });
     if (task) {
       setApp({ ...app, tasks: [...(app.tasks || []), task] });
@@ -110,7 +128,9 @@ export const ApplicationDetailPage: React.FC = () => {
   if (loading) {
     return (
       <BackofficeLayout>
-        <div className="p-16 text-center text-xs text-slate-400">Cargando expediente...</div>
+        <div className="p-16 text-center text-slate-400 font-medium">
+          Cargando detalles del expediente...
+        </div>
       </BackofficeLayout>
     );
   }
@@ -138,6 +158,7 @@ export const ApplicationDetailPage: React.FC = () => {
     { id: 'propiedad', label: 'Propiedad', icon: Home },
     { id: 'ingresos', label: 'Ingresos', icon: DollarSign },
     { id: 'documentos', label: 'Documentos', icon: FileCheck },
+    { id: 'ia', label: 'HIPOTECALY AI', icon: Sparkles },
     { id: 'fotos', label: 'Fotos', icon: Camera },
     { id: 'valuacion', label: 'Valuación', icon: Compass },
     { id: 'actividad', label: 'Actividad', icon: Activity },
@@ -282,7 +303,15 @@ export const ApplicationDetailPage: React.FC = () => {
             {/* TAB: SOLICITANTE */}
             {activeTab === 'solicitante' && (
               <div className="space-y-4">
-                <h3 className="text-base font-bold text-navy">Datos del Solicitante</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-bold text-navy">Datos del Solicitante</h3>
+                  {app.status !== 'approved' && app.status !== 'formalization' && (
+                    <span className="flex items-center text-[11px] text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full font-medium">
+                      <ShieldAlert className="w-3.5 h-3.5 mr-1" /> Contacto Enmascarado
+                    </span>
+                  )}
+                </div>
+                
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div>
                     <label className="text-slate-400 font-medium">Nombre completo</label>
@@ -294,13 +323,27 @@ export const ApplicationDetailPage: React.FC = () => {
                   </div>
                   <div>
                     <label className="text-slate-400 font-medium">Email</label>
-                    <p className="font-bold text-navy text-sm">{app.borrower?.email || 'Sin email'}</p>
+                    <p className="font-bold text-navy text-sm font-mono">
+                      {app.status === 'approved' || app.status === 'formalization'
+                        ? (app.borrower?.email || 'Sin email')
+                        : maskEmail(app.borrower?.email)}
+                    </p>
                   </div>
                   <div>
                     <label className="text-slate-400 font-medium">Teléfono Celular</label>
-                    <p className="font-bold text-navy text-sm">{app.borrower?.phone || 'Sin teléfono'}</p>
+                    <p className="font-bold text-navy text-sm font-mono">
+                      {app.status === 'approved' || app.status === 'formalization'
+                        ? (app.borrower?.phone || 'Sin teléfono')
+                        : maskPhone(app.borrower?.phone)}
+                    </p>
                   </div>
                 </div>
+
+                {app.status !== 'approved' && app.status !== 'formalization' && (
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-500">
+                    🛡️ <strong>Política de Privacidad del Tenant:</strong> El teléfono y email se desbloquean automáticamente una vez que el expediente alcanza el estado <strong>Aprobado</strong> o <strong>Formalización</strong>.
+                  </div>
+                )}
               </div>
             )}
 
@@ -341,8 +384,13 @@ export const ApplicationDetailPage: React.FC = () => {
             {activeTab === 'documentos' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-base font-bold text-navy">Gestión Documental Privada</h3>
-                  <span className="text-xs text-slate-500">Archivos protegidos</span>
+                  <div>
+                    <h3 className="text-base font-bold text-navy">Gestión Documental Privada</h3>
+                    <p className="text-xs text-slate-500">Revisión, aprobación y observaciones de legajo.</p>
+                  </div>
+                  <span className="text-[11px] px-2.5 py-1 rounded bg-slate-100 text-slate-600 font-mono font-bold">
+                    Storage Privado RLS
+                  </span>
                 </div>
 
                 <div className="space-y-2.5 text-xs">
@@ -354,7 +402,7 @@ export const ApplicationDetailPage: React.FC = () => {
                     app.documents.map((doc: any) => (
                       <div
                         key={doc.id}
-                        className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50/70"
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 gap-3"
                       >
                         <div className="flex items-center space-x-3">
                           <FileText className="w-5 h-5 text-brand-green shrink-0" />
@@ -364,18 +412,44 @@ export const ApplicationDetailPage: React.FC = () => {
                           </div>
                         </div>
 
-                        <div className="flex items-center space-x-3">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-brand-green-dark">
-                            {doc.status}
+                        <div className="flex items-center space-x-2">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              doc.status === 'verified'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : doc.status === 'observed'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-slate-200 text-slate-700'
+                            }`}
+                          >
+                            {doc.status === 'verified' ? 'Aprobado' : doc.status === 'observed' ? 'Observado' : 'Pendiente'}
                           </span>
-                          <button className="text-xs font-bold text-brand-green hover:underline">
-                            Abrir enlace seguro
+                          <button
+                            type="button"
+                            onClick={() => handleDocumentAction(doc.id, 'verified')}
+                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded text-[10px] transition-colors"
+                          >
+                            Aprobar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDocumentAction(doc.id, 'observed')}
+                            className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded text-[10px] transition-colors"
+                          >
+                            Observar
                           </button>
                         </div>
                       </div>
                     ))
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* TAB: HIPOTECALY AI CORE */}
+            {activeTab === 'ia' && (
+              <div className="space-y-6">
+                <HipotecalyAiTab app={app} onRefresh={() => load(true)} />
               </div>
             )}
 

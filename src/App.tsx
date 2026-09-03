@@ -28,9 +28,19 @@ import { LenderOpportunityDetailPage } from './pages/lender/LenderOpportunityDet
 import { LenderOffersPage } from './pages/lender/LenderOffersPage';
 import { UsersManagementPage } from './pages/backoffice/UsersManagementPage';
 import { OrganizationSettingsPage } from './pages/backoffice/OrganizationSettingsPage';
+
+// Tenant Demo NOVA & Super Admin
+import { NovaLegacySite } from './pages/demo/nova/NovaLegacySite';
+import { NovaIntegratedSite } from './pages/demo/nova/NovaIntegratedSite';
+import { NovaFullWhiteLabelSite } from './pages/demo/nova/NovaFullWhiteLabelSite';
+import { SuperAdminTenantsPage } from './pages/admin/SuperAdminTenantsPage';
+import { TenantOnboardingWizardPage } from './pages/admin/TenantOnboardingWizardPage';
+import { GenericWhiteLabelLanding } from './pages/landing/GenericWhiteLabelLanding';
+import { AdminAiPage } from './pages/admin/AdminAiPage';
 import { TenantProvider } from './contexts/TenantContext';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { OfflineNotice } from './components/ui/OfflineNotice';
+import { DemoSalesModeBar } from './components/demo/DemoSalesModeBar';
 
 export const App: React.FC = () => {
   return (
@@ -40,11 +50,13 @@ export const App: React.FC = () => {
           <TenantProvider>
             {/* Notificación flotante de PWA sin conexión */}
             <OfflineNotice />
+            {/* Barra de navegación comercial para modo demostración y presentaciones */}
+            <DemoSalesModeBar />
 
           <Routes>
             {/* Rutas con soporte Multi-Tenant / White-Label (Fase 5) */}
-            <Route path="/org/:slug" element={<MarketplaceHome />} />
-            <Route path="/org/:slug/simulador" element={<SimulatorPage />} />
+            <Route path="/org/:slug" element={<GenericWhiteLabelLanding />} />
+            <Route path="/org/:slug/simulador" element={<GenericWhiteLabelLanding />} />
 
             {/* Marketplace HIPOTECALY (Línea A - Propietarios) */}
             <Route path="/" element={<MarketplaceHome />} />
@@ -71,12 +83,23 @@ export const App: React.FC = () => {
           <Route path="/plataforma/white-label" element={<SaaSFullPlatformPage />} />
           <Route path="/plataforma/precios" element={<SaaSPricingPage />} />
 
+          {/* Experiencias de Venta y Demostración Tenant NOVA */}
+          <Route path="/demo/nova/legacy" element={<NovaLegacySite />} />
+          <Route path="/demo/nova/integrado" element={<NovaIntegratedSite />} />
+          <Route path="/demo/nova/full" element={<NovaFullWhiteLabelSite />} />
+          <Route path="/demo/nova/login" element={<LoginPage />} />
+          <Route path="/demo/nova/mi-cuenta" element={<ApplicantAccount />} />
+
           {/* Autenticación y Solicitante (Fase 2) */}
           <Route path="/solicitar" element={<ApplicationWizard />} />
           <Route path="/mi-cuenta" element={<ApplicantAccount />} />
           <Route path="/ingresar" element={<LoginPage />} />
           <Route path="/registro" element={<RegisterPage />} />
           <Route path="/recuperar-password" element={<ForgotPasswordPage />} />
+
+          {/* Super Admin Hipotecaly Clientes SaaS */}
+          <Route path="/admin/tenants" element={<SuperAdminTenantsPage />} />
+          <Route path="/admin/tenants/new" element={<TenantOnboardingWizardPage />} />
 
           {/* Backoffice Operativo Multi-Tenant (Fase 3) */}
           <Route path="/app" element={<DashboardPage />} />
@@ -100,6 +123,8 @@ export const App: React.FC = () => {
 
           <Route path="/app/usuarios" element={<UsersManagementPage />} />
           <Route path="/app/organizacion" element={<OrganizationSettingsPage />} />
+          <Route path="/admin/ai" element={<AdminAiPage />} />
+          <Route path="/app/ai-admin" element={<AdminAiPage />} />
 
           {/* Fallback 404 */}
           <Route path="*" element={<Navigate to="/" replace />} />
