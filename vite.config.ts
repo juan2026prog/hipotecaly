@@ -41,8 +41,28 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//, /^\/storage\//, /^\/auth\//],
+        navigateFallbackDenylist: [
+          /^\/api\//,
+          /^\/storage\//,
+          /^\/auth\//,
+          /^\/rest\//,
+          /^\/app/,
+          /^\/mi-cuenta/,
+        ],
         runtimeCaching: [
+          // 1. REGLA ESTRICTA DE SEGURIDAD: Jamás cachear llamadas a Supabase ni datos privados
+          {
+            urlPattern: ({ url }) =>
+              url.pathname.startsWith('/rest/') ||
+              url.pathname.startsWith('/auth/') ||
+              url.pathname.startsWith('/storage/') ||
+              url.searchParams.has('token') ||
+              url.searchParams.has('signature') ||
+              url.pathname.includes('application-documents') ||
+              url.pathname.includes('property-photos'),
+            handler: 'NetworkOnly',
+          },
+          // 2. Caché estricto de fuentes públicas
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: 'CacheFirst',

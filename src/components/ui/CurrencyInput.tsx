@@ -38,10 +38,12 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
     onChange(num);
   };
 
+  const inputId = React.useId();
+
   return (
     <div className="w-full">
       {label && (
-        <label className="block text-sm font-semibold text-slate-text mb-1.5">
+        <label htmlFor={inputId} className="block text-sm font-semibold text-slate-text mb-1.5">
           {label}
         </label>
       )}
@@ -50,6 +52,7 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
           {currency}
         </span>
         <input
+          id={inputId}
           type="text"
           inputMode="numeric"
           value={displayValue}

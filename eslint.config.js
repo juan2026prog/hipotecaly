@@ -36,6 +36,7 @@ export default [
         FileList: 'readonly',
         crypto: 'readonly',
         URL: 'readonly',
+        CustomEvent: 'readonly',
         React: 'readonly',
         __dirname: 'readonly',
         require: 'readonly',

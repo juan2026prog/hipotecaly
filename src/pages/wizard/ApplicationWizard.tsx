@@ -76,6 +76,8 @@ export const ApplicationWizard: React.FC = () => {
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [acceptPrivacy, setAcceptPrivacy] = useState(false);
   const [acceptCreditCheck, setAcceptCreditCheck] = useState(false);
+  const [isServerSynced, setIsServerSynced] = useState<boolean>(true);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Inicialización y recuperación de draft
   useEffect(() => {
@@ -171,14 +173,16 @@ export const ApplicationWizard: React.FC = () => {
       },
     };
 
-    const { application, property } = await saveApplicationDraft(payload, user?.id);
+    const { application, property, isServerSynced: synced } = await saveApplicationDraft(payload, user?.id);
     if (application?.id) setAppId(application.id);
     if (application?.public_id) setPublicId(application.public_id);
     if (property?.id) setPropertyId(property.id);
+    setIsServerSynced(synced);
 
     setSavingDraft(false);
     setDraftSavedToast(true);
     setTimeout(() => setDraftSavedToast(false), 2500);
+    return { application, property, isServerSynced: synced };
   };
 
   const nextStep = async () => {
@@ -209,7 +213,6 @@ export const ApplicationWizard: React.FC = () => {
         { name: file.name, category, url: URL.createObjectURL(file) },
       ]);
     } else {
-      // Aunque falle storage remoto local, agregamos la previsualización
       setUploadedPhotos((prev) => [
         ...prev,
         { name: file.name, category, url: URL.createObjectURL(file) },
@@ -228,12 +231,25 @@ export const ApplicationWizard: React.FC = () => {
   const handleFinalSubmit = async () => {
     if (!acceptTerms || !acceptPrivacy || !acceptCreditCheck) return;
     setSubmitting(true);
-    await persistStep(6);
-    if (appId) {
-      await submitFinalApplication(appId);
+    setSubmitError(null);
+    const draftRes = await persistStep(6);
+    const targetAppId = appId || draftRes?.application?.id;
+
+    if (targetAppId) {
+      const { success, error } = await submitFinalApplication(targetAppId);
+      if (success) {
+        setSubmitting(false);
+        navigate('/mi-cuenta', { state: { justSubmitted: true, publicId } });
+        return;
+      } else {
+        // En caso de corte, advertir y permitir navegar marcando estado pendiente
+        navigate('/mi-cuenta', { state: { justSubmitted: true, publicId, pendingSync: true, syncError: error?.message } });
+        return;
+      }
+    } else {
+      navigate('/mi-cuenta', { state: { justSubmitted: true, publicId, pendingSync: true } });
     }
     setSubmitting(false);
-    navigate('/mi-cuenta', { state: { justSubmitted: true, publicId } });
   };
 
   const ltv = estimatedValue > 0 ? (requestedAmount / estimatedValue) * 100 : 0;
@@ -272,8 +288,14 @@ export const ApplicationWizard: React.FC = () => {
                 </span>
               )}
               <div className="flex items-center space-x-1.5 text-[11px] text-slate-500 mt-1">
-                <Save className="w-3 h-3 text-brand-green" />
-                <span>{savingDraft ? 'Guardando borrador...' : 'Borrador persistido'}</span>
+                <Save className={`w-3 h-3 ${isServerSynced ? 'text-brand-green' : 'text-amber-500'}`} />
+                <span>
+                  {savingDraft
+                    ? 'Guardando borrador...'
+                    : isServerSynced
+                    ? 'Borrador persistido'
+                    : 'Borrador local (Pendiente sincronización)'}
+                </span>
               </div>
             </div>
           </div>
@@ -791,6 +813,12 @@ export const ApplicationWizard: React.FC = () => {
                 </Button>
               )}
             </div>
+
+            {submitError && (
+              <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
+                {submitError}
+              </div>
+            )}
 
           </div>
 
