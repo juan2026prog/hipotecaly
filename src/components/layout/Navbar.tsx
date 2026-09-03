@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { User, Menu, X, ArrowRight } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { useTenant } from '../../contexts/TenantContext';
 
 export const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { tenant } = useTenant();
 
   const navLinks = [
     { label: 'Cómo funciona', path: '/como-funciona' },
@@ -18,20 +20,20 @@ export const Navbar: React.FC = () => {
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-        {/* Logo Monograma HIPOTECALY */}
+        {/* Logo Monograma HIPOTECALY / White-Label */}
         <Link to="/" className="flex items-center space-x-3 group">
           <div className="w-10 h-10 rounded-xl bg-navy flex items-center justify-center border border-navy-border shadow-sm group-hover:scale-105 transition-transform">
             <svg className="w-6 h-6" viewBox="0 0 100 100" fill="none">
-              <path d="M50 22L24 43V74C24 76.2 25.8 78 28 78H72C74.2 78 76 76.2 76 74V43L50 22Z" stroke="#2DA674" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M43 78V56C43 52.1 46.1 49 50 49C53.9 49 57 52.1 57 56V78" stroke="#2DA674" strokeWidth="8" strokeLinecap="round"/>
+              <path d="M50 22L24 43V74C24 76.2 25.8 78 28 78H72C74.2 78 76 76.2 76 74V43L50 22Z" stroke="var(--brand-green, #2DA674)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M43 78V56C43 52.1 46.1 49 50 49C53.9 49 57 52.1 57 56V78" stroke="var(--brand-green, #2DA674)" strokeWidth="8" strokeLinecap="round"/>
             </svg>
           </div>
           <div>
             <span className="text-xl font-extrabold tracking-tight text-navy block leading-none">
-              HIPOTECALY
+              {tenant.branding.public_name}
             </span>
-            <span className="text-[10px] font-semibold text-slate-muted uppercase tracking-wider block mt-0.5">
-              Financiación con garantía hipotecaria
+            <span className="text-[10px] font-semibold text-slate-muted uppercase tracking-wider block mt-0.5 truncate max-w-xs">
+              {tenant.branding.tag_line || 'Financiación con garantía hipotecaria'}
             </span>
           </div>
         </Link>

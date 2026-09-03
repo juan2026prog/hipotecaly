@@ -24,19 +24,27 @@ import { LenderDetailPage } from './pages/backoffice/LenderDetailPage';
 import { LenderDashboardPage } from './pages/lender/LenderDashboardPage';
 import { LenderOpportunityDetailPage } from './pages/lender/LenderOpportunityDetailPage';
 import { LenderOffersPage } from './pages/lender/LenderOffersPage';
+import { UsersManagementPage } from './pages/backoffice/UsersManagementPage';
+import { OrganizationSettingsPage } from './pages/backoffice/OrganizationSettingsPage';
+import { TenantProvider } from './contexts/TenantContext';
 import { OfflineNotice } from './components/ui/OfflineNotice';
 
 export const App: React.FC = () => {
   return (
     <AuthProvider>
       <BrowserRouter>
-        {/* Notificación flotante de PWA sin conexión */}
-        <OfflineNotice />
+        <TenantProvider>
+          {/* Notificación flotante de PWA sin conexión */}
+          <OfflineNotice />
 
-        <Routes>
-          {/* Marketplace HIPOTECALY (Línea A - Propietarios) */}
-          <Route path="/" element={<MarketplaceHome />} />
-          <Route path="/simulador" element={<SimulatorPage />} />
+          <Routes>
+            {/* Rutas con soporte Multi-Tenant / White-Label (Fase 5) */}
+            <Route path="/org/:slug" element={<MarketplaceHome />} />
+            <Route path="/org/:slug/simulador" element={<SimulatorPage />} />
+
+            {/* Marketplace HIPOTECALY (Línea A - Propietarios) */}
+            <Route path="/" element={<MarketplaceHome />} />
+            <Route path="/simulador" element={<SimulatorPage />} />
           <Route path="/como-funciona" element={<HowItWorksPage />} />
           <Route path="/prestamos" element={<SimulatorPage />} />
           <Route path="/preguntas-frecuentes" element={<FaqPage />} />
@@ -77,10 +85,14 @@ export const App: React.FC = () => {
           <Route path="/lender/oportunidades/:id" element={<LenderOpportunityDetailPage />} />
           <Route path="/lender/ofertas" element={<LenderOffersPage />} />
 
+          <Route path="/app/usuarios" element={<UsersManagementPage />} />
+          <Route path="/app/organizacion" element={<OrganizationSettingsPage />} />
+
           {/* Fallback 404 */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+      </TenantProvider>
+    </BrowserRouter>
+  </AuthProvider>
   );
 };

@@ -8,7 +8,6 @@ import {
   Compass,
   FileCheck,
   CheckSquare,
-  BarChart3,
   Settings,
   Menu,
   X,
@@ -35,7 +34,8 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
     { name: 'Valuaciones', href: '/app/tasaciones', icon: Compass },
     { name: 'Documentos', href: '/app/documentos', icon: FileCheck },
     { name: 'Tareas', href: '/app/tareas', icon: CheckSquare },
-    { name: 'Reportes', href: '/app/reportes', icon: BarChart3 },
+    { name: 'Usuarios', href: '/app/usuarios', icon: Users },
+    { name: 'Organización', href: '/app/organizacion', icon: Building2 },
     { name: 'Configuración', href: '/app/configuracion', icon: Settings },
   ];
 
