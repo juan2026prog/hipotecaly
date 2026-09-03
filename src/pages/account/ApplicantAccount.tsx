@@ -14,12 +14,40 @@ import {
   User,
   ArrowRight,
   Sparkles,
+  FileCheck,
 } from 'lucide-react';
+import { acceptOffer, Offer } from '../../lib/offersService';
 
 export const ApplicantAccount: React.FC = () => {
   const { user, borrower, signOut } = useAuth();
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState<'inicio' | 'solicitud' | 'documentos' | 'mensajes' | 'cuenta'>('inicio');
+  const [activeTab, setActiveTab] = useState<'inicio' | 'ofertas' | 'solicitud' | 'documentos' | 'mensajes' | 'cuenta'>('inicio');
+  const [acceptedOfferId, setAcceptedOfferId] = useState<string | null>(null);
+
+  // Ofertas presentadas disponibles para el solicitante
+  const [presentedOffers] = useState<Offer[]>([
+    {
+      id: 'off-1',
+      application_id: 'e0000000-0000-0000-0000-000000000001',
+      lender_id: 'c0000000-0000-0000-0000-000000000001',
+      lender_name: 'Prestamista Asociado Hipotecaly',
+      amount: 80000,
+      currency: 'USD',
+      term_months: 36,
+      interest_rate: 9.5,
+      rate_type: 'fixed',
+      repayment_type: 'amortizing',
+      estimated_monthly_payment: 2562,
+      estimated_costs: 1800,
+      lender_fees: 1500,
+      other_costs: 300,
+      early_cancellation_terms: 'Permite cancelación anticipada sin penalización a partir del mes 12.',
+      notes_for_borrower: 'Propuesta de financiamiento con amortización mensual en dólares.',
+      expires_at: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+      status: 'presented',
+      created_at: new Date().toISOString(),
+    },
+  ]);
 
   // Datos de la solicitud activa
   const publicId = (location.state as { publicId?: string } | null)?.publicId || 'HIP-2026-00124';
@@ -67,6 +95,130 @@ export const ApplicantAccount: React.FC = () => {
             </Link>
           </div>
         </div>
+
+        {/* Desktop Tabs Header */}
+        <div className="hidden lg:flex space-x-2 border-b border-slate-border mb-6">
+          {[
+            { id: 'inicio', label: 'Inicio', icon: Home },
+            { id: 'ofertas', label: 'Ofertas de Préstamo', icon: FileCheck },
+            { id: 'solicitud', label: 'Mi Solicitud', icon: FileText },
+            { id: 'documentos', label: 'Documentación', icon: Upload },
+            { id: 'mensajes', label: 'Mensajes', icon: MessageSquare },
+            { id: 'cuenta', label: 'Cuenta', icon: User },
+          ].map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id as any)}
+              className={`flex items-center space-x-1.5 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors ${
+                activeTab === t.id
+                  ? 'border-brand-green text-navy'
+                  : 'border-transparent text-slate-400 hover:text-navy'
+              }`}
+            >
+              <t.icon className="w-4 h-4" />
+              <span>{t.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* ============================================================ */}
+        {/* TAB: OFERTAS (Fase 4: Comparador y Aceptación de Ofertas)     */}
+        {/* ============================================================ */}
+        {activeTab === 'ofertas' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-card p-6 border border-slate-border shadow-card space-y-4">
+              <div>
+                <h3 className="text-lg font-bold text-navy flex items-center">
+                  <FileCheck className="w-5 h-5 mr-2 text-brand-green" />
+                  Propuestas de Financiamiento Disponibles
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Revisá y compará las propuestas presentadas por los prestamistas para tu expediente.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {presentedOffers.map((off) => {
+                  const isAccepted = acceptedOfferId === off.id || off.status === 'accepted';
+                  return (
+                    <div
+                      key={off.id}
+                      className={`p-5 rounded-xl border transition-all ${
+                        isAccepted
+                          ? 'border-brand-green bg-emerald-50/50 shadow-md'
+                          : 'border-slate-border bg-white shadow-sm hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                            {off.lender_name}
+                          </span>
+                          <div className="text-2xl font-black text-navy mt-0.5">
+                            USD {off.amount.toLocaleString('es-UY')}
+                          </div>
+                        </div>
+                        {isAccepted ? (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                            <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-brand-green" /> Propuesta Aceptada
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
+                            Disponible
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 my-4 p-3 bg-slate-bg rounded-lg text-xs">
+                        <div>
+                          <span className="text-slate-400 block text-[10px]">Tasa Anual</span>
+                          <strong className="text-navy">{off.interest_rate}% ({off.rate_type})</strong>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block text-[10px]">Plazo</span>
+                          <strong className="text-navy">{off.term_months} meses</strong>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block text-[10px]">Cuota Est.</span>
+                          <strong className="text-brand-green">USD {off.estimated_monthly_payment}</strong>
+                        </div>
+                      </div>
+
+                      <div className="text-xs text-slate-600 space-y-1 pb-4 border-b border-slate-100">
+                        <div><strong>Tipo de repago:</strong> {off.repayment_type === 'amortizing' ? 'Amortización mensual' : 'Solo intereses'}</div>
+                        <div><strong>Gastos estimativos:</strong> USD {off.estimated_costs}</div>
+                        <div><strong>Condición anticipada:</strong> {off.early_cancellation_terms}</div>
+                      </div>
+
+                      <div className="pt-4 flex items-center justify-between">
+                        <span className="text-[11px] text-slate-400">
+                          Válida hasta: {new Date(off.expires_at || Date.now()).toLocaleDateString('es-UY')}
+                        </span>
+                        {!isAccepted && (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={async () => {
+                              await acceptOffer(off.id, off.application_id);
+                              setAcceptedOfferId(off.id);
+                            }}
+                          >
+                            Aceptar Propuesta <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-500 leading-relaxed">
+                <strong>Aviso sobre la aceptación:</strong> La aceptación de una propuesta comercial no constituye aún contrato definitivo ni escritura pública. A continuación se coordinará la revisión notarial de títulos y certificados de la propiedad para la formalización del préstamo con garantía hipotecaria.
+              </div>
+
+            </div>
+          </div>
+        )}
 
         {/* ============================================================ */}
         {/* TAB 1: INICIO & RESUMEN DE SOLICITUD                         */}
@@ -290,6 +442,16 @@ export const ApplicantAccount: React.FC = () => {
         >
           <Home className="w-5 h-5 mb-0.5" />
           <span className="text-[10px]">Inicio</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('ofertas')}
+          className={`flex flex-col items-center justify-center flex-1 h-full text-xs font-semibold ${
+            activeTab === 'ofertas' ? 'text-brand-green' : 'text-slate-400'
+          }`}
+        >
+          <FileCheck className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px]">Ofertas</span>
         </button>
 
         <button

@@ -24,6 +24,7 @@ import {
   Plus,
   Lock,
 } from 'lucide-react';
+import { ApplicationMatchingTab } from '../../components/backoffice/ApplicationMatchingTab';
 
 export const ApplicationDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -511,15 +512,17 @@ export const ApplicationDetailPage: React.FC = () => {
               </div>
             )}
 
-            {/* TAB: PRESTAMISTAS (Preparado para Fase 4) */}
+            {/* TAB: PRESTAMISTAS (Fase 4: Matching, Oportunidades, Ofertas y Anti-Bypass) */}
             {activeTab === 'prestamistas' && (
-              <div className="p-8 text-center space-y-3 bg-slate-50 rounded-2xl border border-slate-200">
-                <Lock className="w-8 h-8 text-slate-400 mx-auto" />
-                <h4 className="text-sm font-bold text-navy">Módulo de Prestamistas y Matching</h4>
-                <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  La asignación de oportunidades, reglas crediticias avanzadas de prestamistas y ofertas comerciales se activará en la Fase 4.
-                </p>
-              </div>
+              <ApplicationMatchingTab
+                applicationId={app.id}
+                publicId={app.public_id}
+                department={app.property?.department || 'Montevideo'}
+                propertyType={app.property?.property_type || 'casa'}
+                requestedAmount={app.requested_amount}
+                currency={app.currency || 'USD'}
+                estimatedValue={app.property?.estimated_value || 0}
+              />
             )}
 
           </div>

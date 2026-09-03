@@ -19,6 +19,11 @@ import { ClientsPage } from './pages/backoffice/ClientsPage';
 import { PropertiesPage } from './pages/backoffice/PropertiesPage';
 import { DocumentsPage } from './pages/backoffice/DocumentsPage';
 import { ValuationsPage, TasksPage, ReportsPage, SettingsPage } from './pages/backoffice/OtherBackofficePages';
+import { LendersPage } from './pages/backoffice/LendersPage';
+import { LenderDetailPage } from './pages/backoffice/LenderDetailPage';
+import { LenderDashboardPage } from './pages/lender/LenderDashboardPage';
+import { LenderOpportunityDetailPage } from './pages/lender/LenderOpportunityDetailPage';
+import { LenderOffersPage } from './pages/lender/LenderOffersPage';
 import { OfflineNotice } from './components/ui/OfflineNotice';
 
 export const App: React.FC = () => {
@@ -63,6 +68,14 @@ export const App: React.FC = () => {
           <Route path="/app/tareas" element={<TasksPage />} />
           <Route path="/app/reportes" element={<ReportsPage />} />
           <Route path="/app/configuracion" element={<SettingsPage />} />
+          <Route path="/app/prestamistas" element={<LendersPage />} />
+          <Route path="/app/prestamistas/:id" element={<LenderDetailPage />} />
+
+          {/* Portal del Prestamista (Fase 4) */}
+          <Route path="/lender" element={<LenderDashboardPage />} />
+          <Route path="/lender/oportunidades" element={<LenderDashboardPage />} />
+          <Route path="/lender/oportunidades/:id" element={<LenderOpportunityDetailPage />} />
+          <Route path="/lender/ofertas" element={<LenderOffersPage />} />
 
           {/* Fallback 404 */}
           <Route path="*" element={<Navigate to="/" replace />} />

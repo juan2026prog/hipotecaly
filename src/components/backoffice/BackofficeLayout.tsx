@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
-export const BackofficeLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: string }> = ({ children }) => {
   const location = useLocation();
   const { signOut } = useAuth();
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
@@ -31,6 +31,7 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode }> = ({ chil
     { name: 'Expedientes', href: '/app/solicitudes', icon: FolderKanban },
     { name: 'Clientes', href: '/app/clientes', icon: Users },
     { name: 'Propiedades', href: '/app/propiedades', icon: Building2 },
+    { name: 'Prestamistas', href: '/app/prestamistas', icon: Users },
     { name: 'Valuaciones', href: '/app/tasaciones', icon: Compass },
     { name: 'Documentos', href: '/app/documentos', icon: FileCheck },
     { name: 'Tareas', href: '/app/tareas', icon: CheckSquare },
