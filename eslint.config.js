@@ -5,7 +5,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 
 export default [
-  { ignores: ['dist', 'node_modules', 'public', '.supabase'] },
+  { ignores: ['dist/**', '**/dist/**', 'node_modules/**', '**/node_modules/**', 'public/**', '.supabase/**', 'test-results/**', 'playwright-report/**', '.vercel/**'] },
   js.configs.recommended,
   {
     files: ['**/*.{ts,tsx}'],

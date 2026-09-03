@@ -1,18 +1,20 @@
 // ==============================================================================
-// HIPOTECALY: Supabase Client (Seguro - Solo Clave Anónima en Frontend)
+// HIPOTECALY: Supabase Client (Seguro - Variables de Entorno Exclusivas)
 // ==============================================================================
 
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = 
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL) ||
-  (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_URL) ||
-  'https://imzljdwsrsxyccgogfck.supabase.co';
+  (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_URL);
 
 const supabaseAnonKey = 
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_ANON_KEY) ||
-  (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_ANON_KEY) ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImltemxqZHdzcnN4eWNjZ29nZmNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzOTkxMzgsImV4cCI6MjEwMzk3NTEzOH0.4EjkqHGK4tKkek1GGMesvjNCj6IBc8eKc26kb5BKh7Y';
+  (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_ANON_KEY);
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Supabase production configuration missing: VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is not defined.');
+}
 
 export const isSupabaseConfigured = true;
 

@@ -11,12 +11,21 @@ Allow: /contacto
 
 # Rutas privadas no indexables
 Disallow: /app/
+Disallow: /app/*
 Disallow: /mi-cuenta/
+Disallow: /mi-cuenta/*
 Disallow: /ingresar
-Disallow: /solicitar/
+Disallow: /registro
+Disallow: /recuperar-password
+Disallow: /solicitar
+Disallow: /solicitar/*
 Disallow: /storage/
+Disallow: /storage/*
 Disallow: /api/
+Disallow: /api/*
 Disallow: /lender/
+Disallow: /lender/*
 Disallow: /platform-admin/
+Disallow: /platform-admin/*
 
-Sitemap: https://hipotecaly.uy/sitemap.xml
+Sitemap: https://hipotecaly.vercel.app/sitemap.xml
