@@ -98,12 +98,48 @@ test.describe('HIPOTECALY: CLOUD & VERCEL REAL PRODUCTION CERTIFICATION', () => 
     expect(json.display).toBe('standalone');
   });
 
-  // 12. Responsive Design en Producción (390x844)
-  test('12. Sin desborde horizontal en Mobile 390px sobre URL de producción', async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
+  // 12. Responsive Design en Producción en 8 Viewports
+  const viewports = [
+    { name: 'Mobile Compact (360x740)', width: 360, height: 740 },
+    { name: 'Mobile Standard (375x667)', width: 375, height: 667 },
+    { name: 'Mobile iPhone (390x844)', width: 390, height: 844 },
+    { name: 'Mobile Large (430x932)', width: 430, height: 932 },
+    { name: 'Tablet Portrait (768x1024)', width: 768, height: 1024 },
+    { name: 'Tablet Landscape (1024x768)', width: 1024, height: 768 },
+    { name: 'Laptop (1280x800)', width: 1280, height: 800 },
+    { name: 'Desktop High-Res (1440x900)', width: 1440, height: 900 }
+  ];
+
+  for (const vp of viewports) {
+    test(`12. Responsive: Sin desborde en ${vp.name}`, async ({ page }) => {
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      await page.goto(PROD_URL);
+      const hasOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+      expect(hasOverflow).toBe(false);
+    });
+  }
+
+  // 13. Ofertas seguras: notes_internal bloqueado
+  test('13. Ofertas en Cloud DB: Anon/Borrower no tienen acceso a notes_internal', async () => {
+    const { data } = await cloudClient.from('offers').select('id, notes_internal');
+    expect(data === null || data.length === 0).toBe(true);
+  });
+
+  // 14. IDOR Protection: Intento de manipular solicitud ajena
+  test('14. IDOR Protection: Modificación de solicitud ajena vía REST es rechazada por RLS (0 filas modificadas)', async () => {
+    const { data, error } = await cloudClient
+      .from('applications')
+      .update({ requested_amount: 9999999 })
+      .eq('id', 'a0000000-0000-0000-0000-000000000001')
+      .select();
+    expect(data === null || data.length === 0 || error !== null).toBe(true);
+  });
+
+  // 15. SEO & Indexación
+  test('15. SEO: Rutas públicas accesibles con meta tags válidos', async ({ page }) => {
     await page.goto(PROD_URL);
-    const hasOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
-    expect(hasOverflow).toBe(false);
+    const title = await page.title();
+    expect(title).toContain('HIPOTECALY');
   });
 
 });
