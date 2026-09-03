@@ -264,8 +264,8 @@ test.describe('FASE 4: SUITE DE TESTING DE MARKETPLACE, MATCHING, OFERTAS Y ANTI
   // 22. Borrower puede ver presented
   test('22. Solicitante puede visualizar oferta presentada en /mi-cuenta', async ({ page }) => {
     await page.goto('/mi-cuenta');
-    // Navegar a la pestaña Ofertas
-    await page.getByRole('button', { name: /Ofertas/i }).first().click();
+    // Navegar a la pestaña Ofertas visible
+    await page.getByRole('button', { name: /Ofertas/i }).filter({ visible: true }).first().click();
     await expect(page.getByText('Propuestas de Financiamiento Disponibles')).toBeVisible();
     await expect(page.getByText('USD 80.000')).toBeVisible();
   });
@@ -273,7 +273,7 @@ test.describe('FASE 4: SUITE DE TESTING DE MARKETPLACE, MATCHING, OFERTAS Y ANTI
   // 23. Borrower no ve notes_internal
   test('23. ANTI-BYPASS: El solicitante nunca recibe notas internas del analista', async ({ page }) => {
     await page.goto('/mi-cuenta');
-    await page.getByRole('button', { name: /Ofertas/i }).first().click();
+    await page.getByRole('button', { name: /Ofertas/i }).filter({ visible: true }).first().click();
     const content = await page.innerText('body');
     expect(content).not.toContain('Garantía sólida en zona de alta liquidez');
   });
@@ -281,7 +281,7 @@ test.describe('FASE 4: SUITE DE TESTING DE MARKETPLACE, MATCHING, OFERTAS Y ANTI
   // 24. Borrower acepta
   test('24. Solicitante puede aceptar propuesta de financiamiento', async ({ page }) => {
     await page.goto('/mi-cuenta');
-    await page.getByRole('button', { name: /Ofertas/i }).first().click();
+    await page.getByRole('button', { name: /Ofertas/i }).filter({ visible: true }).first().click();
     const acceptBtn = page.getByRole('button', { name: /Aceptar Propuesta/i });
     if (await acceptBtn.isVisible()) {
       await acceptBtn.click();

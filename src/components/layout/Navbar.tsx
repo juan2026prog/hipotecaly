@@ -29,10 +29,10 @@ export const Navbar: React.FC = () => {
             </svg>
           </div>
           <div>
-            <span className="text-xl font-extrabold tracking-tight text-navy block leading-none">
+            <span className="text-lg sm:text-xl font-extrabold tracking-tight text-navy block leading-none truncate max-w-[170px] sm:max-w-none">
               {tenant.branding.public_name}
             </span>
-            <span className="text-[10px] font-semibold text-slate-muted uppercase tracking-wider block mt-0.5 truncate max-w-xs">
+            <span className="text-[10px] font-semibold text-slate-muted uppercase tracking-wider hidden sm:block mt-0.5 truncate max-w-[220px]">
               {tenant.branding.tag_line || 'Financiación con garantía hipotecaria'}
             </span>
           </div>

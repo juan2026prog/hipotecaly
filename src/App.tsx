@@ -27,15 +27,17 @@ import { LenderOffersPage } from './pages/lender/LenderOffersPage';
 import { UsersManagementPage } from './pages/backoffice/UsersManagementPage';
 import { OrganizationSettingsPage } from './pages/backoffice/OrganizationSettingsPage';
 import { TenantProvider } from './contexts/TenantContext';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { OfflineNotice } from './components/ui/OfflineNotice';
 
 export const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <TenantProvider>
-          {/* Notificación flotante de PWA sin conexión */}
-          <OfflineNotice />
+    <ErrorBoundary>
+      <AuthProvider>
+        <BrowserRouter>
+          <TenantProvider>
+            {/* Notificación flotante de PWA sin conexión */}
+            <OfflineNotice />
 
           <Routes>
             {/* Rutas con soporte Multi-Tenant / White-Label (Fase 5) */}
@@ -94,5 +96,6 @@ export const App: React.FC = () => {
       </TenantProvider>
     </BrowserRouter>
   </AuthProvider>
+</ErrorBoundary>
   );
 };
