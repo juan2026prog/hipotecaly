@@ -43,9 +43,9 @@ export const Footer: React.FC = () => {
           <div className="space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Para Profesionales</h4>
             <ul className="space-y-2 text-sm text-slate-300">
-              <li><Link to="/plataforma" className="hover:text-brand-green transition-colors">HIPOTECALY SaaS</Link></li>
-              <li><Link to="/plataforma/funcionalidades" className="hover:text-brand-green transition-colors">Funcionalidades</Link></li>
-              <li><Link to="/plataforma/white-label" className="hover:text-brand-green transition-colors">Solución White Label</Link></li>
+              <li><Link to="/saas" className="hover:text-brand-green transition-colors">HIPOTECALY SaaS</Link></li>
+              <li><Link to="/saas/integracion" className="hover:text-brand-green transition-colors">Integrar a Web Actual</Link></li>
+              <li><Link to="/saas/plataforma-completa" className="hover:text-brand-green transition-colors">Plataforma White-Label</Link></li>
               <li><Link to="/plataforma/precios" className="hover:text-brand-green transition-colors">Planes y Precios</Link></li>
               <li><Link to="/app" className="hover:text-brand-green transition-colors">Acceso Backoffice</Link></li>
             </ul>

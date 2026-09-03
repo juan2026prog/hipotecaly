@@ -2,53 +2,53 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
-  Shield,
   Layers,
   BarChart3,
   Globe,
-  Sparkles,
-  FileCheck2,
-  CalendarDays,
-  CheckCircle,
   Clock,
   Lock,
   Headphones,
   Laptop,
+  Workflow,
+  ShieldCheck,
+  Smartphone,
+  CheckCircle2,
 } from 'lucide-react';
 import { SaaSNavbar } from '../components/layout/SaaSNavbar';
 import { Footer } from '../components/layout/Footer';
 import { Button } from '../components/ui/Button';
 import { DashboardMockup } from '../components/mockups/DashboardMockup';
 import { MobileTrackerMockup } from '../components/mockups/MobileTrackerMockup';
+import { PipelineVisual } from '../components/saas/PipelineVisual';
 
 export const SaaSHome: React.FC = () => {
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col bg-white text-slate-text">
       <SaaSNavbar />
 
       {/* ============================================================== */}
-      {/* 1. HERO SAAS SECTION (Fiel a Imagen 2 de Referencia)            */}
+      {/* 1. HERO SECTION RENOVADO                                        */}
       {/* ============================================================== */}
-      <section className="relative pt-8 pb-16 md:pt-14 md:pb-24 overflow-hidden bg-gradient-to-b from-slate-50/80 via-white to-white">
+      <section className="relative pt-10 pb-16 md:pt-16 md:pb-24 overflow-hidden bg-gradient-to-b from-slate-50/80 via-white to-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
             
-            {/* Columna Izquierda: Mensaje B2B */}
+            {/* Columna Izquierda: Mensaje Hero Principal */}
             <div className="lg:col-span-6 space-y-6 text-left">
               <div>
                 <span className="text-xs sm:text-sm font-bold tracking-wider text-brand-green uppercase block mb-3">
-                  LA PLATAFORMA HIPOTECARIA PARA PROFESIONALES
+                  TECNOLOGÍA HIPOTECARIA PARA PROFESIONALES
                 </span>
                 <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-navy leading-[1.12]">
-                  Digitalizá, analizá y gestioná préstamos hipotecarios en{' '}
-                  <span className="text-brand-green">una sola plataforma</span>.
+                  Digitalizá todo tu negocio hipotecario.{' '}
+                  <span className="text-brand-green">Sin cambiar cómo prestás.</span>
                 </h1>
                 <p className="text-base sm:text-lg text-slate-muted font-normal leading-relaxed max-w-xl mt-4">
-                  HIPOTECALY centraliza la captación, análisis y gestión de solicitudes hipotecarias para que tu estudio, financiera o empresa trabaje con más orden, velocidad y control.
+                  HIPOTECALY centraliza captación, solicitudes, documentación, análisis, firmas y seguimiento de créditos bajo tu propia marca.
                 </p>
               </div>
 
-              {/* 3 Beneficios Rápidos en Cards */}
+              {/* 3 Pilares Rápidos */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                 <div className="bg-white p-4 rounded-xl border border-slate-border shadow-sm">
                   <div className="w-9 h-9 rounded-lg bg-brand-green-light flex items-center justify-center mb-2.5">
@@ -62,7 +62,7 @@ export const SaaSHome: React.FC = () => {
 
                 <div className="bg-white p-4 rounded-xl border border-slate-border shadow-sm">
                   <div className="w-9 h-9 rounded-lg bg-brand-green-light flex items-center justify-center mb-2.5">
-                    <Shield className="w-5 h-5 text-brand-green" />
+                    <ShieldCheck className="w-5 h-5 text-brand-green" />
                   </div>
                   <h4 className="font-bold text-navy text-sm">Menos riesgo</h4>
                   <p className="text-xs text-slate-muted leading-relaxed mt-1">
@@ -81,23 +81,23 @@ export const SaaSHome: React.FC = () => {
                 </div>
               </div>
 
-              {/* CTAs B2B */}
+              {/* CTAs Principales */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-5 pt-2">
-                <Link to="/contacto?plan=whitelabel">
+                <Link to="/contacto?demo=true">
                   <Button variant="primary" size="lg" className="w-full sm:w-auto px-8 shadow-md">
-                    Quiero mi plataforma <ArrowRight className="w-4 h-4 ml-2" />
+                    AGENDAR DEMO <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </Link>
-                <Link
-                  to="#funcionalidades"
+                <a
+                  href="#modalidades"
                   className="text-sm font-semibold text-navy hover:text-brand-green underline decoration-brand-green decoration-2 underline-offset-8 transition-colors text-center py-2"
                 >
-                  Ver cómo funciona
-                </Link>
+                  VER CÓMO FUNCIONA
+                </a>
               </div>
             </div>
 
-            {/* Columna Derecha: Mockup Realista Dashboard + Smartphone (Idéntico a Imagen 2) */}
+            {/* Columna Derecha: Mockup Grande (Landing + Backoffice + Mobile) */}
             <div className="lg:col-span-6 relative mt-6 lg:mt-0">
               <div className="relative">
                 {/* Desktop Dashboard Mockup */}
@@ -117,260 +117,250 @@ export const SaaSHome: React.FC = () => {
       </section>
 
       {/* ============================================================== */}
-      {/* 2. GRAN BARRA NAVY DE PILARES SAAS (Regla 49 - Sin números inventados) */}
+      {/* 2. DOS MODALIDADES COMERCIALES CLARAMENTE DIFERENCIADAS         */}
       {/* ============================================================== */}
-      <section className="bg-navy py-12 md:py-16 text-white border-y border-navy-border">
+      <section id="modalidades" className="py-16 md:py-24 bg-slate-bg border-y border-slate-border text-left">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10">
-            
-            {/* Pilar 1 */}
-            <div className="flex items-start space-x-4">
-              <div className="w-12 h-12 rounded-full bg-brand-green/15 border border-brand-green/30 flex items-center justify-center shrink-0 text-brand-green">
-                <Globe className="w-6 h-6" />
-              </div>
-              <div className="text-left">
-                <h3 className="text-sm font-bold tracking-wide uppercase text-white mb-1">
-                  CAPTACIÓN
-                </h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Recibí solicitudes desde tu propia web o portal con formularios a medida.
-                </p>
-              </div>
-            </div>
-
-            {/* Pilar 2 */}
-            <div className="flex items-start space-x-4">
-              <div className="w-12 h-12 rounded-full bg-brand-green/15 border border-brand-green/30 flex items-center justify-center shrink-0 text-brand-green">
-                <Sparkles className="w-6 h-6" />
-              </div>
-              <div className="text-left">
-                <h3 className="text-sm font-bold tracking-wide uppercase text-white mb-1">
-                  ANÁLISIS
-                </h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Centralizá información patrimonial, documentación y reglas crediticias.
-                </p>
-              </div>
-            </div>
-
-            {/* Pilar 3 */}
-            <div className="flex items-start space-x-4">
-              <div className="w-12 h-12 rounded-full bg-brand-green/15 border border-brand-green/30 flex items-center justify-center shrink-0 text-brand-green">
-                <Layers className="w-6 h-6" />
-              </div>
-              <div className="text-left">
-                <h3 className="text-sm font-bold tracking-wide uppercase text-white mb-1">
-                  GESTIÓN
-                </h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Administrá el expediente completo, estados, tareas y asignaciones.
-                </p>
-              </div>
-            </div>
-
-            {/* Pilar 4 */}
-            <div className="flex items-start space-x-4">
-              <div className="w-12 h-12 rounded-full bg-brand-green/15 border border-brand-green/30 flex items-center justify-center shrink-0 text-brand-green">
-                <Shield className="w-6 h-6" />
-              </div>
-              <div className="text-left">
-                <h3 className="text-sm font-bold tracking-wide uppercase text-white mb-1">
-                  WHITE LABEL
-                </h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Tu marca, tu logo, tus clientes y dominio bajo nuestra tecnología.
-                </p>
-              </div>
-            </div>
-
+          <div className="text-center max-w-3xl mx-auto mb-14 space-y-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-brand-green bg-brand-green-light px-3 py-1 rounded-full">
+              FLEXIBILIDAD DE IMPLEMENTACIÓN
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-navy tracking-tight">
+              Elegí cómo querés implementar HIPOTECALY
+            </h2>
+            <p className="text-base text-slate-muted">
+              Dos caminos para el mismo objetivo: transformar tu gestión hipotecaria en una experiencia digital ágil, ordenada y profesional.
+            </p>
           </div>
-        </div>
-      </section>
 
-      {/* ============================================================== */}
-      {/* 3. FUNCIONALIDADES Y BENEFICIOS (Fiel a Imagen 2)               */}
-      {/* ============================================================== */}
-      <section id="funcionalidades" className="py-16 md:py-24 bg-white text-left">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-14">
+          {/* LAS DOS GRANDES TARJETAS COMERCIALES */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
             
-            {/* Columna Izquierda: Todo lo que necesitás en un solo lugar */}
-            <div className="lg:col-span-6 space-y-8">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-brand-green block mb-2">
-                  TODO LO QUE NECESITÁS, EN UN SOLO LUGAR
-                </span>
-                <h2 className="text-3xl sm:text-4xl font-extrabold text-navy tracking-tight leading-tight">
-                  Una plataforma completa para cada etapa del préstamo.
-                </h2>
+            {/* MODALIDAD A: YA TENGO SITIO WEB */}
+            <div className="bg-white rounded-3xl p-7 sm:p-9 border-2 border-slate-200 hover:border-brand-green transition-all shadow-card flex flex-col justify-between relative group">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase bg-brand-green-light text-brand-green">
+                    <Workflow className="w-3.5 h-3.5" />
+                    <span>MODALIDAD A</span>
+                  </span>
+                  <span className="text-xs font-medium text-slate-400">Integración Modular</span>
+                </div>
+
+                <div>
+                  <h3 className="text-2xl sm:text-3xl font-extrabold text-navy tracking-tight">
+                    Integrá HIPOTECALY a tu web actual
+                  </h3>
+                  <p className="text-sm sm:text-base text-slate-muted mt-3 leading-relaxed">
+                    No necesitás reemplazar tu sitio. Conectamos tu simulador, formulario o botón actual con todo el proceso digital de HIPOTECALY.
+                  </p>
+                </div>
+
+                {/* Mensaje Comercial Destacado */}
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 border-l-4 border-l-brand-green">
+                  <p className="text-sm font-bold text-navy">
+                    “Tu web sigue siendo tu web. HIPOTECALY hace todo lo que viene después.”
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Pensado para estudios hipotecarios, financieras y prestamistas que ya tienen web o simulador pero después gestionan por WhatsApp, emails o planillas manuales.
+                  </p>
+                </div>
+
+                {/* Pipeline Visual Resumido */}
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    Flujo de Integración
+                  </span>
+                  <div className="text-xs text-slate-700 font-medium space-y-1.5">
+                    <div className="flex items-center space-x-2">
+                      <span className="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-[10px] font-bold shrink-0">1</span>
+                      <span>Web existente / Simulador actual</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-brand-green font-bold">
+                      <ArrowRight className="w-4 h-4 ml-0.5 shrink-0" />
+                      <span>Click en “CONTINUAR SOLICITUD”</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-navy font-semibold">
+                      <span className="w-5 h-5 rounded-full bg-navy text-white flex items-center justify-center text-[10px] font-bold shrink-0">2</span>
+                      <span>HIPOTECALY White-Label: expediente, documentos, análisis IA, firma y seguimiento</span>
+                    </div>
+                  </div>
+                </div>
+
+                <ul className="space-y-2.5 text-xs text-slate-600">
+                  <li className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-brand-green shrink-0" />
+                    <span>Conexión por botón, subdominio, ruta, widget o API</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-brand-green shrink-0" />
+                    <span>Sin cambiar tu diseño, marca ni proveedor web actual</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-brand-green shrink-0" />
+                    <span>Los datos del simulador pasan automáticamente sin reescritura</span>
+                  </li>
+                </ul>
               </div>
 
-              {/* 5 Funcionalidades según Regla 50 */}
-              <div className="space-y-5">
-                <div className="flex items-start space-x-4 p-3.5 rounded-xl hover:bg-slate-50 transition-colors">
-                  <div className="w-11 h-11 rounded-xl bg-brand-green-light flex items-center justify-center shrink-0">
-                    <Globe className="w-6 h-6 text-brand-green" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-navy text-base">Captación y gestión de solicitudes</h4>
-                    <p className="text-sm text-slate-muted leading-relaxed mt-0.5">
-                      Recibí solicitudes desde tu web o las cargás vos. Toda la información centralizada y organizada desde el primer contacto.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-4 p-3.5 rounded-xl hover:bg-slate-50 transition-colors">
-                  <div className="w-11 h-11 rounded-xl bg-brand-green-light flex items-center justify-center shrink-0">
-                    <Shield className="w-6 h-6 text-brand-green" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-navy text-base">Análisis inteligente</h4>
-                    <p className="text-sm text-slate-muted leading-relaxed mt-0.5">
-                      Scoring preliminar, verificación de documentación, valuación del inmueble y control de parámetros crediticios.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-4 p-3.5 rounded-xl hover:bg-slate-50 transition-colors">
-                  <div className="w-11 h-11 rounded-xl bg-brand-green-light flex items-center justify-center shrink-0">
-                    <FileCheck2 className="w-6 h-6 text-brand-green" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-navy text-base">Gestión documental</h4>
-                    <p className="text-sm text-slate-muted leading-relaxed mt-0.5">
-                      Checklists personalizados, carga de fotos y certificados, almacenamiento privado seguro con trazabilidad total.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-4 p-3.5 rounded-xl hover:bg-slate-50 transition-colors">
-                  <div className="w-11 h-11 rounded-xl bg-brand-green-light flex items-center justify-center shrink-0">
-                    <CalendarDays className="w-6 h-6 text-brand-green" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-navy text-base">Seguimiento y control</h4>
-                    <p className="text-sm text-slate-muted leading-relaxed mt-0.5">
-                      Calendario de tareas, alertas automáticas y seguimiento del estado del expediente en cada paso de la operación.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-4 p-3.5 rounded-xl hover:bg-slate-50 transition-colors">
-                  <div className="w-11 h-11 rounded-xl bg-brand-green-light flex items-center justify-center shrink-0">
-                    <BarChart3 className="w-6 h-6 text-brand-green" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-navy text-base">Reportes y métricas operacionales</h4>
-                    <p className="text-sm text-slate-muted leading-relaxed mt-0.5">
-                      Dashboards en tiempo real para evaluar volumen solicitado, tasas de conversión y crecimiento de tu cartera.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <Link to="/plataforma/funcionalidades">
-                  <Button variant="outline" size="md">
-                    Ver todas las funcionalidades <ArrowRight className="w-4 h-4 ml-2" />
+              <div className="pt-8">
+                <Link to="/saas/integracion">
+                  <Button variant="primary" size="lg" fullWidth className="shadow-md">
+                    QUIERO INTEGRARLO <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
+                </Link>
+                <Link to="/saas/integracion" className="block text-center text-xs font-semibold text-navy hover:text-brand-green mt-3">
+                  Ver detalles de la modalidad de integración →
                 </Link>
               </div>
             </div>
 
-            {/* Columna Derecha: Beneficios para tu negocio */}
-            <div className="lg:col-span-6 space-y-8 lg:pl-4">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-brand-green block mb-2">
-                  BENEFICIOS PARA TU NEGOCIO
-                </span>
-                <h2 className="text-3xl sm:text-4xl font-extrabold text-navy tracking-tight leading-tight">
-                  Más control, más productividad, más resultados.
-                </h2>
+            {/* MODALIDAD B: NECESITO TODO DESDE CERO */}
+            <div className="bg-navy text-white rounded-3xl p-7 sm:p-9 border border-navy-border shadow-floating flex flex-col justify-between relative group">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase bg-brand-green text-navy">
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>MODALIDAD B</span>
+                  </span>
+                  <span className="text-xs font-medium text-slate-300">Solución Llave en Mano</span>
+                </div>
+
+                <div>
+                  <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                    Tu propia plataforma hipotecaria, lista para operar
+                  </h3>
+                  <p className="text-sm sm:text-base text-slate-300 mt-3 leading-relaxed">
+                    Creamos desde cero tu ecosistema digital completo: sitio, simulador, solicitud, portal cliente y backoffice bajo tu propia marca.
+                  </p>
+                </div>
+
+                {/* Mensaje Comercial Destacado */}
+                <div className="p-4 rounded-xl bg-white/10 border border-white/15 border-l-4 border-l-brand-green">
+                  <p className="text-base font-extrabold text-brand-green tracking-wide">
+                    “Tu marca. Tu dominio. Tus clientes. Nuestra tecnología.”
+                  </p>
+                  <p className="text-xs text-slate-300 mt-1">
+                    Para prestamistas, financieras y estudios que quieren dar el salto digital completo sin incurrir en meses de desarrollo a medida.
+                  </p>
+                </div>
+
+                {/* Componentes del Ecosistema */}
+                <div className="grid grid-cols-2 gap-2 text-xs text-slate-200">
+                  <div className="p-2.5 rounded-lg bg-white/5 border border-white/10 flex items-center space-x-2">
+                    <Globe className="w-4 h-4 text-brand-green shrink-0" />
+                    <span>Sitio Institucional</span>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-white/5 border border-white/10 flex items-center space-x-2">
+                    <Laptop className="w-4 h-4 text-brand-green shrink-0" />
+                    <span>Simulador Propio</span>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-white/5 border border-white/10 flex items-center space-x-2">
+                    <Smartphone className="w-4 h-4 text-brand-green shrink-0" />
+                    <span>Portal Cliente PWA</span>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-white/5 border border-white/10 flex items-center space-x-2">
+                    <BarChart3 className="w-4 h-4 text-brand-green shrink-0" />
+                    <span>Backoffice Operativo</span>
+                  </div>
+                </div>
+
+                <ul className="space-y-2.5 text-xs text-slate-300">
+                  <li className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-brand-green shrink-0" />
+                    <span>100% White-Label: tu logotipo, colores, textos y dominio propio</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-brand-green shrink-0" />
+                    <span>Parámetros comerciales adaptados a tus tasas, plazos y límites</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-brand-green shrink-0" />
+                    <span>Aislamiento estricto de base de datos y auditoría inmutable</span>
+                  </li>
+                </ul>
               </div>
 
-              <div className="space-y-4">
-                <div className="flex items-start space-x-3.5">
-                  <CheckCircle className="w-5 h-5 text-brand-green shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="font-bold text-navy text-base">Ahorrá tiempo valioso</h4>
-                    <p className="text-sm text-slate-muted leading-relaxed mt-0.5">
-                      Automatizá hasta el 80% de las tareas administrativas recurrentes y eliminá el desorden de planillas dispersas.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-3.5">
-                  <CheckCircle className="w-5 h-5 text-brand-green shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="font-bold text-navy text-base">Reducí costos operativos</h4>
-                    <p className="text-sm text-slate-muted leading-relaxed mt-0.5">
-                      Menos papeles físicos, menos retrabajo y procesos estandarizados para todo tu equipo.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-3.5">
-                  <CheckCircle className="w-5 h-5 text-brand-green shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="font-bold text-navy text-base">Mejorá la experiencia de tus clientes</h4>
-                    <p className="text-sm text-slate-muted leading-relaxed mt-0.5">
-                      Brindá a los solicitantes un portal moderno, transparente y ágil donde cargar fotos y consultar su estado.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-3.5">
-                  <CheckCircle className="w-5 h-5 text-brand-green shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="font-bold text-navy text-base">Tomá mejores decisiones</h4>
-                    <p className="text-sm text-slate-muted leading-relaxed mt-0.5">
-                      Información clara, valuaciones preliminares e indicadores confiables para evaluar cada garantía inmobiliaria.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-3.5">
-                  <CheckCircle className="w-5 h-5 text-brand-green shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="font-bold text-navy text-base">Escalá tu volumen de operaciones</h4>
-                    <p className="text-sm text-slate-muted leading-relaxed mt-0.5">
-                      Atendé y gestioná más expedientes sin necesidad de sobredimensionar tu estructura de costos fijos.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Testimonio / Cita institucional */}
-              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 mt-6">
-                <p className="text-sm text-slate-700 italic leading-relaxed">
-                  “HIPOTECALY moderniza la gestión de créditos hipotecarios unificando la captación web, el análisis documental y la evaluación de garantías en una única plataforma profesional.”
-                </p>
-                <div className="mt-4 flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full bg-navy text-white flex items-center justify-center font-bold text-xs">
-                    HE
-                  </div>
-                  <div>
-                    <span className="font-bold text-navy text-sm block">Solución Corporativa</span>
-                    <span className="text-xs text-slate-500">Para estudios jurídicos, inmobiliarias y financieras</span>
-                  </div>
-                </div>
+              <div className="pt-8">
+                <Link to="/saas/plataforma-completa">
+                  <Button variant="primary" size="lg" fullWidth className="shadow-lg">
+                    QUIERO MI PLATAFORMA <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </Link>
+                <Link to="/saas/plataforma-completa" className="block text-center text-xs font-semibold text-slate-300 hover:text-white mt-3">
+                  Ver detalles de la plataforma completa →
+                </Link>
               </div>
             </div>
 
+          </div>
+
+          {/* Pipeline Visual debajo de las dos modalidades */}
+          <div className="mt-14 pt-10 border-t border-slate-200">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-4">
+              EL FLUJO DIGITAL UNIFICADO QUE EXPERIMENTAN TUS CLIENTES
+            </span>
+            <PipelineVisual />
           </div>
         </div>
       </section>
 
       {/* ============================================================== */}
-      {/* 4. GRAN SECCIÓN WHITE LABEL (Fiel a Imagen 2)                  */}
+      {/* 3. EL MISMO CORE TECNOLÓGICO ROBUSTO                            */}
       {/* ============================================================== */}
-      <section id="white-label" className="py-12 md:py-16 bg-slate-50">
+      <section className="py-16 md:py-24 bg-white text-left">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-3xl mb-12">
+            <span className="text-xs font-bold uppercase tracking-wider text-brand-green block mb-2">
+              MOTOR COMPARTIDO DE ALTO RENDIMIENTO
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-navy tracking-tight">
+              Ambas modalidades utilizan el mismo core tecnológico.
+            </h2>
+            <p className="text-base text-slate-muted mt-3">
+              La diferencia está únicamente en cómo se implementa para cada cliente. Toda la potencia, seguridad y automatización están presentes en las dos opciones:
+            </p>
+          </div>
+
+          {/* Grilla de los 15 Módulos del Core */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            {[
+              { title: 'Solicitudes', desc: 'Captación estructurada y legajo digital del prestatario.' },
+              { title: 'Expedientes', desc: 'ID único, estados, historial de cambios y notas operativas.' },
+              { title: 'Clientes', desc: 'Directorio patrimonial, antecedentes y perfil de contacto.' },
+              { title: 'Propiedades', desc: 'Padrones, superficie, tipo de inmueble y fotos geolocalizadas.' },
+              { title: 'Documentación', desc: 'Checklists dinámicos, visor protegido y control de versión.' },
+              { title: 'Análisis Asistido IA', desc: 'Scoring preliminar, revisión documental y alertas tempranas.' },
+              { title: 'Decisiones', desc: 'Resoluciones fundadas de comité, observaciones y condiciones.' },
+              { title: 'Agenda y Firmas', desc: 'Coordinación con escribano e inspección ocular de títulos.' },
+              { title: 'Créditos Activos', desc: 'Control de cartera viva, estados de cumplimiento y saldos.' },
+              { title: 'Pagos y Comprobantes', desc: 'Calendario de cuotas, subida de transferencias y recibos.' },
+              { title: 'Recordatorios', desc: 'Avisos automáticos de vencimientos y requerimientos pendientes.' },
+              { title: 'Cancelaciones', desc: 'Trámite de cancelación anticipada y liberación hipotecaria.' },
+              { title: 'Auditoría Inmutable', desc: 'Pistas forenses de cada acción, usuario, fecha e IP.' },
+              { title: 'Notificaciones', desc: 'Emails y alertas al solicitante y al equipo del estudio.' },
+              { title: 'Configuración', desc: 'Políticas de riesgo, branding, roles y aranceles notariales.' },
+            ].map((module, i) => (
+              <div key={i} className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-white hover:border-brand-green hover:shadow-sm transition-all space-y-1">
+                <div className="flex items-center space-x-1.5 text-navy font-bold text-xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-green" />
+                  <span>{module.title}</span>
+                </div>
+                <p className="text-[11px] text-slate-muted leading-tight">{module.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================== */}
+      {/* 4. GRAN SECCIÓN WHITE LABEL Y MARCA PROPIA                     */}
+      {/* ============================================================== */}
+      <section className="py-12 md:py-16 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="relative rounded-3xl overflow-hidden bg-navy text-white shadow-2xl border border-navy-border">
-            
             <div className="grid grid-cols-1 lg:grid-cols-12 items-center">
               
-              {/* Imagen Fotográfica Arquitectónica / Lounge Nocturno */}
               <div className="lg:col-span-5 h-72 sm:h-80 lg:h-full relative overflow-hidden">
                 <img
                   src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1000&q=80"
@@ -381,7 +371,6 @@ export const SaaSHome: React.FC = () => {
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent to-navy/80 hidden lg:block" />
               </div>
 
-              {/* Contenido White Label */}
               <div className="lg:col-span-7 p-8 md:p-14 text-left space-y-6">
                 <div>
                   <h2 className="text-3xl sm:text-4xl font-extrabold text-white leading-tight">
@@ -393,12 +382,11 @@ export const SaaSHome: React.FC = () => {
                   </p>
                 </div>
 
-                {/* 4 Cards de características White Label */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                   <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-start space-x-3.5">
                     <Globe className="w-5 h-5 text-brand-green shrink-0 mt-0.5" />
                     <div>
-                      <h5 className="font-bold text-white text-sm">100% white-label</h5>
+                      <h5 className="font-bold text-white text-sm">100% White-Label</h5>
                       <p className="text-xs text-slate-400 mt-0.5">
                         Con tu marca, logotipo, colores y dominio propio.
                       </p>
@@ -408,9 +396,9 @@ export const SaaSHome: React.FC = () => {
                   <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-start space-x-3.5">
                     <Clock className="w-5 h-5 text-brand-green shrink-0 mt-0.5" />
                     <div>
-                      <h5 className="font-bold text-white text-sm">Implementación rápida</h5>
+                      <h5 className="font-bold text-white text-sm">Puesta en Marcha Asistida</h5>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        Listo para operar y recibir solicitudes en pocos días.
+                        Acompañamiento guiado de nuestros especialistas técnicos.
                       </p>
                     </div>
                   </div>
@@ -418,9 +406,9 @@ export const SaaSHome: React.FC = () => {
                   <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-start space-x-3.5">
                     <Lock className="w-5 h-5 text-brand-green shrink-0 mt-0.5" />
                     <div>
-                      <h5 className="font-bold text-white text-sm">Seguro y confiable</h5>
+                      <h5 className="font-bold text-white text-sm">Aislamiento RLS Estricto</h5>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        Aislamiento estricto de base de datos y respaldos continuos.
+                        Bases de datos blindadas por organización y permisos.
                       </p>
                     </div>
                   </div>
@@ -428,16 +416,15 @@ export const SaaSHome: React.FC = () => {
                   <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-start space-x-3.5">
                     <Headphones className="w-5 h-5 text-brand-green shrink-0 mt-0.5" />
                     <div>
-                      <h5 className="font-bold text-white text-sm">Soporte prémium</h5>
+                      <h5 className="font-bold text-white text-sm">Soporte Continuo</h5>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        Acompañamiento técnico y evoluciones de producto constantes.
+                        Acompañamiento operativo y evoluciones de producto.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                {/* CTAs White Label */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-5 pt-4">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 pt-4">
                   <Link to="/contacto?plan=whitelabel">
                     <Button variant="primary" size="lg" className="w-full sm:w-auto px-8">
                       Quiero mi plataforma <ArrowRight className="w-4 h-4 ml-2" />
@@ -453,7 +440,36 @@ export const SaaSHome: React.FC = () => {
               </div>
 
             </div>
+          </div>
+        </div>
+      </section>
 
+      {/* ============================================================== */}
+      {/* 5. CTA FINAL NAVY                                              */}
+      {/* ============================================================== */}
+      <section className="py-16 md:py-20 bg-slate-900 text-white text-center">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+          <span className="text-xs font-bold uppercase tracking-wider text-brand-green block">
+            TRANSFORMÁ TU OPERACIÓN HIPOTECARIA
+          </span>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight">
+            Empezá a operar de forma digital hoy mismo.
+          </h2>
+          <p className="text-slate-300 text-base max-w-2xl mx-auto leading-relaxed">
+            Ya sea integrando HIPOTECALY a tu sitio actual o creando tu plataforma completa desde cero, te ayudamos a escalar tus operaciones con orden y seguridad.
+          </p>
+
+          <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link to="/contacto?demo=true">
+              <Button variant="primary" size="lg" className="w-full sm:w-auto px-8 shadow-floating">
+                AGENDAR DEMO <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </Link>
+            <Link to="/plataforma/precios">
+              <Button variant="secondary" size="lg" className="w-full sm:w-auto px-8">
+                VER PLANES Y PRECIOS
+              </Button>
+            </Link>
           </div>
         </div>
       </section>

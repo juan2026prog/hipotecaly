@@ -16,32 +16,49 @@ test.describe('VISUAL QA & RESPONSIVE CERTIFICATION', () => {
     await page.goto('/');
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, 'marketplace-mobile-390.png'), fullPage: false });
 
-    // 3. SaaS Desktop 1440
+    // 3. SaaS Desktop 1440 & Mobile 390
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto('/plataforma');
+    await page.goto('/saas');
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, 'saas-desktop-1440.png'), fullPage: false });
 
-    // 4. SaaS Mobile 390
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/plataforma');
+    await page.goto('/saas');
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, 'saas-mobile-390.png'), fullPage: false });
 
-    // 5. Dashboard Desktop 1440
+    // 4. Integración Desktop 1440 & Mobile 390
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/saas/integracion');
+    await page.screenshot({ path: path.join(SCREENSHOT_DIR, 'saas-integracion-desktop-1440.png'), fullPage: false });
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/saas/integracion');
+    await page.screenshot({ path: path.join(SCREENSHOT_DIR, 'saas-integracion-mobile-390.png'), fullPage: false });
+
+    // 5. Plataforma Completa Desktop 1440 & Mobile 390
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/saas/plataforma-completa');
+    await page.screenshot({ path: path.join(SCREENSHOT_DIR, 'saas-plataforma-desktop-1440.png'), fullPage: false });
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/saas/plataforma-completa');
+    await page.screenshot({ path: path.join(SCREENSHOT_DIR, 'saas-plataforma-mobile-390.png'), fullPage: false });
+
+    // 6. Dashboard Desktop 1440
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/app');
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, 'dashboard-desktop-1440.png'), fullPage: false });
 
-    // 6. Dashboard Mobile 390
+    // 7. Dashboard Mobile 390
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/app');
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, 'dashboard-mobile-390.png'), fullPage: false });
 
-    // 7. Wizard Mobile 390
+    // 8. Wizard Mobile 390
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/solicitar');
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, 'wizard-mobile-390.png'), fullPage: false });
 
-    // 8. Mi Cuenta Mobile 390
+    // 9. Mi Cuenta Mobile 390
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/mi-cuenta');
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, 'micuenta-mobile-390.png'), fullPage: false });
@@ -57,7 +74,18 @@ test.describe('VISUAL QA & RESPONSIVE CERTIFICATION', () => {
     { name: 'Desktop High-Res (1440x900)', width: 1440, height: 900 },
   ];
 
-  const routes = ['/', '/plataforma', '/simulador', '/solicitar', '/mi-cuenta', '/app', '/app/solicitudes'];
+  const routes = [
+    '/',
+    '/saas',
+    '/saas/integracion',
+    '/saas/plataforma-completa',
+    '/plataforma',
+    '/simulador',
+    '/solicitar',
+    '/mi-cuenta',
+    '/app',
+    '/app/solicitudes',
+  ];
 
   for (const vp of viewports) {
     test(`Certificación Responsive en ${vp.name}: Sin desborde horizontal (scrollWidth <= innerWidth)`, async ({ page }) => {

@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { MarketplaceHome } from './pages/MarketplaceHome';
 import { SaaSHome } from './pages/SaaSHome';
+import { SaaSIntegrationPage } from './pages/saas/SaaSIntegrationPage';
+import { SaaSFullPlatformPage } from './pages/saas/SaaSFullPlatformPage';
 import { SimulatorPage } from './pages/SimulatorPage';
 import { ApplicationWizard } from './pages/wizard/ApplicationWizard';
 import { ApplicantAccount } from './pages/account/ApplicantAccount';
@@ -54,10 +56,19 @@ export const App: React.FC = () => {
           <Route path="/contacto" element={<ContactPage />} />
 
           {/* SaaS HIPOTECALY (Línea B - Estudios, Prestamistas, Financieras) */}
+          {/* Nuevas rutas canónicas /saas */}
+          <Route path="/saas" element={<SaaSHome />} />
+          <Route path="/saas/integracion" element={<SaaSIntegrationPage />} />
+          <Route path="/saas/plataforma-completa" element={<SaaSFullPlatformPage />} />
+          <Route path="/saas/precios" element={<SaaSPricingPage />} />
+
+          {/* Rutas compatibles /plataforma */}
           <Route path="/plataforma" element={<SaaSHome />} />
+          <Route path="/plataforma/integracion" element={<SaaSIntegrationPage />} />
+          <Route path="/plataforma/plataforma-completa" element={<SaaSFullPlatformPage />} />
           <Route path="/plataforma/funcionalidades" element={<SaaSHome />} />
           <Route path="/plataforma/para-quien-es" element={<SaaSHome />} />
-          <Route path="/plataforma/white-label" element={<SaaSHome />} />
+          <Route path="/plataforma/white-label" element={<SaaSFullPlatformPage />} />
           <Route path="/plataforma/precios" element={<SaaSPricingPage />} />
 
           {/* Autenticación y Solicitante (Fase 2) */}
