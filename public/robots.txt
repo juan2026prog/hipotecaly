@@ -16,5 +16,7 @@ Disallow: /ingresar
 Disallow: /solicitar/
 Disallow: /storage/
 Disallow: /api/
+Disallow: /lender/
+Disallow: /platform-admin/
 
 Sitemap: https://hipotecaly.uy/sitemap.xml
