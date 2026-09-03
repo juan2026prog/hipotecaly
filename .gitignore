@@ -55,3 +55,6 @@ supabase/.temp
 test-results/
 playwright-report/
 screenshots/
+
+.vercel
+.env*
