@@ -39,6 +39,10 @@ import { SuperAdminTenantsPage } from './pages/admin/SuperAdminTenantsPage';
 import { TenantOnboardingWizardPage } from './pages/admin/TenantOnboardingWizardPage';
 import { GenericWhiteLabelLanding } from './pages/landing/GenericWhiteLabelLanding';
 import { AdminAiPage } from './pages/admin/AdminAiPage';
+import { LendersSolutionPage } from './pages/solutions/LendersSolutionPage';
+import { FinancialsSolutionPage } from './pages/solutions/FinancialsSolutionPage';
+import { NotariesSolutionPage } from './pages/solutions/NotariesSolutionPage';
+import { NovaShowroomPage } from './pages/demo/nova/NovaShowroomPage';
 import { TenantProvider } from './contexts/TenantContext';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { OfflineNotice } from './components/ui/OfflineNotice';
@@ -89,8 +93,18 @@ export const App: React.FC = () => {
               <Route path="/plataforma/para-quien-es" element={<Navigate to="/saas" replace />} />
               <Route path="/plataforma/white-label" element={<Navigate to="/saas/plataforma-completa" replace />} />
               <Route path="/plataforma/precios" element={<Navigate to="/saas/precios" replace />} />
+              <Route path="/plataforma/prestamistas" element={<Navigate to="/empresas/prestamistas" replace />} />
+              <Route path="/plataforma/financieras" element={<Navigate to="/empresas/financieras" replace />} />
+              <Route path="/plataforma/estudios" element={<Navigate to="/empresas/estudios" replace />} />
 
-              {/* Demostración Comercial Tenant NOVA */}
+              {/* Soluciones Verticales B2B */}
+              <Route path="/empresas/prestamistas" element={<LendersSolutionPage />} />
+              <Route path="/empresas/financieras" element={<FinancialsSolutionPage />} />
+              <Route path="/empresas/estudios" element={<NotariesSolutionPage />} />
+
+              {/* Demostración Comercial Showroom NOVA */}
+              <Route path="/demo" element={<NovaShowroomPage />} />
+              <Route path="/demo/nova" element={<NovaShowroomPage />} />
               <Route path="/demo/nova/legacy" element={<NovaLegacySite />} />
               <Route path="/demo/nova/integrado" element={<NovaIntegratedSite />} />
               <Route path="/demo/nova/full" element={<NovaFullWhiteLabelSite />} />

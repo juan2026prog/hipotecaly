@@ -15,7 +15,6 @@ import {
   Sparkles,
   ChevronRight,
   Briefcase,
-  Users,
   Code,
   Laptop,
 } from 'lucide-react';
@@ -42,14 +41,14 @@ export const MarketplaceHome: React.FC = () => {
               className="flex items-center space-x-2.5 px-4 py-2 rounded-xl bg-white text-navy font-bold text-xs shadow-sm border border-slate-200/80 hover:text-brand-green transition-colors w-full sm:w-auto"
             >
               <div className="w-2 h-2 rounded-full bg-brand-green" />
-              <span>Busco Financiación (Propietarios)</span>
+              <span>Para Personas (Simular Crédito)</span>
             </Link>
             <Link
               to="/saas"
               className="flex items-center space-x-2.5 px-4 py-2 rounded-xl bg-navy text-white font-bold text-xs shadow-sm hover:bg-navy-light transition-colors w-full sm:w-auto"
             >
               <Sparkles className="w-3.5 h-3.5 text-brand-green" />
-              <span>Quiero Digitalizar mi Operación (Empresas & Estudios)</span>
+              <span>Para Empresas (Plataforma SaaS & White-Label)</span>
             </Link>
           </div>
 
@@ -57,12 +56,15 @@ export const MarketplaceHome: React.FC = () => {
             {/* Columna Izquierda: Mensaje Central */}
             <div className="lg:col-span-6 space-y-6 md:space-y-8 text-left">
               <div className="space-y-4">
+                <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase bg-brand-green/10 text-brand-green border border-brand-green/20">
+                  <span>MARKETPLACE HIPOTECARIO & PLATAFORMA B2B</span>
+                </div>
                 <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-navy leading-[1.12]">
                   Convertimos tu propiedad en la{' '}
                   <span className="text-brand-green">oportunidad</span> que necesitás.
                 </h1>
                 <p className="text-lg sm:text-xl text-slate-muted font-normal leading-relaxed max-w-xl">
-                  Préstamos con garantía hipotecaria para lo que realmente importa en Uruguay.
+                  Préstamos con garantía hipotecaria para personas en Uruguay, respaldados por la infraestructura tecnológica más avanzada del mercado.
                 </p>
               </div>
 
@@ -465,38 +467,48 @@ export const MarketplaceHome: React.FC = () => {
             <h4 className="text-sm font-bold text-brand-green uppercase tracking-wider mb-6 text-center">
               Soluciones Diseñadas para Operadores del Mercado
             </h4>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
-              <div className="space-y-2">
-                <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center mx-auto text-brand-green">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-left">
+              <Link
+                to="/empresas/prestamistas"
+                className="p-4 bg-slate-800/80 rounded-xl border border-slate-700/80 hover:border-brand-green transition-all group space-y-2 block"
+              >
+                <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-brand-green group-hover:scale-105 transition-transform">
                   <Briefcase className="w-5 h-5" />
                 </div>
-                <strong className="text-sm text-white block">Prestamistas Privados</strong>
-                <p className="text-[11px] text-slate-400">Canal digital seguro de originación y legajos estructurados.</p>
-              </div>
+                <strong className="text-sm text-white block group-hover:text-brand-green">Prestamistas Privados</strong>
+                <p className="text-[11px] text-slate-400">Canal seguro de originación, evaluación de garantías y blindaje Anti-Bypass.</p>
+                <span className="text-[11px] text-brand-green font-bold flex items-center pt-1">
+                  Ver solución <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                </span>
+              </Link>
 
-              <div className="space-y-2">
-                <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center mx-auto text-brand-green">
+              <Link
+                to="/empresas/financieras"
+                className="p-4 bg-slate-800/80 rounded-xl border border-slate-700/80 hover:border-blue-400 transition-all group space-y-2 block"
+              >
+                <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-blue-400 group-hover:scale-105 transition-transform">
                   <Building2 className="w-5 h-5" />
                 </div>
-                <strong className="text-sm text-white block">Financieras de Crédito</strong>
-                <p className="text-[11px] text-slate-400">Flujo automatizado de intake, tasaciones y score de riesgo.</p>
-              </div>
+                <strong className="text-sm text-white block group-hover:text-blue-400">Financieras y Fondos</strong>
+                <p className="text-[11px] text-slate-400">Core hipotecario White-Label, scoring paramétrico y sindicación de inversores.</p>
+                <span className="text-[11px] text-blue-400 font-bold flex items-center pt-1">
+                  Ver solución <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                </span>
+              </Link>
 
-              <div className="space-y-2">
-                <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center mx-auto text-brand-green">
+              <Link
+                to="/empresas/estudios"
+                className="p-4 bg-slate-800/80 rounded-xl border border-slate-700/80 hover:border-purple-400 transition-all group space-y-2 block"
+              >
+                <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-purple-400 group-hover:scale-105 transition-transform">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
-                <strong className="text-sm text-white block">Estudios Notariales</strong>
-                <p className="text-[11px] text-slate-400">Checklists de títulos, padrones y certificados registrales.</p>
-              </div>
-
-              <div className="space-y-2">
-                <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center mx-auto text-brand-green">
-                  <Users className="w-5 h-5" />
-                </div>
-                <strong className="text-sm text-white block">Brokers & Inmobiliarias</strong>
-                <p className="text-[11px] text-slate-400">Monetización de cartera con préstamos garantizados sobre ladrillos.</p>
-              </div>
+                <strong className="text-sm text-white block group-hover:text-purple-400">Estudios Notariales</strong>
+                <p className="text-[11px] text-slate-400">Expediente digital, estudio de títulos registrales y coordinación de escrituras.</p>
+                <span className="text-[11px] text-purple-400 font-bold flex items-center pt-1">
+                  Ver solución <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                </span>
+              </Link>
             </div>
 
             {/* CTAs B2B Finales */}
@@ -506,9 +518,9 @@ export const MarketplaceHome: React.FC = () => {
                   <Building2 className="w-4 h-4 mr-2" /> Solicitar Demostración Guiada
                 </Button>
               </Link>
-              <Link to="/demo/nova/legacy">
+              <Link to="/demo/nova">
                 <Button variant="outline" size="lg" className="w-full sm:w-auto text-slate-200 border-slate-600 hover:text-white">
-                  Ver Experiencias de Demostración
+                  <Sparkles className="w-4 h-4 mr-2 text-brand-green" /> Ver Showroom NOVA
                 </Button>
               </Link>
             </div>

@@ -306,14 +306,28 @@ export const ContactPage: React.FC = () => {
   const searchParams = new URLSearchParams(location.search);
   const isDemoRequest = searchParams.get('demo') === 'true';
   const planParam = searchParams.get('plan');
+  const rolParam = searchParams.get('rol');
+
+  const initialOrgType =
+    rolParam === 'prestamista'
+      ? 'prestamista'
+      : rolParam === 'estudio'
+      ? 'estudio_notarial'
+      : 'financiera';
 
   const [fullName, setFullName] = React.useState('');
   const [email, setEmail] = React.useState('');
   const [phone, setPhone] = React.useState('');
   const [companyName, setCompanyName] = React.useState('');
-  const [orgType, setOrgType] = React.useState('financiera');
+  const [orgType, setOrgType] = React.useState(initialOrgType);
   const [message, setMessage] = React.useState(
-    isDemoRequest
+    rolParam === 'prestamista'
+      ? 'Hola, soy prestamista / inversor privado y quisiera solicitar acceso para evaluar oportunidades hipotecarias pre-calificadas con blindaje Anti-Bypass.'
+      : rolParam === 'financiera'
+      ? 'Hola, represento a una entidad financiera / originador y quisiera solicitar una propuesta institucional para operar con HIPOTECALY Platform White-Label.'
+      : rolParam === 'estudio'
+      ? 'Hola, formo parte de un estudio notarial / jurídico y quisiera conocer la integración del expediente digital y titulación hipotecaria.'
+      : isDemoRequest
       ? 'Hola, quisiera agendar una demostración comercial guiada de HIPOTECALY SaaS y conocer las modalidades de implementación.'
       : planParam
       ? `Hola, estoy interesado en recibir información y propuesta para el Plan ${planParam.toUpperCase()}.`

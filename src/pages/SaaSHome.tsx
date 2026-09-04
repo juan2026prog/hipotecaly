@@ -342,47 +342,140 @@ export const SaaSHome: React.FC = () => {
       </section>
 
       {/* ============================================================== */}
+      {/* 2.5 SOLUCIONES VERTICALES POR PERFIL COMERCIAL                 */}
+      {/* ============================================================== */}
+      <section className="py-16 bg-slate-50 border-b border-slate-200 text-left">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-12 space-y-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-brand-green block">
+              ADAPTADO A TU ROL EN EL MERCADO
+            </span>
+            <h2 className="text-3xl font-extrabold text-navy tracking-tight">
+              Soluciones Especializadas por Perfil
+            </h2>
+            <p className="text-sm text-slate-600">
+              Conocé las capacidades específicas que HIPOTECALY diseñó para cada participante del ecosistema.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Link
+              to="/empresas/prestamistas"
+              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-brand-green transition-all group flex flex-col justify-between space-y-4"
+            >
+              <div className="space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-brand-green flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <h3 className="text-lg font-bold text-navy group-hover:text-brand-green">Prestamistas Privados</h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Oportunidades hipotecarias pre-calificadas con tasación de inmueble, condiciones de oferta simulables y estricto blindaje Anti-Bypass.
+                </p>
+              </div>
+              <span className="text-xs font-bold text-brand-green flex items-center pt-2 border-t border-slate-100">
+                Ver solución para prestamistas <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+              </span>
+            </Link>
+
+            <Link
+              to="/empresas/financieras"
+              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-500 transition-all group flex flex-col justify-between space-y-4"
+            >
+              <div className="space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+                  <Globe className="w-5 h-5" />
+                </div>
+                <h3 className="text-lg font-bold text-navy group-hover:text-blue-600">Financieras & Originadores</h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Core hipotecario White-Label completo con tu propia marca, scoring paramétrico de underwriting, sindicación de inversores y loan servicing.
+                </p>
+              </div>
+              <span className="text-xs font-bold text-blue-600 flex items-center pt-2 border-t border-slate-100">
+                Ver solución para financieras <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+              </span>
+            </Link>
+
+            <Link
+              to="/empresas/estudios"
+              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-purple-500 transition-all group flex flex-col justify-between space-y-4"
+            >
+              <div className="space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+                  <Workflow className="w-5 h-5" />
+                </div>
+                <h3 className="text-lg font-bold text-navy group-hover:text-purple-600">Estudios Notariales</h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Expediente digital centralizado, control de antecedentes registrales, checklist de recaudos y coordinación de agenda de escrituración.
+                </p>
+              </div>
+              <span className="text-xs font-bold text-purple-600 flex items-center pt-2 border-t border-slate-100">
+                Ver solución para estudios <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+              </span>
+            </Link>
+          </div>
+
+          {/* Banner Showroom NOVA */}
+          <div className="mt-8 p-6 bg-gradient-to-r from-navy via-slate-900 to-navy text-white rounded-2xl border border-navy-border flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="space-y-1 text-center sm:text-left">
+              <span className="text-[10px] font-bold text-brand-green uppercase tracking-wider">SHOWROOM INTERACTIVO</span>
+              <h4 className="text-lg font-bold">¿Querés ver cómo opera una financiera real en White-Label?</h4>
+              <p className="text-xs text-slate-300">Explorá NOVA Créditos, nuestro tenant interactivo de demostración con motor de reglas en caliente.</p>
+            </div>
+            <Link to="/demo/nova">
+              <Button variant="primary" size="md" className="shrink-0 font-bold shadow-md">
+                Ver Showroom NOVA <ArrowRight className="w-4 h-4 ml-1.5" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================== */}
       {/* 3. EL MISMO CORE TECNOLÓGICO ROBUSTO                            */}
       {/* ============================================================== */}
       <section className="py-16 md:py-24 bg-white text-left">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mb-12">
             <span className="text-xs font-bold uppercase tracking-wider text-brand-green block mb-2">
-              MOTOR COMPARTIDO DE ALTO RENDIMIENTO
+              MOTOR MODULAR EMPRESARIAL
             </span>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-navy tracking-tight">
-              Ambas modalidades utilizan el mismo core tecnológico.
+              Módulos del Core Tecnológico HIPOTECALY
             </h2>
             <p className="text-base text-slate-muted mt-3">
-              La diferencia está únicamente en cómo se implementa para cada cliente. Toda la potencia, seguridad y automatización están presentes en las dos opciones:
+              Módulos nativos integrados y add-ons especializados para potenciar tu operativa hipotecaria:
             </p>
           </div>
 
-          {/* Grilla de los 15 Módulos del Core */}
+          {/* Grilla de Módulos con Badges de Estado */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {[
-              { title: 'Solicitudes', desc: 'Captación estructurada y legajo digital del prestatario.' },
-              { title: 'Expedientes', desc: 'ID único, estados, historial de cambios y notas operativas.' },
-              { title: 'Clientes', desc: 'Directorio patrimonial, antecedentes y perfil de contacto.' },
-              { title: 'Propiedades', desc: 'Padrones, superficie, tipo de inmueble y fotos geolocalizadas.' },
-              { title: 'Documentación', desc: 'Checklists dinámicos, visor protegido y control de versión.' },
-              { title: 'Análisis Asistido IA', desc: 'Scoring preliminar, revisión documental y alertas tempranas.' },
-              { title: 'Decisiones', desc: 'Resoluciones fundadas de comité, observaciones y condiciones.' },
-              { title: 'Agenda y Firmas', desc: 'Coordinación con escribano e inspección ocular de títulos.' },
-              { title: 'Créditos Activos', desc: 'Control de cartera viva, estados de cumplimiento y saldos.' },
-              { title: 'Pagos y Comprobantes', desc: 'Calendario de cuotas, subida de transferencias y recibos.' },
-              { title: 'Recordatorios', desc: 'Avisos automáticos de vencimientos y requerimientos pendientes.' },
-              { title: 'Cancelaciones', desc: 'Trámite de cancelación anticipada y liberación hipotecaria.' },
-              { title: 'Auditoría Inmutable', desc: 'Pistas forenses de cada acción, usuario, fecha e IP.' },
-              { title: 'Notificaciones', desc: 'Emails y alertas al solicitante y al equipo del estudio.' },
-              { title: 'Configuración', desc: 'Políticas de riesgo, branding, roles y aranceles notariales.' },
+              { title: 'Solicitudes', desc: 'Captación estructurada y legajo digital.', badge: 'INCLUDED', badgeClass: 'bg-emerald-50 text-brand-green border-emerald-200' },
+              { title: 'Expedientes', desc: 'ID único, estados y trazabilidad completa.', badge: 'INCLUDED', badgeClass: 'bg-emerald-50 text-brand-green border-emerald-200' },
+              { title: 'Clientes', desc: 'Directorio patrimonial y perfiles de contacto.', badge: 'INCLUDED', badgeClass: 'bg-emerald-50 text-brand-green border-emerald-200' },
+              { title: 'Propiedades', desc: 'Padrones, superficie, fotos y tasación.', badge: 'INCLUDED', badgeClass: 'bg-emerald-50 text-brand-green border-emerald-200' },
+              { title: 'Documentación', desc: 'Checklists dinámicos y control de versión.', badge: 'INCLUDED', badgeClass: 'bg-emerald-50 text-brand-green border-emerald-200' },
+              { title: 'Análisis IA', desc: 'Scoring preliminar y auditoría documental.', badge: 'ADD-ON', badgeClass: 'bg-blue-50 text-blue-600 border-blue-200' },
+              { title: 'Decisiones', desc: 'Resoluciones fundadas de comité y actas.', badge: 'INCLUDED', badgeClass: 'bg-emerald-50 text-brand-green border-emerald-200' },
+              { title: 'Agenda y Firmas', desc: 'Coordinación notarial y minutas aprobadas.', badge: 'INCLUDED', badgeClass: 'bg-emerald-50 text-brand-green border-emerald-200' },
+              { title: 'Sindicación', desc: 'Distribución de tramos entre inversores.', badge: 'ADD-ON', badgeClass: 'bg-blue-50 text-blue-600 border-blue-200' },
+              { title: 'Loan Servicing', desc: 'Calendario de cuotas y conciliación.', badge: 'ADD-ON', badgeClass: 'bg-blue-50 text-blue-600 border-blue-200' },
+              { title: 'Recordatorios', desc: 'Avisos automáticos de vencimientos.', badge: 'INCLUDED', badgeClass: 'bg-emerald-50 text-brand-green border-emerald-200' },
+              { title: 'Auditoría Forense', desc: 'Pistas inmutables por usuario, fecha e IP.', badge: 'INCLUDED', badgeClass: 'bg-emerald-50 text-brand-green border-emerald-200' },
+              { title: 'White-Label SSL', desc: 'Dominio propio y diseño corporativo.', badge: 'ADD-ON', badgeClass: 'bg-blue-50 text-blue-600 border-blue-200' },
+              { title: 'Conexión DGR', desc: 'Cotejo directo con Dirección de Registros.', badge: 'COMING SOON', badgeClass: 'bg-amber-50 text-amber-700 border-amber-200' },
+              { title: 'Firma Notarial', desc: 'Protocolización electrónica avanzada.', badge: 'COMING SOON', badgeClass: 'bg-amber-50 text-amber-700 border-amber-200' },
             ].map((module, i) => (
-              <div key={i} className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-white hover:border-brand-green hover:shadow-sm transition-all space-y-1">
-                <div className="flex items-center space-x-1.5 text-navy font-bold text-xs">
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand-green" />
-                  <span>{module.title}</span>
+              <div key={i} className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-white hover:border-brand-green hover:shadow-sm transition-all space-y-2 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-navy font-bold text-xs">{module.title}</span>
+                    <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${module.badgeClass}`}>
+                      {module.badge}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-muted leading-tight">{module.desc}</p>
                 </div>
-                <p className="text-[11px] text-slate-muted leading-tight">{module.desc}</p>
               </div>
             ))}
           </div>
