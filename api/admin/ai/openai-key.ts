@@ -62,14 +62,18 @@ export default async function handler(req: any, res: any) {
     // Si la prueba falla: NO activar la IA y NO reemplazar la clave existente
     if (!testPassed) {
       // Registrar auditoría de intento fallido (sin loguear el secreto)
-      await supabaseAdmin.from('ai_admin_audit_logs').insert({
-        event: 'OPENAI_KEY_CONFIGURED',
-        admin_user_id: auth.adminId,
-        result: 'FAILURE',
-        details: { reason: 'Test de conectividad previo falló', last4, error: errorMessage },
-        ip_address: req.headers?.['x-forwarded-for'] || req.socket?.remoteAddress,
-        user_agent: req.headers?.['user-agent'],
-      }).catch(() => {});
+      try {
+        await supabaseAdmin.from('ai_admin_audit_logs').insert({
+          event: 'OPENAI_KEY_CONFIGURED',
+          admin_user_id: auth.adminId,
+          result: 'FAILURE',
+          details: { reason: 'Test de conectividad previo falló', last4, error: errorMessage },
+          ip_address: req.headers?.['x-forwarded-for'] || req.socket?.remoteAddress,
+          user_agent: req.headers?.['user-agent'],
+        });
+      } catch {
+        // Ignorar fallo de auditoría
+      }
 
       return res.status(400).json({
         error: 'Prueba de conexión fallida. La API Key no fue aceptada por OpenAI.',
@@ -79,7 +83,7 @@ export default async function handler(req: any, res: any) {
 
     // 3. Prueba exitosa: Guardar / Reemplazar de forma atómica en Supabase Vault
     try {
-      const { data, error } = await supabaseAdmin.rpc('store_openai_vault_secret', {
+      const { error } = await supabaseAdmin.rpc('store_openai_vault_secret', {
         p_secret: cleanKey,
         p_admin_id: auth.adminId,
         p_last4: last4,
@@ -93,14 +97,18 @@ export default async function handler(req: any, res: any) {
       openAiSecretResolver.invalidateCache();
 
       // 5. Registrar auditoría de éxito
-      await supabaseAdmin.from('ai_admin_audit_logs').insert({
-        event: 'OPENAI_KEY_CONFIGURED',
-        admin_user_id: auth.adminId,
-        result: 'SUCCESS',
-        details: { last4, action: 'Vault secret stored and verified' },
-        ip_address: req.headers?.['x-forwarded-for'] || req.socket?.remoteAddress,
-        user_agent: req.headers?.['user-agent'],
-      }).catch(() => {});
+      try {
+        await supabaseAdmin.from('ai_admin_audit_logs').insert({
+          event: 'OPENAI_KEY_CONFIGURED',
+          admin_user_id: auth.adminId,
+          result: 'SUCCESS',
+          details: { last4, action: 'Vault secret stored and verified' },
+          ip_address: req.headers?.['x-forwarded-for'] || req.socket?.remoteAddress,
+          user_agent: req.headers?.['user-agent'],
+        });
+      } catch {
+        // Ignorar fallo de auditoría
+      }
 
       return res.status(200).json({
         success: true,
@@ -133,14 +141,18 @@ export default async function handler(req: any, res: any) {
       openAiSecretResolver.invalidateCache();
 
       // Registrar auditoría de eliminación
-      await supabaseAdmin.from('ai_admin_audit_logs').insert({
-        event: 'OPENAI_KEY_DELETED',
-        admin_user_id: auth.adminId,
-        result: 'SUCCESS',
-        details: { action: 'Vault secret deleted and AI disabled' },
-        ip_address: req.headers?.['x-forwarded-for'] || req.socket?.remoteAddress,
-        user_agent: req.headers?.['user-agent'],
-      }).catch(() => {});
+      try {
+        await supabaseAdmin.from('ai_admin_audit_logs').insert({
+          event: 'OPENAI_KEY_DELETED',
+          admin_user_id: auth.adminId,
+          result: 'SUCCESS',
+          details: { action: 'Vault secret deleted and AI disabled' },
+          ip_address: req.headers?.['x-forwarded-for'] || req.socket?.remoteAddress,
+          user_agent: req.headers?.['user-agent'],
+        });
+      } catch {
+        // Ignorar fallo de auditoría
+      }
 
       return res.status(200).json({
         success: true,

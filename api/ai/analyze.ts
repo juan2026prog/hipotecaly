@@ -4,7 +4,7 @@
 // ==============================================================================
 
 import { hipotecalyAiOrchestrator, ApplicationCaseInput } from '../../server/ai/orchestrator';
-import { aiWalletService } from '../../server/ai/wallet';
+import { aiWalletService } from '../../server/ai/walletService';
 import { openAiSecretResolver } from '../../server/ai/openAiSecretResolver';
 
 export default async function handler(req: any, res: any) {

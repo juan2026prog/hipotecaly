@@ -115,23 +115,28 @@ export default async function handler(req: any, res: any) {
     }
 
     const latencyMs = Date.now() - start;
-    const costUsd = calculateTokenCost(modelToTest, promptTokens, completionTokens);
+    const costResult = calculateTokenCost(modelToTest, promptTokens, 0, completionTokens);
+    const costUsd = costResult.costTotalUsd;
 
     // 4. Registrar evento de auditoría como ADMIN_HEALTH_CHECK (cero costo para estudios)
-    await supabaseAdmin.from('ai_admin_audit_logs').insert({
-      event: 'ADMIN_HEALTH_CHECK',
-      admin_user_id: auth.adminId,
-      result: 'SUCCESS',
-      details: {
-        model: modelToTest,
-        totalTokens,
-        costUsd,
-        latencyMs,
-        replyPreview: replyText.slice(0, 100),
-      },
-      ip_address: req.headers?.['x-forwarded-for'] || req.socket?.remoteAddress,
-      user_agent: req.headers?.['user-agent'],
-    }).catch(() => {});
+    try {
+      await supabaseAdmin.from('ai_admin_audit_logs').insert({
+        event: 'ADMIN_HEALTH_CHECK',
+        admin_user_id: auth.adminId,
+        result: 'SUCCESS',
+        details: {
+          model: modelToTest,
+          totalTokens,
+          costUsd,
+          latencyMs,
+          replyPreview: replyText.slice(0, 100),
+        },
+        ip_address: req.headers?.['x-forwarded-for'] || req.socket?.remoteAddress,
+        user_agent: req.headers?.['user-agent'],
+      });
+    } catch {
+      // Ignorar fallo de auditoría
+    }
 
     return res.status(200).json({
       success: true,
@@ -143,7 +148,7 @@ export default async function handler(req: any, res: any) {
         completion: completionTokens,
         total: totalTokens,
       },
-      costUsd: Number(costUsd.toFixed(5)),
+      costUsd,
       latencyMs,
       testedAt: new Date().toISOString(),
     });

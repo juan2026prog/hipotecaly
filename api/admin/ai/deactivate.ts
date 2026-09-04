@@ -22,7 +22,7 @@ export default async function handler(req: any, res: any) {
 
   try {
     // 2. Desactivar master switch
-    const { data, error } = await supabaseAdmin.rpc('set_ai_master_switch', {
+    const { error } = await supabaseAdmin.rpc('set_ai_master_switch', {
       p_enabled: false,
       p_admin_id: auth.adminId,
     });
@@ -35,14 +35,18 @@ export default async function handler(req: any, res: any) {
     }
 
     // 3. Registrar auditoría
-    await supabaseAdmin.from('ai_admin_audit_logs').insert({
-      event: 'HIPOTECALY_AI_DEACTIVATED',
-      admin_user_id: auth.adminId,
-      result: 'SUCCESS',
-      details: { action: 'Master switch set to OFF (key retained in Vault)' },
-      ip_address: req.headers?.['x-forwarded-for'] || req.socket?.remoteAddress,
-      user_agent: req.headers?.['user-agent'],
-    }).catch(() => {});
+    try {
+      await supabaseAdmin.from('ai_admin_audit_logs').insert({
+        event: 'HIPOTECALY_AI_DEACTIVATED',
+        admin_user_id: auth.adminId,
+        result: 'SUCCESS',
+        details: { action: 'Master switch set to OFF (key retained in Vault)' },
+        ip_address: req.headers?.['x-forwarded-for'] || req.socket?.remoteAddress,
+        user_agent: req.headers?.['user-agent'],
+      });
+    } catch {
+      // Ignorar fallo de auditoría
+    }
 
     return res.status(200).json({
       success: true,

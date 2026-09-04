@@ -33,7 +33,6 @@ export default async function handler(req: any, res: any) {
       deep: AI_MODELS.deep.name,
     };
 
-    let modelSettingsFromDb: any = null;
     try {
       const { data } = await supabaseAdmin
         .from('ai_model_settings')
@@ -42,7 +41,6 @@ export default async function handler(req: any, res: any) {
         .maybeSingle();
 
       if (data) {
-        modelSettingsFromDb = data;
         configuredModels = {
           extraction: data.extraction_model || AI_MODELS.extraction.name,
           reasoning: data.reasoning_model || AI_MODELS.reasoning.name,

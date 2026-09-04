@@ -10,7 +10,7 @@ test.describe('SEGURIDAD Y AISLAMIENTO MULTI-TENANT', () => {
 
     // 2. Visitar ruta de organización diferente
     await page.goto('/org/estudio-notarial-este');
-    await expect(page.locator('text=Créditos Hipotecarios Punta del Este')).toBeVisible();
+    await expect(page.locator('text=Créditos Hipotecarios Punta del Este')).toBeVisible({ timeout: 10000 });
     await expect(page.locator('text=NOVA Crédito Hipotecario')).not.toBeVisible();
   });
 

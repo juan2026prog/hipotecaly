@@ -83,12 +83,16 @@ export default async function handler(req: any, res: any) {
           })
           .eq('provider', 'openai');
 
-        await supabaseAdmin.from('ai_admin_audit_logs').insert({
-          event: 'OPENAI_CONNECTION_TESTED',
-          admin_user_id: auth.adminId,
-          result: 'FAILURE',
-          details: { error: msg, latencyMs },
-        }).catch(() => {});
+        try {
+          await supabaseAdmin.from('ai_admin_audit_logs').insert({
+            event: 'OPENAI_CONNECTION_TESTED',
+            admin_user_id: auth.adminId,
+            result: 'FAILURE',
+            details: { error: msg, latencyMs },
+          });
+        } catch {
+          // Ignorar fallo de auditoría
+        }
 
         return res.status(400).json({
           success: false,
@@ -140,12 +144,16 @@ export default async function handler(req: any, res: any) {
       .eq('provider', 'openai');
 
     // 7. Registrar en auditoría
-    await supabaseAdmin.from('ai_admin_audit_logs').insert({
-      event: 'OPENAI_CONNECTION_TESTED',
-      admin_user_id: auth.adminId,
-      result: 'SUCCESS',
-      details: { status: testStatus, latencyMs, modelsCheck },
-    }).catch(() => {});
+    try {
+      await supabaseAdmin.from('ai_admin_audit_logs').insert({
+        event: 'OPENAI_CONNECTION_TESTED',
+        admin_user_id: auth.adminId,
+        result: 'SUCCESS',
+        details: { status: testStatus, latencyMs, modelsCheck },
+      });
+    } catch {
+      // Ignorar fallo de auditoría
+    }
 
     return res.status(200).json({
       success: true,

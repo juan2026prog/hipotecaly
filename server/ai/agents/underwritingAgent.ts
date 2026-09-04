@@ -13,6 +13,7 @@ export interface UnderwritingPolicyConfig {
   acceptedPropertyTypes: string[];
   acceptedDepartments: string[];
   defaultInterestRateAnnual: number; // Por ej. 11.5%
+  allowOfflineAnalysis?: boolean;
 }
 
 export const DEFAULT_PILOT_UNDERWRITING_POLICY: UnderwritingPolicyConfig = {
