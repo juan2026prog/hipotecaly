@@ -211,18 +211,101 @@ export const OrganizationSettingsPage: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
             <div className="p-4 rounded-xl bg-slate-bg border border-slate-border">
               <span className="text-slate-400 block text-[10px] uppercase font-bold">Plan Actual</span>
-              <strong className="text-navy text-base block mt-0.5">Professional</strong>
-              <span className="text-slate-500">USD 249 / mes</span>
+              <strong className="text-navy text-base block mt-0.5">Professional Modular</strong>
+              <span className="text-slate-500">Facturación consultiva</span>
             </div>
             <div className="p-4 rounded-xl bg-slate-bg border border-slate-border">
               <span className="text-slate-400 block text-[10px] uppercase font-bold">Expedientes del Mes</span>
-              <strong className="text-navy text-base block mt-0.5">14 de 100</strong>
-              <span className="text-emerald-700 font-semibold">14% de cuota utilizada</span>
+              <strong className="text-navy text-base block mt-0.5">14 de 35</strong>
+              <span className="text-emerald-700 font-semibold">40% de cuota utilizada</span>
             </div>
             <div className="p-4 rounded-xl bg-slate-bg border border-slate-border">
               <span className="text-slate-400 block text-[10px] uppercase font-bold">Estado de Cuenta</span>
               <strong className="text-emerald-700 text-base block mt-0.5">Al día</strong>
               <span className="text-slate-500">Próxima renovación: 01/10/2026</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 4. Módulos y Add-Ons Habilitados */}
+        <div className="bg-white rounded-card p-6 border border-slate-border shadow-card space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-border pb-3">
+            <div className="flex items-center space-x-2">
+              <CheckCircle2 className="w-5 h-5 text-brand-green" />
+              <h3 className="text-base font-bold text-navy">Módulos & Add-Ons de la Organización</h3>
+            </div>
+            <a
+              href="/saas/modulos"
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs font-bold text-navy hover:text-brand-green"
+            >
+              Explorar Catálogo General →
+            </a>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+            <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-200/60 flex items-center justify-between">
+              <div>
+                <strong className="text-navy block">Simulador & Solicitud Web</strong>
+                <span className="text-[11px] text-slate-500">Módulo Core</span>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-brand-green bg-emerald-100 px-2 py-0.5 rounded">
+                ACTIVO
+              </span>
+            </div>
+
+            <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-200/60 flex items-center justify-between">
+              <div>
+                <strong className="text-navy block">Expediente & Documentos</strong>
+                <span className="text-[11px] text-slate-500">Módulo Core</span>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-brand-green bg-emerald-100 px-2 py-0.5 rounded">
+                ACTIVO
+              </span>
+            </div>
+
+            <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-200/60 flex items-center justify-between">
+              <div>
+                <strong className="text-navy block">Reglas de Crédito Paramétricas</strong>
+                <span className="text-[11px] text-slate-500">Módulo Risk</span>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-brand-green bg-emerald-100 px-2 py-0.5 rounded">
+                ACTIVO
+              </span>
+            </div>
+
+            <div className="p-3 bg-blue-50/40 rounded-xl border border-blue-200/60 flex items-center justify-between">
+              <div>
+                <strong className="text-navy block">Sindicación Multi-Inversor</strong>
+                <span className="text-[11px] text-slate-500">Add-On Capital</span>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded">
+                ACTIVO
+              </span>
+            </div>
+
+            <div className="p-3 bg-blue-50/40 rounded-xl border border-blue-200/60 flex items-center justify-between">
+              <div>
+                <strong className="text-navy block">Loan Servicing & Cuotas</strong>
+                <span className="text-[11px] text-slate-500">Add-On Servicing</span>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded">
+                ACTIVO
+              </span>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+              <div>
+                <strong className="text-slate-700 block">Single Sign-On (SSO)</strong>
+                <span className="text-[11px] text-slate-400">Enterprise Add-On</span>
+              </div>
+              <a
+                href="/contacto?demo=true&modulo=enterprise_sso"
+                className="text-[10px] font-bold text-navy hover:text-brand-green uppercase"
+              >
+                Solicitar +
+              </a>
             </div>
           </div>
         </div>

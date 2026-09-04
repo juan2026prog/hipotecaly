@@ -43,6 +43,7 @@ import { LendersSolutionPage } from './pages/solutions/LendersSolutionPage';
 import { FinancialsSolutionPage } from './pages/solutions/FinancialsSolutionPage';
 import { NotariesSolutionPage } from './pages/solutions/NotariesSolutionPage';
 import { NovaShowroomPage } from './pages/demo/nova/NovaShowroomPage';
+import { SaaSModulesCatalogPage } from './pages/saas/SaaSModulesCatalogPage';
 import { TenantProvider } from './contexts/TenantContext';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { OfflineNotice } from './components/ui/OfflineNotice';
@@ -81,12 +82,14 @@ export const App: React.FC = () => {
               {/* 2. RUTAS PÚBLICAS SAAS (Línea B - Empresas & Estudios)     */}
               {/* ========================================================== */}
               <Route path="/saas" element={<SaaSHome />} />
+              <Route path="/saas/modulos" element={<SaaSModulesCatalogPage />} />
               <Route path="/saas/integracion" element={<SaaSIntegrationPage />} />
               <Route path="/saas/plataforma-completa" element={<SaaSFullPlatformPage />} />
               <Route path="/saas/precios" element={<SaaSPricingPage />} />
 
               {/* Redirecciones canónicas desde /plataforma para evitar duplicación y canibalización SEO */}
               <Route path="/plataforma" element={<Navigate to="/saas" replace />} />
+              <Route path="/plataforma/modulos" element={<Navigate to="/saas/modulos" replace />} />
               <Route path="/plataforma/integracion" element={<Navigate to="/saas/integracion" replace />} />
               <Route path="/plataforma/plataforma-completa" element={<Navigate to="/saas/plataforma-completa" replace />} />
               <Route path="/plataforma/funcionalidades" element={<Navigate to="/saas" replace />} />
