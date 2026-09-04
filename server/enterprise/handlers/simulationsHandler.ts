@@ -1,12 +1,12 @@
 // ==============================================================================
-// VERCEL SERVERLESS FUNCTION: /api/v1/simulations
+// HANDLER: /api/v1/simulations
 // Endpoint REST Oficial: Simulación Hipotecaria Paramétrica Multi-Tenant
 // ==============================================================================
 
-import { EnterpriseApiKeyService } from '../../server/enterprise/apiKeyService';
-import { supabaseAdmin } from '../../server/supabase';
+import { EnterpriseApiKeyService } from '../apiKeyService';
+import { supabaseAdmin } from '../../supabase';
 
-export default async function handler(req: any, res: any) {
+export default async function simulationsHandler(req: any, res: any) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 
   if (req.method !== 'POST') {

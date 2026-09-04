@@ -1,12 +1,12 @@
 // ==============================================================================
-// VERCEL SERVERLESS FUNCTION: /api/v1/webhooks
+// HANDLER: /api/v1/webhooks
 // Endpoint REST Oficial: Gestión de Webhooks para Tenants
 // ==============================================================================
 
-import { EnterpriseApiKeyService } from '../../server/enterprise/apiKeyService';
-import { EnterpriseWebhookDispatcher } from '../../server/enterprise/webhookDispatcher';
+import { EnterpriseApiKeyService } from '../apiKeyService';
+import { EnterpriseWebhookDispatcher } from '../webhookDispatcher';
 
-export default async function handler(req: any, res: any) {
+export default async function webhooksHandler(req: any, res: any) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 
   // 1. Autenticación y control de scopes mediante API Key

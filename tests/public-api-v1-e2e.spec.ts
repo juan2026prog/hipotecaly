@@ -4,9 +4,9 @@ import crypto from 'crypto';
 import { EnterpriseApiKeyService } from '../server/enterprise/apiKeyService';
 import { EnterpriseWebhookDispatcher } from '../server/enterprise/webhookDispatcher';
 import { BillingService } from '../src/lib/billingService';
-import simulationsHandler from '../api/v1/simulations';
-import applicationsHandler from '../api/v1/applications';
-import webhooksHandler from '../api/v1/webhooks';
+import simulationsHandler from '../server/enterprise/handlers/simulationsHandler';
+import applicationsHandler from '../server/enterprise/handlers/applicationsHandler';
+import webhooksHandler from '../server/enterprise/handlers/webhooksHandler';
 
 // Helper para invocar Serverless Handlers HTTP en entorno de prueba
 async function invokeHandler(handler: Function, reqOptions: {

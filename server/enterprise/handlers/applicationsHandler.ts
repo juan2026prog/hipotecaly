@@ -1,14 +1,14 @@
 // ==============================================================================
-// VERCEL SERVERLESS FUNCTION: /api/v1/applications
+// HANDLER: /api/v1/applications
 // Endpoint REST Oficial: Ingesta Programática de Expedientes e Integración Real
 // ==============================================================================
 
 import crypto from 'crypto';
-import { EnterpriseApiKeyService } from '../../server/enterprise/apiKeyService';
-import { EnterpriseWebhookDispatcher } from '../../server/enterprise/webhookDispatcher';
-import { supabaseAdmin } from '../../server/supabase';
+import { EnterpriseApiKeyService } from '../apiKeyService';
+import { EnterpriseWebhookDispatcher } from '../webhookDispatcher';
+import { supabaseAdmin } from '../../supabase';
 
-export default async function handler(req: any, res: any) {
+export default async function applicationsHandler(req: any, res: any) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 
   if (req.method !== 'POST') {
