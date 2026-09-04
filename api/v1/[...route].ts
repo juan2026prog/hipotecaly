@@ -1,12 +1,12 @@
 // ==============================================================================
-// VERCEL CONSOLIDATED SERVERLESS FUNCTION: /api/v1/[...route]
+// VERCEL SERVERLESS FUNCTION: /api/v1/[...route]
 // Punto de entrada REST oficial para todos los endpoints de API v1 de HIPOTECALY
 // ==============================================================================
 
 import crypto from 'crypto';
-import { EnterpriseApiKeyService } from '../../server/enterprise/apiKeyService';
-import { EnterpriseWebhookDispatcher } from '../../server/enterprise/webhookDispatcher';
-import { supabaseAdmin } from '../../server/supabase';
+import { EnterpriseApiKeyService } from '../../server/enterprise/apiKeyService.js';
+import { EnterpriseWebhookDispatcher } from '../../server/enterprise/webhookDispatcher.js';
+import { supabaseAdmin } from '../../server/supabase.js';
 
 // ------------------------------------------------------------------------------
 // 1. HANDLER: Simulación Hipotecaria Paramétrica (/api/v1/simulations)
