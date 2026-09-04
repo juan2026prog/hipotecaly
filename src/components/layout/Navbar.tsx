@@ -109,7 +109,7 @@ export const Navbar: React.FC = () => {
         </Link>
 
         {/* Desktop Nav Items */}
-        <nav className="hidden lg:flex items-center space-x-6">
+        <nav className="hidden lg:flex items-center space-x-7">
           <Link
             to="/simulador"
             className={`text-sm font-medium transition-colors hover:text-brand-green ${
@@ -121,38 +121,26 @@ export const Navbar: React.FC = () => {
 
           <Link
             to="/como-funciona"
-            className={`text-sm font-medium transition-colors hover:text-brand-green ${
+            className={`text-sm font-medium transition-colors hover:text-brand-green whitespace-nowrap ${
               location.pathname === '/como-funciona' ? 'text-brand-green font-semibold' : 'text-slate-text'
             }`}
           >
             Cómo funciona
           </Link>
 
-          <Link
-            to="/nosotros"
-            className={`text-sm font-medium transition-colors hover:text-brand-green ${
-              location.pathname === '/nosotros' ? 'text-brand-green font-semibold' : 'text-slate-text'
-            }`}
-          >
-            Nosotros
-          </Link>
-
-          {/* Menú Desplegable B2B Empresas & SaaS */}
+          {/* Menú Desplegable B2B Empresas & SaaS con estilo limpio y armónico */}
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setB2bDropdownOpen(!b2bDropdownOpen)}
               onMouseEnter={() => setB2bDropdownOpen(true)}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-sm font-bold transition-all min-h-[38px] ${
-                isSaaSRoute
-                  ? 'bg-slate-900 text-white shadow-sm'
-                  : 'bg-slate-100 text-navy hover:bg-slate-200'
+              className={`flex items-center space-x-1 text-sm font-medium transition-colors hover:text-brand-green whitespace-nowrap py-2 ${
+                isSaaSRoute ? 'text-brand-green font-semibold' : 'text-slate-text'
               }`}
             >
-              <Building2 className="w-4 h-4 text-brand-green" />
               <span>Para empresas</span>
               <ChevronDown
                 className={`w-3.5 h-3.5 transition-transform ${
-                  b2bDropdownOpen ? 'rotate-180' : ''
+                  b2bDropdownOpen ? 'rotate-180 text-brand-green' : 'text-slate-400'
                 }`}
               />
             </button>
@@ -160,7 +148,7 @@ export const Navbar: React.FC = () => {
             {b2bDropdownOpen && (
               <div
                 onMouseLeave={() => setB2bDropdownOpen(false)}
-                className="absolute top-full right-0 w-80 bg-white rounded-card shadow-floating border border-slate-200 p-3 space-y-1 animate-in fade-in slide-in-from-top-2 text-left"
+                className="absolute top-full left-0 w-80 bg-white rounded-card shadow-floating border border-slate-200 p-3 space-y-1 animate-in fade-in slide-in-from-top-2 text-left z-50"
               >
                 <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   Soluciones por perfil
@@ -241,8 +229,17 @@ export const Navbar: React.FC = () => {
           </div>
 
           <Link
-            to="/preguntas-frecuentes"
+            to="/nosotros"
             className={`text-sm font-medium transition-colors hover:text-brand-green ${
+              location.pathname === '/nosotros' ? 'text-brand-green font-semibold' : 'text-slate-text'
+            }`}
+          >
+            Nosotros
+          </Link>
+
+          <Link
+            to="/preguntas-frecuentes"
+            className={`text-sm font-medium transition-colors hover:text-brand-green whitespace-nowrap ${
               location.pathname === '/preguntas-frecuentes' ? 'text-brand-green font-semibold' : 'text-slate-text'
             }`}
           >
@@ -252,23 +249,17 @@ export const Navbar: React.FC = () => {
 
         {/* Desktop CTAs */}
         <div className="hidden lg:flex items-center space-x-3">
-          <Link to="/contacto?demo=true">
-            <Button variant="secondary" size="md" className="border-slate-300 text-xs font-bold">
-              <Building2 className="w-3.5 h-3.5 mr-1.5 text-brand-green" />
-              Solicitar demo B2B
-            </Button>
-          </Link>
-          <Link to="/solicitar">
-            <Button variant="primary" size="md" className="text-xs font-bold shadow-sm">
-              Solicitar préstamo
-            </Button>
-          </Link>
           <Link
             to="/ingresar"
-            className="inline-flex items-center space-x-1.5 text-xs font-semibold text-navy hover:text-brand-green px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors min-h-[44px]"
+            className="inline-flex items-center space-x-1.5 text-xs font-bold text-navy hover:text-brand-green px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors"
           >
             <User className="w-4 h-4" />
             <span>Ingresar</span>
+          </Link>
+          <Link to="/solicitar">
+            <Button variant="primary" size="md" className="text-xs font-bold shadow-xs px-4">
+              Solicitar préstamo
+            </Button>
           </Link>
         </div>
 
