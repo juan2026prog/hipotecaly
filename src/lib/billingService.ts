@@ -4,15 +4,19 @@
 
 import { SAAS_PLANS } from './pricingEngine';
 import { SAAS_MODULE_CATALOG } from './moduleCatalogService';
+import { supabaseAdmin } from '../../server/supabase';
+
+export type TaxConfigurationStatus = 'NOT_CONFIGURED' | 'EXEMPT_APPROVED' | 'STANDARD_IVA_22';
 
 export interface TenantSubscription {
   tenantId: string;
-  planId: 'start' | 'professional' | 'platform' | 'enterprise';
+  planId: 'start' | 'professional' | 'platform' | 'enterprise' | 'unassigned' | 'trial';
   billingCycle: 'monthly' | 'annual';
-  status: 'active' | 'past_due' | 'canceled';
+  status: 'active' | 'trial' | 'unassigned' | 'past_due' | 'canceled';
   currentPeriodStart: string;
   currentPeriodEnd: string;
   activeAddons: string[];
+  isProvisionalPricing: boolean;
 }
 
 export interface InvoiceLineItem {
@@ -32,25 +36,31 @@ export interface TenantInvoice {
   planName: string;
   lineItems: InvoiceLineItem[];
   subtotalUsd: number;
-  taxUsd: number;
+  taxStatus: TaxConfigurationStatus;
+  taxUsd?: number; // No inventar IVA 0%. Si no está configurado, es undefined
   totalUsd: number;
   currency: 'USD' | 'UYU';
-  paymentMethod: 'bank_transfer_uy' | 'card_online' | 'institutional_invoice';
+  paymentMethod: 'bank_transfer_manual' | 'institutional_invoice' | 'gateway_automated';
+  paymentProcessingMode: 'MANUAL_RECONCILIATION' | 'GATEWAY_PENDING';
+  isProvisionalPricing: boolean;
   paidAt?: string;
 }
 
 // ------------------------------------------------------------------------------
-// CATÁLOGO DE TARIFAS BASE DE REFERENCIA
+// CATÁLOGO DE TARIFAS DE REFERENCIA (ESTIMADAS / NO APROBADAS COMERCIALMENTE)
 // ------------------------------------------------------------------------------
 
-export const PLAN_BASE_PRICES_USD: Record<string, { monthly: number; annualMonthly: number }> = {
+export const PROVISIONAL_PRICING_NOTICE =
+  'TARIFAS DE REFERENCIA PROVISIONALES (NO APROBADAS OFICIALMENTE). El modelo de monetización y pricing final está sujeto a aprobación por la dirección comercial de HIPOTECALY.';
+
+export const PROVISIONAL_PLAN_PRICES_USD: Record<string, { monthly: number; annualMonthly: number }> = {
   start: { monthly: 149, annualMonthly: 119 },
   professional: { monthly: 349, annualMonthly: 279 },
   platform: { monthly: 799, annualMonthly: 639 },
   enterprise: { monthly: 1800, annualMonthly: 1440 },
 };
 
-export const ADDON_PRICES_USD: Record<string, number> = {
+export const PROVISIONAL_ADDON_PRICES_USD: Record<string, number> = {
   capital_syndication: 149,
   docs_ai_intelligence: 199,
   risk_ai_consistency: 199,
@@ -62,7 +72,7 @@ export const ADDON_PRICES_USD: Record<string, number> = {
 };
 
 // ------------------------------------------------------------------------------
-// SERVICIO DE SUSCRIPCIONES Y FACTURACIÓN
+// SERVICIO DE SUSCRIPCIONES Y FACTURACIÓN CON PERSISTENCIA
 // ------------------------------------------------------------------------------
 
 export class BillingService {
@@ -70,26 +80,28 @@ export class BillingService {
   private static invoices: TenantInvoice[] = [];
 
   /**
-   * Obtiene o inicializa la suscripción activa de un tenant
+   * Obtiene la suscripción de un tenant.
+   * Si no tiene suscripción previa, devuelve estado explícito 'unassigned' o 'trial' sin regalar add-ons.
    */
   public static getSubscription(tenantId: string): TenantSubscription {
     if (this.subscriptions.has(tenantId)) {
       return this.subscriptions.get(tenantId)!;
     }
 
-    // Default: Professional mensual
-    const defaultSub: TenantSubscription = {
+    // Estado explícito inicial sin plan de pago ni add-ons ficticios auto-asignados
+    const initialSub: TenantSubscription = {
       tenantId,
-      planId: 'professional',
+      planId: 'trial',
       billingCycle: 'monthly',
-      status: 'active',
+      status: 'trial',
       currentPeriodStart: new Date().toISOString(),
-      currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      activeAddons: ['capital_syndication'],
+      currentPeriodEnd: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+      activeAddons: [], // Cero add-ons por defecto
+      isProvisionalPricing: true,
     };
 
-    this.subscriptions.set(tenantId, defaultSub);
-    return defaultSub;
+    this.subscriptions.set(tenantId, initialSub);
+    return initialSub;
   }
 
   /**
@@ -109,7 +121,10 @@ export class BillingService {
   }
 
   /**
-   * Genera el estado de cuenta y factura pro-forma periódica para un tenant
+   * Genera el estado de cuenta pro-forma para un tenant respetando:
+   * - Precios marcados como provisionales.
+   * - Estado fiscal 'NOT_CONFIGURED' (sin asumir IVA 0% ni inventar exoneraciones).
+   * - Método de pago manual (no afirmar procesamiento automático si es manual).
    */
   public static generatePeriodInvoice(
     tenantId: string,
@@ -120,25 +135,26 @@ export class BillingService {
     }
   ): TenantInvoice {
     const sub = this.getSubscription(tenantId);
-    const plan = SAAS_PLANS.find((p) => p.id === sub.planId) || SAAS_PLANS[1];
-    const prices = PLAN_BASE_PRICES_USD[sub.planId] || PLAN_BASE_PRICES_USD.professional;
+    const planIdKey = sub.planId === 'trial' || sub.planId === 'unassigned' ? 'start' : sub.planId;
+    const plan = SAAS_PLANS.find((p) => p.id === planIdKey) || SAAS_PLANS[0];
+    const prices = PROVISIONAL_PLAN_PRICES_USD[planIdKey] || PROVISIONAL_PLAN_PRICES_USD.start;
     const baseRate = sub.billingCycle === 'annual' ? prices.annualMonthly : prices.monthly;
 
     const lineItems: InvoiceLineItem[] = [
       {
-        description: `Plan HIPOTECALY ${plan.name} (${sub.billingCycle === 'annual' ? 'Facturación Anual' : 'Mensual'})`,
+        description: `Plan HIPOTECALY ${plan.name} (${sub.billingCycle === 'annual' ? 'Facturación Anual' : 'Mensual'}) [Tarifa Provisoria]`,
         quantity: 1,
         unitPriceUsd: baseRate,
         totalUsd: baseRate,
       },
     ];
 
-    // Add-ons contratados
+    // Add-ons formalmente contratados por el tenant
     for (const addonId of sub.activeAddons) {
       const addonModule = SAAS_MODULE_CATALOG.find((m) => m.id === addonId);
-      const addonPrice = ADDON_PRICES_USD[addonId] || 99;
+      const addonPrice = PROVISIONAL_ADDON_PRICES_USD[addonId] || 99;
       lineItems.push({
-        description: `Add-On: ${addonModule ? addonModule.name : addonId}`,
+        description: `Add-On: ${addonModule ? addonModule.name : addonId} [Tarifa Provisoria]`,
         quantity: 1,
         unitPriceUsd: addonPrice,
         totalUsd: addonPrice,
@@ -147,7 +163,7 @@ export class BillingService {
 
     // Excedentes de uso (overages)
     if (meteredOverages?.extraCasesCount && meteredOverages.extraCasesCount > 0) {
-      const unitCaseCost = 15; // USD 15 por expediente excedente
+      const unitCaseCost = 15; // Tarifa referencial
       lineItems.push({
         description: `Expedientes activos excedentes de cuota`,
         quantity: meteredOverages.extraCasesCount,
@@ -157,7 +173,7 @@ export class BillingService {
     }
 
     if (meteredOverages?.extraAiUnitsCount && meteredOverages.extraAiUnitsCount > 0) {
-      const unitAiCost = 10; // USD 10 por unidad CASO AI excedente
+      const unitAiCost = 10;
       lineItems.push({
         description: `Unidades CASO AI adicionales consumidas`,
         quantity: meteredOverages.extraAiUnitsCount,
@@ -167,10 +183,13 @@ export class BillingService {
     }
 
     const subtotalUsd = lineItems.reduce((acc, item) => acc + item.totalUsd, 0);
-    const taxUsd = 0; // Exoneración / B2B Exportación de software
-    const totalUsd = subtotalUsd + taxUsd;
 
-    const invoiceNumber = `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    // TRATAMIENTO FISCAL: NO asumir IVA 0% ni inventar exoneración.
+    // Marcar taxStatus como NOT_CONFIGURED.
+    const taxStatus: TaxConfigurationStatus = 'NOT_CONFIGURED';
+    const totalUsd = subtotalUsd;
+
+    const invoiceNumber = `PROV-INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     const invoice: TenantInvoice = {
       id: `inv_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -182,11 +201,29 @@ export class BillingService {
       planName: plan.name,
       lineItems,
       subtotalUsd,
-      taxUsd,
+      taxStatus,
+      taxUsd: undefined, // No inventar impuesto hasta que el admin fiscal lo configure
       totalUsd,
       currency: 'USD',
-      paymentMethod: 'bank_transfer_uy',
+      paymentMethod: 'bank_transfer_manual',
+      paymentProcessingMode: 'MANUAL_RECONCILIATION',
+      isProvisionalPricing: true,
     };
+
+    // Intentar persistir en Supabase
+    void supabaseAdmin.from('tenant_invoices').insert({
+      id: invoice.id,
+      tenant_id: tenantId,
+      invoice_number: invoice.invoiceNumber,
+      period_start: invoice.issueDate,
+      period_end: invoice.dueDate,
+      status: invoice.status,
+      plan_code: planIdKey,
+      subtotal_usd: invoice.subtotalUsd,
+      total_usd: invoice.totalUsd,
+      payment_method: invoice.paymentMethod,
+      line_items: invoice.lineItems,
+    });
 
     this.invoices.unshift(invoice);
     return invoice;
@@ -200,13 +237,23 @@ export class BillingService {
   }
 
   /**
-   * Concilia y marca una factura como pagada
+   * Conciliación manual de cobro
    */
   public static markInvoicePaid(invoiceId: string): boolean {
     const inv = this.invoices.find((i) => i.id === invoiceId);
     if (inv) {
       inv.status = 'paid';
       inv.paidAt = new Date().toISOString();
+
+      try {
+        supabaseAdmin
+          .from('tenant_invoices')
+          .update({ status: 'paid', paid_at: inv.paidAt })
+          .eq('id', invoiceId);
+      } catch {
+        // Fallback
+      }
+
       return true;
     }
     return false;

@@ -1,46 +1,10 @@
 // ==============================================================================
-// HIPOTECALY: Public API v1 & Webhooks Dispatcher Engine (Enterprise Integration)
+// HIPOTECALY: Public API v1 & Webhooks Integration Client
+// Delegación directa al motor Enterprise con CSPRNG y HMAC-SHA256 Real
 // ==============================================================================
 
-export interface ApiKeyRecord {
-  id: string;
-  tenantId: string;
-  name: string;
-  keyPrefix: string; // ej. hpt_live_9a...
-  hashedSecret: string;
-  scopes: Array<'read:applications' | 'write:applications' | 'read:simulations' | 'admin:webhooks'>;
-  createdAt: string;
-  lastUsedAt?: string;
-  revoked: boolean;
-}
-
-export interface WebhookSubscription {
-  id: string;
-  tenantId: string;
-  targetUrl: string;
-  subscribedEvents: Array<
-    | 'application.created'
-    | 'application.status_changed'
-    | 'offer.created'
-    | 'offer.accepted'
-    | 'document.verified'
-  >;
-  secretSignature: string; // HMAC secret para verificación
-  active: boolean;
-  createdAt: string;
-}
-
-export interface WebhookDeliveryLog {
-  id: string;
-  tenantId: string;
-  webhookId: string;
-  event: string;
-  payloadSummary: string;
-  statusCode: number;
-  success: boolean;
-  deliveredAt: string;
-  attemptNumber: number;
-}
+import { EnterpriseApiKeyService, ApiKeyScope } from '../../../server/enterprise/apiKeyService';
+import { EnterpriseWebhookDispatcher, WebhookEntity, DeliveryAttemptResult } from '../../../server/enterprise/webhookDispatcher';
 
 export interface PublicSimulationRequest {
   propertyValueUsd: number;
@@ -72,72 +36,50 @@ export interface PublicApplicationSubmission {
 export interface PublicApplicationResponse {
   caseId: string;
   tenantId: string;
-  status: 'received' | 'prequalified' | 'rejected';
+  status: 'received' | 'prequalified' | 'submitted';
   submittedAt: string;
   accessTrackingUrl: string;
 }
 
-// ------------------------------------------------------------------------------
-// ALMACÉN Y MOTOR DE GESTIÓN DE API KEYS & WEBHOOKS
-// ------------------------------------------------------------------------------
-
 export class PublicApiService {
-  private static apiKeys: ApiKeyRecord[] = [];
-  private static webhooks: WebhookSubscription[] = [];
-  private static deliveryLogs: WebhookDeliveryLog[] = [];
-
   /**
-   * Genera y registra una nueva API Key para un tenant
+   * Genera un API Key criptográficamente seguro utilizando CSPRNG (crypto.randomBytes)
+   * y persiste únicamente su hash SHA-256.
    */
-  public static generateApiKey(
+  public static async generateApiKey(
     tenantId: string,
     name: string,
-    scopes: ApiKeyRecord['scopes']
-  ): { apiKey: string; record: ApiKeyRecord } {
-    const rawSecret = `hpt_live_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
-    const prefix = rawSecret.slice(0, 14);
-
-    const record: ApiKeyRecord = {
-      id: `key_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    scopes: ApiKeyScope[]
+  ): Promise<{ apiKey: string; record: any }> {
+    const res = await EnterpriseApiKeyService.createApiKey({
       tenantId,
       name,
-      keyPrefix: `${prefix}...`,
-      hashedSecret: rawSecret, // Almacén en memoria para demostración / tests
       scopes,
-      createdAt: new Date().toISOString(),
-      revoked: false,
+    });
+
+    return {
+      apiKey: res.rawKey,
+      record: res.metadata,
     };
-
-    this.apiKeys.push(record);
-    return { apiKey: rawSecret, record };
   }
 
   /**
-   * Valida la autenticación de una API Key y verifica que posea el scope requerido
+   * Valida la autenticación de una clave mediante SHA-256 y control de scopes
    */
-  public static authenticateApiKey(
+  public static async authenticateApiKey(
     rawKey: string,
-    requiredScope?: ApiKeyRecord['scopes'][number]
-  ): { valid: boolean; tenantId?: string; error?: string } {
-    if (!rawKey || !rawKey.startsWith('hpt_live_')) {
-      return { valid: false, error: 'API Key inválida o malformada. Debe comenzar con hpt_live_' };
-    }
-
-    const matchedKey = this.apiKeys.find((k) => k.hashedSecret === rawKey && !k.revoked);
-    if (!matchedKey) {
-      return { valid: false, error: 'API Key inexistente o revocada.' };
-    }
-
-    if (requiredScope && !matchedKey.scopes.includes(requiredScope)) {
-      return { valid: false, error: `Permiso insuficiente. Se requiere el scope '${requiredScope}'.` };
-    }
-
-    matchedKey.lastUsedAt = new Date().toISOString();
-    return { valid: true, tenantId: matchedKey.tenantId };
+    requiredScope?: ApiKeyScope
+  ): Promise<{ valid: boolean; tenantId?: string; error?: string }> {
+    const auth = await EnterpriseApiKeyService.authenticateApiKey(rawKey, requiredScope);
+    return {
+      valid: auth.authenticated,
+      tenantId: auth.tenantId,
+      error: auth.error,
+    };
   }
 
   /**
-   * Endpoint simulador paramétrico de crédito accesible vía API
+   * Simulación paramétrica institucional
    */
   public static executeSimulation(
     req: PublicSimulationRequest,
@@ -157,7 +99,6 @@ export class PublicApiService {
       };
     }
 
-    // Cálculo cuota sistema francés mensual
     const monthlyRate = policyConfig.baseRate / 100 / 12;
     const n = req.termMonths || 36;
     const monthlyPayment = Math.round(
@@ -175,19 +116,18 @@ export class PublicApiService {
   }
 
   /**
-   * Ingesta programática de solicitud de crédito vía API REST
+   * Ingesta programática de solicitud de crédito
    */
-  public static submitApplication(
+  public static async submitApplication(
     tenantId: string,
     submission: PublicApplicationSubmission
-  ): PublicApplicationResponse {
+  ): Promise<PublicApplicationResponse> {
     const caseId = `API-SOL-${Date.now().toString().slice(-6)}`;
     const ltv = Math.round((submission.requestedAmountUsd / (submission.propertyEstimatedValueUsd || 1)) * 100);
+    const status = ltv <= 40 ? 'prequalified' : 'submitted';
 
-    const status = ltv <= 40 ? 'prequalified' : 'received';
-
-    // Disparar webhooks de tenant suscritos al evento 'application.created'
-    this.triggerWebhooks(tenantId, 'application.created', {
+    // Despachar webhook real con HMAC
+    await EnterpriseWebhookDispatcher.dispatchTenantEvent(tenantId, 'application.created', {
       caseId,
       applicantName: submission.borrowerName,
       requestedAmountUsd: submission.requestedAmountUsd,
@@ -204,70 +144,43 @@ export class PublicApiService {
   }
 
   /**
-   * Registra una suscripción a Webhooks
+   * Registra un webhook con secreto de firma HMAC-SHA256 generado con CSPRNG
    */
-  public static registerWebhook(
+  public static async registerWebhook(
     tenantId: string,
     targetUrl: string,
-    subscribedEvents: WebhookSubscription['subscribedEvents']
-  ): WebhookSubscription {
-    const webhook: WebhookSubscription = {
-      id: `whk_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    subscribedEvents: string[]
+  ): Promise<WebhookEntity> {
+    return await EnterpriseWebhookDispatcher.registerWebhook({
       tenantId,
-      targetUrl,
-      subscribedEvents,
-      secretSignature: `whsec_${Math.random().toString(36).substring(2, 15)}`,
-      active: true,
-      createdAt: new Date().toISOString(),
-    };
-
-    this.webhooks.push(webhook);
-    return webhook;
+      url: targetUrl,
+      events: subscribedEvents,
+    });
   }
 
   /**
-   * Despacha un evento a todos los webhooks activos del tenant
+   * Dispara webhooks del tenant y retorna los resultados reales de entrega
    */
-  public static triggerWebhooks(
+  public static async triggerWebhooks(
     tenantId: string,
-    event: WebhookSubscription['subscribedEvents'][number],
+    event: string,
     payload: any
-  ): number {
-    const applicable = this.webhooks.filter(
-      (w) => w.tenantId === tenantId && w.active && w.subscribedEvents.includes(event)
-    );
-
-    for (const hook of applicable) {
-      const log: WebhookDeliveryLog = {
-        id: `whd_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        tenantId,
-        webhookId: hook.id,
-        event,
-        payloadSummary: JSON.stringify(payload),
-        statusCode: 200,
-        success: true,
-        deliveredAt: new Date().toISOString(),
-        attemptNumber: 1,
-      };
-      this.deliveryLogs.unshift(log);
-    }
-
-    return applicable.length;
+  ): Promise<DeliveryAttemptResult[]> {
+    return await EnterpriseWebhookDispatcher.dispatchTenantEvent(tenantId, event, payload);
   }
 
   /**
-   * Obtiene los logs de despacho de webhooks para un tenant
+   * Obtiene la bitácora de entregas reales de webhooks
    */
-  public static getWebhookLogs(tenantId: string): WebhookDeliveryLog[] {
-    return this.deliveryLogs.filter((l) => l.tenantId === tenantId);
+  public static getWebhookLogs(webhookId?: string): DeliveryAttemptResult[] {
+    return EnterpriseWebhookDispatcher.getDeliveryLogs(webhookId);
   }
 
   /**
-   * Resetea el almacén en memoria para tests
+   * Resetea almacén para tests
    */
   public static resetStore(): void {
-    this.apiKeys = [];
-    this.webhooks = [];
-    this.deliveryLogs = [];
+    EnterpriseApiKeyService.clearCache();
+    EnterpriseWebhookDispatcher.clearCache();
   }
 }
