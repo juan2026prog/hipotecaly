@@ -14,6 +14,7 @@ import {
   LogOut,
   ExternalLink,
   UserCheck,
+  Palette,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
@@ -64,6 +65,7 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
     {
       title: 'ADMINISTRACIÓN',
       items: [
+        { name: 'White-Label & Marca', href: '/app/whitelabel', icon: Palette },
         { name: 'Usuarios', href: '/app/usuarios', icon: Users },
         { name: 'Organización', href: '/app/organizacion', icon: Building2 },
         { name: 'Configuración', href: '/app/configuracion', icon: Settings },

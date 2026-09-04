@@ -32,6 +32,7 @@ import { LenderOffersPage } from './pages/lender/LenderOffersPage';
 import { LenderMessagesPage } from './pages/lender/LenderMessagesPage';
 import { UsersManagementPage } from './pages/backoffice/UsersManagementPage';
 import { OrganizationSettingsPage } from './pages/backoffice/OrganizationSettingsPage';
+import { WhiteLabelBackofficePage } from './pages/backoffice/WhiteLabelBackofficePage';
 import { LeadsManagementPage } from './pages/backoffice/LeadsManagementPage';
 
 // Tenant Demo NOVA & Super Admin
@@ -315,6 +316,14 @@ export const App: React.FC = () => {
                 element={
                   <ProtectedRoute allowedRoles={['tenant_admin', 'super_admin']}>
                     <OrganizationSettingsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/app/whitelabel"
+                element={
+                  <ProtectedRoute allowedRoles={['tenant_admin', 'super_admin']}>
+                    <WhiteLabelBackofficePage />
                   </ProtectedRoute>
                 }
               />
