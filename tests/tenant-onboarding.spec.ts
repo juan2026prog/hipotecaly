@@ -1,6 +1,28 @@
 import { test, expect } from '@playwright/test';
+import { createClient } from '@supabase/supabase-js';
+
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'http://127.0.0.1:54321';
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'dummy';
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 test.describe('ONBOARDING REAL DE CLIENTE SAAS WHITE-LABEL (ORION QA)', () => {
+  test.describe.configure({ mode: 'serial' });
+
+  test.beforeEach(async () => {
+    try {
+      await supabase.from('organizations').delete().eq('slug', 'orion-qa');
+    } catch {
+      // ignore
+    }
+  });
+
+  test.afterEach(async () => {
+    try {
+      await supabase.from('organizations').delete().eq('slug', 'orion-qa');
+    } catch {
+      // ignore
+    }
+  });
 
   test('Flujo E2E Completo: Alta de ORION, Simulación, Reglas Dinámicas, Backoffice y Aislamiento', async ({ page }) => {
     // --------------------------------------------------------------------------

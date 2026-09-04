@@ -251,10 +251,27 @@ export async function createTenantWithOnboarding(payload: TenantOnboardingPayloa
     return { success: false, error: 'El slug ingresado no es válido.' };
   }
 
-  const newId = crypto.randomUUID();
+  let tenantId = crypto.randomUUID();
+
+  // Si ya existe la organización en Supabase (ej: re-ejecución de pruebas), reusar el tenantId
+  if (isSupabaseConfigured) {
+    try {
+      const { data: existingOrg } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('slug', cleanSlug)
+        .maybeSingle();
+
+      if (existingOrg && existingOrg.id) {
+        tenantId = existingOrg.id;
+      }
+    } catch {
+      // Continuar con nuevo UUID
+    }
+  }
 
   const newTenant: Tenant = {
-    id: newId,
+    id: tenantId,
     slug: cleanSlug,
     name: payload.companyName,
     legal_name: payload.companyName,
@@ -284,54 +301,60 @@ export async function createTenantWithOnboarding(payload: TenantOnboardingPayloa
 
   // 2. Configurar módulos del tenant
   for (const [modKey, isEnabled] of Object.entries(payload.modules)) {
-    await setTenantModuleEnabled(newId, modKey as TenantModuleKey, isEnabled);
+    await setTenantModuleEnabled(tenantId, modKey as TenantModuleKey, isEnabled);
   }
 
   // 3. Configurar reglas crediticias
   const completeRules: TenantLendingRules = {
     ...DEFAULT_NOVA_LENDING_RULES,
-    tenantId: newId,
+    tenantId: tenantId,
     ...payload.lendingRules,
   };
-  await updateTenantLendingRules(newId, completeRules);
+  await updateTenantLendingRules(tenantId, completeRules);
 
   // 4. Configurar costos notariales y de formalización
   if (payload.costConfigurations) {
-    await saveTenantCostConfigurations(newId, payload.costConfigurations);
+    await saveTenantCostConfigurations(tenantId, payload.costConfigurations);
   } else {
-    await saveTenantCostConfigurations(newId, DEFAULT_NOVA_COSTS);
+    await saveTenantCostConfigurations(tenantId, DEFAULT_NOVA_COSTS);
   }
 
   // 5. Registrar en Supabase si está activo
   if (isSupabaseConfigured) {
     try {
-      await supabase.from('organizations').insert({
-        id: newId,
-        slug: cleanSlug,
-        name: payload.companyName,
-        legal_name: payload.companyName,
-        commercial_name: payload.commercialName,
-        country: payload.country || 'UY',
-        timezone: payload.timezone || 'America/Montevideo',
-        organization_type: 'financiera',
-        status: 'active',
-        demo_mode: false,
-        config_schema_version: 1,
-      });
+      await supabase.from('organizations').upsert(
+        {
+          id: tenantId,
+          slug: cleanSlug,
+          name: payload.companyName,
+          legal_name: payload.companyName,
+          commercial_name: payload.commercialName,
+          country: payload.country || 'UY',
+          timezone: payload.timezone || 'America/Montevideo',
+          organization_type: 'financiera',
+          status: 'active',
+          demo_mode: false,
+          config_schema_version: 1,
+        },
+        { onConflict: 'id' }
+      );
 
-      await supabase.from('organization_branding').insert({
-        organization_id: newId,
-        public_name: newTenant.branding.public_name,
-        tag_line: newTenant.branding.tag_line,
-        logo_url: newTenant.branding.logo_url,
-        favicon_url: newTenant.branding.favicon_url,
-        primary_color: newTenant.branding.primary_color,
-        secondary_color: newTenant.branding.secondary_color,
-      });
+      await supabase.from('organization_branding').upsert(
+        {
+          organization_id: tenantId,
+          public_name: newTenant.branding.public_name,
+          tag_line: newTenant.branding.tag_line,
+          logo_url: newTenant.branding.logo_url,
+          favicon_url: newTenant.branding.favicon_url,
+          primary_color: newTenant.branding.primary_color,
+          secondary_color: newTenant.branding.secondary_color,
+        },
+        { onConflict: 'organization_id' }
+      );
 
       if (payload.customDomain) {
         await supabase.from('organization_domains').insert({
-          organization_id: newId,
+          organization_id: tenantId,
           domain: payload.customDomain,
           is_primary: true,
           is_verified: true,
@@ -339,7 +362,7 @@ export async function createTenantWithOnboarding(payload: TenantOnboardingPayloa
       }
 
       await supabase.from('tenant_onboarding_status').insert({
-        tenant_id: newId,
+        tenant_id: tenantId,
         step_company_data: true,
         step_branding: true,
         step_rules: true,
@@ -357,13 +380,13 @@ export async function createTenantWithOnboarding(payload: TenantOnboardingPayloa
   }
 
   // 6. Auditoría
-  await logTenantAudit(newId, 'TENANT_CREATED', null, {
+  await logTenantAudit(tenantId, 'TENANT_CREATED', null, {
     name: newTenant.name,
     slug: newTenant.slug,
     plan: payload.templateCode,
   });
 
-  await logTenantAudit(newId, 'TENANT_ACTIVATED', null, { status: 'active' });
+  await logTenantAudit(tenantId, 'TENANT_ACTIVATED', null, { status: 'active' });
 
   return {
     success: true,

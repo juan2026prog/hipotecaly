@@ -6,7 +6,12 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useTenant } from '../../contexts/TenantContext';
-import { getTenantLendingRules, TenantLendingRules, DEFAULT_NOVA_LENDING_RULES } from '../../lib/tenantRulesService';
+import {
+  getTenantLendingRules,
+  TenantLendingRules,
+  DEFAULT_NOVA_LENDING_RULES,
+  subscribeToTenantRules,
+} from '../../lib/tenantRulesService';
 import { getTenantModules, DEFAULT_MODULES_MAP } from '../../lib/tenantModulesService';
 import { TenantNotFoundPage } from '../TenantNotFoundPage';
 import { CurrencyInput } from '../../components/ui/CurrencyInput';
@@ -38,6 +43,13 @@ export const GenericWhiteLabelLanding: React.FC = () => {
         }
       });
       getTenantModules(tenant.id).then((m) => setModules(m));
+
+      const unsub = subscribeToTenantRules((tId, newRules) => {
+        if (tId === tenant.id) {
+          setRules(newRules);
+        }
+      });
+      return () => unsub();
     }
   }, [tenant.id, tenant.status]);
 

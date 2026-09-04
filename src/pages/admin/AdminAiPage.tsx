@@ -83,14 +83,14 @@ export const AdminAiPage: React.FC = () => {
         lastTestMessage: 'No hay clave configurada en Supabase Vault.',
         secretSource: 'none',
         configuredModels: {
-          extraction: 'gpt-4o-mini',
-          reasoning: 'gpt-4o',
-          deep: 'o3-mini',
+          extraction: 'gpt-5.6-luna',
+          reasoning: 'gpt-5.6-terra',
+          deep: 'gpt-5.6-sol',
         },
         modelsStatus: [
-          { role: 'Extracción / OCR', model: 'gpt-4o-mini', accessible: false },
-          { role: 'Razonamiento / Underwriting', model: 'gpt-4o', accessible: false },
-          { role: 'Análisis Profundo', model: 'o3-mini', accessible: false },
+          { role: 'Extracción / OCR', model: 'gpt-5.6-luna', accessible: false },
+          { role: 'Razonamiento / Underwriting', model: 'gpt-5.6-terra', accessible: false },
+          { role: 'Análisis Profundo', model: 'gpt-5.6-sol', accessible: false },
         ],
         systemHealth: {
           supabaseConnected: true,
@@ -742,7 +742,7 @@ export const AdminAiPage: React.FC = () => {
                   onChange={(e) => setExtractionModel(e.target.value)}
                   className="w-full text-xs p-2.5 rounded-xl border border-slate-300 font-mono"
                 />
-                <span className="text-[11px] text-slate-400">Certificado: gpt-4o-mini (o gpt-5.6-luna)</span>
+                <span className="text-[11px] text-slate-400">Modelo productivo: gpt-5.6-luna</span>
               </div>
 
               <div className="space-y-1.5">
@@ -753,7 +753,7 @@ export const AdminAiPage: React.FC = () => {
                   onChange={(e) => setReasoningModel(e.target.value)}
                   className="w-full text-xs p-2.5 rounded-xl border border-slate-300 font-mono"
                 />
-                <span className="text-[11px] text-slate-400">Certificado: gpt-4o (o gpt-5.6-terra)</span>
+                <span className="text-[11px] text-slate-400">Modelo productivo: gpt-5.6-terra</span>
               </div>
 
               <div className="space-y-1.5">
@@ -764,7 +764,7 @@ export const AdminAiPage: React.FC = () => {
                   onChange={(e) => setDeepModel(e.target.value)}
                   className="w-full text-xs p-2.5 rounded-xl border border-slate-300 font-mono"
                 />
-                <span className="text-[11px] text-slate-400">Certificado: o3-mini (o gpt-5.6-sol)</span>
+                <span className="text-[11px] text-slate-400">Modelo productivo: gpt-5.6-sol</span>
               </div>
             </div>
 

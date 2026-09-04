@@ -386,9 +386,9 @@ export const AI_MODELS = {
   extraction: 'gpt-5.6-luna',
   reasoning: 'gpt-5.6-terra',
   deep: 'gpt-5.6-sol',
-  fallbackExtraction: 'gpt-4o-mini',
-  fallbackReasoning: 'gpt-4o',
-  fallbackDeep: 'o3-mini',
+  fallbackExtraction: 'gpt-5.6-luna',
+  fallbackReasoning: 'gpt-5.6-terra',
+  fallbackDeep: 'gpt-5.6-sol',
 };
 
 export const DEFAULT_MODEL_PRICING: Record<
@@ -401,39 +401,21 @@ export const DEFAULT_MODEL_PRICING: Record<
   }
 > = {
   'gpt-5.6-luna': {
-    costInputPerMillionUsd: 0.15,
-    costCachedInputPerMillionUsd: 0.075,
-    costOutputPerMillionUsd: 0.60,
+    costInputPerMillionUsd: 0.20,
+    costCachedInputPerMillionUsd: 0.02,
+    costOutputPerMillionUsd: 1.20,
     costPerSearchUsd: 0.01,
   },
   'gpt-5.6-terra': {
-    costInputPerMillionUsd: 2.50,
-    costCachedInputPerMillionUsd: 1.25,
-    costOutputPerMillionUsd: 10.00,
+    costInputPerMillionUsd: 2.00,
+    costCachedInputPerMillionUsd: 0.20,
+    costOutputPerMillionUsd: 12.00,
     costPerSearchUsd: 0.01,
   },
   'gpt-5.6-sol': {
-    costInputPerMillionUsd: 5.00,
-    costCachedInputPerMillionUsd: 2.50,
+    costInputPerMillionUsd: 4.00,
+    costCachedInputPerMillionUsd: 0.40,
     costOutputPerMillionUsd: 20.00,
-    costPerSearchUsd: 0.01,
-  },
-  'gpt-4o-mini': {
-    costInputPerMillionUsd: 0.15,
-    costCachedInputPerMillionUsd: 0.075,
-    costOutputPerMillionUsd: 0.60,
-    costPerSearchUsd: 0.01,
-  },
-  'gpt-4o': {
-    costInputPerMillionUsd: 2.50,
-    costCachedInputPerMillionUsd: 1.25,
-    costOutputPerMillionUsd: 10.00,
-    costPerSearchUsd: 0.01,
-  },
-  'o3-mini': {
-    costInputPerMillionUsd: 1.10,
-    costCachedInputPerMillionUsd: 0.55,
-    costOutputPerMillionUsd: 4.40,
     costPerSearchUsd: 0.01,
   },
 };

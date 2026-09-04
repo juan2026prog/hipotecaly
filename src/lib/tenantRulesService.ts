@@ -155,9 +155,9 @@ export async function updateTenantLendingRules(
   }
 
   try {
-    await supabase.from('tenant_lending_rules').upsert(
-      {
-        tenant_id: tenantId,
+    const { data: updatedRows, error: updateErr } = await supabase
+      .from('tenant_lending_rules')
+      .update({
         min_loan_amount: updated.minLoanAmount,
         max_loan_amount: updated.maxLoanAmount,
         max_financed_percentage: updated.maxFinancedPercentage,
@@ -170,9 +170,28 @@ export async function updateTenantLendingRules(
         accepted_property_types: updated.acceptedPropertyTypes,
         early_cancellation_policy: updated.earlyCancellationPolicy,
         updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'tenant_id' }
-    );
+      })
+      .eq('tenant_id', tenantId)
+      .select('id');
+
+    if (!updateErr && updatedRows && updatedRows.length > 0) {
+      return updated;
+    }
+
+    await supabase.from('tenant_lending_rules').insert({
+      tenant_id: tenantId,
+      min_loan_amount: updated.minLoanAmount,
+      max_loan_amount: updated.maxLoanAmount,
+      max_financed_percentage: updated.maxFinancedPercentage,
+      min_term_months: updated.minTermMonths,
+      max_term_months: updated.maxTermMonths,
+      available_terms: updated.availableTerms,
+      default_rate: updated.defaultRate,
+      rate_type: updated.rateType,
+      repayment_modes: updated.repaymentModes,
+      accepted_property_types: updated.acceptedPropertyTypes,
+      early_cancellation_policy: updated.earlyCancellationPolicy,
+    });
   } catch {
     // En pruebas locales sin DB, la memoria es autoritativa
   }

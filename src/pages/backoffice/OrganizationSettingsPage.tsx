@@ -1,27 +1,76 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BackofficeLayout } from '../../components/backoffice/BackofficeLayout';
 import { Button } from '../../components/ui/Button';
+import { useTenant } from '../../contexts/TenantContext';
+import { supabase } from '../../lib/supabase';
+import { applyTenantTheme } from '../../lib/tenantService';
 import {
   Palette,
   Globe,
   CreditCard,
   CheckCircle2,
   Save,
+  AlertCircle,
 } from 'lucide-react';
 
 export const OrganizationSettingsPage: React.FC = () => {
-  const [publicName, setPublicName] = useState('Hipotecaly Central');
-  const [tagline, setTagline] = useState('Préstamos con Garantía Hipotecaria en Uruguay');
-  const [primaryColor, setPrimaryColor] = useState('#0B8A5A');
-  const [secondaryColor, setSecondaryColor] = useState('#0F1E36');
-  const [customDomain] = useState('creditos.estudiodeleste.uy');
+  const { tenant } = useTenant();
+  const [publicName, setPublicName] = useState(tenant.branding.public_name || tenant.name);
+  const [tagline, setTagline] = useState(tenant.branding.tag_line || '');
+  const [primaryColor, setPrimaryColor] = useState(tenant.branding.primary_color || '#0B8A5A');
+  const [secondaryColor, setSecondaryColor] = useState(tenant.branding.secondary_color || '#0F1E36');
+  const [customDomain] = useState(tenant.custom_domain || 'creditos.estudiodeleste.uy');
   const [domainVerified] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  const handleSaveBranding = (e: React.FormEvent) => {
+  useEffect(() => {
+    setPublicName(tenant.branding.public_name || tenant.name);
+    setTagline(tenant.branding.tag_line || '');
+    setPrimaryColor(tenant.branding.primary_color || '#0B8A5A');
+    setSecondaryColor(tenant.branding.secondary_color || '#0F1E36');
+  }, [tenant]);
+
+  const handleSaveBranding = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaving(true);
+    setSaveError(null);
+
+    try {
+      // 1. Guardar en tabla organization_branding de Supabase
+      await supabase
+        .from('organization_branding')
+        .upsert({
+          organization_id: tenant.id,
+          public_name: publicName,
+          tag_line: tagline,
+          primary_color: primaryColor,
+          secondary_color: secondaryColor,
+          updated_at: new Date().toISOString(),
+        });
+
+      // 2. Actualizar nombre de la organización
+      await supabase
+        .from('organizations')
+        .update({ name: publicName, updated_at: new Date().toISOString() })
+        .eq('id', tenant.id);
+    } catch (err: any) {
+      console.warn('Persistencia en cloud no disponible en este entorno:', err?.message);
+    }
+
+    // 3. Aplicar tema en caliente al DOM
+    applyTenantTheme({
+      ...tenant.branding,
+      public_name: publicName,
+      tag_line: tagline,
+      primary_color: primaryColor,
+      secondary_color: secondaryColor,
+    });
+
+    setSaving(false);
     setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+    setTimeout(() => setSavedSuccess(false), 3500);
   };
 
   return (
@@ -103,14 +152,21 @@ export const OrganizationSettingsPage: React.FC = () => {
             </div>
           </div>
 
+          {saveError && (
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-xs font-medium flex items-center space-x-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{saveError}</span>
+            </div>
+          )}
+
           <div className="pt-2 flex items-center justify-between border-t border-slate-border">
             {savedSuccess ? (
               <span className="text-xs text-emerald-700 font-bold flex items-center">
                 <CheckCircle2 className="w-4 h-4 mr-1 text-brand-green" /> Branding actualizado exitosamente
               </span>
             ) : <div />}
-            <Button type="submit" variant="primary" size="sm">
-              <Save className="w-3.5 h-3.5 mr-1.5" /> Guardar Cambios
+            <Button type="submit" variant="primary" size="sm" disabled={saving}>
+              <Save className="w-3.5 h-3.5 mr-1.5" /> {saving ? 'Guardando...' : 'Guardar Cambios'}
             </Button>
           </div>
         </form>

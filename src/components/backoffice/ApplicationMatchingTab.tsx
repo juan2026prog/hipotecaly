@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../ui/Button';
+import { supabase } from '../../lib/supabase';
 import {
   Opportunity,
   runMatchingForApplication,
@@ -58,7 +59,7 @@ export const ApplicationMatchingTab: React.FC<ApplicationMatchingTabProps> = ({
   const [disclosing, setDisclosing] = useState(false);
   const [disclosureSuccess, setDisclosureSuccess] = useState(false);
 
-  // Ofertas de muestra o reales para este expediente
+  // Ofertas de financiamiento para este expediente
   const [offers, setOffers] = useState<Offer[]>([
     {
       id: 'off-demo-1',
@@ -85,7 +86,30 @@ export const ApplicationMatchingTab: React.FC<ApplicationMatchingTabProps> = ({
 
   useEffect(() => {
     loadOpportunities();
+    loadOffers();
   }, [applicationId]);
+
+  const loadOffers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('offers')
+        .select('*, lender:lenders(display_name, name)')
+        .eq('application_id', applicationId);
+      if (!error && data && data.length > 0) {
+        setOffers(
+          data.map((o: any) => ({
+            ...o,
+            lender_name: o.lender?.display_name || o.lender?.name || 'Prestamista Asociado',
+            estimated_monthly_payment:
+              o.estimated_monthly_payment ||
+              Math.round(o.amount * (o.interest_rate / 100 / 12)),
+          }))
+        );
+      }
+    } catch {
+      // Mantener fallback controlado
+    }
+  };
 
   const loadOpportunities = async () => {
     setLoading(true);
@@ -99,19 +123,20 @@ export const ApplicationMatchingTab: React.FC<ApplicationMatchingTabProps> = ({
   const handleRunMatching = async () => {
     setLoading(true);
     const res = await runMatchingForApplication(applicationId);
-    if (res.opportunities) {
+    if (res.opportunities.length > 0) {
       setOpportunities(res.opportunities);
     }
     setLoading(false);
   };
 
-  const handleToggleSelect = (id: string) => {
+  const handleToggleSelect = (oppId: string) => {
     setSelectedOppIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+      prev.includes(oppId) ? prev.filter((id) => id !== oppId) : [...prev, oppId]
     );
   };
 
   const handleSendOpportunities = async () => {
+    if (selectedOppIds.length === 0) return;
     setSending(true);
     const res = await sendOpportunitiesToLenders(selectedOppIds);
     setSending(false);
@@ -119,7 +144,7 @@ export const ApplicationMatchingTab: React.FC<ApplicationMatchingTabProps> = ({
       setSentSuccess(true);
       setShowPreviewModal(false);
       setSelectedOppIds([]);
-      await loadOpportunities();
+      loadOpportunities();
       setTimeout(() => setSentSuccess(false), 3500);
     }
   };
@@ -129,6 +154,14 @@ export const ApplicationMatchingTab: React.FC<ApplicationMatchingTabProps> = ({
     setOffers((prev) =>
       prev.map((o) => (o.id === offerId ? { ...o, status: 'presented' } : o))
     );
+    try {
+      await supabase
+        .from('applications')
+        .update({ status: 'offer_available', updated_at: new Date().toISOString() })
+        .eq('id', applicationId);
+    } catch {
+      // Fallback
+    }
   };
 
   const handleAuthorizeDisclosure = async (e: React.FormEvent) => {

@@ -136,10 +136,12 @@ test.describe("GATE 20: HIPOTECALY AI CORE — Browser UI & UX Certification", (
 
     // 1. Interceptar endpoints API con respuestas mock representativas
     await page.route("**/rest/v1/ai_provider_settings*", async (route) => {
+      const isSingle = route.request().headers()["accept"]?.includes("vnd.pgrst.object+json");
+      const record = { provider: "openai", ai_enabled: true, is_configured: true, last_test_status: "PASS" };
       await route.fulfill({
         status: 200,
-        contentType: "application/json",
-        body: JSON.stringify([{ provider: "openai", ai_enabled: true, is_configured: true, last_test_status: "PASS" }])
+        contentType: isSingle ? "application/vnd.pgrst.object+json" : "application/json",
+        body: JSON.stringify(isSingle ? record : [record])
       });
     });
 

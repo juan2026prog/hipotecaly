@@ -102,13 +102,16 @@ export const SuperAdminTenantsPage: React.FC = () => {
 
   const handleUpdatePercentage = async (newPercent: number) => {
     setSavingRule(true);
-    const updated = await updateTenantLendingRules(selectedTenantId, {
-      maxFinancedPercentage: newPercent,
-    });
-    setRules(updated);
-    setSavingRule(false);
-    setRuleSavedToast(true);
-    setTimeout(() => setRuleSavedToast(false), 3000);
+    try {
+      const updated = await updateTenantLendingRules(selectedTenantId, {
+        maxFinancedPercentage: newPercent,
+      });
+      setRules(updated);
+      setRuleSavedToast(true);
+      setTimeout(() => setRuleSavedToast(false), 3500);
+    } finally {
+      setSavingRule(false);
+    }
   };
 
   const handleResetNovaDemo = async () => {
@@ -431,7 +434,7 @@ export const SuperAdminTenantsPage: React.FC = () => {
                           : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
                       }`}
                     >
-                      {rules.maxFinancedPercentage === val ? `Límite ${val}% ✓` : `Fijar en ${val}%`}
+                      {rules.maxFinancedPercentage === val ? `Fijar en ${val}% (Activo ✓)` : `Fijar en ${val}%`}
                     </button>
                   ))}
                 </div>

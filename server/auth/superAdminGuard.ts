@@ -23,13 +23,21 @@ export async function verifySuperAdmin(req: any): Promise<SuperAdminAuthResult> 
   const authHeader = req.headers?.authorization || req.headers?.Authorization;
   const customAdminKey = req.headers?.['x-super-admin-key'] || req.headers?.['X-Super-Admin-Key'];
 
-  // Soporte para clave de servicio de Super Admin en desarrollo/CI
-  const envAdminKey = process.env.SUPER_ADMIN_SECRET_KEY || 'hipotecaly-superadmin-secret-live-2026';
-  if (customAdminKey && customAdminKey === envAdminKey) {
+  // Soporte para clave de servicio de Super Admin vía variable de entorno segura (sin defaults hardcodeados)
+  const envAdminKey = process.env.SUPER_ADMIN_SECRET_KEY;
+  if (customAdminKey) {
+    if (envAdminKey && customAdminKey === envAdminKey) {
+      return {
+        authorized: true,
+        adminId: 'a1111111-1111-1111-1111-111111111111',
+        userEmail: 'superadmin@hipotecaly.uy',
+      };
+    }
+    // FAIL CLOSED: Si no está configurada o no coincide exactamente, rechazar
     return {
-      authorized: true,
-      adminId: 'a1111111-1111-1111-1111-111111111111',
-      userEmail: 'superadmin@hipotecaly.uy',
+      authorized: false,
+      status: 401,
+      error: 'Clave de administración no válida o no configurada en el servidor (Fail-Closed).',
     };
   }
 

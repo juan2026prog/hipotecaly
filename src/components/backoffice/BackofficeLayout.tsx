@@ -17,10 +17,12 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTenant } from '../../contexts/TenantContext';
 
 export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: string }> = ({ children }) => {
   const location = useLocation();
   const { signOut } = useAuth();
+  const { tenant } = useTenant();
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [useDemoDataset, setUseDemoDataset] = useState(false);
 
@@ -29,6 +31,7 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
     { name: 'Solicitudes', href: '/app/solicitudes', icon: FileText },
     { name: 'Expedientes', href: '/app/solicitudes', icon: FolderKanban },
     { name: 'Clientes', href: '/app/clientes', icon: Users },
+    { name: 'Leads SaaS', href: '/app/leads', icon: Users },
     { name: 'Propiedades', href: '/app/propiedades', icon: Building2 },
     { name: 'Prestamistas', href: '/app/prestamistas', icon: Users },
     { name: 'Valuaciones', href: '/app/tasaciones', icon: Compass },
@@ -57,7 +60,7 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
             </div>
             <div>
               <span className="font-extrabold text-base tracking-tight text-white block leading-none">
-                HIPOTECALY
+                {tenant.branding.public_name || 'HIPOTECALY'}
               </span>
               <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mt-0.5">
                 Backoffice Multi-Tenant
@@ -66,15 +69,17 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
           </Link>
         </div>
 
-        {/* Tenant Selector Pill */}
+        {/* Tenant Selector Pill Dinámico */}
         <div className="px-4 py-3 border-b border-navy-border/40">
           <div className="bg-navy-surface p-2.5 rounded-xl border border-navy-border flex items-center justify-between text-xs">
             <div className="flex items-center space-x-2 truncate">
               <div className="w-2 h-2 rounded-full bg-brand-green"></div>
-              <span className="font-semibold text-white truncate">HIPOTECALY Matriz</span>
+              <span className="font-semibold text-white truncate">
+                {tenant.branding.public_name || tenant.name}
+              </span>
             </div>
-            <span className="text-[10px] bg-white/10 text-slate-300 px-1.5 py-0.5 rounded font-mono">
-              Tenant #1
+            <span className="text-[10px] bg-white/10 text-slate-300 px-1.5 py-0.5 rounded font-mono truncate max-w-[80px]">
+              {tenant.slug}
             </span>
           </div>
         </div>

@@ -18,18 +18,18 @@ export const AI_MODELS: {
   deep: ModelProfile;
 } = {
   extraction: {
-    name: 'gpt-4o-mini',
-    fallback: 'gpt-4o-mini',
+    name: 'gpt-5.6-luna',
+    fallback: 'gpt-5.6-luna',
     description: 'Extracción masiva, clasificación documental, OCR y tareas repetitivas estructuradas',
   },
   reasoning: {
-    name: 'gpt-4o',
-    fallback: 'gpt-4o',
+    name: 'gpt-5.6-terra',
+    fallback: 'gpt-5.6-terra',
     description: 'Cruces documentales, underwriting, consistencia, tasación preliminar y semáforos',
   },
   deep: {
-    name: 'o3-mini',
-    fallback: 'o3-mini',
+    name: 'gpt-5.6-sol',
+    fallback: 'gpt-5.6-sol',
     description: 'Análisis de alta complejidad, contradicciones severas o solicitud explícita de revisión profunda',
   },
 };
@@ -46,44 +46,23 @@ export interface ModelPricing {
 
 export const DEFAULT_MODEL_PRICING: Record<string, ModelPricing> = {
   'gpt-5.6-luna': {
-    costInputPerMillionUsd: 0.15,
-    costCachedInputPerMillionUsd: 0.075,
-    costOutputPerMillionUsd: 0.60,
+    costInputPerMillionUsd: 0.20,
+    costCachedInputPerMillionUsd: 0.02,
+    costOutputPerMillionUsd: 1.20,
     costPerSearchUsd: 0.01,
     standardCaseCostUsd: AI_STANDARD_CASE_COST_USD,
   },
   'gpt-5.6-terra': {
-    costInputPerMillionUsd: 2.50,
-    costCachedInputPerMillionUsd: 1.25,
-    costOutputPerMillionUsd: 10.00,
+    costInputPerMillionUsd: 2.00,
+    costCachedInputPerMillionUsd: 0.20,
+    costOutputPerMillionUsd: 12.00,
     costPerSearchUsd: 0.01,
     standardCaseCostUsd: AI_STANDARD_CASE_COST_USD,
   },
   'gpt-5.6-sol': {
-    costInputPerMillionUsd: 5.00,
-    costCachedInputPerMillionUsd: 2.50,
+    costInputPerMillionUsd: 4.00,
+    costCachedInputPerMillionUsd: 0.40,
     costOutputPerMillionUsd: 20.00,
-    costPerSearchUsd: 0.01,
-    standardCaseCostUsd: AI_STANDARD_CASE_COST_USD,
-  },
-  'gpt-4o-mini': {
-    costInputPerMillionUsd: 0.15,
-    costCachedInputPerMillionUsd: 0.075,
-    costOutputPerMillionUsd: 0.60,
-    costPerSearchUsd: 0.01,
-    standardCaseCostUsd: AI_STANDARD_CASE_COST_USD,
-  },
-  'gpt-4o': {
-    costInputPerMillionUsd: 2.50,
-    costCachedInputPerMillionUsd: 1.25,
-    costOutputPerMillionUsd: 10.00,
-    costPerSearchUsd: 0.01,
-    standardCaseCostUsd: AI_STANDARD_CASE_COST_USD,
-  },
-  'o3-mini': {
-    costInputPerMillionUsd: 1.10,
-    costCachedInputPerMillionUsd: 0.55,
-    costOutputPerMillionUsd: 4.40,
     costPerSearchUsd: 0.01,
     standardCaseCostUsd: AI_STANDARD_CASE_COST_USD,
   },

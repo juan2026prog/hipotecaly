@@ -44,7 +44,7 @@ flowchart TD
     subgraph CoreEngine["HIPOTECALY AI CORE & MOTOR DE CRÉDITO"]
         Orchestrator["hipotecalyAiOrchestrator"]
         Agents["DocAgent | Valuation | Underwriting | Risk | Memory3"]
-        OpenAIAPI["OpenAI API Real (gpt-4o-mini, gpt-4o, o3-mini)"]
+        OpenAIAPI["OpenAI API Real (gpt-5.6-luna, gpt-5.6-terra, gpt-5.6-sol)"]
         WalletCasos["aiWalletService (Débito atómico en CASOS)"]
     end
 
@@ -93,7 +93,7 @@ Todos los endpoints exigen autenticación server-side con rol global `SUPER_ADMI
 | `/api/admin/ai/status` | `GET` | Devuelve estado, modelos y clave enmascarada (`••••••••••••••••4F2A`). | `Cache-Control: no-store`. Nunca expone la clave. |
 | `/api/admin/ai/openai-key` | `POST` | Valida clave contra OpenAI (`models.list()`) y la cifra en Supabase Vault. | Falla atómica si OpenAI la rechaza. No reemplaza clave previa si el test falla. |
 | `/api/admin/ai/openai-key` | `DELETE` | Elimina la clave de `vault.secrets` y apaga el Master Switch. | Exige confirmación. Invalida caché server-side. |
-| `/api/admin/ai/test-connection` | `POST` | Ejecuta prueba técnica y verifica accesibilidad individual de cada modelo (`gpt-4o-mini`, `gpt-4o`, `o3-mini`). | Reporta latencia en ms y modelos activos. |
+| `/api/admin/ai/test-connection` | `POST` | Ejecuta prueba técnica y verifica accesibilidad individual de cada modelo (`gpt-5.6-luna`, `gpt-5.6-terra`, `gpt-5.6-sol`). | Reporta latencia en ms y modelos activos. |
 | `/api/admin/ai/activate` | `POST` | Enciende el Master Switch (`ai_enabled = true`). | Bloqueado si `is_configured = false` o `last_test_status != 'PASS'`. |
 | `/api/admin/ai/deactivate` | `POST` | Apaga el Master Switch (`ai_enabled = false`). | Conserva la clave en Vault sin destruirla. |
 | `/api/admin/ai/health-check` | `POST` | Ejecuta consulta real mínima a OpenAI y calcula costo/tokens. | **0 CASOS descontados**. Auditoría: `ADMIN_HEALTH_CHECK`. |
@@ -190,7 +190,7 @@ Para iniciar operaciones comerciales con HIPOTECALY AI en producción:
 2. Ingresar a `/admin/ai` y seleccionar la pestaña **Configuración OpenAI & Vault**.
 3. En el campo **OpenAI API Key**, pegar la clave productiva (`sk-proj-...`).
 4. Hacer clic en **[ PROBAR Y GUARDAR ]**. El sistema valida la clave contra OpenAI en milisegundos y la almacena cifrada en Supabase Vault.
-5. Hacer clic en **[ Probar conexión ]** para verificar la accesibilidad de `gpt-4o-mini`, `gpt-4o` y `o3-mini`.
+5. Hacer clic en **[ Probar conexión ]** para verificar la accesibilidad de `gpt-5.6-luna`, `gpt-5.6-terra` y `gpt-5.6-sol`.
 6. Conmutar el **Master Switch** a la posición **[ ACTIVAR HIPOTECALY AI ]**.
 7. Hacer clic en **[ EJECUTAR PRUEBA AI ]** para verificar la latencia y respuesta en tiempo real (consumo técnico con 0 CASOS debitados).
 

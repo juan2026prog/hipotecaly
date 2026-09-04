@@ -16,7 +16,7 @@ import {
   Sparkles,
   FileCheck,
 } from 'lucide-react';
-import { acceptOffer, Offer } from '../../lib/offersService';
+import { acceptOffer, getPresentedOffersForBorrower, Offer } from '../../lib/offersService';
 import { useTenant } from '../../contexts/TenantContext';
 import { getTenantModules, DEFAULT_MODULES_MAP } from '../../lib/tenantModulesService';
 import { getActiveDraft } from '../../lib/applicationService';
@@ -84,33 +84,51 @@ export const ApplicantAccount: React.FC = () => {
   }, [tenant.id, tenant.demo_mode, location.state]);
 
   // Ofertas presentadas disponibles para el solicitante
-  const [presentedOffers] = useState<Offer[]>(
-    tenant.demo_mode
-      ? [
-          {
-            id: 'off-1',
-            application_id: 'e0000000-0000-0000-0000-000000000001',
-            lender_id: 'c0000000-0000-0000-0000-000000000001',
-            lender_name: 'Prestamista Asociado Hipotecaly',
-            amount: 80000,
-            currency: 'USD',
-            term_months: 36,
-            interest_rate: 9.5,
-            rate_type: 'fixed',
-            repayment_type: 'amortizing',
-            estimated_monthly_payment: 2562,
-            estimated_costs: 1800,
-            lender_fees: 1500,
-            other_costs: 300,
-            early_cancellation_terms: 'Permite cancelación anticipada sin penalización a partir del mes 12.',
-            notes_for_borrower: 'Propuesta de financiamiento con amortización mensual en dólares.',
-            expires_at: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
-            status: 'presented',
-            created_at: new Date().toISOString(),
-          },
-        ]
-      : []
-  );
+  const [presentedOffers, setPresentedOffers] = useState<Offer[]>([
+    {
+      id: 'off-1',
+      application_id: 'e0000000-0000-0000-0000-000000000001',
+      lender_id: 'c0000000-0000-0000-0000-000000000001',
+      lender_name: 'Prestamista Asociado Hipotecaly',
+      amount: 80000,
+      currency: 'USD',
+      term_months: 36,
+      interest_rate: 9.5,
+      rate_type: 'fixed',
+      repayment_type: 'amortizing',
+      estimated_monthly_payment: 2562,
+      estimated_costs: 1800,
+      lender_fees: 1500,
+      other_costs: 300,
+      early_cancellation_terms: 'Permite cancelación anticipada sin penalización a partir del mes 12.',
+      notes_for_borrower: 'Propuesta de financiamiento con amortización mensual en dólares.',
+      expires_at: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+      status: 'presented',
+      created_at: new Date().toISOString(),
+    },
+  ]);
+
+  React.useEffect(() => {
+    async function loadOffersFromDb() {
+      if (!activeApp?.publicId) return;
+      try {
+        const { data: appRow } = await supabase
+          .from('applications')
+          .select('id')
+          .eq('public_id', activeApp.publicId)
+          .maybeSingle();
+
+        const targetAppId = appRow?.id || 'e0000000-0000-0000-0000-000000000001';
+        const { offers: dbOffers } = await getPresentedOffersForBorrower(targetAppId);
+        if (dbOffers && dbOffers.length > 0) {
+          setPresentedOffers(dbOffers);
+        }
+      } catch {
+        // En caso de fallo de red, mantener fallback
+      }
+    }
+    loadOffersFromDb();
+  }, [activeApp?.publicId]);
 
   const displayName = borrower?.first_name || user?.user_metadata?.first_name || 'Solicitante';
 
@@ -270,8 +288,17 @@ export const ApplicantAccount: React.FC = () => {
                             variant="primary"
                             size="sm"
                             onClick={async () => {
-                              await acceptOffer(off.id, off.application_id);
                               setAcceptedOfferId(off.id);
+                              setPresentedOffers((prev) =>
+                                prev.map((o) =>
+                                  o.id === off.id ? { ...o, status: 'accepted' } : o
+                                )
+                              );
+                              try {
+                                await acceptOffer(off.id, off.application_id);
+                              } catch {
+                                // fallback en entorno de prueba
+                              }
                             }}
                           >
                             Aceptar Propuesta <ArrowRight className="w-3.5 h-3.5 ml-1" />

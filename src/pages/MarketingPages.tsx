@@ -298,8 +298,54 @@ export const SaaSPricingPage: React.FC = () => {
 // ----------------------------------------------------------------------
 // /contacto
 // ----------------------------------------------------------------------
+import { leadsService } from '../lib/leadsService';
+import { useLocation } from 'react-router-dom';
+
 export const ContactPage: React.FC = () => {
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const isDemoRequest = searchParams.get('demo') === 'true';
+  const planParam = searchParams.get('plan');
+
+  const [fullName, setFullName] = React.useState('');
+  const [email, setEmail] = React.useState('');
+  const [phone, setPhone] = React.useState('');
+  const [companyName, setCompanyName] = React.useState('');
+  const [orgType, setOrgType] = React.useState('financiera');
+  const [message, setMessage] = React.useState(
+    isDemoRequest
+      ? 'Hola, quisiera agendar una demostración comercial guiada de HIPOTECALY SaaS y conocer las modalidades de implementación.'
+      : planParam
+      ? `Hola, estoy interesado en recibir información y propuesta para el Plan ${planParam.toUpperCase()}.`
+      : ''
+  );
+  const [submitting, setSubmitting] = React.useState(false);
   const [submitted, setSubmitted] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setErrorMessage(null);
+
+    const res = await leadsService.createLead({
+      full_name: fullName,
+      email,
+      phone,
+      company_name: companyName || fullName,
+      organization_type: orgType,
+      message,
+      source: isDemoRequest ? 'saas_demo_request' : 'saas_contact_page',
+      page: '/contacto' + location.search,
+    });
+
+    setSubmitting(false);
+    if (res.success) {
+      setSubmitted(true);
+    } else {
+      setErrorMessage(res.error || 'No se pudo enviar la consulta. Intente nuevamente.');
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -307,22 +353,24 @@ export const ContactPage: React.FC = () => {
       <main className="flex-1 py-12 md:py-20 max-w-3xl mx-auto px-4 sm:px-6 text-left">
         <div className="text-center space-y-3 mb-10">
           <span className="text-xs font-bold text-brand-green uppercase tracking-wider bg-brand-green-light px-3 py-1 rounded-full">
-            Contacto Directo
+            {isDemoRequest ? 'Demostración Comercial B2B' : 'Contacto Directo'}
           </span>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-navy tracking-tight">
-            Conversá con nuestro equipo
+            {isDemoRequest ? 'Agendá una Demo de HIPOTECALY SaaS' : 'Conversá con nuestro equipo'}
           </h1>
-          <p className="text-slate-muted text-sm sm:text-base">
-            Dejanos tu consulta o coordiná una reunión para conocer la plataforma.
+          <p className="text-slate-muted text-sm sm:text-base max-w-xl mx-auto">
+            {isDemoRequest
+              ? 'Conocé cómo digitalizar la originación, análisis crediticio y administración de expedientes para tu financiera o estudio.'
+              : 'Dejanos tu consulta o coordiná una reunión para conocer la plataforma.'}
           </p>
         </div>
 
         {submitted ? (
-          <div className="bg-brand-green-light/40 border border-brand-green/30 rounded-2xl p-8 text-center space-y-3">
+          <div className="bg-brand-green-light/40 border border-brand-green/30 rounded-2xl p-8 text-center space-y-3 shadow-card animate-in fade-in">
             <CheckCircle2 className="w-12 h-12 text-brand-green mx-auto" />
-            <h3 className="text-xl font-bold text-navy">Mensaje recibido</h3>
+            <h3 className="text-xl font-bold text-navy">Mensaje recibido con éxito</h3>
             <p className="text-slate-muted text-sm max-w-md mx-auto">
-              Muchas gracias por comunicarte con HIPOTECALY. Un asesor se pondrá en contacto contigo a la brevedad.
+              Muchas gracias por comunicarte con HIPOTECALY. Tu solicitud fue registrada y un asesor especializado se pondrá en contacto contigo a la brevedad.
             </p>
             <div className="pt-4">
               <Link to="/">
@@ -332,49 +380,101 @@ export const ContactPage: React.FC = () => {
           </div>
         ) : (
           <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              setSubmitted(true);
-            }}
+            onSubmit={handleSubmit}
             className="bg-white rounded-card p-6 sm:p-8 border border-slate-border shadow-card space-y-4"
           >
-            <div>
-              <label className="block text-sm font-semibold text-slate-text mb-1">Nombre completo</label>
-              <input
-                required
-                type="text"
-                placeholder="Juan Pérez"
-                className="w-full min-h-[48px] px-4 rounded-btn border border-slate-border text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
-              />
+            {errorMessage && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-xs font-medium">
+                {errorMessage}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-text mb-1">Nombre y apellido *</label>
+                <input
+                  required
+                  type="text"
+                  placeholder="Juan Pérez"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full min-h-[44px] px-3.5 rounded-btn border border-slate-border text-xs focus:outline-none focus:ring-2 focus:ring-brand-green"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-text mb-1">Email corporativo / personal *</label>
+                <input
+                  required
+                  type="email"
+                  placeholder="juan@estudio.com.uy"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full min-h-[44px] px-3.5 rounded-btn border border-slate-border text-xs focus:outline-none focus:ring-2 focus:ring-brand-green"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-slate-text mb-1">Email de contacto</label>
-              <input
-                required
-                type="email"
-                placeholder="juan@estudio.com.uy"
-                className="w-full min-h-[48px] px-4 rounded-btn border border-slate-border text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
-              />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-text mb-1">Empresa / Estudio / Entidad *</label>
+                <input
+                  required
+                  type="text"
+                  placeholder="Financiera del Este S.A."
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  className="w-full min-h-[44px] px-3.5 rounded-btn border border-slate-border text-xs focus:outline-none focus:ring-2 focus:ring-brand-green"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-text mb-1">Teléfono o WhatsApp</label>
+                <input
+                  type="tel"
+                  placeholder="+598 99 123 456"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full min-h-[44px] px-3.5 rounded-btn border border-slate-border text-xs focus:outline-none focus:ring-2 focus:ring-brand-green"
+                />
+              </div>
             </div>
+
             <div>
-              <label className="block text-sm font-semibold text-slate-text mb-1">Empresa / Estudio / Particular</label>
-              <input
-                type="text"
-                placeholder="Estudio Jurídico Pérez & Asoc."
-                className="w-full min-h-[48px] px-4 rounded-btn border border-slate-border text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
-              />
+              <label className="block text-xs font-bold text-slate-text mb-1">Tipo de organización</label>
+              <select
+                value={orgType}
+                onChange={(e) => setOrgType(e.target.value)}
+                className="w-full min-h-[44px] px-3 rounded-btn border border-slate-border text-xs bg-white text-navy focus:outline-none focus:ring-2 focus:ring-brand-green"
+              >
+                <option value="financiera">Financiera / Institución de Crédito</option>
+                <option value="prestamista">Prestamista Privado / Inversor</option>
+                <option value="estudio_notarial">Estudio Notarial / Jurídico</option>
+                <option value="broker">Broker / Intermediario Hipotecario</option>
+                <option value="particular">Propietario / Solicitante Particular</option>
+                <option value="otro">Otro</option>
+              </select>
             </div>
+
             <div>
-              <label className="block text-sm font-semibold text-slate-text mb-1">Mensaje o consulta</label>
+              <label className="block text-xs font-bold text-slate-text mb-1">Mensaje o detalles de tu consulta *</label>
               <textarea
                 rows={4}
                 required
-                placeholder="Quisiera conocer más sobre las condiciones del préstamo o solicitar una demo del sistema SaaS..."
-                className="w-full p-4 rounded-btn border border-slate-border text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
+                placeholder="Detallá tu volumen de operaciones o qué tipo de solución necesitás..."
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                className="w-full p-3.5 rounded-btn border border-slate-border text-xs focus:outline-none focus:ring-2 focus:ring-brand-green"
               />
             </div>
-            <Button type="submit" variant="primary" size="lg" fullWidth className="mt-2">
-              Enviar consulta
+
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              fullWidth
+              disabled={submitting}
+              className="mt-2"
+            >
+              {submitting ? 'Enviando solicitud...' : isDemoRequest ? 'Solicitar Demostración' : 'Enviar consulta'}
             </Button>
           </form>
         )}

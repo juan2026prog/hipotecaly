@@ -113,14 +113,14 @@ test.describe('SUPER ADMIN — OPENAI VAULT & MASTER SWITCH SYSTEM', () => {
           lastTestMessage: 'Conexión verificada en Supabase Vault.',
           secretSource: 'vault',
           configuredModels: {
-            extraction: 'gpt-4o-mini',
-            reasoning: 'gpt-4o',
-            deep: 'o3-mini',
+            extraction: 'gpt-5.6-luna',
+            reasoning: 'gpt-5.6-terra',
+            deep: 'gpt-5.6-sol',
           },
           modelsStatus: [
-            { role: 'Extracción / OCR', model: 'gpt-4o-mini', accessible: true },
-            { role: 'Razonamiento / Underwriting', model: 'gpt-4o', accessible: true },
-            { role: 'Análisis Profundo', model: 'o3-mini', accessible: true },
+            { role: 'Extracción / OCR', model: 'gpt-5.6-luna', accessible: true },
+            { role: 'Razonamiento / Underwriting', model: 'gpt-5.6-terra', accessible: true },
+            { role: 'Análisis Profundo', model: 'gpt-5.6-sol', accessible: true },
           ],
           systemHealth: {
             supabaseConnected: true,
@@ -144,9 +144,9 @@ test.describe('SUPER ADMIN — OPENAI VAULT & MASTER SWITCH SYSTEM', () => {
           testedAt: new Date().toISOString(),
           latencyMs: 125,
           models: [
-            { role: 'Extracción / OCR', model: 'gpt-4o-mini', accessible: true },
-            { role: 'Razonamiento / Underwriting', model: 'gpt-4o', accessible: true },
-            { role: 'Análisis Profundo', model: 'o3-mini', accessible: true },
+            { role: 'Extracción / OCR', model: 'gpt-5.6-luna', accessible: true },
+            { role: 'Razonamiento / Underwriting', model: 'gpt-5.6-terra', accessible: true },
+            { role: 'Análisis Profundo', model: 'gpt-5.6-sol', accessible: true },
           ],
         }),
       });
@@ -161,7 +161,7 @@ test.describe('SUPER ADMIN — OPENAI VAULT & MASTER SWITCH SYSTEM', () => {
           success: true,
           message: 'HIPOTECALY AI respondió correctamente.',
           reply: 'OK: HIPOTECALY AI CORE en línea y operativo.',
-          model: 'gpt-4o-mini',
+          model: 'gpt-5.6-luna',
           tokens: { prompt: 18, completion: 8, total: 26 },
           costUsd: 0.00004,
           latencyMs: 135,
@@ -188,9 +188,9 @@ test.describe('SUPER ADMIN — OPENAI VAULT & MASTER SWITCH SYSTEM', () => {
     await expect(page.locator('text=Conexión con OpenAI verificada con éxito.')).toBeVisible();
 
     // 5. Verificar estado de modelos
-    await expect(page.locator('text=gpt-4o-mini').first()).toBeVisible();
-    await expect(page.locator('text=gpt-4o').first()).toBeVisible();
-    await expect(page.locator('text=o3-mini').first()).toBeVisible();
+    await expect(page.locator('text=gpt-5.6-luna').first()).toBeVisible();
+    await expect(page.locator('text=gpt-5.6-terra').first()).toBeVisible();
+    await expect(page.locator('text=gpt-5.6-sol').first()).toBeVisible();
 
     // 6. Probar botón "EJECUTAR PRUEBA AI" (Health Check sin descontar CASOS)
     const healthCheckBtn = page.locator('button:has-text("EJECUTAR PRUEBA AI")');
@@ -205,13 +205,18 @@ test.describe('SUPER ADMIN — OPENAI VAULT & MASTER SWITCH SYSTEM', () => {
   // ----------------------------------------------------------------------------
   test('9. Degradación: Si AI está desactivada, muestra aviso informativo sin romper el expediente', async ({ page }) => {
     // Interceptar ai_provider_settings simulando ai_enabled: false
-    await page.route('**/rest/v1/ai_provider_settings*', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([{ provider: 'openai', ai_enabled: false, is_configured: true }]),
-      });
-    });
+    await page.route(
+      (url) => url.href.includes('rest/v1/ai_provider_settings'),
+      async (route) => {
+        const isSingle = route.request().headers()['accept']?.includes('vnd.pgrst.object+json');
+        const record = { provider: 'openai', ai_enabled: false, is_configured: true };
+        await route.fulfill({
+          status: 200,
+          contentType: isSingle ? 'application/vnd.pgrst.object+json' : 'application/json',
+          body: JSON.stringify(isSingle ? record : [record]),
+        });
+      }
+    );
 
     // Navegar al expediente de prueba
     await page.goto('/app/solicitudes/e0000000-0000-0000-0000-000000000001');

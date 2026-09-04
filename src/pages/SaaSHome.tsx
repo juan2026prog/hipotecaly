@@ -37,10 +37,10 @@ export const SaaSHome: React.FC = () => {
             <div className="lg:col-span-6 space-y-6 text-left">
               <div>
                 <span className="text-xs sm:text-sm font-bold tracking-wider text-brand-green uppercase block mb-3">
-                  TECNOLOGÍA HIPOTECARIA PARA PROFESIONALES
+                  LA PLATAFORMA HIPOTECARIA PARA PROFESIONALES
                 </span>
                 <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-navy leading-[1.12]">
-                  Digitalizá todo tu negocio hipotecario.{' '}
+                  Digitalizá todo tu negocio hipotecario en una sola plataforma.{' '}
                   <span className="text-brand-green">Sin cambiar cómo prestás.</span>
                 </h1>
                 <p className="text-base sm:text-lg text-slate-muted font-normal leading-relaxed max-w-xl mt-4">
@@ -112,6 +112,32 @@ export const SaaSHome: React.FC = () => {
               </div>
             </div>
 
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================== */}
+      {/* BARRA NAVY SAAS: 4 PILARES ESTRUCTURALES                       */}
+      {/* ============================================================== */}
+      <section className="bg-navy py-10 md:py-12 text-white border-y border-navy-border">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+            <div className="text-left space-y-1">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-brand-green">CAPTACIÓN</h3>
+              <p className="text-xs text-slate-300">Simulador inteligente y solicitudes web parametrizadas.</p>
+            </div>
+            <div className="text-left space-y-1">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-brand-green">ANÁLISIS</h3>
+              <p className="text-xs text-slate-300">Evaluación crediticia y análisis registral asistido.</p>
+            </div>
+            <div className="text-left space-y-1">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-brand-green">GESTIÓN</h3>
+              <p className="text-xs text-slate-300">Backoffice notarial, expedientes y workflow integral.</p>
+            </div>
+            <div className="text-left space-y-1">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-brand-green">WHITE LABEL</h3>
+              <p className="text-xs text-slate-300">Dominio propio, colores institucionales y marca exclusiva.</p>
+            </div>
           </div>
         </div>
       </section>

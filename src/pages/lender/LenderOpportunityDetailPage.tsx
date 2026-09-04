@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useParams } from 'react-router-dom';
 import { LenderLayout } from '../../components/layout/LenderLayout';
 import { Button } from '../../components/ui/Button';
 import { CurrencyInput } from '../../components/ui/CurrencyInput';
 import { saveOfferDraft, submitOfferByLender } from '../../lib/offersService';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -13,10 +14,28 @@ import {
 } from 'lucide-react';
 
 export const LenderOpportunityDetailPage: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
   const [status, setStatus] = useState<'sent' | 'interested' | 'declined' | 'offer_submitted'>('sent');
   const [showDeclineModal, setShowDeclineModal] = useState(false);
   const [declineReason, setDeclineReason] = useState('LTV');
   const [showOfferModal, setShowOfferModal] = useState(false);
+
+  // Datos de la oportunidad
+  const [oppData, setOppData] = useState({
+    public_id: 'HIP-2026-00124',
+    zone: 'Carrasco · Montevideo',
+    property_type: 'Casa',
+    match_score: 94,
+    requested_amount: 100000,
+    preliminary_valuation: 300000,
+    ltv: 33.3,
+    term_months: 36,
+    surface: 240,
+    bedrooms: 3,
+    bathrooms: 2,
+    application_id: 'e0000000-0000-0000-0000-000000000001',
+    lender_id: 'c0000000-0000-0000-0000-000000000001',
+  });
 
   // Formulario de Oferta
   const [offerAmount, setOfferAmount] = useState<number>(100000);
@@ -28,22 +47,97 @@ export const LenderOpportunityDetailPage: React.FC = () => {
   const [submittingOffer, setSubmittingOffer] = useState(false);
   const [offerSuccess, setOfferSuccess] = useState(false);
 
-  const handleInterest = () => {
+  useEffect(() => {
+    if (!id || id === 'opp-1' || !isSupabaseConfigured) return;
+
+    async function loadOpportunity() {
+      try {
+        const { data, error } = await supabase
+          .from('opportunities')
+          .select(`
+            id,
+            status,
+            match_score,
+            lender_id,
+            application:applications(
+              id,
+              public_id,
+              requested_amount,
+              currency,
+              term_months,
+              properties(
+                city,
+                department,
+                property_type,
+                estimated_value,
+                surface_sqm,
+                bedrooms,
+                bathrooms
+              )
+            )
+          `)
+          .eq('id', id)
+          .maybeSingle();
+
+        if (!error && data) {
+          const app = (data as any).application || {};
+          const prop = Array.isArray(app.properties) ? app.properties[0] : (app.properties || {});
+          const requested = Number(app.requested_amount) || 100000;
+          const val = Number(prop.estimated_value) || (requested * 2.5);
+          const ltv = val > 0 ? Math.round((requested / val) * 1000) / 10 : 35;
+          const zone = [prop.city, prop.department].filter(Boolean).join(' · ') || 'Montevideo';
+
+          setOppData({
+            public_id: app.public_id || `HIP-${(id || '').slice(0, 8).toUpperCase()}`,
+            zone,
+            property_type: prop.property_type || 'Casa',
+            match_score: Number(data.match_score) || 90,
+            requested_amount: requested,
+            preliminary_valuation: val,
+            ltv,
+            term_months: Number(app.term_months) || 36,
+            surface: Number(prop.surface_sqm) || 240,
+            bedrooms: Number(prop.bedrooms) || 3,
+            bathrooms: Number(prop.bathrooms) || 2,
+            application_id: app.id || 'e0000000-0000-0000-0000-000000000001',
+            lender_id: data.lender_id || 'c0000000-0000-0000-0000-000000000001',
+          });
+          setOfferAmount(requested);
+          setOfferTerm(Number(app.term_months) || 36);
+          if (data.status) {
+            setStatus(data.status as any);
+          }
+        }
+      } catch (err) {
+        console.warn('Error al cargar oportunidad:', err);
+      }
+    }
+
+    loadOpportunity();
+  }, [id]);
+
+  const handleInterest = async () => {
     setStatus('interested');
+    if (id && id !== 'opp-1' && isSupabaseConfigured) {
+      await supabase.from('opportunities').update({ status: 'interested' }).eq('id', id);
+    }
   };
 
-  const handleDecline = (e: React.FormEvent) => {
+  const handleDecline = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatus('declined');
     setShowDeclineModal(false);
+    if (id && id !== 'opp-1' && isSupabaseConfigured) {
+      await supabase.from('opportunities').update({ status: 'declined' }).eq('id', id);
+    }
   };
 
   const handleSubmitOffer = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmittingOffer(true);
     const { offer } = await saveOfferDraft({
-      application_id: 'e0000000-0000-0000-0000-000000000001',
-      lender_id: 'c0000000-0000-0000-0000-000000000001',
+      application_id: oppData.application_id,
+      lender_id: oppData.lender_id,
       amount: offerAmount,
       currency: 'USD',
       term_months: offerTerm,
@@ -56,6 +150,9 @@ export const LenderOpportunityDetailPage: React.FC = () => {
 
     if (offer) {
       await submitOfferByLender(offer.id);
+      if (id && id !== 'opp-1' && isSupabaseConfigured) {
+        await supabase.from('opportunities').update({ status: 'offer_submitted' }).eq('id', id);
+      }
     }
 
     setSubmittingOffer(false);
@@ -100,16 +197,16 @@ export const LenderOpportunityDetailPage: React.FC = () => {
               <div className="flex items-start justify-between border-b border-slate-border pb-4">
                 <div>
                   <span className="font-mono text-xs font-bold bg-navy text-white px-2.5 py-1 rounded">
-                    HIP-2026-00124
+                    {oppData.public_id}
                   </span>
                   <h2 className="text-xl font-black text-navy mt-2">
-                    Carrasco · Montevideo
+                    {oppData.zone}
                   </h2>
-                  <p className="text-xs text-slate-500">Inmueble residencial tipo Casa independiente</p>
+                  <p className="text-xs text-slate-500">Inmueble residencial tipo {oppData.property_type}</p>
                 </div>
                 <div className="text-right">
                   <span className="text-[10px] text-slate-400 block uppercase font-bold">Match Score</span>
-                  <div className="text-2xl font-black text-brand-green">94<span className="text-xs text-slate-400 font-normal">/100</span></div>
+                  <div className="text-2xl font-black text-brand-green">{oppData.match_score}<span className="text-xs text-slate-400 font-normal">/100</span></div>
                 </div>
               </div>
 
@@ -117,24 +214,24 @@ export const LenderOpportunityDetailPage: React.FC = () => {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 <div className="p-3.5 bg-slate-bg rounded-xl border border-slate-border">
                   <span className="text-[10px] text-slate-400 block uppercase font-semibold">Monto Solicitado</span>
-                  <div className="text-lg font-black text-navy mt-0.5">USD 100.000</div>
+                  <div className="text-lg font-black text-navy mt-0.5">USD {oppData.requested_amount.toLocaleString('es-UY')}</div>
                 </div>
 
                 <div className="p-3.5 bg-slate-bg rounded-xl border border-slate-border">
                   <span className="text-[10px] text-slate-400 block uppercase font-semibold">Valuación Preliminar</span>
-                  <div className="text-lg font-black text-navy mt-0.5">USD 300.000</div>
-                  <span className="text-[10px] text-slate-500">Rango: 290k - 310k</span>
+                  <div className="text-lg font-black text-navy mt-0.5">USD {oppData.preliminary_valuation.toLocaleString('es-UY')}</div>
+                  <span className="text-[10px] text-slate-500">Estimación algorítmica</span>
                 </div>
 
                 <div className="p-3.5 bg-slate-bg rounded-xl border border-slate-border">
                   <span className="text-[10px] text-slate-400 block uppercase font-semibold">LTV Preliminar</span>
-                  <div className="text-lg font-black text-brand-green mt-0.5">33,3%</div>
+                  <div className="text-lg font-black text-brand-green mt-0.5">{oppData.ltv}%</div>
                   <span className="text-[10px] text-emerald-700">Límite: 40%</span>
                 </div>
 
                 <div className="p-3.5 bg-slate-bg rounded-xl border border-slate-border">
                   <span className="text-[10px] text-slate-400 block uppercase font-semibold">Plazo Solicitado</span>
-                  <div className="text-base font-bold text-navy mt-0.5">36 meses</div>
+                  <div className="text-base font-bold text-navy mt-0.5">{oppData.term_months} meses</div>
                 </div>
 
                 <div className="p-3.5 bg-slate-bg rounded-xl border border-slate-border">
@@ -153,9 +250,9 @@ export const LenderOpportunityDetailPage: React.FC = () => {
               <div className="space-y-3 pt-2">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-navy">Características del Inmueble</h4>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-slate-600">
-                  <div className="p-2.5 bg-slate-50 rounded-lg">Superficie: <strong>240 m²</strong></div>
-                  <div className="p-2.5 bg-slate-50 rounded-lg">Dormitorios: <strong>3</strong></div>
-                  <div className="p-2.5 bg-slate-50 rounded-lg">Baños: <strong>2</strong></div>
+                  <div className="p-2.5 bg-slate-50 rounded-lg">Superficie: <strong>{oppData.surface} m²</strong></div>
+                  <div className="p-2.5 bg-slate-50 rounded-lg">Dormitorios: <strong>{oppData.bedrooms}</strong></div>
+                  <div className="p-2.5 bg-slate-50 rounded-lg">Baños: <strong>{oppData.bathrooms}</strong></div>
                   <div className="p-2.5 bg-slate-50 rounded-lg">Estado: <strong>Muy bueno</strong></div>
                 </div>
               </div>

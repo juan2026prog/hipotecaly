@@ -13,10 +13,43 @@ export type ApplicationStatus =
   | 'property_analysis'
   | 'matching_lenders'
   | 'offer_available'
+  | 'offer_accepted'
   | 'formalization'
   | 'approved'
+  | 'funded'
   | 'rejected'
   | 'cancelled';
+
+export function getApplicationStatusLabel(status: ApplicationStatus | string): string {
+  switch (status) {
+    case 'draft':
+      return 'Borrador';
+    case 'submitted':
+      return 'Solicitud Recibida';
+    case 'info_review':
+      return 'Información en Revisión';
+    case 'property_analysis':
+      return 'Propiedad en Análisis';
+    case 'matching_lenders':
+      return 'Buscando Propuesta';
+    case 'offer_available':
+      return 'Propuesta Disponible';
+    case 'offer_accepted':
+      return 'Propuesta Aceptada';
+    case 'formalization':
+      return 'Formalización Notarial';
+    case 'approved':
+      return 'Aprobada';
+    case 'funded':
+      return 'Desembolsada';
+    case 'rejected':
+      return 'Rechazada';
+    case 'cancelled':
+      return 'Cancelada';
+    default:
+      return status || 'Desconocido';
+  }
+}
 
 export type PropertyType =
   | 'casa'

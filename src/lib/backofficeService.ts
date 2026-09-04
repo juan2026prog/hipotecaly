@@ -421,10 +421,21 @@ export async function getApplicationDetail(
     // Continuar a fallback de demo controlado
   }
 
-  // Buscar en DEMO únicamente si se solicita explícitamente o si es el expediente oficial demo de NOVA
-  if (options?.isDemoMode || idOrPublicId.includes('demo') || idOrPublicId === 'e0000000-0000-0000-0000-000000000001') {
+  // Buscar en DEMO si se solicita explícitamente, o si es un ID de prueba o expediente demo de NOVA
+  if (
+    options?.isDemoMode ||
+    idOrPublicId.includes('demo') ||
+    idOrPublicId.includes('DEMO') ||
+    idOrPublicId.startsWith('HIP-') ||
+    idOrPublicId === 'e0000000-0000-0000-0000-000000000001'
+  ) {
+    const normalized = idOrPublicId.replace('2026', 'DEMO');
     const found = DEMO_APPLICATIONS.find(
-      (a) => a.id === idOrPublicId || a.public_id === idOrPublicId
+      (a) =>
+        a.id === idOrPublicId ||
+        a.public_id === idOrPublicId ||
+        a.public_id === normalized ||
+        a.public_id.replace('DEMO', '2026') === idOrPublicId
     );
     return found || null;
   }

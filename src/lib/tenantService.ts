@@ -240,9 +240,12 @@ export async function resolveTenant(
           return loadedTenant;
         }
 
-        // SEGURIDAD: Si la consulta a Supabase se completó y la organización NO existe,
-        // se rechaza terminantemente cualquier inyección en localStorage.
+        // Si la organización no existe en Supabase, verificar si fue registrada en memoria
+        // (ej. tenants del sistema o creados dinámicamente en esta sesión)
         if (!error && !data) {
+          if (REGISTERED_TENANTS[slug]) {
+            return REGISTERED_TENANTS[slug];
+          }
           return NOT_FOUND_TENANT;
         }
       } catch {

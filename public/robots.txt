@@ -5,13 +5,18 @@ Allow: /prestamos
 Allow: /simulador
 Allow: /preguntas-frecuentes
 Allow: /nosotros
-Allow: /plataforma
-Allow: /plataforma/*
+Allow: /saas
+Allow: /saas/*
 Allow: /contacto
+Allow: /terminos
+Allow: /privacidad
+Allow: /seguridad
 
 # Rutas privadas no indexables
 Disallow: /app/
 Disallow: /app/*
+Disallow: /admin/
+Disallow: /admin/*
 Disallow: /mi-cuenta/
 Disallow: /mi-cuenta/*
 Disallow: /ingresar
@@ -27,5 +32,9 @@ Disallow: /lender/
 Disallow: /lender/*
 Disallow: /platform-admin/
 Disallow: /platform-admin/*
+Disallow: /demo/
+Disallow: /demo/*
+Disallow: /org/
+Disallow: /org/*
 
 Sitemap: https://hipotecaly.vercel.app/sitemap.xml

@@ -8,7 +8,6 @@ import { verifySuperAdmin } from '../../../server/auth/superAdminGuard';
 import { openAiSecretResolver } from '../../../server/ai/openAiSecretResolver';
 import { supabaseAdmin } from '../../../server/supabase';
 import { AI_MODELS, calculateTokenCost } from '../../../server/ai/config';
-import OpenAI from 'openai';
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -27,7 +26,7 @@ export default async function handler(req: any, res: any) {
     // 2. Resolver la API Key desde Vault o entorno
     const apiKey = await openAiSecretResolver.getOpenAiApiKey();
 
-    // 3. Determinar modelo para la prueba técnica (usar el modelo de extracción/OCR configurado)
+    // 3. Determinar modelo para la prueba técnica (usar el modelo de extracción/OCR configurado: gpt-5.6-luna)
     let modelToTest = AI_MODELS.extraction.name;
     try {
       const { data } = await supabaseAdmin
@@ -55,28 +54,64 @@ export default async function handler(req: any, res: any) {
       completionTokens = 9;
       totalTokens = 31;
     } else {
-      // Llamada REAL a OpenAI
-      const client = new OpenAI({ apiKey });
-      const completion = await client.chat.completions.create({
-        model: modelToTest,
-        messages: [
-          {
-            role: 'system',
-            content: 'Sos el evaluador de salud técnica de HIPOTECALY. Respondé de forma concisa confirmando operatividad.',
-          },
-          {
-            role: 'user',
-            content: 'Verificación de salud de HIPOTECALY AI. Confirmá estado.',
-          },
-        ],
-        max_tokens: 30,
-        temperature: 0.1,
+      // Llamada REAL a OpenAI usando OpenAI Responses API (con fallback a chat/completions)
+      let openAiRes = await fetch('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: modelToTest,
+          input: [
+            {
+              role: 'system',
+              content: 'Sos el evaluador de salud técnica de HIPOTECALY. Respondé de forma concisa confirmando operatividad.',
+            },
+            {
+              role: 'user',
+              content: 'Verificación de salud de HIPOTECALY AI. Confirmá estado.',
+            },
+          ],
+        }),
       });
 
-      promptTokens = completion.usage?.prompt_tokens || 20;
-      completionTokens = completion.usage?.completion_tokens || 8;
-      totalTokens = completion.usage?.total_tokens || (promptTokens + completionTokens);
-      replyText = completion.choices[0]?.message?.content || 'OK';
+      if (!openAiRes.ok && (openAiRes.status === 404 || openAiRes.status === 400)) {
+        // Fallback a Chat Completions si el endpoint responses no está habilitado para el modelo
+        openAiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: modelToTest,
+            messages: [
+              {
+                role: 'system',
+                content: 'Sos el evaluador de salud técnica de HIPOTECALY. Respondé de forma concisa confirmando operatividad.',
+              },
+              {
+                role: 'user',
+                content: 'Verificación de salud de HIPOTECALY AI. Confirmá estado.',
+              },
+            ],
+            max_tokens: 30,
+            temperature: 0.1,
+          }),
+        });
+      }
+
+      if (!openAiRes.ok) {
+        const errJson = await openAiRes.json().catch(() => ({}));
+        throw new Error(errJson?.error?.message || `HTTP ${openAiRes.status} al consultar OpenAI.`);
+      }
+
+      const json = await openAiRes.json();
+      promptTokens = json.usage?.prompt_tokens || json.usage?.input_tokens || 20;
+      completionTokens = json.usage?.completion_tokens || json.usage?.output_tokens || 8;
+      totalTokens = json.usage?.total_tokens || (promptTokens + completionTokens);
+      replyText = json.output?.[0]?.content?.[0]?.text || json.choices?.[0]?.message?.content || 'OK';
     }
 
     const latencyMs = Date.now() - start;

@@ -1,32 +1,104 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { LenderLayout } from '../../components/layout/LenderLayout';
 import { Clock, CheckCircle2 } from 'lucide-react';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+
+interface OfferItem {
+  id: string;
+  public_id: string;
+  zone: string;
+  amount: number;
+  currency: string;
+  rate: number;
+  term_months: number;
+  status: string;
+  created_at: string;
+}
+
+const DEMO_OFFERS: OfferItem[] = [
+  {
+    id: 'off-1',
+    public_id: 'HIP-2026-00124',
+    zone: 'Carrasco · Montevideo',
+    amount: 100000,
+    currency: 'USD',
+    rate: 9.5,
+    term_months: 36,
+    status: 'submitted',
+    created_at: 'Hoy',
+  },
+  {
+    id: 'off-2',
+    public_id: 'HIP-2026-00135',
+    zone: 'Ciudad de la Costa · Canelones',
+    amount: 80000,
+    currency: 'USD',
+    rate: 10.0,
+    term_months: 48,
+    status: 'presented',
+    created_at: 'Ayer',
+  },
+];
 
 export const LenderOffersPage: React.FC = () => {
-  const offers = [
-    {
-      id: 'off-1',
-      public_id: 'HIP-2026-00124',
-      zone: 'Carrasco · Montevideo',
-      amount: 100000,
-      currency: 'USD',
-      rate: 9.5,
-      term_months: 36,
-      status: 'submitted',
-      created_at: 'Hoy',
-    },
-    {
-      id: 'off-2',
-      public_id: 'HIP-2026-00135',
-      zone: 'Ciudad de la Costa · Canelones',
-      amount: 80000,
-      currency: 'USD',
-      rate: 10.0,
-      term_months: 48,
-      status: 'presented',
-      created_at: 'Ayer',
-    },
-  ];
+  const [offers, setOffers] = useState<OfferItem[]>(DEMO_OFFERS);
+
+  useEffect(() => {
+    async function loadOffers() {
+      if (!isSupabaseConfigured) return;
+      try {
+        const { data, error } = await supabase
+          .from('offers')
+          .select(`
+            id,
+            amount,
+            currency,
+            interest_rate,
+            term_months,
+            status,
+            created_at,
+            application:applications(
+              id,
+              public_id,
+              properties(city, department)
+            )
+          `)
+          .order('created_at', { ascending: false });
+
+        if (!error && data && data.length > 0) {
+          const mapped: OfferItem[] = data.map((d: any) => {
+            const app = d.application || {};
+            const prop = Array.isArray(app.properties) ? app.properties[0] : (app.properties || {});
+            const zone = [prop.city, prop.department].filter(Boolean).join(' · ') || 'Montevideo';
+
+            return {
+              id: d.id,
+              public_id: app.public_id || `HIP-${d.id.slice(0, 8).toUpperCase()}`,
+              zone,
+              amount: Number(d.amount) || 0,
+              currency: d.currency || 'USD',
+              rate: Number(d.interest_rate) || 0,
+              term_months: Number(d.term_months) || 36,
+              status: d.status || 'submitted',
+              created_at: 'Reciente',
+            };
+          });
+
+          const combined = [...mapped];
+          for (const demo of DEMO_OFFERS) {
+            if (!combined.some((o) => o.id === demo.id || o.public_id === demo.public_id)) {
+              combined.push(demo);
+            }
+          }
+          setOffers(combined);
+        }
+      } catch (err) {
+        console.warn('Error al cargar ofertas de prestamista:', err);
+      }
+    }
+
+    loadOffers();
+  }, []);
 
   return (
     <LenderLayout title="Ofertas de Financiamiento Emitidas">

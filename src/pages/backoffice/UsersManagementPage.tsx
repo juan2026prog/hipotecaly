@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BackofficeLayout } from '../../components/backoffice/BackofficeLayout';
 import { Button } from '../../components/ui/Button';
+import { useTenant } from '../../contexts/TenantContext';
 import {
   getOrganizationMembers,
   inviteOrganizationMember,
@@ -13,10 +14,11 @@ import {
 } from 'lucide-react';
 
 export const UsersManagementPage: React.FC = () => {
+  const { tenant } = useTenant();
   const [members, setMembers] = useState<OrganizationMember[]>([
     {
       id: 'm1',
-      organization_id: 'a0000000-0000-0000-0000-000000000001',
+      organization_id: tenant.id,
       user_id: 'u1',
       email: 'admin@hipotecaly.uy',
       full_name: 'Ignacio Notario',
@@ -26,7 +28,7 @@ export const UsersManagementPage: React.FC = () => {
     },
     {
       id: 'm2',
-      organization_id: 'a0000000-0000-0000-0000-000000000001',
+      organization_id: tenant.id,
       user_id: 'u2',
       email: 'analista@hipotecaly.uy',
       full_name: 'Valeria Rivas',
@@ -43,19 +45,19 @@ export const UsersManagementPage: React.FC = () => {
   const [inviteSuccess, setInviteSuccess] = useState(false);
 
   useEffect(() => {
-    getOrganizationMembers('a0000000-0000-0000-0000-000000000001').then((data) => {
+    getOrganizationMembers(tenant.id).then((data) => {
       if (data && data.length > 0) {
         setMembers(data);
       }
     });
-  }, []);
+  }, [tenant.id]);
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteEmail) return;
     setInviting(true);
     const res = await inviteOrganizationMember(
-      'a0000000-0000-0000-0000-000000000001',
+      tenant.id,
       inviteEmail,
       inviteRole
     );
@@ -66,7 +68,7 @@ export const UsersManagementPage: React.FC = () => {
         ...prev,
         {
           id: crypto.randomUUID(),
-          organization_id: 'a0000000-0000-0000-0000-000000000001',
+          organization_id: tenant.id,
           user_id: crypto.randomUUID(),
           email: inviteEmail,
           full_name: 'Pendiente de aceptación',

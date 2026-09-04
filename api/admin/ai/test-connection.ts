@@ -53,11 +53,11 @@ export default async function handler(req: any, res: any) {
     let latencyMs = 0;
     const startReq = Date.now();
 
-    // En entorno de prueba mockeada
+    // En entorno de prueba autorizada
     if (apiKey.startsWith('sk-test-live-mock') || apiKey.startsWith('sk-mock-valid')) {
       isConnected = true;
       latencyMs = 45;
-      availableModelIds = new Set([extractionModel, reasoningModel, deepModel, 'gpt-4o', 'gpt-4o-mini', 'o3-mini']);
+      availableModelIds = new Set([extractionModel, reasoningModel, deepModel, 'gpt-5.6-luna', 'gpt-5.6-terra', 'gpt-5.6-sol']);
     } else {
       const openAiRes = await fetch('https://api.openai.com/v1/models', {
         method: 'GET',

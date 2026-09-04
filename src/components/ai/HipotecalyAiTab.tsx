@@ -72,21 +72,23 @@ export const HipotecalyAiTab: React.FC<HipotecalyAiTabProps> = ({ app, onRefresh
     async function loadWalletAndEst() {
       // 0. Verificar si HIPOTECALY AI está activado globalmente
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('ai_provider_settings')
           .select('ai_enabled')
-          .eq('provider', 'openai')
-          .maybeSingle();
+          .eq('provider', 'openai');
 
-        const isEnabled = Array.isArray(data) ? data[0]?.ai_enabled : (data as any)?.ai_enabled;
-        if (isEnabled === false) {
-          setIsAiActive(false);
-          return;
-        } else {
-          setIsAiActive(true);
+
+        if (!error && data) {
+          const row = Array.isArray(data) ? data[0] : (data as any);
+          if (row && (row.ai_enabled === false || row.ai_enabled === 'false')) {
+            setIsAiActive(false);
+            return;
+          } else {
+            setIsAiActive(true);
+          }
         }
-      } catch {
-        // En caso de fallo o modo offline, mantener activo
+      } catch (e) {
+        console.error('[DEBUG AI TAB ERROR]', e);
       }
 
       const w = await aiService.getWalletState(orgId);
