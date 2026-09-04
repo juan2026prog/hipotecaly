@@ -52,13 +52,13 @@ export const SaaSFullPlatformPage: React.FC = () => {
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-3">
               <Link to="/contacto?plan=whitelabel">
-                <Button variant="primary" size="lg" className="w-full sm:w-auto px-8 shadow-floating">
-                  QUIERO MI PLATAFORMA <ArrowRight className="w-4 h-4 ml-2" />
+                <Button variant="primary" size="lg" className="w-full sm:w-auto px-8 shadow-floating font-bold">
+                  Quiero mi plataforma <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </Link>
               <Link to="/contacto?demo=true">
                 <Button variant="secondary" size="lg" className="w-full sm:w-auto px-8">
-                  VER DEMO EN VIVO
+                  Ver demo en vivo
                 </Button>
               </Link>
             </div>
@@ -545,8 +545,8 @@ export const SaaSFullPlatformPage: React.FC = () => {
 
           <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link to="/contacto?plan=whitelabel">
-              <Button variant="primary" size="lg" className="w-full sm:w-auto px-8 shadow-floating">
-                AGENDAR UNA DEMO <ArrowRight className="w-4 h-4 ml-2" />
+              <Button variant="primary" size="lg" className="w-full sm:w-auto px-8 shadow-floating font-bold">
+                Agendar una demo <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
             <Link to="/saas/integracion" className="text-sm font-semibold text-slate-300 hover:text-white underline decoration-slate-500 underline-offset-4">

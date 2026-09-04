@@ -64,15 +64,15 @@ export const SaaSIntegrationPage: React.FC = () => {
               {/* CTAs Principales */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 pt-2">
                 <Link to="/contacto?plan=integracion&demo=true">
-                  <Button variant="primary" size="lg" className="w-full sm:w-auto px-8 shadow-md">
-                    AGENDAR DEMO <ArrowRight className="w-4 h-4 ml-2" />
+                  <Button variant="primary" size="lg" className="w-full sm:w-auto px-8 shadow-md font-bold">
+                    Agendar demo <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </Link>
                 <a
                   href="#flujo"
-                  className="px-6 py-3 rounded-btn border border-slate-300 text-sm font-semibold text-navy hover:bg-slate-50 text-center transition-colors"
+                  className="px-6 py-3 rounded-btn border border-slate-300 text-sm font-semibold text-navy hover:bg-slate-50 text-center transition-colors min-h-[44px] inline-flex items-center justify-center"
                 >
-                  VER FLUJO
+                  Ver flujo
                 </a>
               </div>
 

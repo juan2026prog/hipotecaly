@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { LenderLayout } from '../../components/layout/LenderLayout';
-import { Clock, CheckCircle2 } from 'lucide-react';
+import { StatusBadge } from '../../components/ui/StatusBadge';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { FileCheck } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 
 interface OfferItem {
@@ -102,50 +104,47 @@ export const LenderOffersPage: React.FC = () => {
 
   return (
     <LenderLayout title="Ofertas de Financiamiento Emitidas">
-      <div className="space-y-6">
+      <div className="space-y-6 text-left">
         <div className="bg-white rounded-card border border-slate-border shadow-card overflow-hidden">
           <div className="p-4 sm:p-5 border-b border-slate-border">
             <h2 className="text-base font-bold text-navy">Historial de Propuestas</h2>
             <p className="text-xs text-slate-500">Propuestas económicas enviadas para evaluación y presentación a los solicitantes.</p>
           </div>
 
-          <div className="divide-y divide-slate-border text-xs">
-            {offers.map((off) => (
-              <div key={off.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center space-x-2">
-                    <span className="font-mono font-bold bg-navy text-white px-2 py-0.5 rounded text-[11px]">
-                      {off.public_id}
-                    </span>
-                    <strong className="text-navy">{off.zone}</strong>
+          {offers.length === 0 ? (
+            <div className="p-8">
+              <EmptyState
+                icon={FileCheck}
+                title="No has emitido ofertas todavía"
+                description="Las propuestas de crédito que formules sobre oportunidades activas se registrarán aquí."
+              />
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-border text-xs">
+              {offers.map((off) => (
+                <div key={off.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center space-x-2">
+                      <span className="font-mono font-bold bg-navy text-white px-2 py-0.5 rounded text-[11px]">
+                        {off.public_id}
+                      </span>
+                      <strong className="text-navy">{off.zone}</strong>
+                    </div>
+                    <div className="text-slate-500">
+                      USD {off.amount.toLocaleString('es-UY')} · {off.rate}% Anual · {off.term_months} meses
+                    </div>
                   </div>
-                  <div className="text-slate-500">
-                    USD {off.amount.toLocaleString('es-UY')} · {off.rate}% Anual · {off.term_months} meses
-                  </div>
-                </div>
 
-                <div>
-                  <span
-                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
-                      off.status === 'presented'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-amber-100 text-amber-800'
-                    }`}
-                  >
-                    {off.status === 'presented' ? (
-                      <>
-                        <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Presentada al cliente
-                      </>
-                    ) : (
-                      <>
-                        <Clock className="w-3.5 h-3.5 mr-1" /> En revisión por mesa de crédito
-                      </>
-                    )}
-                  </span>
+                  <div>
+                    <StatusBadge
+                      status={off.status}
+                      label={off.status === 'presented' ? 'Presentada al cliente' : 'En revisión'}
+                    />
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </LenderLayout>

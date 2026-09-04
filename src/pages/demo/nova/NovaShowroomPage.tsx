@@ -40,7 +40,7 @@ export const NovaShowroomPage: React.FC = () => {
               </div>
 
               <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.12]">
-                Experimentá <span className="text-brand-green">NOVA</span>: un tenant real desplegado en HIPOTECALY.
+                Así se vería una financiera operando con <span className="text-brand-green">HIPOTECALY</span> bajo su propia marca.
               </h1>
 
               <p className="text-base sm:text-lg text-slate-300 max-w-2xl leading-relaxed">
@@ -50,19 +50,19 @@ export const NovaShowroomPage: React.FC = () => {
               <div className="p-4 bg-slate-800/80 border border-slate-700 rounded-xl flex items-start space-x-3 text-xs text-slate-300">
                 <Info className="w-4 h-4 text-brand-green shrink-0 mt-0.5" />
                 <p>
-                  <strong>Entorno Sandbox Activo:</strong> Podés probar la simulación, modificar parámetros en caliente, inspeccionar la vista del solicitante y verificar cómo el tenant opera con aislamiento criptográfico total.
+                  <strong>Entorno interactivo activo:</strong> Podés probar la simulación en vivo, inspeccionar el portal del solicitante y verificar la personalización completa de marca y reglas.
                 </p>
               </div>
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
                 <Link to="/demo/nova/full">
                   <Button variant="primary" size="lg" className="w-full sm:w-auto px-8 shadow-floating font-bold">
-                    Lanzar Portal NOVA Full White-Label <ArrowRight className="w-4 h-4 ml-2" />
+                    Lanzar portal NOVA White-Label <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </Link>
                 <Link to="/contacto?demo=true">
                   <Button variant="outline" size="lg" className="w-full sm:w-auto text-white border-white/30 hover:bg-white/10">
-                    Solicitar Demo Guiada
+                    Solicitar demo guiada
                   </Button>
                 </Link>
               </div>
@@ -78,7 +78,7 @@ export const NovaShowroomPage: React.FC = () => {
                     </div>
                     <div>
                       <h3 className="text-sm font-bold text-white">NOVA Créditos</h3>
-                      <p className="text-[11px] text-slate-400">Tenant Showroom ID: <span className="font-mono text-xs text-slate-300">d000...0001</span></p>
+                      <p className="text-[11px] text-slate-400">Entidad de demostración</p>
                     </div>
                   </div>
                   <span className="text-[10px] bg-brand-green/20 text-brand-green border border-brand-green/30 px-2 py-0.5 rounded font-mono font-bold">
@@ -105,14 +105,14 @@ export const NovaShowroomPage: React.FC = () => {
                   </div>
                   <div className="flex justify-between py-1.5 border-b border-slate-700/60">
                     <span className="text-slate-400">Amortización:</span>
-                    <span className="text-white">Solo Intereses / Francés</span>
+                    <span className="text-white">Solo intereses / Francés</span>
                   </div>
                 </div>
 
                 <div className="pt-2">
                   <Link to="/demo/nova/full" className="block w-full">
                     <Button variant="outline" size="sm" className="w-full text-brand-green border-brand-green/40 hover:bg-brand-green/10 justify-center">
-                      Abrir Experiencia del Solicitante NOVA <ExternalLink className="w-3.5 h-3.5 ml-1.5" />
+                      Abrir experiencia del solicitante NOVA <ExternalLink className="w-3.5 h-3.5 ml-1.5" />
                     </Button>
                   </Link>
                 </div>

@@ -29,49 +29,31 @@ export const MarketplaceHome: React.FC = () => {
       <Navbar />
 
       {/* ============================================================== */}
-      {/* 1. HERO SECTION CON SELECTOR DUAL DE ENTRADA                  */}
+      {/* 1. HERO SECTION MARKETPLACE                                     */}
       {/* ============================================================== */}
-      <section className="relative pt-6 pb-16 md:pt-10 md:pb-24 overflow-hidden bg-gradient-to-b from-slate-50/70 via-white to-white">
+      <section className="relative pt-8 pb-16 md:pt-14 md:pb-24 overflow-hidden bg-gradient-to-b from-slate-50/70 via-white to-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
-          {/* Selector Dual de Entrada Rápida (Personas vs Empresas) */}
-          <div className="mb-8 p-1.5 bg-slate-100 rounded-2xl border border-slate-200 inline-flex flex-col sm:flex-row items-center gap-2 max-w-2xl">
-            <Link
-              to="/simulador"
-              className="flex items-center space-x-2.5 px-4 py-2 rounded-xl bg-white text-navy font-bold text-xs shadow-sm border border-slate-200/80 hover:text-brand-green transition-colors w-full sm:w-auto"
-            >
-              <div className="w-2 h-2 rounded-full bg-brand-green" />
-              <span>Para Personas (Simular Crédito)</span>
-            </Link>
-            <Link
-              to="/saas"
-              className="flex items-center space-x-2.5 px-4 py-2 rounded-xl bg-navy text-white font-bold text-xs shadow-sm hover:bg-navy-light transition-colors w-full sm:w-auto"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-brand-green" />
-              <span>Para Empresas (Plataforma SaaS & White-Label)</span>
-            </Link>
-          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
             {/* Columna Izquierda: Mensaje Central */}
             <div className="lg:col-span-6 space-y-6 md:space-y-8 text-left">
               <div className="space-y-4">
                 <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase bg-brand-green/10 text-brand-green border border-brand-green/20">
-                  <span>MARKETPLACE HIPOTECARIO & PLATAFORMA B2B</span>
+                  <span>FINANCIACIÓN CON GARANTÍA HIPOTECARIA</span>
                 </div>
                 <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-navy leading-[1.12]">
                   Convertimos tu propiedad en la{' '}
                   <span className="text-brand-green">oportunidad</span> que necesitás.
                 </h1>
                 <p className="text-lg sm:text-xl text-slate-muted font-normal leading-relaxed max-w-xl">
-                  Préstamos con garantía hipotecaria para personas en Uruguay, respaldados por la infraestructura tecnológica más avanzada del mercado.
+                  Préstamos con garantía hipotecaria para personas en Uruguay, con un proceso digital, claro y acompañado.
                 </p>
               </div>
 
               {/* 3 Beneficios en Cards Estilizadas */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-                <div className="bg-white p-4 rounded-xl border border-slate-border shadow-sm flex items-center space-x-3.5">
-                  <div className="w-10 h-10 rounded-lg bg-brand-green-light flex items-center justify-center shrink-0">
+                <div className="bg-white p-4 rounded-card border border-slate-border shadow-xs flex items-center space-x-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-brand-green-light flex items-center justify-center shrink-0">
                     <Home className="w-5 h-5 text-brand-green" />
                   </div>
                   <div>
@@ -81,8 +63,8 @@ export const MarketplaceHome: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-white p-4 rounded-xl border border-slate-border shadow-sm flex items-center space-x-3.5">
-                  <div className="w-10 h-10 rounded-lg bg-brand-green-light flex items-center justify-center shrink-0">
+                <div className="bg-white p-4 rounded-card border border-slate-border shadow-xs flex items-center space-x-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-brand-green-light flex items-center justify-center shrink-0">
                     <Clock className="w-5 h-5 text-brand-green" />
                   </div>
                   <div>
@@ -92,8 +74,8 @@ export const MarketplaceHome: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-white p-4 rounded-xl border border-slate-border shadow-sm flex items-center space-x-3.5">
-                  <div className="w-10 h-10 rounded-lg bg-brand-green-light flex items-center justify-center shrink-0">
+                <div className="bg-white p-4 rounded-card border border-slate-border shadow-xs flex items-center space-x-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-brand-green-light flex items-center justify-center shrink-0">
                     <ShieldCheck className="w-5 h-5 text-brand-green" />
                   </div>
                   <div>
@@ -105,17 +87,16 @@ export const MarketplaceHome: React.FC = () => {
               </div>
 
               {/* CTAs */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-5 pt-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 pt-2">
                 <Link to="/simulador">
                   <Button variant="primary" size="lg" className="w-full sm:w-auto px-8 shadow-md">
                     Simular mi préstamo <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </Link>
-                <Link
-                  to="/saas"
-                  className="text-sm font-semibold text-navy hover:text-brand-green underline decoration-brand-green decoration-2 underline-offset-8 transition-colors text-center py-2"
-                >
-                  ¿Sos empresa o prestamista? Conocé el SaaS
+                <Link to="/como-funciona">
+                  <Button variant="secondary" size="lg" className="w-full sm:w-auto">
+                    Cómo funciona
+                  </Button>
                 </Link>
               </div>
             </div>

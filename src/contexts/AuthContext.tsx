@@ -7,6 +7,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { Borrower } from '../lib/types';
 import { resolveTenant } from '../lib/tenantService';
+import { adminQaService } from '../lib/adminQaService';
 
 export type UserRole =
   | 'super_admin'
@@ -24,6 +25,14 @@ export interface UserMembership {
   isActive: boolean;
 }
 
+export interface QaSessionState {
+  sessionId: string;
+  role: string;
+  tenantId: string;
+  tenantName: string;
+  expiresAt: string;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -32,6 +41,8 @@ interface AuthContextType {
   isSuperAdmin: boolean;
   memberships: UserMembership[];
   loading: boolean;
+  isQaSession: boolean;
+  qaSessionData: QaSessionState | null;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (
     email: string,
@@ -39,6 +50,7 @@ interface AuthContextType {
     userData: { firstName: string; lastName: string; phone?: string; targetTenantId?: string }
   ) => Promise<{ error: Error | null; organizationId?: string }>;
   signOut: () => Promise<void>;
+  exitQaSession: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
   refreshBorrower: () => Promise<void>;
   hasRole: (allowedRoles: UserRole[], tenantId?: string) => boolean;
@@ -54,6 +66,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [memberships, setMemberships] = useState<UserMembership[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isQaSession, setIsQaSession] = useState(false);
+  const [qaSessionData, setQaSessionData] = useState<QaSessionState | null>(null);
 
   // Determinar roles y membresías a partir del usuario actual
   const resolveRoles = async (currentUser: User | null) => {
@@ -61,13 +75,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUserRole(null);
       setIsSuperAdmin(false);
       setMemberships([]);
+      setIsQaSession(false);
+      setQaSessionData(null);
       return;
     }
 
     // 1. Metadata directa en usuario
     const appRole = (currentUser.app_metadata?.role || currentUser.user_metadata?.role) as UserRole | undefined;
     const isSuper = appRole === 'super_admin' || appRole === 'platform_admin';
+    const isQa = Boolean(currentUser.app_metadata?.is_qa_user || currentUser.user_metadata?.is_qa_user || adminQaService.isQaActive());
     setIsSuperAdmin(isSuper);
+    setIsQaSession(isQa);
+
+    const activeQaRef = adminQaService.getCurrentQaSessionRef();
+    if (activeQaRef && isQa) {
+      setQaSessionData({
+        sessionId: activeQaRef.sessionId,
+        role: activeQaRef.role,
+        tenantId: activeQaRef.tenantId,
+        tenantName: activeQaRef.tenantName,
+        expiresAt: activeQaRef.expiresAt,
+      });
+    } else {
+      setQaSessionData(null);
+    }
 
     // 2. Consulta a organization_members
     try {
@@ -168,6 +199,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         created_at: new Date().toISOString(),
         email: `${testRole}@hipotecaly.test`,
       } as any;
+      const activeQaRef = adminQaService.getCurrentQaSessionRef();
+      const isQa = Boolean(activeQaRef && new Date(activeQaRef.expiresAt).getTime() > Date.now());
+      setIsQaSession(isQa);
+      if (activeQaRef && isQa) {
+        setQaSessionData({
+          sessionId: activeQaRef.sessionId,
+          role: activeQaRef.role,
+          tenantId: activeQaRef.tenantId,
+          tenantName: activeQaRef.tenantName,
+          expiresAt: activeQaRef.expiresAt,
+        });
+      } else {
+        setQaSessionData(null);
+      }
+
       setUser(mockUser);
       setUserRole(testRole as UserRole);
       setIsSuperAdmin(testRole === 'super_admin' || testRole === 'platform_admin');
@@ -328,6 +374,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
+    adminQaService.clearLocalQaState();
     await supabase.auth.signOut();
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem('hipotecaly_test_role');
@@ -337,7 +384,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setBorrower(null);
     setUserRole(null);
     setIsSuperAdmin(false);
+    setIsQaSession(false);
+    setQaSessionData(null);
     setMemberships([]);
+  };
+
+  const exitQaSession = async () => {
+    adminQaService.clearLocalQaState();
+    setIsQaSession(false);
+    setQaSessionData(null);
+    await supabase.auth.signOut();
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('hipotecaly_test_role');
+      window.location.assign('/platform-admin');
+    }
   };
 
   const resetPassword = async (email: string) => {
@@ -381,9 +441,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isSuperAdmin,
         memberships,
         loading,
+        isQaSession,
+        qaSessionData,
         signIn,
         signUp,
         signOut,
+        exitQaSession,
         resetPassword,
         refreshBorrower,
         hasRole,

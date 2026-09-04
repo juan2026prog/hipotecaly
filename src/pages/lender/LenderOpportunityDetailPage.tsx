@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { LenderLayout } from '../../components/layout/LenderLayout';
 import { Button } from '../../components/ui/Button';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { CurrencyInput } from '../../components/ui/CurrencyInput';
 import { saveOfferDraft, submitOfferByLender } from '../../lib/offersService';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
@@ -173,9 +174,7 @@ export const LenderOpportunityDetailPage: React.FC = () => {
             <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Volver al panel de oportunidades
           </Link>
           <div className="flex items-center space-x-2">
-            <span className="text-xs px-2.5 py-1 rounded-full font-bold uppercase tracking-wider bg-slate-200 text-slate-700">
-              Estado: {status}
-            </span>
+            <StatusBadge status={status} size="md" />
           </div>
         </div>
 

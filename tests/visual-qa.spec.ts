@@ -65,6 +65,7 @@ test.describe('VISUAL QA & RESPONSIVE CERTIFICATION', () => {
   });
 
   const viewports = [
+    { name: 'Mobile Min (320x568)', width: 320, height: 568 },
     { name: 'Mobile Compact (360x740)', width: 360, height: 740 },
     { name: 'Mobile Standard (390x844)', width: 390, height: 844 },
     { name: 'Mobile Large (430x932)', width: 430, height: 932 },
@@ -76,15 +77,23 @@ test.describe('VISUAL QA & RESPONSIVE CERTIFICATION', () => {
 
   const routes = [
     '/',
+    '/nosotros',
     '/saas',
+    '/saas/modulos',
     '/saas/integracion',
     '/saas/plataforma-completa',
     '/plataforma',
     '/simulador',
     '/solicitar',
+    '/login',
+    '/registro',
+    '/recuperar',
     '/mi-cuenta',
     '/app',
     '/app/solicitudes',
+    '/lender',
+    '/lender/ofertas',
+    '/lender/mensajes',
   ];
 
   for (const vp of viewports) {

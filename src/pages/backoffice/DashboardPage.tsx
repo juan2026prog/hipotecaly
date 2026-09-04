@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { aiService } from '../../lib/aiService';
 import { AiWalletState } from '../../lib/ai/types';
 import { useTenant } from '../../contexts/TenantContext';
@@ -69,9 +70,12 @@ export const DashboardPage: React.FC = () => {
     <BackofficeLayout>
       <div className="space-y-6 text-left max-w-7xl mx-auto">
         
-        {/* Header con botón de nueva solicitud */}
+        {/* 1. Header con CTA Operativo */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
+            <span className="text-[10px] font-bold text-brand-green uppercase tracking-wider block">
+              OPERACIONES & CRÉDITO
+            </span>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-navy tracking-tight">
               Panel Operativo
             </h1>
@@ -81,8 +85,8 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           <Link to="/solicitar">
-            <Button variant="primary" size="md" className="shadow-sm">
-              <Plus className="w-4 h-4 mr-1.5" /> Nueva Solicitud
+            <Button variant="primary" size="md" className="shadow-sm font-bold">
+              <Plus className="w-4 h-4 mr-1.5" /> Nueva solicitud
             </Button>
           </Link>
         </div>
@@ -93,20 +97,20 @@ export const DashboardPage: React.FC = () => {
             <div className="flex items-center space-x-2">
               <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
               <span>
-                <strong>Modo Demostrativo Activo:</strong> Mostrando dataset DEMO de pruebas separado del entorno de producción.
+                <strong>Modo demostrativo activo:</strong> Mostrando dataset de pruebas separado de producción.
               </span>
             </div>
             <span className="font-mono text-[10px] bg-amber-200/60 px-2 py-0.5 rounded font-bold">
-              HIP-DEMO
+              DEMO
             </span>
           </div>
         )}
 
         {/* ============================================================ */}
-        {/* STAT CARDS (Regla 36)                                        */}
+        {/* 2. STAT CARDS (KPIs Operativos)                              */}
         {/* ============================================================ */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
-          <div className="bg-white p-4 rounded-xl border border-slate-border shadow-sm">
+          <div className="bg-white p-4 rounded-card border border-slate-border shadow-xs">
             <div className="flex items-center justify-between text-slate-muted text-xs">
               <span>Nuevas</span>
               <FileText className="w-4 h-4 text-brand-green" />
@@ -117,7 +121,7 @@ export const DashboardPage: React.FC = () => {
             <span className="text-[10px] text-slate-400 mt-1 block">Por evaluar</span>
           </div>
 
-          <div className="bg-white p-4 rounded-xl border border-slate-border shadow-sm">
+          <div className="bg-white p-4 rounded-card border border-slate-border shadow-xs">
             <div className="flex items-center justify-between text-slate-muted text-xs">
               <span>En análisis</span>
               <Clock className="w-4 h-4 text-amber-500" />
@@ -128,7 +132,7 @@ export const DashboardPage: React.FC = () => {
             <span className="text-[10px] text-amber-600 font-medium mt-1 block">Revisión técnica</span>
           </div>
 
-          <div className="bg-white p-4 rounded-xl border border-slate-border shadow-sm">
+          <div className="bg-white p-4 rounded-card border border-slate-border shadow-xs">
             <div className="flex items-center justify-between text-slate-muted text-xs">
               <span>Esperando docs</span>
               <AlertCircle className="w-4 h-4 text-slate-400" />
@@ -139,7 +143,7 @@ export const DashboardPage: React.FC = () => {
             <span className="text-[10px] text-slate-400 mt-1 block">Borradores activos</span>
           </div>
 
-          <div className="bg-white p-4 rounded-xl border border-slate-border shadow-sm">
+          <div className="bg-white p-4 rounded-card border border-slate-border shadow-xs">
             <div className="flex items-center justify-between text-slate-muted text-xs">
               <span>Con propuesta</span>
               <TrendingUp className="w-4 h-4 text-brand-green" />
@@ -150,7 +154,7 @@ export const DashboardPage: React.FC = () => {
             <span className="text-[10px] text-brand-green font-medium mt-1 block">Oferta emitida</span>
           </div>
 
-          <div className="bg-white p-4 rounded-xl border border-slate-border shadow-sm col-span-2 sm:col-span-1">
+          <div className="bg-white p-4 rounded-card border border-slate-border shadow-xs col-span-2 sm:col-span-1">
             <div className="flex items-center justify-between text-slate-muted text-xs">
               <span>Aprobadas</span>
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
@@ -163,134 +167,7 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         {/* ============================================================ */}
-        {/* WIDGET DEL ESTUDIO: HIPOTECALY AI (SALDO, CONSUMO Y RECARGA) */}
-        {/* ============================================================ */}
-        <div className="bg-gradient-to-r from-navy via-slate-900 to-navy rounded-2xl p-6 text-white shadow-lg border border-slate-700">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-1.5 text-left">
-              <div className="flex items-center space-x-2.5">
-                <Sparkles className="w-5 h-5 text-brand-green" />
-                <h3 className="text-base font-bold tracking-tight">HIPOTECALY AI — Panel del Estudio</h3>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-green/20 text-brand-green border border-brand-green/30">
-                  Activo
-                </span>
-              </div>
-              <p className="text-xs text-slate-300">
-                Resumen de créditos disponibles y telemetría de consumo de inteligencia artificial.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="text-left bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10">
-                <span className="text-[10px] text-slate-400 block uppercase">Saldo Total Disponible</span>
-                <span className="text-xl font-black text-brand-green">
-                  {aiWallet?.totalCaseBalance ?? 10.0} CASOS
-                </span>
-              </div>
-
-              <button
-                onClick={() => setShowRechargeModal(true)}
-                className="px-4 py-2.5 rounded-xl font-bold text-xs bg-brand-green hover:bg-emerald-600 text-white shadow-md transition"
-              >
-                Cargar Saldo
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-5 mt-5 border-t border-white/10 text-xs text-left">
-            <div>
-              <span className="text-slate-400 text-[11px]">Saldo Promocional:</span>
-              <p className="text-sm font-bold text-slate-100">{aiWallet?.promotionalCaseBalance ?? 10.0} CASOS</p>
-              <span className="text-[10px] text-slate-400">Vence fin de mes</span>
-            </div>
-            <div>
-              <span className="text-slate-400 text-[11px]">Saldo Comprado:</span>
-              <p className="text-sm font-bold text-slate-100">{aiWallet?.purchasedCaseBalance ?? 0.0} CASOS</p>
-              <span className="text-[10px] text-brand-green">No vence</span>
-            </div>
-            <div>
-              <span className="text-slate-400 text-[11px]">CASOS Utilizados este Mes:</span>
-              <p className="text-sm font-bold text-slate-100">1.36 CASOS</p>
-              <span className="text-[10px] text-slate-400">Expedientes procesados</span>
-            </div>
-            <div>
-              <span className="text-slate-400 text-[11px]">Costo AI Real Absorbido:</span>
-              <p className="text-sm font-bold text-brand-green">USD 0.71</p>
-              <span className="text-[10px] text-slate-400">Cubierto por HIPOTECALY</span>
-            </div>
-          </div>
-
-          {/* Barra Visual de Saldo */}
-          <div className="mt-4 space-y-1 text-left">
-            <div className="flex justify-between text-[11px] text-slate-300">
-              <span>Capacidad de consumo mensual</span>
-              <span>{Math.round(((aiWallet?.totalCaseBalance ?? 10) / 10) * 100)}% disponible</span>
-            </div>
-            <div className="w-full bg-slate-700/60 h-2 rounded-full overflow-hidden">
-              <div
-                className="bg-brand-green h-2 rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, ((aiWallet?.totalCaseBalance ?? 10) / 10) * 100)}%` }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Modal para Recargar Saldo */}
-        {showRechargeModal && (
-          <div className="fixed inset-0 z-50 bg-navy/70 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 text-left space-y-4">
-              <div className="flex justify-between items-center border-b pb-3">
-                <div className="flex items-center space-x-2">
-                  <Sparkles className="w-5 h-5 text-brand-green" />
-                  <h3 className="font-bold text-base text-navy">Recarga de Saldo AI</h3>
-                </div>
-                <button
-                  onClick={() => setShowRechargeModal(false)}
-                  className="text-slate-400 hover:text-slate-600 font-bold"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <p className="text-xs text-slate-600">
-                Los CASOS AI comprados <strong>nunca vencen</strong> y se consumen únicamente después de agotar los
-                créditos promocionales del mes.
-              </p>
-
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2">
-                <div className="flex justify-between">
-                  <span className="font-semibold text-slate-700">Paquete 10 CASOS:</span>
-                  <span className="font-bold text-navy">USD 5.00</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold text-slate-700">Paquete 25 CASOS:</span>
-                  <span className="font-bold text-navy">USD 12.50</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold text-slate-700">Paquete 100 CASOS:</span>
-                  <span className="font-bold text-navy">USD 50.00</span>
-                </div>
-              </div>
-
-              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-900">
-                <span className="font-bold">Nota de Integración:</span> La estructura del ledger y billetera está
-                operativa. La pasarela de cobro automatizada se activará según el plan comercial contratado.
-              </div>
-
-              <div className="flex justify-end space-x-2 pt-2">
-                <button
-                  onClick={() => setShowRechargeModal(false)}
-                  className="px-4 py-2 text-xs font-bold bg-navy text-white rounded-lg hover:bg-slate-800"
-                >
-                  Entendido
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ============================================================ */}
-        {/* SECCIÓN CENTRAL: TABLA DE SOLICITUDES RECIENTES & MÉTRICAS   */}
+        {/* 3. SECCIÓN CENTRAL: SOLICITUDES RECIENTES & WIDGETS LATERALES */}
         {/* ============================================================ */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
@@ -298,7 +175,7 @@ export const DashboardPage: React.FC = () => {
           <div className="lg:col-span-8 bg-white rounded-card border border-slate-border shadow-card overflow-hidden">
             <div className="p-5 border-b border-slate-100 flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-navy">Solicitudes Recientes</h3>
+                <h3 className="text-base font-bold text-navy">Solicitudes recientes</h3>
                 <p className="text-xs text-slate-muted">Últimos expedientes ingresados</p>
               </div>
               <Link
@@ -354,14 +231,12 @@ export const DashboardPage: React.FC = () => {
                               USD {Number(app.requested_amount).toLocaleString('es-UY')}
                             </td>
                             <td className="py-3.5 px-4">
-                              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 capitalize">
-                                {app.status.replace('_', ' ')}
-                              </span>
+                              <StatusBadge status={app.status} size="sm" />
                             </td>
                             <td className="py-3.5 px-4 text-right">
                               <Link
                                 to={`/app/solicitudes/${app.id}`}
-                                className="text-xs font-bold text-brand-green hover:underline inline-flex items-center"
+                                className="text-xs font-bold text-brand-green hover:underline inline-flex items-center min-h-[36px]"
                               >
                                 Ver expediente <ChevronRight className="w-3 h-3 ml-0.5" />
                               </Link>
@@ -373,7 +248,7 @@ export const DashboardPage: React.FC = () => {
                   </table>
                 </div>
 
-                {/* Mobile Responsive Cards (Regla 37) */}
+                {/* Mobile Responsive Cards */}
                 <div className="sm:hidden divide-y divide-slate-100">
                   {recentApplications.map((app) => (
                     <Link
@@ -401,9 +276,7 @@ export const DashboardPage: React.FC = () => {
                         <span className="text-slate-500 capitalize">
                           {app.property?.property_type} · {app.property?.department}
                         </span>
-                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-800">
-                          {app.status.replace('_', ' ')}
-                        </span>
+                        <StatusBadge status={app.status} size="sm" />
                       </div>
                     </Link>
                   ))}
@@ -412,26 +285,67 @@ export const DashboardPage: React.FC = () => {
             )}
           </div>
 
-          {/* Columna Derecha: Resumen de Cartera & Actividad */}
+          {/* Columna Derecha: Widgets Compactos */}
           <div className="lg:col-span-4 space-y-4">
-            {/* Monto Total Solicitado Card */}
-            <div className="bg-navy text-white rounded-card p-6 border border-navy-border shadow-floating">
+            
+            {/* Volumen Total Gestionado Card */}
+            <div className="bg-navy text-white rounded-card p-6 border border-navy-border shadow-card">
               <span className="text-xs text-slate-300 font-medium block">
-                Volumen Total Gestionado
+                Volumen total gestionado
               </span>
-              <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mt-1 flex items-baseline space-x-2">
-                <span>USD {metrics.totalRequested.toLocaleString('es-UY')}</span>
+              <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mt-1">
+                USD {metrics.totalRequested.toLocaleString('es-UY')}
               </div>
               <div className="flex items-center space-x-1.5 text-xs text-brand-green mt-2 font-semibold">
                 <ArrowUpRight className="w-4 h-4" />
-                <span>Flujo de cartera activo en Uruguay</span>
+                <span>Flujo de cartera en Uruguay</span>
+              </div>
+            </div>
+
+            {/* Widget Compacto: HIPOTECALY AI */}
+            <div className="bg-navy-surface text-white rounded-card p-5 border border-navy-border shadow-card space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Sparkles className="w-4 h-4 text-brand-green" />
+                  <span className="text-xs font-bold tracking-wider text-slate-200">
+                    HIPOTECALY AI
+                  </span>
+                </div>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-brand-green/20 text-brand-green border border-brand-green/30">
+                  Activo
+                </span>
+              </div>
+
+              <div>
+                <div className="text-2xl font-black text-brand-green tracking-tight">
+                  {aiWallet?.totalCaseBalance ?? 8.64} casos
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  1.36 utilizados este mes
+                </p>
+              </div>
+
+              <div className="pt-2 border-t border-navy-border/80 flex items-center justify-between text-xs">
+                <button
+                  type="button"
+                  onClick={() => setShowRechargeModal(true)}
+                  className="text-brand-green hover:underline font-semibold"
+                >
+                  Cargar saldo
+                </button>
+                <Link
+                  to="/admin/ai"
+                  className="text-slate-300 hover:text-white font-medium flex items-center"
+                >
+                  Ver consumo <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
+                </Link>
               </div>
             </div>
 
             {/* Actividad Operativa Reciente */}
             <div className="bg-white rounded-card p-5 border border-slate-border shadow-card space-y-3">
               <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Actividad Reciente
+                Actividad reciente
               </h4>
               <div className="space-y-3 text-xs">
                 <div className="flex items-start space-x-3">
@@ -448,19 +362,66 @@ export const DashboardPage: React.FC = () => {
                     <p className="text-[11px] text-slate-400">Inmueble Carrasco: USD 235.000</p>
                   </div>
                 </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 rounded-full bg-navy mt-1.5 shrink-0" />
-                  <div>
-                    <p className="font-semibold text-slate-700">Nueva solicitud registrada</p>
-                    <p className="text-[11px] text-slate-400">Casa en Montevideo USD 80.000</p>
-                  </div>
-                </div>
               </div>
             </div>
 
           </div>
-
         </div>
+
+        {/* Modal para Recargar Saldo */}
+        {showRechargeModal && (
+          <div className="fixed inset-0 z-50 bg-navy/70 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-card shadow-2xl max-w-md w-full p-6 border border-slate-200 text-left space-y-4">
+              <div className="flex justify-between items-center border-b pb-3">
+                <div className="flex items-center space-x-2">
+                  <Sparkles className="w-5 h-5 text-brand-green" />
+                  <h3 className="font-bold text-base text-navy">Recarga de saldo AI</h3>
+                </div>
+                <button
+                  onClick={() => setShowRechargeModal(false)}
+                  className="text-slate-400 hover:text-slate-600 font-bold p-1"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Los créditos AI comprados <strong>nunca vencen</strong> y se consumen únicamente después de agotar los
+                créditos promocionales del mes.
+              </p>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2">
+                <div className="flex justify-between">
+                  <span className="font-semibold text-slate-700">Paquete 10 casos:</span>
+                  <span className="font-bold text-navy">USD 5.00</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-semibold text-slate-700">Paquete 25 casos:</span>
+                  <span className="font-bold text-navy">USD 12.50</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-semibold text-slate-700">Paquete 100 casos:</span>
+                  <span className="font-bold text-navy">USD 50.00</span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-900">
+                <span className="font-bold">Nota de facturación:</span> La estructura del ledger y billetera está
+                operativa. La facturación automatizada se liquida mensualmente con tu plan.
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-2">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setShowRechargeModal(false)}
+                >
+                  Entendido
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </BackofficeLayout>

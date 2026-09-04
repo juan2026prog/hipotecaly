@@ -14,6 +14,7 @@ import {
   Scale,
 } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { TenantBrand } from '../common/TenantBrand';
 
 export const SaaSNavbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -48,22 +49,22 @@ export const SaaSNavbar: React.FC = () => {
       {/* ============================================================== */}
       {/* 1. TOP AUDIENCE SELECTOR BAR                                   */}
       {/* ============================================================== */}
-      <div className="bg-slate-900 text-white text-[11px] py-1.5 px-4 sm:px-6 lg:px-8 border-b border-slate-800">
+      <div className="bg-navy text-white text-[11px] py-1.5 px-4 sm:px-6 lg:px-8 border-b border-navy-border">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <span className="text-slate-400 hidden sm:inline">Audiencia:</span>
-            <div className="inline-flex bg-slate-800/80 p-0.5 rounded-lg border border-slate-700/60">
+            <div className="inline-flex bg-navy-surface p-0.5 rounded-lg border border-navy-border">
               <Link
                 to="/"
                 className="px-2.5 py-0.5 rounded-md font-semibold text-slate-300 hover:text-white transition-all"
               >
-                Para Personas
+                Para personas
               </Link>
               <Link
                 to="/saas"
                 className="px-2.5 py-0.5 rounded-md font-semibold bg-brand-green text-white shadow-sm flex items-center space-x-1.5 transition-all"
               >
-                <span>Para Empresas & Estudios</span>
+                <span>Para empresas</span>
                 <span className="bg-white/20 text-[9px] uppercase tracking-wider px-1 rounded">SaaS</span>
               </Link>
             </div>
@@ -82,7 +83,7 @@ export const SaaSNavbar: React.FC = () => {
               to="/contacto?demo=true"
               className="text-brand-green hover:text-brand-green-light transition-colors font-bold hidden sm:inline"
             >
-              Agendar Demo B2B
+              Agendar demo B2B
             </Link>
           </div>
         </div>
@@ -94,31 +95,7 @@ export const SaaSNavbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         {/* Logo Monograma HIPOTECALY con subtítulo B2B */}
         <Link to="/saas" className="flex items-center space-x-3 group">
-          <div className="w-10 h-10 rounded-xl bg-navy flex items-center justify-center border border-navy-border shadow-sm group-hover:scale-105 transition-transform">
-            <svg className="w-6 h-6" viewBox="0 0 100 100" fill="none">
-              <path
-                d="M50 22L24 43V74C24 76.2 25.8 78 28 78H72C74.2 78 76 76.2 76 74V43L50 22Z"
-                stroke="#2DA674"
-                strokeWidth="8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M43 78V56C43 52.1 46.1 49 50 49C53.9 49 57 52.1 57 56V78"
-                stroke="#2DA674"
-                strokeWidth="8"
-                strokeLinecap="round"
-              />
-            </svg>
-          </div>
-          <div className="text-left">
-            <span className="text-xl font-extrabold tracking-tight text-navy block leading-none">
-              HIPOTECALY
-            </span>
-            <span className="text-[9px] md:text-[10px] font-semibold text-brand-green uppercase tracking-wider block mt-0.5">
-              Platform & White-Label
-            </span>
-          </div>
+          <TenantBrand size="md" customTagline="Platform & White-Label" showTagline />
         </Link>
 
         {/* Desktop Nav Items */}
@@ -152,10 +129,10 @@ export const SaaSNavbar: React.FC = () => {
             {solutionsDropdownOpen && (
               <div
                 onMouseLeave={() => setSolutionsDropdownOpen(false)}
-                className="absolute top-full left-0 w-84 bg-white rounded-2xl shadow-floating border border-slate-200 p-3 space-y-1 animate-in fade-in slide-in-from-top-2 text-left"
+                className="absolute top-full left-0 w-80 bg-white rounded-card shadow-floating border border-slate-200 p-3 space-y-1 animate-in fade-in slide-in-from-top-2 text-left"
               >
                 <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  Por Tipo de Organización
+                  Por tipo de organización
                 </div>
 
                 <Link
@@ -167,10 +144,10 @@ export const SaaSNavbar: React.FC = () => {
                   </div>
                   <div>
                     <span className="font-bold text-navy text-xs block group-hover:text-brand-green">
-                      Para Prestamistas Privados
+                      Para prestamistas privados
                     </span>
                     <span className="text-[11px] text-slate-500 leading-tight block">
-                      Oportunidades anonimizadas y blindaje Anti-Bypass.
+                      Oportunidades anonimizadas y blindaje operativo.
                     </span>
                   </div>
                 </Link>
@@ -184,7 +161,7 @@ export const SaaSNavbar: React.FC = () => {
                   </div>
                   <div>
                     <span className="font-bold text-navy text-xs block group-hover:text-brand-green">
-                      Para Financieras y Fondos
+                      Para financieras y fondos
                     </span>
                     <span className="text-[11px] text-slate-500 leading-tight block">
                       Core hipotecario, scoring paramétrico y sindicación.
@@ -201,7 +178,7 @@ export const SaaSNavbar: React.FC = () => {
                   </div>
                   <div>
                     <span className="font-bold text-navy text-xs block group-hover:text-brand-green">
-                      Para Estudios Notariales
+                      Para estudios notariales
                     </span>
                     <span className="text-[11px] text-slate-500 leading-tight block">
                       Expediente digital, titulación y coordinación notarial.
@@ -211,14 +188,14 @@ export const SaaSNavbar: React.FC = () => {
 
                 <div className="border-t border-slate-100 my-1 pt-1">
                   <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    Modalidad de Despliegue
+                    Modalidad de despliegue
                   </div>
 
                   <Link
                     to="/saas/integracion"
                     className="flex items-center justify-between p-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-navy"
                   >
-                    <span>Integración Embebida (Tengo web)</span>
+                    <span>Integración embebida (Widget)</span>
                     <Workflow className="w-3.5 h-3.5 text-slate-400" />
                   </Link>
 
@@ -226,13 +203,23 @@ export const SaaSNavbar: React.FC = () => {
                     to="/saas/plataforma-completa"
                     className="flex items-center justify-between p-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-navy"
                   >
-                    <span>Plataforma Completa (White-Label)</span>
+                    <span>Plataforma completa (White-Label)</span>
                     <Layers className="w-3.5 h-3.5 text-brand-green" />
                   </Link>
                 </div>
               </div>
             )}
           </div>
+
+          {/* Módulos SaaS */}
+          <Link
+            to="/saas/modulos"
+            className={`text-sm font-medium transition-colors hover:text-brand-green ${
+              location.pathname === '/saas/modulos' ? 'text-brand-green font-semibold' : 'text-slate-text'
+            }`}
+          >
+            Módulos
+          </Link>
 
           {/* Showroom NOVA */}
           <Link
@@ -275,7 +262,7 @@ export const SaaSNavbar: React.FC = () => {
           </Link>
           <Link to="/contacto?demo=true">
             <Button variant="primary" size="md" className="rounded-btn px-6 font-bold shadow-sm">
-              AGENDAR DEMO
+              Agendar demo
             </Button>
           </Link>
         </div>
@@ -283,7 +270,7 @@ export const SaaSNavbar: React.FC = () => {
         {/* Mobile Menu Trigger */}
         <div className="flex lg:hidden items-center space-x-2">
           <Link to="/contacto?demo=true">
-            <Button variant="primary" size="sm" className="text-xs px-3 font-bold">
+            <Button variant="primary" size="sm" className="text-xs px-3.5 font-bold">
               Demo
             </Button>
           </Link>
@@ -302,95 +289,123 @@ export const SaaSNavbar: React.FC = () => {
       {/* ============================================================== */}
       {mobileMenuOpen && (
         <div className="lg:hidden bg-white border-b border-slate-border px-4 pt-3 pb-6 space-y-4 shadow-xl animate-in slide-in-from-top-2 text-left max-h-[85vh] overflow-y-auto">
+          <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
+            <Link
+              to="/"
+              onClick={() => setMobileMenuOpen(false)}
+              className="text-center py-2 rounded-lg text-xs font-bold text-slate-600 hover:text-navy"
+            >
+              Para personas
+            </Link>
+            <Link
+              to="/saas"
+              onClick={() => setMobileMenuOpen(false)}
+              className="text-center py-2 rounded-lg text-xs font-bold bg-navy text-white shadow-xs"
+            >
+              Para empresas
+            </Link>
+          </div>
+
           <nav className="flex flex-col space-y-1">
             <Link
               to="/saas"
               onClick={() => setMobileMenuOpen(false)}
-              className="px-3 py-2 rounded-lg text-sm font-bold text-navy hover:bg-slate-50"
+              className="px-3 py-2.5 rounded-lg text-sm font-bold text-navy hover:bg-slate-50 min-h-[44px] flex items-center"
             >
-              Visión General de la Plataforma
+              Visión general de la plataforma
+            </Link>
+
+            <Link
+              to="/saas/modulos"
+              onClick={() => setMobileMenuOpen(false)}
+              className="px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 min-h-[44px] flex items-center justify-between"
+            >
+              <span>Catálogo de módulos</span>
+              <span className="text-[10px] bg-brand-green/20 text-brand-green px-2 py-0.5 rounded-full font-bold">
+                16 Módulos
+              </span>
             </Link>
 
             <div className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Soluciones por Perfil
+              Soluciones por perfil
             </div>
 
             <Link
               to="/empresas/prestamistas"
               onClick={() => setMobileMenuOpen(false)}
-              className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center space-x-2"
+              className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center space-x-2 min-h-[44px]"
             >
               <DollarSign className="w-3.5 h-3.5 text-brand-green" />
-              <span>Para Prestamistas Privados</span>
+              <span>Para prestamistas privados</span>
             </Link>
 
             <Link
               to="/empresas/financieras"
               onClick={() => setMobileMenuOpen(false)}
-              className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center space-x-2"
+              className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center space-x-2 min-h-[44px]"
             >
               <Building2 className="w-3.5 h-3.5 text-blue-500" />
-              <span>Para Financieras y Fondos</span>
+              <span>Para financieras y fondos</span>
             </Link>
 
             <Link
               to="/empresas/estudios"
               onClick={() => setMobileMenuOpen(false)}
-              className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center space-x-2"
+              className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center space-x-2 min-h-[44px]"
             >
               <Scale className="w-3.5 h-3.5 text-purple-500" />
-              <span>Para Estudios Notariales</span>
+              <span>Para estudios notariales</span>
             </Link>
 
-            <div className="px-3 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Modalidades de Adopción
+            <div className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Modalidades
             </div>
 
             <Link
               to="/saas/integracion"
               onClick={() => setMobileMenuOpen(false)}
-              className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center space-x-2"
+              className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center space-x-2 min-h-[44px]"
             >
               <Workflow className="w-3.5 h-3.5 text-brand-green" />
-              <span>Integración Embebida (Widget)</span>
+              <span>Integración embebida (Widget)</span>
             </Link>
 
             <Link
               to="/saas/plataforma-completa"
               onClick={() => setMobileMenuOpen(false)}
-              className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center space-x-2"
+              className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center space-x-2 min-h-[44px]"
             >
               <Layers className="w-3.5 h-3.5 text-brand-green" />
-              <span>White-Label Completo (Standalone)</span>
+              <span>White-Label completo</span>
             </Link>
 
             <Link
               to="/demo/nova"
               onClick={() => setMobileMenuOpen(false)}
-              className="px-3 py-2 rounded-lg text-xs font-bold text-brand-green bg-emerald-50/70 hover:bg-emerald-50 flex items-center space-x-2"
+              className="px-3 py-2 rounded-lg text-xs font-bold text-brand-green bg-emerald-50/70 hover:bg-emerald-50 flex items-center space-x-2 min-h-[44px]"
             >
               <Sparkles className="w-3.5 h-3.5 text-brand-green" />
-              <span>Showroom NOVA (Demo Interactiva)</span>
+              <span>Showroom NOVA</span>
             </Link>
 
             <Link
               to="/saas/precios"
               onClick={() => setMobileMenuOpen(false)}
-              className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 min-h-[44px] flex items-center"
             >
-              Planes y Precios
+              Planes y precios
             </Link>
           </nav>
 
           <div className="pt-3 border-t border-slate-100 flex flex-col space-y-2.5">
             <Link to="/contacto?demo=true" onClick={() => setMobileMenuOpen(false)}>
               <Button variant="primary" size="lg" fullWidth className="font-bold shadow-md">
-                AGENDAR DEMO <ArrowRight className="w-4 h-4 ml-2" />
+                Agendar demo <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
             <Link to="/app" onClick={() => setMobileMenuOpen(false)}>
               <Button variant="ghost" size="md" fullWidth className="text-navy font-semibold">
-                <Shield className="w-4 h-4 mr-2 text-brand-green" /> Acceso Backoffice Operativo
+                <Shield className="w-4 h-4 mr-2 text-brand-green" /> Acceso backoffice
               </Button>
             </Link>
             <Link
@@ -398,7 +413,7 @@ export const SaaSNavbar: React.FC = () => {
               onClick={() => setMobileMenuOpen(false)}
               className="text-center text-xs font-medium text-slate-500 hover:text-navy pt-2"
             >
-              ¿Buscás un préstamo hipotecario? Ir al Marketplace →
+              ¿Buscás un préstamo hipotecario? Ir al marketplace →
             </Link>
           </div>
         </div>

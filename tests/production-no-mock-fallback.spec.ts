@@ -40,7 +40,7 @@ test.describe('PRODUCTION NO MOCK FALLBACK CERTIFICATION', () => {
 
   test('4. Bandeja de solicitudes en UI para tenant sin expedientes muestra estado vacío legítimo', async ({ page }) => {
     await page.goto('/app/solicitudes');
-    await expect(page.locator('text=Solicitudes y Expedientes')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Solicitudes y Expedientes' })).toBeVisible();
   });
 
 });

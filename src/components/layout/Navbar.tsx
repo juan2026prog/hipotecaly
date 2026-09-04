@@ -15,14 +15,13 @@ import {
   Compass,
 } from 'lucide-react';
 import { Button } from '../ui/Button';
-import { useTenant } from '../../contexts/TenantContext';
+import { TenantBrand } from '../common/TenantBrand';
 
 export const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [b2bDropdownOpen, setB2bDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
-  const { tenant } = useTenant();
 
   const isSaaSRoute =
     location.pathname.startsWith('/saas') ||
@@ -52,11 +51,11 @@ export const Navbar: React.FC = () => {
       {/* ============================================================== */}
       {/* 1. TOP AUDIENCE SELECTOR BAR (Dual Personas vs Empresas)        */}
       {/* ============================================================== */}
-      <div className="bg-slate-900 text-white text-[11px] py-1.5 px-4 sm:px-6 lg:px-8 border-b border-slate-800">
+      <div className="bg-navy text-white text-[11px] py-1.5 px-4 sm:px-6 lg:px-8 border-b border-navy-border">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <span className="text-slate-400 hidden sm:inline">Audiencia:</span>
-            <div className="inline-flex bg-slate-800/80 p-0.5 rounded-lg border border-slate-700/60">
+            <div className="inline-flex bg-navy-surface p-0.5 rounded-lg border border-navy-border">
               <Link
                 to="/"
                 className={`px-2.5 py-0.5 rounded-md font-semibold transition-all ${
@@ -65,7 +64,7 @@ export const Navbar: React.FC = () => {
                     : 'text-slate-300 hover:text-white'
                 }`}
               >
-                Para Personas
+                Para personas
               </Link>
               <Link
                 to="/saas"
@@ -75,7 +74,7 @@ export const Navbar: React.FC = () => {
                     : 'text-slate-300 hover:text-white'
                 }`}
               >
-                <span>Para Empresas & Estudios</span>
+                <span>Para empresas</span>
                 <span className="bg-white/20 text-[9px] uppercase tracking-wider px-1 rounded">SaaS</span>
               </Link>
             </div>
@@ -94,7 +93,7 @@ export const Navbar: React.FC = () => {
               to="/contacto?demo=true"
               className="text-brand-green hover:text-brand-green-light transition-colors font-bold hidden sm:inline"
             >
-              Agendar Demo B2B
+              Agendar demo B2B
             </Link>
           </div>
         </div>
@@ -106,36 +105,11 @@ export const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         {/* Logo Monograma HIPOTECALY / Tenant */}
         <Link to="/" className="flex items-center space-x-3 group">
-          <div className="w-10 h-10 rounded-xl bg-navy flex items-center justify-center border border-navy-border shadow-sm group-hover:scale-105 transition-transform">
-            <svg className="w-6 h-6" viewBox="0 0 100 100" fill="none">
-              <path
-                d="M50 22L24 43V74C24 76.2 25.8 78 28 78H72C74.2 78 76 76.2 76 74V43L50 22Z"
-                stroke="var(--brand-green, #2DA674)"
-                strokeWidth="8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M43 78V56C43 52.1 46.1 49 50 49C53.9 49 57 52.1 57 56V78"
-                stroke="var(--brand-green, #2DA674)"
-                strokeWidth="8"
-                strokeLinecap="round"
-              />
-            </svg>
-          </div>
-          <div>
-            <span className="text-lg sm:text-xl font-extrabold tracking-tight text-navy block leading-none truncate max-w-[170px] sm:max-w-none">
-              {tenant.branding.public_name}
-            </span>
-            <span className="text-[10px] font-semibold text-slate-muted uppercase tracking-wider hidden sm:block mt-0.5 truncate max-w-[220px]">
-              {tenant.branding.tag_line || 'Financiación con garantía hipotecaria'}
-            </span>
-          </div>
+          <TenantBrand size="md" showTagline />
         </Link>
 
         {/* Desktop Nav Items */}
         <nav className="hidden lg:flex items-center space-x-6">
-          {/* Marketplace Personas */}
           <Link
             to="/simulador"
             className={`text-sm font-medium transition-colors hover:text-brand-green ${
@@ -155,12 +129,12 @@ export const Navbar: React.FC = () => {
           </Link>
 
           <Link
-            to="/prestamos"
+            to="/nosotros"
             className={`text-sm font-medium transition-colors hover:text-brand-green ${
-              location.pathname === '/prestamos' ? 'text-brand-green font-semibold' : 'text-slate-text'
+              location.pathname === '/nosotros' ? 'text-brand-green font-semibold' : 'text-slate-text'
             }`}
           >
-            Préstamos
+            Nosotros
           </Link>
 
           {/* Menú Desplegable B2B Empresas & SaaS */}
@@ -168,14 +142,14 @@ export const Navbar: React.FC = () => {
             <button
               onClick={() => setB2bDropdownOpen(!b2bDropdownOpen)}
               onMouseEnter={() => setB2bDropdownOpen(true)}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-sm font-bold transition-all min-h-[38px] ${
                 isSaaSRoute
                   ? 'bg-slate-900 text-white shadow-sm'
                   : 'bg-slate-100 text-navy hover:bg-slate-200'
               }`}
             >
               <Building2 className="w-4 h-4 text-brand-green" />
-              <span>Para Empresas</span>
+              <span>Para empresas</span>
               <ChevronDown
                 className={`w-3.5 h-3.5 transition-transform ${
                   b2bDropdownOpen ? 'rotate-180' : ''
@@ -186,10 +160,10 @@ export const Navbar: React.FC = () => {
             {b2bDropdownOpen && (
               <div
                 onMouseLeave={() => setB2bDropdownOpen(false)}
-                className="absolute top-full right-0 w-80 bg-white rounded-2xl shadow-floating border border-slate-200 p-3 space-y-1 animate-in fade-in slide-in-from-top-2 text-left"
+                className="absolute top-full right-0 w-80 bg-white rounded-card shadow-floating border border-slate-200 p-3 space-y-1 animate-in fade-in slide-in-from-top-2 text-left"
               >
                 <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  Soluciones por Perfil
+                  Soluciones por perfil
                 </div>
 
                 <Link
@@ -201,10 +175,10 @@ export const Navbar: React.FC = () => {
                   </div>
                   <div>
                     <span className="font-bold text-navy text-xs block group-hover:text-brand-green">
-                      Para Prestamistas
+                      Para prestamistas
                     </span>
                     <span className="text-[11px] text-slate-500 leading-tight block">
-                      Originación privada con blindaje Anti-Bypass.
+                      Originación privada con blindaje operativo.
                     </span>
                   </div>
                 </Link>
@@ -218,7 +192,7 @@ export const Navbar: React.FC = () => {
                   </div>
                   <div>
                     <span className="font-bold text-navy text-xs block group-hover:text-brand-green">
-                      Para Financieras y Fondos
+                      Para financieras y fondos
                     </span>
                     <span className="text-[11px] text-slate-500 leading-tight block">
                       Core hipotecario White-Label y sindicación.
@@ -235,7 +209,7 @@ export const Navbar: React.FC = () => {
                   </div>
                   <div>
                     <span className="font-bold text-navy text-xs block group-hover:text-brand-green">
-                      Para Estudios Notariales
+                      Para estudios notariales
                     </span>
                     <span className="text-[11px] text-slate-500 leading-tight block">
                       Expediente digital, titulación y coordinación.
@@ -249,7 +223,7 @@ export const Navbar: React.FC = () => {
                   to="/saas"
                   className="flex items-center justify-between p-2 rounded-lg text-xs font-bold text-navy hover:bg-slate-50 hover:text-brand-green"
                 >
-                  <span>Ver Plataforma SaaS Completa</span>
+                  <span>Ver plataforma SaaS completa</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
 
@@ -272,7 +246,7 @@ export const Navbar: React.FC = () => {
               location.pathname === '/preguntas-frecuentes' ? 'text-brand-green font-semibold' : 'text-slate-text'
             }`}
           >
-            FAQ
+            Preguntas frecuentes
           </Link>
         </nav>
 
@@ -281,7 +255,7 @@ export const Navbar: React.FC = () => {
           <Link to="/contacto?demo=true">
             <Button variant="secondary" size="md" className="border-slate-300 text-xs font-bold">
               <Building2 className="w-3.5 h-3.5 mr-1.5 text-brand-green" />
-              Solicitar Demo B2B
+              Solicitar demo B2B
             </Button>
           </Link>
           <Link to="/solicitar">
@@ -291,17 +265,17 @@ export const Navbar: React.FC = () => {
           </Link>
           <Link
             to="/ingresar"
-            className="inline-flex items-center space-x-1.5 text-xs font-semibold text-navy hover:text-brand-green px-2 py-2 transition-colors"
+            className="inline-flex items-center space-x-1.5 text-xs font-semibold text-navy hover:text-brand-green px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors min-h-[44px]"
           >
             <User className="w-4 h-4" />
             <span>Ingresar</span>
           </Link>
         </div>
 
-        {/* Mobile Menu Trigger */}
+        {/* Mobile Header: HIPOTECALY | Solicitar | Hamburger */}
         <div className="flex lg:hidden items-center space-x-2">
           <Link to="/solicitar">
-            <Button variant="primary" size="sm" className="text-xs px-3 font-bold">
+            <Button variant="primary" size="sm" className="text-xs px-3.5 font-bold">
               Solicitar
             </Button>
           </Link>
@@ -316,118 +290,73 @@ export const Navbar: React.FC = () => {
       </div>
 
       {/* ============================================================== */}
-      {/* 3. MOBILE DRAWER MENU (Equilibrado: Personas & Empresas)         */}
+      {/* 3. MOBILE DRAWER MENU                                           */}
       {/* ============================================================== */}
       {mobileMenuOpen && (
         <div className="lg:hidden bg-white border-b border-slate-border px-4 pt-3 pb-6 space-y-5 shadow-xl animate-in slide-in-from-top-2 text-left max-h-[85vh] overflow-y-auto">
           
-          {/* BLOQUE B2B EMPRESAS */}
-          <div className="p-4 bg-slate-900 text-white rounded-2xl border border-slate-800 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Building2 className="w-4 h-4 text-brand-green" />
-                <span className="text-xs uppercase font-black text-brand-green tracking-wider">
-                  HIPOTECALY PLATFORM (B2B)
-                </span>
-              </div>
-              <span className="text-[9px] bg-white/10 text-white px-2 py-0.5 rounded font-mono font-bold">
-                SaaS
-              </span>
-            </div>
-            
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Infraestructura crediticia para prestamistas privados, entidades financieras y estudios notariales.
-            </p>
-
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              <Link
-                to="/empresas/prestamistas"
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-2 bg-slate-800/90 rounded-lg text-xs font-semibold text-slate-200 hover:text-white flex items-center gap-1.5"
-              >
-                <DollarSign className="w-3.5 h-3.5 text-brand-green" /> Prestamistas
-              </Link>
-              <Link
-                to="/empresas/financieras"
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-2 bg-slate-800/90 rounded-lg text-xs font-semibold text-slate-200 hover:text-white flex items-center gap-1.5"
-              >
-                <Building2 className="w-3.5 h-3.5 text-blue-400" /> Financieras
-              </Link>
-              <Link
-                to="/empresas/estudios"
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-2 bg-slate-800/90 rounded-lg text-xs font-semibold text-slate-200 hover:text-white flex items-center gap-1.5"
-              >
-                <Scale className="w-3.5 h-3.5 text-purple-400" /> Escribanías
-              </Link>
-              <Link
-                to="/demo/nova"
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-2 bg-slate-800/90 rounded-lg text-xs font-semibold text-brand-green hover:text-white flex items-center gap-1.5"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-brand-green" /> Demo NOVA
-              </Link>
-            </div>
-
-            <div className="pt-2 flex gap-2">
-              <Link
-                to="/saas"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex-1 text-center py-2 text-xs font-bold bg-white/10 text-white rounded-xl hover:bg-white/20"
-              >
-                Ver Módulos SaaS
-              </Link>
-              <Link
-                to="/contacto?demo=true"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex-1 text-center py-2 text-xs font-bold bg-brand-green text-white rounded-xl shadow-sm"
-              >
-                Agendar Demo
-              </Link>
-            </div>
+          {/* Selector de Audiencia Mobile */}
+          <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
+            <Link
+              to="/"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`text-center py-2 rounded-lg text-xs font-bold transition-all ${
+                !isSaaSRoute ? 'bg-white text-navy shadow-xs' : 'text-slate-600'
+              }`}
+            >
+              Para personas
+            </Link>
+            <Link
+              to="/saas"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`text-center py-2 rounded-lg text-xs font-bold transition-all ${
+                isSaaSRoute ? 'bg-navy text-white shadow-xs' : 'text-slate-600'
+              }`}
+            >
+              Para empresas
+            </Link>
           </div>
 
-          {/* BLOQUE PERSONAS (MARKETPLACE) */}
-          <div className="space-y-2">
-            <div className="px-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Marketplace para Personas
+          {/* BLOQUE PERSONAS */}
+          <div className="space-y-1">
+            <div className="px-2 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              Financiación para personas
             </div>
 
             <nav className="flex flex-col space-y-1">
               <Link
                 to="/simulador"
                 onClick={() => setMobileMenuOpen(false)}
-                className="px-3 py-2.5 rounded-xl text-sm font-semibold text-navy hover:bg-slate-50 flex items-center justify-between"
+                className="px-3 py-2.5 rounded-xl text-sm font-semibold text-navy hover:bg-slate-50 flex items-center justify-between min-h-[44px]"
               >
                 <span className="flex items-center gap-2">
-                  <Calculator className="w-4 h-4 text-brand-green" /> Simulador de Cuotas
+                  <Calculator className="w-4 h-4 text-brand-green" /> Simulador de cuotas
                 </span>
                 <span className="text-[10px] bg-emerald-50 text-brand-green px-2 py-0.5 rounded-full font-bold">
-                  Calculá ya
+                  Calcular
                 </span>
               </Link>
 
               <Link
                 to="/como-funciona"
                 onClick={() => setMobileMenuOpen(false)}
-                className="px-3 py-2.5 rounded-xl text-sm font-semibold text-navy hover:bg-slate-50 flex items-center gap-2"
+                className="px-3 py-2.5 rounded-xl text-sm font-semibold text-navy hover:bg-slate-50 flex items-center gap-2 min-h-[44px]"
               >
-                <Compass className="w-4 h-4 text-slate-400" /> Cómo funciona el crédito
+                <Compass className="w-4 h-4 text-slate-400" /> Cómo funciona
               </Link>
 
               <Link
-                to="/prestamos"
+                to="/nosotros"
                 onClick={() => setMobileMenuOpen(false)}
-                className="px-3 py-2.5 rounded-xl text-sm font-semibold text-navy hover:bg-slate-50 flex items-center gap-2"
+                className="px-3 py-2.5 rounded-xl text-sm font-semibold text-navy hover:bg-slate-50 flex items-center gap-2 min-h-[44px]"
               >
-                <DollarSign className="w-4 h-4 text-slate-400" /> Líneas de Préstamo
+                <Building2 className="w-4 h-4 text-slate-400" /> Sobre nosotros
               </Link>
 
               <Link
                 to="/preguntas-frecuentes"
                 onClick={() => setMobileMenuOpen(false)}
-                className="px-3 py-2.5 rounded-xl text-sm font-semibold text-navy hover:bg-slate-50 flex items-center gap-2"
+                className="px-3 py-2.5 rounded-xl text-sm font-semibold text-navy hover:bg-slate-50 flex items-center gap-2 min-h-[44px]"
               >
                 <HelpCircle className="w-4 h-4 text-slate-400" /> Preguntas frecuentes
               </Link>
@@ -443,7 +372,7 @@ export const Navbar: React.FC = () => {
             </Link>
             <Link to="/ingresar" onClick={() => setMobileMenuOpen(false)}>
               <Button variant="outline" size="md" fullWidth className="text-navy font-semibold">
-                <User className="w-4 h-4 mr-2" /> Ingresar a Mi Cuenta
+                <User className="w-4 h-4 mr-2" /> Ingresar a mi cuenta
               </Button>
             </Link>
           </div>

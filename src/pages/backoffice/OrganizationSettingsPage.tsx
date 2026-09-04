@@ -216,8 +216,8 @@ export const OrganizationSettingsPage: React.FC = () => {
             </div>
             <div className="p-4 rounded-xl bg-slate-bg border border-slate-border">
               <span className="text-slate-400 block text-[10px] uppercase font-bold">Expedientes del Mes</span>
-              <strong className="text-navy text-base block mt-0.5">14 de 35</strong>
-              <span className="text-emerald-700 font-semibold">40% de cuota utilizada</span>
+              <strong className="text-navy text-base block mt-0.5">14 de 100</strong>
+              <span className="text-emerald-700 font-semibold">14% de cuota utilizada</span>
             </div>
             <div className="p-4 rounded-xl bg-slate-bg border border-slate-border">
               <span className="text-slate-400 block text-[10px] uppercase font-bold">Estado de Cuenta</span>

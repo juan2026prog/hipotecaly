@@ -2,6 +2,7 @@
 // HIPOTECALY SERVER: Enterprise Webhook Dispatcher (Real HMAC-SHA256, SSRF Safe)
 // ==============================================================================
 
+/* global AbortController */
 import crypto from 'crypto';
 import { supabaseAdmin } from '../supabase.js';
 

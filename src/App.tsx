@@ -12,6 +12,8 @@ import { LoginPage } from './pages/auth/LoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { HowItWorksPage, FaqPage, SaaSPricingPage, ContactPage } from './pages/MarketingPages';
+import { AboutPage } from './pages/landing/AboutPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 import { TermsPage, PrivacyPage, SecurityPage } from './pages/legal/LegalPages';
 
 // Backoffice Pages
@@ -27,6 +29,7 @@ import { LenderDetailPage } from './pages/backoffice/LenderDetailPage';
 import { LenderDashboardPage } from './pages/lender/LenderDashboardPage';
 import { LenderOpportunityDetailPage } from './pages/lender/LenderOpportunityDetailPage';
 import { LenderOffersPage } from './pages/lender/LenderOffersPage';
+import { LenderMessagesPage } from './pages/lender/LenderMessagesPage';
 import { UsersManagementPage } from './pages/backoffice/UsersManagementPage';
 import { OrganizationSettingsPage } from './pages/backoffice/OrganizationSettingsPage';
 import { LeadsManagementPage } from './pages/backoffice/LeadsManagementPage';
@@ -39,6 +42,7 @@ import { SuperAdminTenantsPage } from './pages/admin/SuperAdminTenantsPage';
 import { TenantOnboardingWizardPage } from './pages/admin/TenantOnboardingWizardPage';
 import { GenericWhiteLabelLanding } from './pages/landing/GenericWhiteLabelLanding';
 import { AdminAiPage } from './pages/admin/AdminAiPage';
+import { PlatformAdminPage } from './pages/admin/PlatformAdminPage';
 import { LendersSolutionPage } from './pages/solutions/LendersSolutionPage';
 import { FinancialsSolutionPage } from './pages/solutions/FinancialsSolutionPage';
 import { NotariesSolutionPage } from './pages/solutions/NotariesSolutionPage';
@@ -48,6 +52,7 @@ import { TenantProvider } from './contexts/TenantContext';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { OfflineNotice } from './components/ui/OfflineNotice';
 import { DemoSalesModeBar } from './components/demo/DemoSalesModeBar';
+import { QaSessionBanner } from './components/qa/QaSessionBanner';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
 export const App: React.FC = () => {
@@ -56,6 +61,8 @@ export const App: React.FC = () => {
       <AuthProvider>
         <BrowserRouter>
           <TenantProvider>
+            {/* Banner global de sesión QA activa */}
+            <QaSessionBanner />
             {/* Notificación flotante de PWA sin conexión */}
             <OfflineNotice />
             {/* Barra de navegación comercial para modo demostración y presentaciones */}
@@ -68,9 +75,9 @@ export const App: React.FC = () => {
               <Route path="/" element={<MarketplaceHome />} />
               <Route path="/simulador" element={<SimulatorPage />} />
               <Route path="/como-funciona" element={<HowItWorksPage />} />
-              <Route path="/prestamos" element={<SimulatorPage />} />
+              <Route path="/prestamos" element={<Navigate to="/simulador" replace />} />
               <Route path="/preguntas-frecuentes" element={<FaqPage />} />
-              <Route path="/nosotros" element={<HowItWorksPage />} />
+              <Route path="/nosotros" element={<AboutPage />} />
               <Route path="/contacto" element={<ContactPage />} />
 
               {/* Páginas Legales Institucionales (Sin Soft-404) */}
@@ -139,6 +146,22 @@ export const App: React.FC = () => {
               {/* ========================================================== */}
               {/* 4. SUPER ADMIN HIPOTECALY GLOBAL (Protegido Super Admin)   */}
               {/* ========================================================== */}
+              <Route
+                path="/platform-admin"
+                element={
+                  <ProtectedRoute requireSuperAdmin>
+                    <PlatformAdminPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/qa"
+                element={
+                  <ProtectedRoute requireSuperAdmin>
+                    <PlatformAdminPage />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/admin/tenants"
                 element={
@@ -331,9 +354,17 @@ export const App: React.FC = () => {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/lender/mensajes"
+                element={
+                  <ProtectedRoute allowedRoles={['lender', 'super_admin']}>
+                    <LenderMessagesPage />
+                  </ProtectedRoute>
+                }
+              />
 
-              {/* Fallback 404 a Home */}
-              <Route path="*" element={<Navigate to="/" replace />} />
+              {/* Fallback 404 Institucional */}
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </TenantProvider>
         </BrowserRouter>

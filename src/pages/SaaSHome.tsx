@@ -85,14 +85,14 @@ export const SaaSHome: React.FC = () => {
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-5 pt-2">
                 <Link to="/contacto?demo=true">
                   <Button variant="primary" size="lg" className="w-full sm:w-auto px-8 shadow-md">
-                    AGENDAR DEMO <ArrowRight className="w-4 h-4 ml-2" />
+                    Agendar demo <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </Link>
                 <a
                   href="#modalidades"
                   className="text-sm font-semibold text-navy hover:text-brand-green underline decoration-brand-green decoration-2 underline-offset-8 transition-colors text-center py-2"
                 >
-                  VER CÓMO FUNCIONA
+                  Ver cómo funciona
                 </a>
               </div>
             </div>
@@ -314,13 +314,13 @@ export const SaaSHome: React.FC = () => {
 
               <div className="pt-8 space-y-2">
                 <Link to="/saas/plataforma-completa">
-                  <Button variant="primary" size="lg" fullWidth className="shadow-lg">
-                    QUIERO MI PLATAFORMA <ArrowRight className="w-4 h-4 ml-2" />
+                  <Button variant="primary" size="lg" fullWidth className="shadow-lg font-bold">
+                    Quiero mi plataforma <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </Link>
                 <Link to="/demo/nova/full">
                   <Button variant="outline" size="md" fullWidth className="text-xs font-bold border-white/30 text-white hover:bg-white/10">
-                    VER DEMO — PLATAFORMA COMPLETA <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                    Ver demo plataforma completa <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
                   </Button>
                 </Link>
                 <Link to="/saas/plataforma-completa" className="block text-center text-xs font-semibold text-slate-300 hover:text-white pt-1">
@@ -589,16 +589,16 @@ export const SaaSHome: React.FC = () => {
           </p>
 
           <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/contacto?demo=true">
-              <Button variant="primary" size="lg" className="w-full sm:w-auto px-8 shadow-floating">
-                AGENDAR DEMO <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </Link>
-            <Link to="/plataforma/precios">
-              <Button variant="secondary" size="lg" className="w-full sm:w-auto px-8">
-                VER PLANES Y PRECIOS
-              </Button>
-            </Link>
+                <Link to="/contacto?demo=true">
+                  <Button variant="primary" size="lg" className="w-full sm:w-auto px-8 shadow-floating font-bold">
+                    Agendar demo <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </Link>
+                <Link to="/saas/plataforma-completa">
+                  <Button variant="outline" size="lg" className="w-full sm:w-auto text-white border-white/30 hover:bg-white/10">
+                    Ver cómo funciona
+                  </Button>
+                </Link>
           </div>
         </div>
       </section>

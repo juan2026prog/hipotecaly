@@ -29,6 +29,8 @@ export default [
         sessionStorage: 'readonly',
         HTMLElement: 'readonly',
         HTMLInputElement: 'readonly',
+        HTMLSelectElement: 'readonly',
+        HTMLTextAreaElement: 'readonly',
         HTMLButtonElement: 'readonly',
         HTMLDivElement: 'readonly',
         HTMLSpanElement: 'readonly',

@@ -8,6 +8,7 @@ import {
   createApplicationTask,
 } from '../../lib/backofficeService';
 import { Button } from '../../components/ui/Button';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import {
   ArrowLeft,
   FileText,
@@ -25,6 +26,7 @@ import {
   Lock,
   Sparkles,
   ShieldAlert,
+  Printer,
 } from 'lucide-react';
 import { ApplicationMatchingTab } from '../../components/backoffice/ApplicationMatchingTab';
 import { HipotecalyAiTab } from '../../components/ai/HipotecalyAiTab';
@@ -185,9 +187,7 @@ export const ApplicationDetailPage: React.FC = () => {
           <div className="space-y-1">
             <div className="flex items-center space-x-3">
               <span className="font-mono text-2xl font-black text-navy">{app.public_id}</span>
-              <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-amber-50 text-amber-800 capitalize">
-                {app.status.replace('_', ' ')}
-              </span>
+              <StatusBadge status={app.status} size="md" />
             </div>
             <p className="text-xs text-slate-muted">
               Creado el {new Date(app.created_at).toLocaleDateString('es-UY')} · Titular:{' '}
@@ -233,6 +233,20 @@ export const ApplicationDetailPage: React.FC = () => {
                 <option value="approved">Aprobada</option>
                 <option value="rejected">Rechazada</option>
               </select>
+            </div>
+
+            {/* Botón de Exportar Ficha Notarial / PDF */}
+            <div className="flex items-end pt-4">
+              <Button
+                variant="outline"
+                size="md"
+                onClick={() => window.print()}
+                className="text-xs font-bold border-slate-300 text-slate-700 hover:bg-slate-50"
+                title="Imprimir o Guardar como PDF"
+              >
+                <Printer className="w-4 h-4 mr-1.5 text-brand-green" />
+                Ficha PDF
+              </Button>
             </div>
           </div>
         </div>

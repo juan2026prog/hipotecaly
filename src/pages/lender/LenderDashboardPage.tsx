@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { LenderLayout } from '../../components/layout/LenderLayout';
 import { Button } from '../../components/ui/Button';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { ArrowRight } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 
@@ -205,12 +206,13 @@ export const LenderDashboardPage: React.FC = () => {
                 className="p-4 sm:p-6 hover:bg-slate-50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4"
               >
                 <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-xs font-bold bg-navy text-white px-2.5 py-0.5 rounded">
                       {opp.public_id}
                     </span>
                     <span className="text-xs font-bold text-navy">{opp.zone}</span>
                     <span className="text-[11px] text-slate-400">· {opp.property_type}</span>
+                    <StatusBadge status={opp.status} size="sm" />
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
                       Score {opp.match_score}/100
                     </span>

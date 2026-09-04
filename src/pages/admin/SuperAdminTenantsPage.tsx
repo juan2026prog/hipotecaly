@@ -251,6 +251,24 @@ export const SuperAdminTenantsPage: React.FC = () => {
           </div>
         )}
 
+        {/* Acceso QA / Inspección Directa Link Banner */}
+        <div className="p-4 bg-gradient-to-r from-slate-900 to-navy rounded-xl border border-navy-border shadow-sm flex items-center justify-between text-white">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+              <Sliders className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="font-bold text-xs sm:text-sm">Herramientas de QA e Inspección Directa</h3>
+              <p className="text-[11px] text-slate-300">Generá sesiones Supabase Auth temporales para auditar portales con 1-click.</p>
+            </div>
+          </div>
+          <Link to="/platform-admin" className="shrink-0">
+            <Button variant="primary" size="sm" className="text-xs bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold">
+              Abrir Acceso QA <ExternalLink className="w-3.5 h-3.5 ml-1" />
+            </Button>
+          </Link>
+        </div>
+
         {/* Selector de Tenant Activo */}
         <div className="bg-white rounded-card p-5 border border-slate-border shadow-card space-y-4">
           <div className="flex items-center justify-between border-b border-slate-200 pb-3">

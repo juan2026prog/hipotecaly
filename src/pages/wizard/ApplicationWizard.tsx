@@ -23,7 +23,9 @@ import {
   Camera,
   Upload,
   FileText,
-  Save,
+  Trash2,
+  X,
+  ZoomIn,
 } from 'lucide-react';
 
 export const ApplicationWizard: React.FC = () => {
@@ -239,6 +241,8 @@ export const ApplicationWizard: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const [previewZoomUrl, setPreviewZoomUrl] = useState<string | null>(null);
+
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>, category: string) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
@@ -248,17 +252,15 @@ export const ApplicationWizard: React.FC = () => {
     const { photo, error } = await uploadPropertyPhoto(tempPropId, file, category);
     setPhotoUploading(false);
 
-    if (!error && photo) {
-      setUploadedPhotos((prev) => [
-        ...prev,
-        { name: file.name, category, url: URL.createObjectURL(file) },
-      ]);
-    } else {
-      setUploadedPhotos((prev) => [
-        ...prev,
-        { name: file.name, category, url: URL.createObjectURL(file) },
-      ]);
-    }
+    const objectUrl = URL.createObjectURL(file);
+    setUploadedPhotos((prev) => {
+      const filtered = prev.filter((p) => p.category !== category);
+      return [...filtered, { name: file.name, category, url: (!error && photo?.file_path) ? photo.file_path : objectUrl }];
+    });
+  };
+
+  const handleRemovePhoto = (category: string) => {
+    setUploadedPhotos((prev) => prev.filter((p) => p.category !== category));
   };
 
   const handleIncomeDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -311,33 +313,33 @@ export const ApplicationWizard: React.FC = () => {
       <main className="flex-1 py-8 md:py-12">
         <div className="max-w-3xl mx-auto px-4 sm:px-6">
           
-          {/* Header del Wizard con ID público */}
-          <div className="flex items-center justify-between mb-4">
+          {/* Header del Wizard */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div>
               <span className="text-xs font-bold text-brand-green uppercase tracking-wider">
-                Solicitud de Préstamo
+                Solicitud de préstamo
               </span>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-navy tracking-tight">
                 Paso {currentStep} de 6: {stepsLabels[currentStep - 1]}
               </h1>
             </div>
 
-            <div className="text-right">
-              {publicId && (
-                <span className="text-xs font-mono font-bold bg-navy/10 text-navy px-2.5 py-1 rounded">
-                  {publicId}
-                </span>
-              )}
-              <div className="flex items-center space-x-1.5 text-[11px] text-slate-500 mt-1">
-                <Save className={`w-3 h-3 ${isServerSynced ? 'text-brand-green' : 'text-amber-500'}`} />
+            <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2">
+              <div className="inline-flex items-center space-x-1.5 text-xs text-brand-green font-medium bg-emerald-50 px-2.5 py-1 rounded-full border border-brand-green/20">
+                <CheckCircle2 className="w-3.5 h-3.5" />
                 <span>
                   {savingDraft
-                    ? 'Guardando borrador...'
+                    ? 'Guardando datos...'
                     : isServerSynced
-                    ? 'Borrador persistido'
-                    : 'Borrador local (Pendiente sincronización)'}
+                    ? 'Tus datos están guardados'
+                    : 'Guardado local'}
                 </span>
               </div>
+              {publicId && (
+                <span className="text-[11px] font-mono text-slate-400">
+                  ID: {publicId}
+                </span>
+              )}
             </div>
           </div>
 
@@ -543,7 +545,7 @@ export const ApplicationWizard: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Grid de carga por ambiente */}
+                {/* Grid de carga por ambiente con Thumbnails en tiempo real */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   {[
                     { cat: 'frente', label: 'Fachada / Frente' },
@@ -557,40 +559,108 @@ export const ApplicationWizard: React.FC = () => {
                     return (
                       <div
                         key={item.cat}
-                        className="border border-dashed border-slate-300 rounded-xl p-4 flex items-center justify-between hover:border-brand-green transition-colors bg-slate-50/50"
+                        className={`border rounded-xl p-3.5 flex items-center justify-between transition-all ${
+                          existing
+                            ? 'border-emerald-300 bg-emerald-50/40 shadow-xs'
+                            : 'border-dashed border-slate-300 bg-slate-50/50 hover:border-brand-green'
+                        }`}
                       >
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 rounded-lg bg-brand-green-light flex items-center justify-center text-brand-green shrink-0">
-                            {existing ? <CheckCircle2 className="w-5 h-5 text-brand-green" /> : <Camera className="w-5 h-5" />}
-                          </div>
-                          <div>
-                            <span className="text-xs font-bold text-navy block">{item.label}</span>
-                            <span className="text-[11px] text-slate-500">
-                              {existing ? existing.name : 'Pendiente de carga'}
+                        <div className="flex items-center space-x-3 overflow-hidden">
+                          {existing?.url ? (
+                            <div className="relative group/thumb w-12 h-12 rounded-lg overflow-hidden shrink-0 border border-emerald-200 bg-slate-100 shadow-2xs">
+                              <img
+                                src={existing.url}
+                                alt={item.label}
+                                className="w-full h-full object-cover"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setPreviewZoomUrl(existing.url || null)}
+                                className="absolute inset-0 bg-navy/60 text-white flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity"
+                                title="Ampliar foto"
+                              >
+                                <ZoomIn className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="w-12 h-12 rounded-lg bg-brand-green-light flex items-center justify-center text-brand-green shrink-0">
+                              <Camera className="w-5 h-5" />
+                            </div>
+                          )}
+
+                          <div className="truncate text-left">
+                            <span className="text-xs font-bold text-navy block truncate">{item.label}</span>
+                            <span className="text-[11px] text-slate-500 truncate block">
+                              {existing ? (
+                                <span className="text-emerald-700 font-medium flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600 inline" /> Cargada
+                                </span>
+                              ) : (
+                                'Pendiente de carga'
+                              )}
                             </span>
                           </div>
                         </div>
 
-                        <label className="cursor-pointer">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            capture="environment"
-                            className="hidden"
-                            onChange={(e) => handlePhotoSelect(e, item.cat)}
-                          />
-                          <span className="inline-flex items-center text-xs font-bold text-brand-green-dark hover:underline bg-white px-3 py-1.5 rounded-md border border-slate-200 shadow-xs">
-                            {existing ? 'Cambiar' : 'Subir'}
-                          </span>
-                        </label>
+                        <div className="flex items-center space-x-1.5 shrink-0">
+                          {existing && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemovePhoto(item.cat)}
+                              className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-md transition-colors"
+                              title="Eliminar foto"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                          <label className="cursor-pointer">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
+                              className="hidden"
+                              onChange={(e) => handlePhotoSelect(e, item.cat)}
+                            />
+                            <span className="inline-flex items-center text-xs font-bold text-brand-green-dark hover:underline bg-white px-3 py-1.5 rounded-md border border-slate-200 shadow-xs">
+                              {existing ? 'Cambiar' : 'Subir'}
+                            </span>
+                          </label>
+                        </div>
                       </div>
                     );
                   })}
                 </div>
 
+                {/* Modal de Previsualización Zoom */}
+                {previewZoomUrl && (
+                  <div
+                    className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in"
+                    onClick={() => setPreviewZoomUrl(null)}
+                  >
+                    <div
+                      className="relative max-w-2xl max-h-[85vh] bg-white rounded-2xl overflow-hidden shadow-2xl p-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setPreviewZoomUrl(null)}
+                        className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-navy/80 text-white flex items-center justify-center hover:bg-navy transition-colors"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                      <img
+                        src={previewZoomUrl}
+                        alt="Previsualización de ambiente"
+                        className="max-h-[75vh] w-auto mx-auto rounded-xl object-contain"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {photoUploading && (
-                  <p className="text-xs text-brand-green font-semibold animate-pulse">
-                    Subiendo y optimizando imagen...
+                  <p className="text-xs text-brand-green font-semibold animate-pulse flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-brand-green animate-ping" />
+                    Subiendo y optimizando imagen en alta resolución...
                   </p>
                 )}
 
