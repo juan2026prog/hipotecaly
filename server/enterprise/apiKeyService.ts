@@ -3,7 +3,7 @@
 // ==============================================================================
 
 import crypto from 'crypto';
-import { supabaseAdmin } from '../supabase';
+import { supabaseAdmin } from '../supabase.js';
 
 export type ApiKeyScope =
   | 'read:simulations'
