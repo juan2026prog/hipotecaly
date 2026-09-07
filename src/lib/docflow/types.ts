@@ -194,7 +194,17 @@ export interface ResolvedCaseData {
     contact_phone?: string;
   };
   notary?: {
+    user_id?: string;
     name: string;
+    full_name?: string;
+    document_number?: string;
+    notarial_fund_affiliate_number?: string;
+    professional_address?: string;
+    professional_city?: string;
+    professional_department?: string;
+    electronic_domicile?: string;
+    notary_office_name?: string;
+    digital_certificate_identifier?: string;
     email?: string;
     phone?: string;
     license?: string;

@@ -53,6 +53,9 @@ export const ApplicationDetailPage: React.FC = () => {
   const [docGenTplId, setDocGenTplId] = useState<string | undefined>(undefined);
   const [showCommandCenter, setShowCommandCenter] = useState(false);
   const [commandActionToast, setCommandActionToast] = useState<string | null>(null);
+  const [showAssignNotaryModal, setShowAssignNotaryModal] = useState(false);
+  const [selectedNotaryUser, setSelectedNotaryUser] = useState('u-test-notary');
+  const [assignedNotaryName, setAssignedNotaryName] = useState('Esc. María Pérez Morales');
 
   // Estados para valuación preliminar
   const [preliminaryValue, setPreliminaryValue] = useState<number>(0);
@@ -1016,6 +1019,30 @@ export const ApplicationDetailPage: React.FC = () => {
           {/* SIDEBAR DERECHA: PRÓXIMO PASO, TAREAS & TIMELINE RESUMIDO (4 cols) */}
           <div className="lg:col-span-4 space-y-5">
             
+            {/* Escribano Asignado Card (Requerimiento Notarial) */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-teal-700 uppercase tracking-wider block flex items-center">
+                  <UserCheck className="w-3.5 h-3.5 mr-1" /> Escribano Asignado
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 font-bold border border-teal-200">
+                  {assignedNotaryName ? 'Activo' : 'Sin asignar'}
+                </span>
+              </div>
+              <div className="space-y-0.5">
+                <div className="text-xs font-semibold text-slate-500">Estudio Fernández & Asociados</div>
+                <h4 className="text-sm font-bold text-slate-900">{assignedNotaryName || 'Esc. María Pérez Morales'}</h4>
+                <div className="text-[11px] text-slate-400 font-mono">N.º Caja Notarial: 48.291 · Habilitada</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAssignNotaryModal(true)}
+                className="w-full py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs border border-slate-200 transition-colors flex items-center justify-center space-x-1.5"
+              >
+                <span>Cambiar escribano</span>
+              </button>
+            </div>
+
             {/* Próximo Paso Card */}
             <div className="bg-[#102d49] text-white rounded-2xl p-5 shadow-sm space-y-2">
               <span className="text-[10px] font-bold text-[#f4b43b] uppercase tracking-wider block">
@@ -1128,6 +1155,78 @@ export const ApplicationDetailPage: React.FC = () => {
         }}
         onGoToSection={(sec) => setActiveTab(sec)}
       />
+
+      {/* Modal Asignar / Cambiar Escribano */}
+      {showAssignNotaryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 text-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-1.5">
+                <UserCheck className="w-4 h-4 text-teal-600" />
+                <span>Asignar Escribano al Expediente</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowAssignNotaryModal(false)}
+                className="text-slate-400 hover:text-slate-600 text-xs font-bold"
+              >
+                Cerrar
+              </button>
+            </div>
+
+            <p className="text-slate-600">
+              Seleccione el profesional o estudio notarial habilitado para conceder acceso mediante RLS y asignación de tareas.
+            </p>
+
+            <div className="space-y-2">
+              <label className="font-bold text-slate-700 block">Escribano Responsable:</label>
+              <select
+                value={selectedNotaryUser}
+                onChange={(e) => setSelectedNotaryUser(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 font-semibold text-slate-800 focus:ring-2 focus:ring-teal-500"
+              >
+                <option value="u-test-notary">Esc. María Pérez Morales (Estudio Fernández & Asoc. · Caja 48.291)</option>
+                <option value="u-test-notary-2">Esc. Pablo Silva Gómez (Estudio Fernández & Asoc. · Caja 52.140)</option>
+              </select>
+            </div>
+
+            <div className="p-3 rounded-xl bg-teal-50 text-teal-900 border border-teal-200/80 space-y-1">
+              <div className="font-bold flex items-center">
+                <CheckCircle2 className="w-3.5 h-3.5 text-teal-600 mr-1" /> Permiso Inmediato RLS
+              </div>
+              <p className="text-[11px] text-teal-800 leading-normal">
+                Al confirmar, el escribano verá este legajo en su consola "Mis Expedientes" y podrá emitir observaciones y generar escrituras con DocFlow.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowAssignNotaryModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAssignedNotaryName(
+                    selectedNotaryUser === 'u-test-notary'
+                      ? 'Esc. María Pérez Morales'
+                      : 'Esc. Pablo Silva Gómez'
+                  );
+                  setShowAssignNotaryModal(false);
+                  setCommandActionToast('Escribano asignado exitosamente al expediente.');
+                  setTimeout(() => setCommandActionToast(null), 3500);
+                }}
+                className="px-4 py-2 rounded-xl bg-[#102d49] hover:bg-[#173a5e] text-white font-bold"
+              >
+                Confirmar Asignación
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </BackofficeLayout>
   );
 };

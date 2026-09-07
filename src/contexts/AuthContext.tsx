@@ -510,6 +510,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(false);
         return { error: null };
       }
+
+      if (
+        (emailTrimmed === 'escribano' || emailTrimmed === 'escribano@hipotecaly.uy' || emailTrimmed === 'notary' || emailTrimmed === 'escribana') &&
+        (passTrimmed === 'demo123' || passTrimmed === 'admin123' || passTrimmed === 'escribano' || passTrimmed === 'escribana')
+      ) {
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('hipotecaly_test_role', 'notary');
+        }
+        const mockUser: User = {
+          id: 'u-test-notary',
+          app_metadata: { role: 'notary' },
+          user_metadata: { first_name: 'María', last_name: 'Pérez Morales', role: 'notary' },
+          aud: 'authenticated',
+          created_at: new Date().toISOString(),
+          email: 'escribano@hipotecaly.uy',
+        } as any;
+        setUser(mockUser);
+        setUserRole('notary');
+        setIsSuperAdmin(false);
+        setMemberships([
+          {
+            organizationId: 'a0000000-0000-0000-0000-000000000001',
+            role: 'notary',
+            isActive: true,
+          },
+          {
+            organizationId: 'd0000000-0000-0000-0000-000000000001',
+            role: 'notary',
+            isActive: true,
+          },
+        ]);
+        setLoading(false);
+        return { error: null };
+      }
     }
 
     return { error: new Error('Credenciales incorrectas o usuario no encontrado.') };

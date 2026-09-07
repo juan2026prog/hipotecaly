@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   ArrowRight,
   Sparkles,
+  Stamp,
 } from 'lucide-react';
 import { useTenant } from '../../../contexts/TenantContext';
 
@@ -70,6 +71,18 @@ export const EstudioNovaAccessHubPage: React.FC = () => {
       icon: LayoutDashboard,
       iconBg: 'bg-indigo-700 text-white',
       ctaText: 'Abrir Backoffice',
+    },
+    {
+      id: 'notary',
+      org: 'Escribanía',
+      title: 'Portal del Escribano',
+      badge: 'Estudio Notarial',
+      badgeColor: 'bg-teal-50 text-teal-800 border-teal-200',
+      description: 'Estudio de títulos, checklist notarial, observaciones, DocFlow y Firma Digital.',
+      path: '/demo/' + slug + '/notary',
+      icon: Stamp,
+      iconBg: 'bg-teal-700 text-white',
+      ctaText: 'Ingresar a Escribanía',
     },
     {
       id: 'investor',

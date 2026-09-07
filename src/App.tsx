@@ -43,6 +43,16 @@ import { TenantSimulatorPage } from './pages/demo/TenantSimulatorPage';
 import { TenantWizardPage } from './pages/demo/TenantWizardPage';
 import { TenantInvestorDashboardPage } from './pages/demo/TenantInvestorDashboardPage';
 
+// Portal Notarial & Escribanos (/notary)
+import { NotaryDashboardPage } from './pages/notary/NotaryDashboardPage';
+import { NotaryApplicationsPage } from './pages/notary/NotaryApplicationsPage';
+import { NotaryApplicationDetailPage } from './pages/notary/NotaryApplicationDetailPage';
+import { NotaryTasksPage } from './pages/notary/NotaryTasksPage';
+import { NotaryDocumentsPage } from './pages/notary/NotaryDocumentsPage';
+import { NotarySignaturesPage } from './pages/notary/NotarySignaturesPage';
+import { NotaryCalendarPage } from './pages/notary/NotaryCalendarPage';
+import { NotaryProfilePage } from './pages/notary/NotaryProfilePage';
+
 // Super Admin Hub
 import { SuperAdminDashboardPage } from './pages/admin/SuperAdminDashboardPage';
 import { SuperAdminTenantsPage } from './pages/admin/SuperAdminTenantsPage';
@@ -693,6 +703,140 @@ export const App: React.FC = () => {
                     <LenderRouteGate>
                       <LenderMessagesPage />
                     </LenderRouteGate>
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* ========================================================== */}
+              {/* 8. PORTAL NOTARIAL & ESCRIBANOS (/notary)                  */}
+              {/* ========================================================== */}
+              <Route
+                path="/notary"
+                element={
+                  <ProtectedRoute allowedRoles={['notary', 'super_admin']}>
+                    <NotaryDashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/notary/expedientes"
+                element={
+                  <ProtectedRoute allowedRoles={['notary', 'super_admin']}>
+                    <NotaryApplicationsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/notary/expedientes/:id"
+                element={
+                  <ProtectedRoute allowedRoles={['notary', 'super_admin']}>
+                    <NotaryApplicationDetailPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/notary/tareas"
+                element={
+                  <ProtectedRoute allowedRoles={['notary', 'super_admin']}>
+                    <NotaryTasksPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/notary/documentos"
+                element={
+                  <ProtectedRoute allowedRoles={['notary', 'super_admin']}>
+                    <NotaryDocumentsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/notary/firmas"
+                element={
+                  <ProtectedRoute allowedRoles={['notary', 'super_admin']}>
+                    <NotarySignaturesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/notary/calendario"
+                element={
+                  <ProtectedRoute allowedRoles={['notary', 'super_admin']}>
+                    <NotaryCalendarPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/notary/perfil"
+                element={
+                  <ProtectedRoute allowedRoles={['notary', 'super_admin']}>
+                    <NotaryProfilePage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Rutas Tenant Dinámicas Notariales */}
+              <Route
+                path="/demo/:tenantSlug/notary"
+                element={
+                  <ProtectedRoute allowedRoles={['notary', 'super_admin']}>
+                    <NotaryDashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/notary/expedientes"
+                element={
+                  <ProtectedRoute allowedRoles={['notary', 'super_admin']}>
+                    <NotaryApplicationsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/notary/expedientes/:id"
+                element={
+                  <ProtectedRoute allowedRoles={['notary', 'super_admin']}>
+                    <NotaryApplicationDetailPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/notary/tareas"
+                element={
+                  <ProtectedRoute allowedRoles={['notary', 'super_admin']}>
+                    <NotaryTasksPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/notary/documentos"
+                element={
+                  <ProtectedRoute allowedRoles={['notary', 'super_admin']}>
+                    <NotaryDocumentsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/notary/firmas"
+                element={
+                  <ProtectedRoute allowedRoles={['notary', 'super_admin']}>
+                    <NotarySignaturesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/notary/calendario"
+                element={
+                  <ProtectedRoute allowedRoles={['notary', 'super_admin']}>
+                    <NotaryCalendarPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/notary/perfil"
+                element={
+                  <ProtectedRoute allowedRoles={['notary', 'super_admin']}>
+                    <NotaryProfilePage />
                   </ProtectedRoute>
                 }
               />

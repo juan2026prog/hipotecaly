@@ -36,6 +36,16 @@ export const UsersManagementPage: React.FC = () => {
       status: 'active',
       created_at: new Date().toISOString(),
     },
+    {
+      id: 'm3',
+      organization_id: tenant.id,
+      user_id: 'u-test-notary',
+      email: 'escribano@hipotecaly.uy',
+      full_name: 'Esc. María Pérez Morales',
+      role: 'notary',
+      status: 'active',
+      created_at: new Date(Date.now() - 3600000 * 24 * 30).toISOString(),
+    },
   ]);
   const [loading] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);

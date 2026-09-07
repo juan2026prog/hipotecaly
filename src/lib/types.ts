@@ -20,6 +20,45 @@ export type ApplicationStatus =
   | 'rejected'
   | 'cancelled';
 
+export type NotaryStatus =
+  | 'not_assigned'
+  | 'assigned'
+  | 'documents_pending'
+  | 'under_review'
+  | 'observed'
+  | 'documentation_complete'
+  | 'drafting'
+  | 'ready_to_sign'
+  | 'signed'
+  | 'completed';
+
+export function getNotaryStatusLabel(status: NotaryStatus | string): string {
+  switch (status) {
+    case 'not_assigned':
+      return 'No asignado';
+    case 'assigned':
+      return 'Asignado';
+    case 'documents_pending':
+      return 'Esperando documentación';
+    case 'under_review':
+      return 'En estudio';
+    case 'observed':
+      return 'Observado';
+    case 'documentation_complete':
+      return 'Documentación completa';
+    case 'drafting':
+      return 'Preparando escritura';
+    case 'ready_to_sign':
+      return 'Listo para firma';
+    case 'signed':
+      return 'Firmado';
+    case 'completed':
+      return 'Finalizado';
+    default:
+      return status || 'No asignado';
+  }
+}
+
 export function getApplicationStatusLabel(status: ApplicationStatus | string): string {
   switch (status) {
     case 'draft':
@@ -140,6 +179,7 @@ export interface Application {
   organization_id: string;
   borrower_id?: string;
   status: ApplicationStatus;
+  notary_status?: NotaryStatus;
   current_step: number;
   requested_amount: number;
   currency: string;
@@ -245,3 +285,146 @@ export interface ApplicationStatusHistory {
   notes?: string;
   created_at: string;
 }
+
+// --- MODELOS DEL PERFIL NOTARIAL Y ESTUDIO NOTARIAL ---
+
+export type NotaryProfessionalStatus =
+  | 'pending'
+  | 'verified'
+  | 'authorized'
+  | 'suspended'
+  | 'inactive'
+  | 'verification_failed';
+
+export type NotaryCertificateStatus =
+  | 'not_configured'
+  | 'pending'
+  | 'active'
+  | 'expired'
+  | 'revoked'
+  | 'error';
+
+export type NotaryRoleInOffice =
+  | 'notary_owner'
+  | 'notary'
+  | 'notary_assistant'
+  | 'notary_admin';
+
+export interface NotaryOffice {
+  id: string;
+  organization_id: string;
+  name: string;
+  legal_name?: string;
+  tax_id?: string;
+  address?: string;
+  city?: string;
+  department?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  logo_url?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NotaryProfile {
+  id: string;
+  user_id: string;
+  organization_id: string;
+  notary_office_id?: string;
+  notary_office?: NotaryOffice;
+  notarial_fund_affiliate_number?: string;
+  professional_status: NotaryProfessionalStatus;
+  scj_authorization_status: string;
+  scj_verified_at?: string;
+  professional_address?: string;
+  professional_city?: string;
+  professional_department?: string;
+  electronic_domicile?: string;
+  university?: string;
+  qualification_date?: string;
+  role_in_office: NotaryRoleInOffice;
+  digital_signature_enabled: boolean;
+  digital_certificate_status: NotaryCertificateStatus;
+  digital_certificate_expires_at?: string;
+  digital_certificate_identifier?: string;
+  certificate_provider?: string;
+  full_name?: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  document_number?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ApplicationNotary {
+  id: string;
+  application_id: string;
+  organization_id: string;
+  notary_user_id: string;
+  assigned_by?: string;
+  assigned_at: string;
+  is_primary: boolean;
+  role_in_case: 'primary_notary' | 'collaborator' | 'assistant';
+  status: 'active' | 'revoked' | 'completed';
+  notary_profile?: NotaryProfile;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NotaryChecklistItem {
+  id: string;
+  application_id: string;
+  organization_id: string;
+  title: string;
+  category: 'identificacion' | 'dominial' | 'catastral' | 'tributario' | 'registral' | 'escritura';
+  is_required: boolean;
+  status: 'pending' | 'in_review' | 'completed' | 'observed' | 'waived';
+  completed_by?: string;
+  completed_at?: string;
+  comments?: string;
+  related_document_id?: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type NotaryObservationType =
+  | 'documental'
+  | 'registral'
+  | 'catastral'
+  | 'tributaria'
+  | 'dominial'
+  | 'sucesoria'
+  | 'poderes'
+  | 'gravamenes'
+  | 'otra';
+
+export type NotarySeverityLevel =
+  | 'informativa'
+  | 'requiere_correccion'
+  | 'bloqueante';
+
+export interface NotaryObservation {
+  id: string;
+  application_id: string;
+  organization_id: string;
+  title: string;
+  description: string;
+  observation_type: NotaryObservationType;
+  severity_level: NotarySeverityLevel;
+  status: 'open' | 'in_progress' | 'resolved' | 'dismissed';
+  responsible_id?: string;
+  due_date?: string;
+  related_document_id?: string;
+  created_by?: string;
+  resolved_by?: string;
+  resolved_at?: string;
+  resolution_notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+

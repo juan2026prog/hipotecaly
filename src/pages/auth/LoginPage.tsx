@@ -38,18 +38,21 @@ export const LoginPage: React.FC = () => {
         navigate(redirectTo || '/demo/estudio-nova/admin');
       } else if (emailLower === 'prestamista' || emailLower.startsWith('prestamista') || emailLower.startsWith('lender') || emailLower.startsWith('inversor')) {
         navigate(redirectTo || '/demo/estudio-nova/inversor');
+      } else if (emailLower === 'escribano' || emailLower.startsWith('escriban') || emailLower.startsWith('notary')) {
+        navigate(redirectTo || '/notary');
       } else {
         navigate(redirectTo || '/demo/estudio-nova/cliente');
       }
     }
   };
 
-  const handleDemoLogin = async (role: 'super_admin' | 'analyst' | 'borrower' | 'lender', targetPath: string) => {
+  const handleDemoLogin = async (role: 'super_admin' | 'analyst' | 'borrower' | 'lender' | 'notary', targetPath: string) => {
     const credentials = {
       super_admin: { u: 'admin', p: 'admin123' },
       analyst: { u: 'operador', p: 'demo123' },
       borrower: { u: 'cliente', p: 'demo123' },
       lender: { u: 'prestamista', p: 'demo123' },
+      notary: { u: 'escribano', p: 'demo123' },
     }[role];
     setLoading(true);
     setErrorMessage(null);
@@ -124,7 +127,7 @@ export const LoginPage: React.FC = () => {
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             <button
               type="button"
               disabled={loading}
@@ -141,8 +144,18 @@ export const LoginPage: React.FC = () => {
               onClick={() => handleDemoLogin('analyst', '/demo/estudio-nova/admin')}
               className="p-2.5 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100/80 text-left transition-colors text-xs group"
             >
-              <span className="font-bold text-blue-950 block group-hover:text-blue-700">🏢 Backoffice Nova</span>
+              <span className="font-bold text-blue-950 block group-hover:text-blue-700">🏢 Backoffice</span>
               <span className="text-[10px] text-blue-800 font-mono block mt-0.5">operador / demo123</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => handleDemoLogin('notary', '/notary')}
+              className="p-2.5 rounded-xl border border-teal-300 bg-teal-50/70 hover:bg-teal-100/80 text-left transition-colors text-xs group"
+            >
+              <span className="font-bold text-teal-950 block group-hover:text-teal-700">📜 Escribano</span>
+              <span className="text-[10px] text-teal-800 font-mono block mt-0.5">escribano / demo123</span>
             </button>
 
             <button
@@ -151,7 +164,7 @@ export const LoginPage: React.FC = () => {
               onClick={() => handleDemoLogin('borrower', '/demo/estudio-nova/cliente')}
               className="p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100/80 text-left transition-colors text-xs group"
             >
-              <span className="font-bold text-emerald-950 block group-hover:text-emerald-700">👤 Portal Cliente</span>
+              <span className="font-bold text-emerald-950 block group-hover:text-emerald-700">👤 Solicitante</span>
               <span className="text-[10px] text-emerald-800 font-mono block mt-0.5">cliente / demo123</span>
             </button>
 
@@ -161,7 +174,7 @@ export const LoginPage: React.FC = () => {
               onClick={() => handleDemoLogin('lender', '/demo/estudio-nova/inversor')}
               className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/70 hover:bg-purple-100/80 text-left transition-colors text-xs group"
             >
-              <span className="font-bold text-purple-950 block group-hover:text-purple-700">💼 Red Inversores</span>
+              <span className="font-bold text-purple-950 block group-hover:text-purple-700">💼 Inversores</span>
               <span className="text-[10px] text-purple-800 font-mono block mt-0.5">prestamista / demo123</span>
             </button>
           </div>
