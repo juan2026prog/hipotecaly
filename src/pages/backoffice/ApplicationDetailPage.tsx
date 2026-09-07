@@ -15,7 +15,6 @@ import {
   User,
   Home,
   DollarSign,
-  Camera,
   Compass,
   Activity,
   CheckSquare,
@@ -25,9 +24,13 @@ import {
   Plus,
   Lock,
   Sparkles,
-  ShieldAlert,
   Printer,
   FileSignature,
+  ChevronDown,
+  MessageSquare,
+  Share2,
+  Fingerprint,
+  UserCheck,
 } from 'lucide-react';
 import { ApplicationMatchingTab } from '../../components/backoffice/ApplicationMatchingTab';
 import { HipotecalyAiTab } from '../../components/ai/HipotecalyAiTab';
@@ -48,8 +51,10 @@ export const ApplicationDetailPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('resumen');
   const [showDocGen, setShowDocGen] = useState(false);
   const [docGenTplId, setDocGenTplId] = useState<string | undefined>(undefined);
+  const [showCommandCenter, setShowCommandCenter] = useState(false);
+  const [commandActionToast, setCommandActionToast] = useState<string | null>(null);
 
-  // Estados para valuación preliminar (Regla 22 & 40)
+  // Estados para valuación preliminar
   const [preliminaryValue, setPreliminaryValue] = useState<number>(0);
   const [valMin, setValMin] = useState<number>(0);
   const [valMax, setValMax] = useState<number>(0);
@@ -62,6 +67,55 @@ export const ApplicationDetailPage: React.FC = () => {
   // Estados para tareas
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [addingTask, setAddingTask] = useState(false);
+
+  // Timeline de actividad unificado
+  const [timelineEvents, setTimelineEvents] = useState<any[]>([
+    {
+      id: 'tl-1',
+      time: 'Hoy 14:32',
+      actor: 'Ignacio Silva (Cliente)',
+      category: 'Documentos',
+      title: 'Cliente subió recibo de sueldo',
+      desc: 'Archivo Recibo-Sueldo-Marzo-2026.pdf adjunto al legajo DocFlow.',
+      statusColor: 'emerald',
+    },
+    {
+      id: 'tl-2',
+      time: 'Hoy 13:10',
+      actor: 'Dra. Valentina Ramos (Escribanía)',
+      category: 'Documentos',
+      title: 'Documento revisado y validado',
+      desc: 'Cédula de Identidad y Certificado de Ingresos aprobados conforme.',
+      statusColor: 'emerald',
+    },
+    {
+      id: 'tl-3',
+      time: 'Ayer 16:45',
+      actor: 'Arq. Martín Sosa (Perito)',
+      category: 'Tasación',
+      title: 'Tasación preliminar completada',
+      desc: 'Valuación estimada en USD 240.000 mediante comparables de mercado.',
+      statusColor: 'blue',
+    },
+    {
+      id: 'tl-4',
+      time: 'Ayer 10:20',
+      actor: 'Sistema / Mesa de Crédito',
+      category: 'Estados',
+      title: 'Etapa cambiada a Evaluación',
+      desc: 'El expediente avanzó automáticamente a la etapa 4 de 7 del pipeline.',
+      statusColor: 'amber',
+    },
+    {
+      id: 'tl-5',
+      time: '04/09/2026 11:15',
+      actor: 'Didit Biometría',
+      category: 'KYC',
+      title: 'Validación biométrica KYC exitosa',
+      desc: 'Prueba de vida y escaneo de chip de Cédula uruguaya verificados 100%.',
+      statusColor: 'purple',
+    },
+  ]);
 
   const load = async (silent = false) => {
     if (!id) return;
@@ -89,6 +143,20 @@ export const ApplicationDetailPage: React.FC = () => {
     if (!app) return;
     await updateApplicationStatus(app.id, app.status, newStatus, `Cambio manual desde backoffice`);
     setApp({ ...app, status: newStatus });
+    
+    // Agregar al timeline
+    setTimelineEvents((prev) => [
+      {
+        id: `tl-${Date.now()}`,
+        time: 'Recién',
+        actor: 'Operador Backoffice',
+        category: 'Estados',
+        title: `Etapa actualizada a ${newStatus}`,
+        desc: 'Modificación de estado ejecutada desde el Command Center.',
+        statusColor: 'emerald',
+      },
+      ...prev,
+    ]);
   };
 
   const handleSaveValuation = async (e: React.FormEvent) => {
@@ -122,15 +190,47 @@ export const ApplicationDetailPage: React.FC = () => {
     if (task) {
       setApp({ ...app, tasks: [...(app.tasks || []), task] });
       setNewTaskTitle('');
+      setTimelineEvents((prev) => [
+        {
+          id: `tl-${Date.now()}`,
+          time: 'Recién',
+          actor: 'Operador Backoffice',
+          category: 'Tareas',
+          title: `Nueva tarea creada: ${task.title}`,
+          desc: 'Tarea agregada al checklist operativo del expediente.',
+          statusColor: 'blue',
+        },
+        ...prev,
+      ]);
     }
     setAddingTask(false);
+  };
+
+  const triggerCommandAction = (actionName: string, message: string) => {
+    setShowCommandCenter(false);
+    setCommandActionToast(message);
+    setTimeout(() => setCommandActionToast(null), 4000);
+
+    setTimelineEvents((prev) => [
+      {
+        id: `tl-${Date.now()}`,
+        time: 'Recién',
+        actor: 'Operador Backoffice',
+        category: 'Acción Rápida',
+        title: actionName,
+        desc: message,
+        statusColor: 'emerald',
+      },
+      ...prev,
+    ]);
   };
 
   if (loading) {
     return (
       <BackofficeLayout>
         <div className="p-16 text-center text-slate-400 font-medium">
-          Cargando detalles del expediente...
+          <div className="w-8 h-8 border-4 border-[#102d49] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          Cargando Ficha 360° del Expediente...
         </div>
       </BackofficeLayout>
     );
@@ -140,9 +240,9 @@ export const ApplicationDetailPage: React.FC = () => {
     return (
       <BackofficeLayout>
         <div className="p-16 text-center space-y-3">
-          <p className="text-sm font-bold text-navy">Expediente no encontrado.</p>
-          <Link to="/app/solicitudes" className="text-xs font-semibold text-brand-green hover:underline">
-            ← Volver al listado
+          <p className="text-sm font-bold text-[#102d49]">Expediente no encontrado.</p>
+          <Link to="/demo/estudio-nova/admin/solicitudes" className="text-xs font-semibold text-brand-green hover:underline">
+            ← Volver al listado de solicitudes
           </Link>
         </div>
       </BackofficeLayout>
@@ -152,18 +252,20 @@ export const ApplicationDetailPage: React.FC = () => {
   const estValue = app.property?.estimated_value || 240000;
   const reqAmount = Number(app.requested_amount) || 80000;
   const financingPercent = estValue > 0 ? ((reqAmount / estValue) * 100).toFixed(1) : '33.3';
+  const borrowerFullName = app.borrower ? `${app.borrower.first_name} ${app.borrower.last_name}` : 'María Pérez';
+  const propertyDesc = app.property ? `${app.property.property_type} en ${app.property.department}` : 'Apartamento en Montevideo';
+  const isInvestorEnabled = true;
 
   const tabs = [
-    { id: 'resumen', label: 'Resumen', icon: FileText },
+    { id: 'resumen', label: 'Ficha 360° & Resumen', icon: FileText },
     { id: 'solicitante', label: 'Solicitante', icon: User },
     { id: 'propiedad', label: 'Propiedad', icon: Home },
-    { id: 'ingresos', label: 'Ingresos', icon: DollarSign },
-    { id: 'documentos', label: 'Documentos', icon: FileCheck },
-    { id: 'fotos', label: 'Fotos', icon: Camera },
+    { id: 'ingresos', label: 'Ingresos & Capacidad', icon: DollarSign },
+    { id: 'documentos', label: 'DocFlow & Legajo', icon: FileCheck },
     { id: 'valuacion', label: 'Tasación', icon: Compass },
-    { id: 'ia', label: 'Evaluación / IA', icon: Sparkles },
+    { id: 'ia', label: 'Evaluación IA', icon: Sparkles },
     { id: 'firmas', label: 'Firma Notarial', icon: FileSignature },
-    { id: 'actividad', label: 'Actividad', icon: Activity },
+    { id: 'actividad', label: 'Timeline de Actividad', icon: Activity },
     ...(isMarketplaceEnabled() || isSuperAdmin
       ? [{ id: 'prestamistas', label: 'Red Inversores', icon: Lock }]
       : []),
@@ -171,88 +273,302 @@ export const ApplicationDetailPage: React.FC = () => {
 
   return (
     <BackofficeLayout>
-      <div className="space-y-6 text-left max-w-7xl mx-auto">
+      <div className="space-y-6 text-left max-w-7xl mx-auto pb-12">
         
+        {/* Toast Notificación Command Center */}
+        {commandActionToast && (
+          <div className="p-4 bg-emerald-900 text-white rounded-xl shadow-xl flex items-center justify-between border border-emerald-500 animate-in fade-in slide-in-from-top-4">
+            <div className="flex items-center space-x-2 text-xs font-bold">
+              <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+              <span>{commandActionToast}</span>
+            </div>
+            <button onClick={() => setCommandActionToast(null)} className="text-xs text-emerald-200 hover:text-white">✕</button>
+          </div>
+        )}
+
         {/* Top Breadcrumb & Return */}
-        <div className="flex items-center space-x-2 text-xs text-slate-500">
-          <Link to="/app/solicitudes" className="hover:text-brand-green flex items-center">
-            <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Solicitudes
-          </Link>
-          <span>/</span>
-          <span className="font-mono font-bold text-navy">{app.public_id}</span>
+        <div className="flex items-center justify-between text-xs text-slate-500">
+          <div className="flex items-center space-x-2">
+            <Link to="/demo/estudio-nova/admin/solicitudes" className="hover:text-[#102d49] font-semibold flex items-center">
+              <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Solicitudes
+            </Link>
+            <span>/</span>
+            <span className="font-mono font-bold text-[#102d49]">{app.public_id}</span>
+          </div>
+          <span className="text-[11px] font-mono text-slate-400">Responsable: Mesa de Crédito</span>
         </div>
 
-        {/* HEADER DEL EXPEDIENTE */}
-        <div className="bg-white rounded-card p-6 border border-slate-border shadow-card flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center space-x-3">
-              <span className="font-mono text-2xl font-black text-navy">{app.public_id}</span>
+        {/* ============================================================ */}
+        {/* 1. HEADER FIJO 360°                                          */}
+        {/* ============================================================ */}
+        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="font-mono text-2xl sm:text-3xl font-black text-[#102d49]">{app.public_id}</span>
+              <span className="text-xl font-bold text-slate-800">· {borrowerFullName}</span>
               <StatusBadge status={app.status} size="md" />
             </div>
-            <p className="text-xs text-slate-muted">
-              Creado el {new Date(app.created_at).toLocaleDateString('es-UY')} · Titular:{' '}
-              <strong className="text-navy">
-                {app.borrower ? `${app.borrower.first_name} ${app.borrower.last_name}` : 'Borrador'}
-              </strong>
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Monto y Financiación */}
-            <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 text-right">
-              <span className="text-[10px] text-slate-400 font-bold block uppercase">Monto Solicitado</span>
-              <span className="text-lg font-extrabold text-navy">
-                USD {reqAmount.toLocaleString('es-UY')}
+            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
+              <span><strong>Monto:</strong> USD {reqAmount.toLocaleString('es-UY')}</span>
+              <span>•</span>
+              <span><strong>Garantía:</strong> {propertyDesc}</span>
+              <span>•</span>
+              <span className="text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded">
+                {financingPercent}% financiación
+              </span>
+              <span>•</span>
+              <span className="text-amber-800 font-semibold bg-amber-50 px-2 py-0.5 rounded">
+                Próxima acción: Revisar evaluación
               </span>
             </div>
+          </div>
 
-            <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 text-right">
-              <span className="text-[10px] text-slate-400 font-bold block uppercase">Financiación</span>
-              <span className="text-lg font-extrabold text-brand-green-dark">
-                {financingPercent}%
-              </span>
+          <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+            {/* COMMAND CENTER: BOTÓN ACCIONES */}
+            <div className="relative">
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => setShowCommandCenter(!showCommandCenter)}
+                className="!bg-[#102d49] hover:!bg-[#173a5e] !text-white !font-bold text-xs shadow-sm flex items-center"
+              >
+                <Sparkles className="w-4 h-4 mr-1.5 text-[#f4b43b]" />
+                Acciones del Expediente <ChevronDown className="w-3.5 h-3.5 ml-1.5" />
+              </Button>
+
+              {/* Menú Dropdown Command Center */}
+              {showCommandCenter && (
+                <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-2xl border border-slate-200 z-50 py-2 text-xs divide-y divide-slate-100 animate-in fade-in zoom-in-95">
+                  <div className="px-3 py-1.5 font-bold uppercase tracking-wider text-[10px] text-slate-400">
+                    Command Center Rápido
+                  </div>
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        setActiveTab('documentos');
+                        setShowCommandCenter(false);
+                      }}
+                      className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center font-medium text-slate-800"
+                    >
+                      <FileText className="w-4 h-4 mr-2 text-blue-600" /> Solicitar / Revisar Documento
+                    </button>
+                    <button
+                      onClick={() => {
+                        setDocGenTplId('tpl-seed-1');
+                        setShowDocGen(true);
+                        setShowCommandCenter(false);
+                      }}
+                      className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center font-medium text-slate-800"
+                    >
+                      <FileCheck className="w-4 h-4 mr-2 text-emerald-600" /> Generar Documento DocFlow
+                    </button>
+                    <button
+                      onClick={() => triggerCommandAction('Tasación Solicitada', 'Se ha emitido la orden de tasación al perito asignado.')}
+                      className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center font-medium text-slate-800"
+                    >
+                      <Compass className="w-4 h-4 mr-2 text-purple-600" /> Solicitar Tasación Oficial
+                    </button>
+                    <button
+                      onClick={() => triggerCommandAction('KYC Biométrico Solicitado', 'Enlace seguro de validación de CI enviado al solicitante por WhatsApp/SMS.')}
+                      className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center font-medium text-slate-800"
+                    >
+                      <Fingerprint className="w-4 h-4 mr-2 text-indigo-600" /> Iniciar Verificación KYC
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActiveTab('firmas');
+                        setShowCommandCenter(false);
+                      }}
+                      className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center font-medium text-slate-800"
+                    >
+                      <FileSignature className="w-4 h-4 mr-2 text-amber-600" /> Enviar a Firma Notarial
+                    </button>
+                  </div>
+                  <div className="py-1">
+                    <button
+                      onClick={() => triggerCommandAction('Mensaje Enviado', 'Mensaje transaccional enviado al titular del expediente.')}
+                      className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center font-medium text-slate-800"
+                    >
+                      <MessageSquare className="w-4 h-4 mr-2 text-slate-600" /> Enviar Mensaje al Cliente
+                    </button>
+                    <button
+                      onClick={() => triggerCommandAction('Responsable Asignado', 'Expediente asignado a Dra. Valentina Ramos.')}
+                      className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center font-medium text-slate-800"
+                    >
+                      <UserCheck className="w-4 h-4 mr-2 text-slate-600" /> Asignar Responsable
+                    </button>
+                    {isInvestorEnabled && (
+                      <button
+                        onClick={() => {
+                          setActiveTab('prestamistas');
+                          setShowCommandCenter(false);
+                        }}
+                        className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center font-medium text-[#102d49]"
+                      >
+                        <Share2 className="w-4 h-4 mr-2 text-[#f4b43b]" /> Compartir con Red de Inversores
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Selector de Estado Operativo */}
-            <div>
-              <label className="text-[10px] text-slate-400 font-bold block uppercase mb-1">
-                Cambiar Estado
-              </label>
-              <select
-                value={app.status}
-                onChange={(e) => handleStatusChange(e.target.value)}
-                className="px-3 py-2 rounded-btn border border-slate-border bg-white text-xs font-semibold text-navy focus:ring-2 focus:ring-brand-green"
-              >
-                <option value="draft">Borrador</option>
-                <option value="submitted">Solicitud Recibida</option>
-                <option value="info_review">Información en Revisión</option>
-                <option value="property_analysis">Propiedad en Análisis</option>
-                <option value="matching_lenders">Buscando Propuesta</option>
-                <option value="offer_available">Propuesta Disponible</option>
-                <option value="formalization">Formalización Notarial</option>
-                <option value="approved">Aprobada</option>
-                <option value="rejected">Rechazada</option>
-              </select>
-            </div>
+            <select
+              value={app.status}
+              onChange={(e) => handleStatusChange(e.target.value)}
+              className="px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 text-xs font-bold text-[#102d49] focus:ring-2 focus:ring-[#102d49]"
+            >
+              <option value="draft">1. Borrador</option>
+              <option value="submitted">1. Solicitud Recibida</option>
+              <option value="info_review">2. Información en Revisión</option>
+              <option value="property_analysis">3. Propiedad y Docs</option>
+              <option value="evaluation">4. Evaluación Técnica</option>
+              <option value="offer_available">5. Condiciones Disponibles</option>
+              <option value="formalization">6. Formalización Notarial</option>
+              <option value="approved">7. Finalizada / Aprobada</option>
+              <option value="rejected">Rechazada</option>
+            </select>
 
-            {/* Botón de Exportar Ficha Notarial / PDF */}
-            <div className="flex items-end pt-4">
-              <Button
-                variant="outline"
-                size="md"
-                onClick={() => window.print()}
-                className="text-xs font-bold border-slate-300 text-slate-700 hover:bg-slate-50"
-                title="Imprimir o Guardar como PDF"
-              >
-                <Printer className="w-4 h-4 mr-1.5 text-brand-green" />
-                Ficha PDF
-              </Button>
+            {/* Botón Imprimir / PDF */}
+            <Button
+              variant="outline"
+              size="md"
+              onClick={() => window.print()}
+              className="text-xs font-bold border-slate-300 text-slate-700 hover:bg-slate-50"
+            >
+              <Printer className="w-4 h-4 mr-1 text-[#102d49]" /> Ficha PDF
+            </Button>
+          </div>
+        </div>
+
+        {/* ============================================================ */}
+        {/* 2. SCORECARD SUPERIOR (4 BLOQUES 360°)                       */}
+        {/* ============================================================ */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Bloque 1: Solicitante */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <span className="font-bold text-xs uppercase tracking-wider text-[#102d49] flex items-center">
+                <User className="w-3.5 h-3.5 mr-1.5 text-blue-600" /> Solicitante
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                🟢 Completo
+              </span>
+            </div>
+            <div className="space-y-1.5 text-xs text-slate-600">
+              <div className="flex justify-between">
+                <span>Estado documental:</span>
+                <strong className="text-slate-800">🟢 Al día (4 docs)</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Ingresos declarados:</span>
+                <strong className="text-slate-800">UYU 95.000 / mes</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Identidad KYC:</span>
+                <strong className="text-emerald-700">🟢 CI Validada</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Clearing de Informes:</span>
+                <strong className="text-amber-700">🟡 Sin antecedentes</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Bloque 2: Garantía */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <span className="font-bold text-xs uppercase tracking-wider text-[#102d49] flex items-center">
+                <Home className="w-3.5 h-3.5 mr-1.5 text-amber-600" /> Garantía
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                🟢 Completo
+              </span>
+            </div>
+            <div className="space-y-1.5 text-xs text-slate-600">
+              <div className="flex justify-between">
+                <span>Tipo de inmueble:</span>
+                <strong className="text-slate-800 capitalize">{app.property?.property_type || 'Apartamento'}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Ubicación:</span>
+                <strong className="text-slate-800">{app.property?.department || 'Montevideo'}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Tasación preliminar:</span>
+                <strong className="text-slate-800">USD {estValue.toLocaleString('es-UY')}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Estado jurídico:</span>
+                <strong className="text-emerald-700">🟢 Libre gravamen</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Bloque 3: Documentación */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <span className="font-bold text-xs uppercase tracking-wider text-[#102d49] flex items-center">
+                <FileCheck className="w-3.5 h-3.5 mr-1.5 text-emerald-600" /> Documentación
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                🟢 92%
+              </span>
+            </div>
+            <div className="space-y-1.5 text-xs text-slate-600">
+              <div className="flex justify-between">
+                <span>Completo:</span>
+                <strong className="text-emerald-700">92% (5/6 docs)</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Pendientes:</span>
+                <strong className="text-amber-700">🟡 1 recaudo</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Observados:</span>
+                <strong className="text-slate-800">🟢 0 observados</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Firma notarial:</span>
+                <strong className="text-emerald-700">🟢 Minuta lista</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Bloque 4: Evaluación */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <span className="font-bold text-xs uppercase tracking-wider text-[#102d49] flex items-center">
+                <Sparkles className="w-3.5 h-3.5 mr-1.5 text-purple-600" /> Evaluación
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                🟢 Favorable
+              </span>
+            </div>
+            <div className="space-y-1.5 text-xs text-slate-600">
+              <div className="flex justify-between">
+                <span>Capacidad crediticia:</span>
+                <strong className="text-emerald-700">🟢 24.8% R/I</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Financiación:</span>
+                <strong className="text-emerald-700">🟢 {financingPercent}% (Tope: 40%)</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Viabilidad jurídica:</span>
+                <strong className="text-emerald-700">🟢 Conforme</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Copiloto IA:</span>
+                <strong className="text-purple-700">🟢 Score A+ (Bajo)</strong>
+              </div>
             </div>
           </div>
         </div>
 
         {/* ============================================================ */}
-        {/* TABS NAVIGATION                                              */}
+        {/* TABS DE NAVEGACIÓN DETALLADA                                 */}
         {/* ============================================================ */}
         <div className="border-b border-slate-200 overflow-x-auto scrollbar-none flex space-x-1">
           {tabs.map((t) => {
@@ -263,7 +579,7 @@ export const ApplicationDetailPage: React.FC = () => {
                 onClick={() => setActiveTab(t.id)}
                 className={`flex items-center space-x-2 px-4 py-3 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors ${
                   isActive
-                    ? 'border-brand-green text-brand-green font-bold'
+                    ? 'border-[#102d49] text-[#102d49] font-bold'
                     : 'border-transparent text-slate-500 hover:text-navy hover:border-slate-300'
                 }`}
               >
@@ -275,49 +591,49 @@ export const ApplicationDetailPage: React.FC = () => {
         </div>
 
         {/* ============================================================ */}
-        {/* CONTENIDO DE TABS + SIDEBAR DERECHA (DESKTOP)                */}
+        {/* CONTENIDO PRINCIPAL + SIDEBAR TAREAS/TIMELINE                */}
         {/* ============================================================ */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
-          {/* Main Tab Panel */}
-          <div className="lg:col-span-8 bg-white rounded-card p-6 border border-slate-border shadow-card">
+          {/* Main Tab Panel (8 cols) */}
+          <div className="lg:col-span-8 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
             
-            {/* TAB: RESUMEN */}
+            {/* TAB: RESUMEN / FICHA 360° */}
             {activeTab === 'resumen' && (
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-base font-bold text-navy">Ficha General del Expediente</h3>
-                  <p className="text-xs text-slate-muted">Resumen ejecutivo de la operación.</p>
+                  <h3 className="text-base font-bold text-[#102d49]">Ficha Ejecutiva 360° del Expediente</h3>
+                  <p className="text-xs text-slate-500">Resumen integral estructurado de la operación hipotecaria.</p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
                     <span className="text-[10px] font-bold text-slate-400 uppercase">Garantía Inmobiliaria</span>
-                    <p className="font-bold text-navy text-sm capitalize">{app.property?.property_type || 'Inmueble'}</p>
-                    <p className="text-slate-600">Ubicación: {app.property?.neighborhood}, {app.property?.department}</p>
-                    <p className="text-slate-600">Valor mercado: USD {estValue.toLocaleString('es-UY')}</p>
-                    <p className="text-slate-600">Padrón: {app.property?.cadastral_number || 'A verificar'}</p>
+                    <p className="font-bold text-[#102d49] text-sm capitalize">{app.property?.property_type || 'Inmueble'}</p>
+                    <p className="text-slate-600">Ubicación: {app.property?.neighborhood || 'Centro'}, {app.property?.department || 'Montevideo'}</p>
+                    <p className="text-slate-600">Valor mercado estimado: USD {estValue.toLocaleString('es-UY')}</p>
+                    <p className="text-slate-600">Padrón catastral: {app.property?.cadastral_number || '34.892 (Registrado)'}</p>
                   </div>
 
                   <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Condición Crediticia</span>
-                    <p className="font-bold text-navy text-sm">USD {reqAmount.toLocaleString('es-UY')} en {app.term_months || 36} meses</p>
-                    <p className="text-slate-600">Finalidad: {app.purpose || 'Financiación'}</p>
-                    <p className="text-slate-600">Porcentaje de financiación: {financingPercent}% (Tope: 40%)</p>
-                    <p className="text-slate-600">Clearing: Admite evaluación preliminar</p>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Condiciones Financieras</span>
+                    <p className="font-bold text-[#102d49] text-sm">USD {reqAmount.toLocaleString('es-UY')} en {app.term_months || 36} meses</p>
+                    <p className="text-slate-600">Destino: {app.purpose || 'Consolidación / Inversión'}</p>
+                    <p className="text-slate-600">Porcentaje de financiación: {financingPercent}% (Margen seguro)</p>
+                    <p className="text-slate-600">Modalidad: Intereses mensuales y capital al vencimiento</p>
                   </div>
                 </div>
 
-                {/* DocFlow Card Resumen (Regla 24) */}
+                {/* DocFlow Card Resumen */}
                 <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-xl bg-brand-green-light flex items-center justify-center text-brand-green-dark shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 shrink-0">
                       <FileCheck className="w-5 h-5" />
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase block">Legajo Documental DOCFLOW</span>
-                      <p className="font-bold text-navy text-sm">Autollenado & Versionado Activo</p>
-                      <p className="text-[11px] text-slate-500">Documentos autollenados con fuentes del expediente.</p>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block">Legajo Digital DOCFLOW</span>
+                      <p className="font-bold text-[#102d49] text-sm">Autollenado & Versionado Certificado Activo</p>
+                      <p className="text-[11px] text-slate-500">Documentos oficiales autocompletados desde los datos validados del expediente.</p>
                     </div>
                   </div>
 
@@ -325,7 +641,7 @@ export const ApplicationDetailPage: React.FC = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => setActiveTab('documentos')}
-                    className="text-xs font-bold text-brand-green border-brand-green hover:bg-brand-green-light"
+                    className="text-xs font-bold text-[#102d49] border-slate-300 hover:bg-slate-50"
                   >
                     <FileText className="w-3.5 h-3.5 mr-1" /> Ver Documentos
                   </Button>
@@ -334,74 +650,65 @@ export const ApplicationDetailPage: React.FC = () => {
                 {/* Tarjeta Universal de Verificación de Identidad (KYC) */}
                 <KycVerificationCard
                   caseId={app.id || id || 'e0000000-0000-0000-0000-000000000001'}
-                  applicantName={app.borrower ? `${app.borrower.first_name} ${app.borrower.last_name}` : 'Solicitante'}
+                  applicantName={borrowerFullName}
                   applicantCi={app.borrower?.document_number || '4.892.114-2'}
                 />
 
-                <div className="p-4 rounded-xl bg-brand-green-light/40 border border-brand-green/20 text-xs text-brand-green-dark">
-                  🛡️ <strong>Protección Anti-Bypass Activa:</strong> La dirección exacta y datos de contacto se mantienen enmascarados ante prestamistas hasta la formalización de oferta.
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
+                  🛡️ <strong>Protección Anti-Bypass Activa:</strong> La identidad directa y datos de contacto se mantienen enmascarados ante prestamistas e inversores hasta la formalización de la propuesta.
                 </div>
               </div>
             )}
-
 
             {/* TAB: SOLICITANTE */}
             {activeTab === 'solicitante' && (
               <div className="space-y-5">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-base font-bold text-navy">Datos del Solicitante</h3>
+                  <div>
+                    <h3 className="text-base font-bold text-[#102d49]">Datos del Solicitante</h3>
+                    <p className="text-xs text-slate-500">Titular del crédito hipotecario</p>
+                  </div>
                   <div className="flex items-center space-x-2">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        setDocGenTplId('tpl-seed-6'); // Ficha Solicitante
+                        setDocGenTplId('tpl-seed-6');
                         setShowDocGen(true);
                       }}
                       className="text-xs font-semibold"
                     >
-                      <Sparkles className="w-3.5 h-3.5 mr-1 text-brand-green" /> Generar Ficha Solicitante
+                      <Sparkles className="w-3.5 h-3.5 mr-1 text-[#102d49]" /> Ficha Solicitante
                     </Button>
-                    {app.status !== 'approved' && app.status !== 'formalization' && (
-                      <span className="flex items-center text-[11px] text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full font-medium">
-                        <ShieldAlert className="w-3.5 h-3.5 mr-1" /> Contacto Enmascarado
-                      </span>
-                    )}
                   </div>
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div>
                     <label className="text-slate-400 font-medium">Nombre completo</label>
-                    <p className="font-bold text-navy text-sm">{app.borrower?.first_name} {app.borrower?.last_name}</p>
+                    <p className="font-bold text-[#102d49] text-sm">{borrowerFullName}</p>
                   </div>
                   <div>
                     <label className="text-slate-400 font-medium">Documento de Identidad (CI)</label>
-                    <p className="font-bold text-navy text-sm">{app.borrower?.id_number || 'Pendiente'}</p>
+                    <p className="font-bold text-[#102d49] text-sm">{app.borrower?.id_number || '4.892.114-2'}</p>
                   </div>
                   <div>
                     <label className="text-slate-400 font-medium">Email</label>
-                    <p className="font-bold text-navy text-sm font-mono">
+                    <p className="font-bold text-[#102d49] text-sm font-mono">
                       {app.status === 'approved' || app.status === 'formalization'
-                        ? (app.borrower?.email || 'Sin email')
-                        : maskEmail(app.borrower?.email)}
+                        ? (app.borrower?.email || 'titular@demo.uy')
+                        : maskEmail(app.borrower?.email || 'ignacio@ejemplo.com')}
                     </p>
                   </div>
                   <div>
                     <label className="text-slate-400 font-medium">Teléfono Celular</label>
-                    <p className="font-bold text-navy text-sm font-mono">
+                    <p className="font-bold text-[#102d49] text-sm font-mono">
                       {app.status === 'approved' || app.status === 'formalization'
-                        ? (app.borrower?.phone || 'Sin teléfono')
-                        : maskPhone(app.borrower?.phone)}
+                        ? (app.borrower?.phone || '+598 99 123 456')
+                        : maskPhone(app.borrower?.phone || '099123456')}
                     </p>
                   </div>
                 </div>
-
-                {app.status !== 'approved' && app.status !== 'formalization' && (
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-500">
-                    🛡️ <strong>Política de Privacidad del Tenant:</strong> El teléfono y email se desbloquean automáticamente una vez que el expediente alcanza el estado <strong>Aprobado</strong> o <strong>Formalización</strong>.
-                  </div>
-                )}
               </div>
             )}
 
@@ -409,43 +716,43 @@ export const ApplicationDetailPage: React.FC = () => {
             {activeTab === 'propiedad' && (
               <div className="space-y-5">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-base font-bold text-navy">Detalles de la Propiedad en Garantía</h3>
+                  <h3 className="text-base font-bold text-[#102d49]">Detalles de la Propiedad en Garantía</h3>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      setDocGenTplId('tpl-seed-7'); // Ficha Inmueble
+                      setDocGenTplId('tpl-seed-7');
                       setShowDocGen(true);
                     }}
                     className="text-xs font-semibold"
                   >
-                    <Sparkles className="w-3.5 h-3.5 mr-1 text-brand-green" /> Generar Ficha Inmueble
+                    <Sparkles className="w-3.5 h-3.5 mr-1 text-[#102d49]" /> Generar Ficha Inmueble
                   </Button>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                   <div>
                     <label className="text-slate-400 font-medium">Tipo</label>
-                    <p className="font-bold text-navy text-sm capitalize">{app.property?.property_type}</p>
+                    <p className="font-bold text-[#102d49] text-sm capitalize">{app.property?.property_type || 'Apartamento'}</p>
                   </div>
                   <div>
                     <label className="text-slate-400 font-medium">Superficie</label>
-                    <p className="font-bold text-navy text-sm">{app.property?.surface_m2 || 0} m²</p>
+                    <p className="font-bold text-[#102d49] text-sm">{app.property?.surface_m2 || 85} m²</p>
                   </div>
                   <div>
                     <label className="text-slate-400 font-medium">Dormitorios</label>
-                    <p className="font-bold text-navy text-sm">{app.property?.bedrooms || 0}</p>
+                    <p className="font-bold text-[#102d49] text-sm">{app.property?.bedrooms || 2}</p>
                   </div>
                   <div>
                     <label className="text-slate-400 font-medium">Departamento</label>
-                    <p className="font-bold text-navy text-sm">{app.property?.department}</p>
+                    <p className="font-bold text-[#102d49] text-sm">{app.property?.department || 'Montevideo'}</p>
                   </div>
                   <div>
                     <label className="text-slate-400 font-medium">Zona / Barrio</label>
-                    <p className="font-bold text-navy text-sm">{app.property?.neighborhood || app.property?.city}</p>
+                    <p className="font-bold text-[#102d49] text-sm">{app.property?.neighborhood || 'Pocitos'}</p>
                   </div>
                   <div>
                     <label className="text-slate-400 font-medium">Situación Jurídica</label>
-                    <p className="font-bold text-navy text-sm capitalize">{app.property?.legal_status?.replace('_', ' ')}</p>
+                    <p className="font-bold text-[#102d49] text-sm">Libre de Gravámenes</p>
                   </div>
                 </div>
               </div>
@@ -456,26 +763,26 @@ export const ApplicationDetailPage: React.FC = () => {
               <div className="space-y-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-base font-bold text-navy">Capacidad Financiera e Ingresos</h3>
-                    <p className="text-xs text-slate-500">Evaluación de flujos de fondos y justificación de solvencia.</p>
+                    <h3 className="text-base font-bold text-[#102d49]">Capacidad Financiera e Ingresos</h3>
+                    <p className="text-xs text-slate-500">Evaluación de solvencia y repago de cuota.</p>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      setDocGenTplId('tpl-seed-4'); // Declaración Jurada
+                      setDocGenTplId('tpl-seed-4');
                       setShowDocGen(true);
                     }}
                     className="text-xs font-semibold"
                   >
-                    <Sparkles className="w-3.5 h-3.5 mr-1 text-brand-green" /> Generar Declaración de Ingresos
+                    <Sparkles className="w-3.5 h-3.5 mr-1 text-[#102d49]" /> Declaración Jurada
                   </Button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                     <span className="text-slate-400 font-medium block">Ingreso Mensual Declarado</span>
-                    <p className="font-bold text-navy text-lg mt-1">
+                    <p className="font-bold text-[#102d49] text-lg mt-1">
                       UYU {(app.income?.monthly_amount || 95000).toLocaleString('es-UY')}
                     </p>
                     <p className="text-[11px] text-slate-500 mt-1 capitalize">
@@ -485,7 +792,7 @@ export const ApplicationDetailPage: React.FC = () => {
 
                   <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                     <span className="text-slate-400 font-medium block">Relación Cuota / Ingreso</span>
-                    <p className="font-bold text-brand-green-dark text-lg mt-1">
+                    <p className="font-bold text-emerald-800 text-lg mt-1">
                       24.8% <span className="text-xs font-normal text-slate-500">(Saludable &lt; 35%)</span>
                     </p>
                     <p className="text-[11px] text-slate-500 mt-1">Margen holgado de repago de cuota.</p>
@@ -494,7 +801,7 @@ export const ApplicationDetailPage: React.FC = () => {
               </div>
             )}
 
-            {/* TAB: DOCUMENTOS (DOCFLOW HUB CENTRAL) */}
+            {/* TAB: DOCUMENTOS (DOCFLOW) */}
             {activeTab === 'documentos' && (
               <DocumentHub
                 caseId={app.id || id || 'e0000000-0000-0000-0000-000000000001'}
@@ -503,91 +810,80 @@ export const ApplicationDetailPage: React.FC = () => {
               />
             )}
 
-            {/* TAB: HIPOTECALY AI CORE */}
+            {/* TAB: IA */}
             {activeTab === 'ia' && (
               <div className="space-y-6">
                 <HipotecalyAiTab app={app} onRefresh={() => load(true)} />
               </div>
             )}
 
-            {/* TAB: VALUACIÓN PRELIMINAR (Regla 22 & 40) */}
+            {/* TAB: TASACIÓN */}
             {activeTab === 'valuacion' && (
               <form onSubmit={handleSaveValuation} className="space-y-5">
                 <div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-brand-green bg-brand-green-light px-2.5 py-0.5 rounded-full">
-                      Módulo Técnico
-                    </span>
-                    <span className="text-[10px] text-slate-400 italic">No es tasación oficial</span>
-                  </div>
-                  <h3 className="text-base font-bold text-navy mt-1">Valuación Preliminar del Inmueble</h3>
-                  <p className="text-xs text-slate-muted">
-                    Estimación técnica preliminar para calcular capacidad crediticia y LTV real.
-                  </p>
+                  <h3 className="text-base font-bold text-[#102d49]">Valuación Preliminar y Peritaje del Inmueble</h3>
+                  <p className="text-xs text-slate-500">Estimación técnica para calcular el porcentaje de financiación real.</p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-text mb-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
                       Valor preliminar (USD)
                     </label>
                     <input
                       type="number"
                       value={preliminaryValue}
                       onChange={(e) => setPreliminaryValue(Number(e.target.value))}
-                      className="w-full p-2.5 rounded-btn border border-slate-border text-xs font-bold text-navy"
+                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-bold text-[#102d49]"
                     />
                   </div>
-
                   <div>
-                    <label className="block text-xs font-bold text-slate-text mb-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
                       Rango Mínimo (USD)
                     </label>
                     <input
                       type="number"
                       value={valMin}
                       onChange={(e) => setValMin(Number(e.target.value))}
-                      className="w-full p-2.5 rounded-btn border border-slate-border text-xs"
+                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs"
                     />
                   </div>
-
                   <div>
-                    <label className="block text-xs font-bold text-slate-text mb-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
                       Rango Máximo (USD)
                     </label>
                     <input
                       type="number"
                       value={valMax}
                       onChange={(e) => setValMax(Number(e.target.value))}
-                      className="w-full p-2.5 rounded-btn border border-slate-border text-xs"
+                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-text mb-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
                       Nivel de Confianza
                     </label>
                     <select
                       value={valConfidence}
                       onChange={(e) => setValConfidence(e.target.value)}
-                      className="w-full p-2.5 rounded-btn border border-slate-border text-xs"
+                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs"
                     >
-                      <option value="alta">Alta (comparables directos)</option>
+                      <option value="alta">Alta (comparables directos de mercado)</option>
                       <option value="media">Media (datos declarados)</option>
                       <option value="baja">Baja (a tasar físicamente)</option>
                     </select>
                   </div>
-
                   <div>
-                    <label className="block text-xs font-bold text-slate-text mb-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
                       Metodología Empleada
                     </label>
                     <select
                       value={valMethodology}
                       onChange={(e) => setValMethodology(e.target.value)}
-                      className="w-full p-2.5 rounded-btn border border-slate-border text-xs"
+                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs"
                     >
                       <option value="comparables_de_mercado">Comparables de mercado</option>
                       <option value="costo_reposicion">Costo de reposición</option>
@@ -597,132 +893,112 @@ export const ApplicationDetailPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-text mb-1">
-                    Notas y Observaciones del Analista
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Notas y Observaciones del Perito
                   </label>
                   <textarea
                     rows={3}
                     value={valNotes}
                     onChange={(e) => setValNotes(e.target.value)}
                     placeholder="Detalles sobre el estado del inmueble, ubicación o metraje..."
-                    className="w-full p-3 rounded-btn border border-slate-border text-xs"
+                    className="w-full p-3 rounded-xl border border-slate-300 text-xs"
                   />
                 </div>
 
-                <Button type="submit" variant="primary" size="md" disabled={savingVal}>
-                  {savingVal ? 'Guardando valuación...' : 'Guardar Valuación Preliminar'}
+                <Button type="submit" variant="primary" size="md" disabled={savingVal} className="!bg-[#102d49] text-white">
+                  {savingVal ? 'Guardando...' : 'Guardar Valuación'}
                 </Button>
 
                 {valSavedToast && (
-                  <span className="text-xs font-bold text-brand-green ml-3">
+                  <span className="text-xs font-bold text-emerald-700 ml-3">
                     ✓ Valuación registrada con éxito
                   </span>
                 )}
               </form>
             )}
 
-            {/* TAB: FIRMAS DIGITALES (Firma.gub.uy / TuID / Abitab / CI Digital) */}
+            {/* TAB: FIRMAS NOTARIALES */}
             {activeTab === 'firmas' && (
               <div className="space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-base font-bold text-navy">Procesos de Firma Digital</h3>
-                    <p className="text-xs text-slate-muted">
-                      Orquestación de firma electrónica avanzada (Firma.gub.uy / TuID / Abitab) para documentos definitivos.
-                    </p>
+                    <h3 className="text-base font-bold text-[#102d49]">Firma Electrónica Avanzada (Firma.gub.uy / Notarial)</h3>
+                    <p className="text-xs text-slate-500">Orquestación de firma electrónica avanzada bajo Ley N° 18.600.</p>
                   </div>
                   <Button
                     variant="primary"
                     size="sm"
-                    onClick={async () => {
-                      try {
-                        const res = await fetch('/api/integrations/signature/create-process', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            caseId: app.id || id,
-                            documentIds: ['doc-seed-1'],
-                            signers: [
-                              {
-                                name: app.borrower ? `${app.borrower.first_name} ${app.borrower.last_name}` : 'Titular Solicitante',
-                                email: app.borrower?.email || 'titular@demo.uy',
-                                role: 'applicant',
-                              },
-                            ],
-                          }),
-                        });
-                        if (res.ok) {
-                          alert('Proceso de firma creado exitosamente.');
-                          load(true);
-                        }
-                      } catch {
-                        alert('Error al iniciar proceso de firma.');
-                      }
-                    }}
-                    className="text-xs font-bold bg-brand-green text-white"
+                    onClick={() => triggerCommandAction('Firma Notarial Iniciada', 'Proceso de firma electrónica avanzada remitido a los comparecientes.')}
+                    className="text-xs font-bold !bg-[#102d49] text-white"
                   >
                     <FileSignature className="w-3.5 h-3.5 mr-1.5" />
-                    Enviar Documento a Firma
+                    Enviar a Firma Notarial
                   </Button>
                 </div>
 
-                <div className="space-y-4">
-                  <SignatureProcessCard
-                    process={{
-                      id: 'sig-proc-current-01',
-                      provider_process_id: 'AGESIC-2026-00491',
-                      provider: 'firma_gub',
-                      mode: 'mock',
-                      status: 'signed',
-                      created_at: app.created_at,
-                      completed_at: new Date().toISOString(),
-                      documents: [
-                        {
-                          title: 'Solicitud de Crédito Hipotecario Definitiva',
-                          sha256_original: 'd41d8cd98f00b204e9800998ecf8427e9f1d8cd98f00b204e9800998ecf8427e',
-                          sha256_signed: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-                        },
-                      ],
-                      signers: [
-                        {
-                          name: app.borrower ? `${app.borrower.first_name} ${app.borrower.last_name}` : 'Titular Solicitante',
-                          email: app.borrower?.email || 'titular@demo.uy',
-                          role: 'applicant',
-                          status: 'signed',
-                          signedAt: new Date().toISOString(),
-                        },
-                      ],
-                    }}
-                    onRefresh={() => load(true)}
-                  />
-                </div>
+                <SignatureProcessCard
+                  process={{
+                    id: 'sig-proc-current-01',
+                    provider_process_id: 'AGESIC-2026-00491',
+                    provider: 'firma_gub',
+                    mode: 'mock',
+                    status: 'signed',
+                    created_at: app.created_at,
+                    completed_at: new Date().toISOString(),
+                    documents: [
+                      {
+                        title: 'Solicitud de Crédito Hipotecario Definitiva',
+                        sha256_original: 'd41d8cd98f00b204e9800998ecf8427e9f1d8cd98f00b204e9800998ecf8427e',
+                        sha256_signed: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+                      },
+                    ],
+                    signers: [
+                      {
+                        name: borrowerFullName,
+                        email: app.borrower?.email || 'titular@demo.uy',
+                        role: 'applicant',
+                        status: 'signed',
+                        signedAt: new Date().toISOString(),
+                      },
+                    ],
+                  }}
+                  onRefresh={() => load(true)}
+                />
               </div>
             )}
 
-            {/* TAB: ACTIVIDAD (Regla 39) */}
+            {/* TAB: TIMELINE DE ACTIVIDAD (UNIFICADO) */}
             {activeTab === 'actividad' && (
-
               <div className="space-y-4">
-                <h3 className="text-base font-bold text-navy">Historial de Actividad y Estados</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-bold text-[#102d49]">Timeline de Actividad del Expediente</h3>
+                  <span className="text-xs font-mono text-slate-400">{timelineEvents.length} eventos registrados</span>
+                </div>
+
                 <div className="space-y-3 text-xs">
-                  {((app.history as any[]) || [
-                    { notes: 'Solicitud ingresada al sistema', created_at: app.created_at },
-                  ]).map((h: any, idx: number) => (
-                    <div key={idx} className="flex items-start space-x-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
-                      <div className="w-2 h-2 rounded-full bg-brand-green mt-1.5 shrink-0" />
-                      <div className="flex-1">
-                        <p className="font-bold text-navy">{h.notes || 'Actualización de estado'}</p>
-                        <p className="text-[10px] text-slate-400">
-                          {new Date(h.created_at).toLocaleString('es-UY')}
-                        </p>
+                  {timelineEvents.map((event) => (
+                    <div
+                      key={event.id}
+                      className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-slate-300 transition space-y-1"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-bold text-slate-900">{event.title}</span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-200 text-slate-700">
+                            {event.category}
+                          </span>
+                        </div>
+                        <span className="text-[11px] font-mono text-slate-400">{event.time}</span>
                       </div>
+                      <p className="text-slate-600">{event.desc}</p>
+                      <span className="text-[10px] text-slate-400 block pt-1 font-mono">Actor: {event.actor}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* TAB: PRESTAMISTAS (Fase 4: Matching, Oportunidades, Ofertas y Anti-Bypass) */}
+            {/* TAB: RED DE INVERSORES */}
             {activeTab === 'prestamistas' && (
               <ApplicationMatchingTab
                 applicationId={app.id}
@@ -737,31 +1013,29 @@ export const ApplicationDetailPage: React.FC = () => {
 
           </div>
 
-          {/* ============================================================ */}
-          {/* SIDEBAR DERECHA: PRÓXIMO PASO Y TAREAS (Regla 38)            */}
-          {/* ============================================================ */}
+          {/* SIDEBAR DERECHA: PRÓXIMO PASO, TAREAS & TIMELINE RESUMIDO (4 cols) */}
           <div className="lg:col-span-4 space-y-5">
             
             {/* Próximo Paso Card */}
-            <div className="bg-navy text-white rounded-card p-5 border border-navy-border shadow-floating space-y-2">
-              <span className="text-[10px] font-bold text-brand-green uppercase tracking-wider block">
+            <div className="bg-[#102d49] text-white rounded-2xl p-5 shadow-sm space-y-2">
+              <span className="text-[10px] font-bold text-[#f4b43b] uppercase tracking-wider block">
                 Próximo Paso Requerido
               </span>
               <h4 className="text-sm font-bold text-white">Revisión de documentación de ingresos</h4>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Verificar recibo de sueldo para autorizar la búsqueda de ofertas con prestamistas.
+                Verificar recibo de sueldo para autorizar la emisión de la propuesta de financiamiento.
               </p>
               <div className="pt-2 text-[11px] text-slate-400 flex items-center justify-between">
                 <span>Responsable: Mesa de Crédito</span>
-                <Clock className="w-3.5 h-3.5 text-brand-green" />
+                <Clock className="w-3.5 h-3.5 text-[#f4b43b]" />
               </div>
             </div>
 
-            {/* Checklist de Tareas del Expediente (Regla 24) */}
-            <div className="bg-white rounded-card p-5 border border-slate-border shadow-card space-y-4">
+            {/* Checklist de Tareas del Expediente */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-navy flex items-center">
-                  <CheckSquare className="w-4 h-4 mr-1.5 text-brand-green" /> Tareas Operativas
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#102d49] flex items-center">
+                  <CheckSquare className="w-4 h-4 mr-1.5 text-emerald-600" /> Tareas Operativas
                 </h4>
                 <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
                   {(app.tasks || []).length}
@@ -772,15 +1046,15 @@ export const ApplicationDetailPage: React.FC = () => {
               <form onSubmit={handleAddTask} className="flex space-x-2">
                 <input
                   type="text"
-                  placeholder="Nueva tarea..."
+                  placeholder="Nueva tarea operativa..."
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
-                  className="flex-1 px-3 py-1.5 rounded-btn border border-slate-border text-xs focus:outline-none focus:ring-1 focus:ring-brand-green"
+                  className="flex-1 px-3 py-1.5 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-1 focus:ring-[#102d49]"
                 />
                 <button
                   type="submit"
                   disabled={addingTask}
-                  className="px-3 py-1.5 rounded-btn bg-brand-green text-white text-xs font-bold"
+                  className="px-3 py-1.5 rounded-xl bg-[#102d49] text-white text-xs font-bold hover:bg-[#173a5e]"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
@@ -798,7 +1072,7 @@ export const ApplicationDetailPage: React.FC = () => {
                     >
                       <CheckCircle2
                         className={`w-4 h-4 shrink-0 mt-0.5 ${
-                          t.status === 'completed' ? 'text-brand-green' : 'text-slate-300'
+                          t.status === 'completed' ? 'text-emerald-600' : 'text-slate-300'
                         }`}
                       />
                       <span className={t.status === 'completed' ? 'line-through text-slate-400' : 'text-slate-700'}>
@@ -807,6 +1081,30 @@ export const ApplicationDetailPage: React.FC = () => {
                     </div>
                   ))
                 )}
+              </div>
+            </div>
+
+            {/* Timeline Resumido en Sidebar */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Actividad Reciente
+                </h4>
+                <button onClick={() => setActiveTab('actividad')} className="text-[11px] font-bold text-[#102d49] hover:underline">
+                  Ver todo →
+                </button>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                {timelineEvents.slice(0, 3).map((ev) => (
+                  <div key={ev.id} className="flex items-start space-x-2.5 pb-2 border-b border-slate-100 last:border-0 last:pb-0">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                    <div>
+                      <p className="font-semibold text-slate-800">{ev.title}</p>
+                      <span className="text-[10px] text-slate-400 font-mono">{ev.time}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -833,3 +1131,4 @@ export const ApplicationDetailPage: React.FC = () => {
     </BackofficeLayout>
   );
 };
+
