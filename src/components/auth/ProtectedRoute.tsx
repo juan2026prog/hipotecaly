@@ -33,23 +33,19 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  // Soporte para modo presentación comercial o demo institucional
-  const isDemoPresentation =
-    Boolean(tenant.demo_mode) ||
-    location.search.includes('presentation=true') ||
-    location.search.includes('demo=true') ||
-    location.pathname.startsWith('/demo/nova');
-
   // 1. Verificación de Autenticación
   if (!user) {
-    if (isDemoPresentation) {
-      // En modo demo o presentación comercial, se permite la navegación supervisada
+    const isExplicitPresentation =
+      location.search.includes('presentation=true') || location.search.includes('demo=true');
+
+    if (isExplicitPresentation) {
       return <>{children}</>;
     }
 
-    // Redirección obligatoria a login guardando la ruta de origen
+    // Redirección obligatoria a login guardando la ruta de origen y tenant
     const redirectTo = encodeURIComponent(location.pathname + location.search);
-    return <Navigate to={`/ingresar?redirectTo=${redirectTo}`} replace state={{ from: location }} />;
+    const tenantParam = tenant.slug ? `&tenant=${encodeURIComponent(tenant.slug)}` : '';
+    return <Navigate to={`/ingresar?redirectTo=${redirectTo}${tenantParam}`} replace state={{ from: location }} />;
   }
 
   // 2. Verificación de Super Admin
@@ -82,7 +78,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     const belongsToTenant = memberships.some(
       (m) => m.organizationId === tenant.id && m.isActive
     );
-    if (!belongsToTenant && !isDemoPresentation) {
+    if (!belongsToTenant) {
       return (
         <AccessDenied
           message={`No pertenecés a la organización ${tenant.name}. Cambiá a tu tenant correspondiente.`}
