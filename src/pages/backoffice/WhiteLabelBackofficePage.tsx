@@ -1021,59 +1021,85 @@ export const WhiteLabelBackofficePage: React.FC = () => {
                     <Puzzle className="w-5 h-5 text-brand-green" /> Módulos y Extensiones de la Instancia
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Habilitá o deshabilitá módulos avanzados según las capacidades de tu plan SaaS.
+                    Estado de los módulos habilitados por HIPOTECALY para tu organización. La configuración técnica de integraciones es gestionada exclusivamente por HIPOTECALY.
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                  <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/40 flex items-center justify-between">
-                    <div>
-                      <strong className="text-navy block">Sindicación Multi-Inversor</strong>
-                      <span className="text-slate-500 text-[11px]">Permite fraccionar créditos entre varios prestamistas.</span>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={config.syndicationModuleEnabled}
-                      onChange={(e) => setConfig({ ...config, syndicationModuleEnabled: e.target.checked })}
-                      className="w-4 h-4 rounded text-brand-green"
-                    />
-                  </div>
+                <div className="grid grid-cols-1 gap-3 text-xs">
+                  {[
+                    {
+                      name: 'Firma Electrónica Avanzada',
+                      desc: 'Firma con validez legal según Ley N° 18.600. Firma de minutas, contratos y documentos.',
+                      status: 'enabled' as const,
+                      note: 'Habilitada para esta organización por HIPOTECALY.',
+                    },
+                    {
+                      name: 'Sindicación Multi-Inversor',
+                      desc: 'Permite fraccionar créditos entre varios prestamistas simultáneamente.',
+                      status: config.syndicationModuleEnabled ? 'enabled' : 'disabled' as const,
+                      note: config.syndicationModuleEnabled ? 'Activo en tu plan actual.' : 'Disponible para activar. Consultá con HIPOTECALY.',
+                    },
+                    {
+                      name: 'Loan Servicing & Cuotas',
+                      desc: 'Seguimiento de amortizaciones, cuotas e historial de mora.',
+                      status: config.servicingModuleEnabled ? 'enabled' : 'available' as const,
+                      note: config.servicingModuleEnabled ? 'Activo en tu plan.' : 'Disponible en plan Professional o superior.',
+                    },
+                    {
+                      name: 'Webhooks & API REST v1',
+                      desc: 'Integración con CRM externo, core bancario o sistemas propietarios.',
+                      status: config.webhooksEnabled ? 'enabled' : 'needs_config' as const,
+                      note: config.webhooksEnabled ? 'Operativo. Configuración técnica gestionada por HIPOTECALY.' : 'Requiere configuración técnica por HIPOTECALY.',
+                    },
+                    {
+                      name: 'KYC Biométrico (Didit)',
+                      desc: 'Verificación de identidad con chip de cédula y prueba de vida.',
+                      status: 'enabled' as const,
+                      note: 'Disponible. Proveedor configurado globalmente por HIPOTECALY.',
+                    },
+                    {
+                      name: 'Copiloto de Inteligencia Artificial',
+                      desc: 'Análisis asistido de documentación, semáforos de riesgo y coherencia documental.',
+                      status: 'enabled' as const,
+                      note: 'Habilitado con Human-in-the-Loop. No sustituye dictamen crediticio ni notarial.',
+                    },
+                    {
+                      name: 'Portal de Inversores',
+                      desc: 'Feed privado de oportunidades anonimizadas para prestamistas registrados.',
+                      status: 'available' as const,
+                      note: 'Disponible. Activar junto con Red de Inversores en tu cuenta.',
+                    },
+                    {
+                      name: 'Reportes Programados',
+                      desc: 'Generación y envío automático de reportes operativos según frecuencia configurada.',
+                      status: 'unavailable' as const,
+                      note: 'Próximamente disponible (Q4 2026).',
+                    },
+                  ].map((mod) => {
+                    const statusConfig = {
+                      enabled: { label: 'HABILITADO', dot: 'bg-emerald-500', badge: 'bg-emerald-100 text-emerald-800 border-emerald-200', border: 'border-emerald-200 bg-emerald-50/30' },
+                      disabled: { label: 'NO HABILITADO', dot: 'bg-slate-400', badge: 'bg-slate-100 text-slate-600 border-slate-200', border: 'border-slate-200 bg-slate-50/60' },
+                      available: { label: 'DISPONIBLE', dot: 'bg-blue-500', badge: 'bg-blue-100 text-blue-800 border-blue-200', border: 'border-blue-200 bg-blue-50/20' },
+                      needs_config: { label: 'REQUIERE CONFIG. POR HIPOTECALY', dot: 'bg-amber-500', badge: 'bg-amber-100 text-amber-800 border-amber-200', border: 'border-amber-200 bg-amber-50/20' },
+                      unavailable: { label: 'TEMPORALMENTE NO DISPONIBLE', dot: 'bg-slate-300', badge: 'bg-slate-100 text-slate-500 border-slate-200', border: 'border-slate-200 bg-slate-50/30' },
+                    }[mod.status] || { label: 'DESCONOCIDO', dot: 'bg-slate-400', badge: 'bg-slate-100 text-slate-600 border-slate-200', border: 'border-slate-200 bg-slate-50/60' };
 
-                  <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/40 flex items-center justify-between">
-                    <div>
-                      <strong className="text-navy block">Loan Servicing & Cuotas</strong>
-                      <span className="text-slate-500 text-[11px]">Seguimiento de amortizaciones, cuotas y mora.</span>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={config.servicingModuleEnabled}
-                      onChange={(e) => setConfig({ ...config, servicingModuleEnabled: e.target.checked })}
-                      className="w-4 h-4 rounded text-brand-green"
-                    />
-                  </div>
-
-                  <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/40 flex items-center justify-between">
-                    <div>
-                      <strong className="text-navy block">Webhooks & API REST v1</strong>
-                      <span className="text-slate-500 text-[11px]">Integración con CRM externo o core bancario.</span>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={config.webhooksEnabled}
-                      onChange={(e) => setConfig({ ...config, webhooksEnabled: e.target.checked })}
-                      className="w-4 h-4 rounded text-brand-green"
-                    />
-                  </div>
-
-                  <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between">
-                    <div>
-                      <strong className="text-navy block">Firma Electrónica Avanzada</strong>
-                      <span className="text-slate-500 text-[11px]">Firma con validez legal según Ley 18.600.</span>
-                    </div>
-                    <span className="text-[10px] font-bold text-brand-green bg-emerald-100 px-2 py-0.5 rounded">
-                      ACTIVO
-                    </span>
-                  </div>
+                    return (
+                      <div key={mod.name} className={`p-4 rounded-xl border ${statusConfig.border} flex items-start justify-between gap-4`}>
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex items-center space-x-2">
+                            <div className={`w-2 h-2 rounded-full shrink-0 ${statusConfig.dot}`} />
+                            <strong className="text-navy text-xs">{mod.name}</strong>
+                          </div>
+                          <p className="text-[11px] text-slate-500 pl-4">{mod.desc}</p>
+                          <p className="text-[10px] text-slate-400 pl-4 italic">{mod.note}</p>
+                        </div>
+                        <span className={`text-[9px] font-bold px-2 py-1 rounded-full border whitespace-nowrap shrink-0 ${statusConfig.badge}`}>
+                          {statusConfig.label}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Import/Export Config */}
@@ -1101,11 +1127,12 @@ export const WhiteLabelBackofficePage: React.FC = () => {
 
           </div>
 
+
           {/* ============================================================ */}
           {/* Columna Derecha: Vista Previa Interactiva en Vivo            */}
           {/* ============================================================ */}
           {showLivePreview && (
-            <div className="lg:col-span-5 sticky top-24 space-y-4">
+            <div className="lg:col-span-3 sticky top-24 space-y-4">
               <div className="bg-white rounded-2xl border border-slate-200 shadow-md p-4 space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <div className="flex items-center space-x-2">
