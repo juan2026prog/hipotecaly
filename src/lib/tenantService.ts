@@ -11,6 +11,14 @@ export interface TenantBranding {
   favicon_url?: string;
   primary_color: string;
   secondary_color: string;
+  accent_color?: string;
+  background_color?: string;
+  surface_color?: string;
+  text_primary?: string;
+  border_radius?: string;
+  font_family_display?: string;
+  font_family_ui?: string;
+  powered_by_text?: string;
 }
 
 export interface TenantSettings {
@@ -53,9 +61,15 @@ export const DEFAULT_TENANT: Tenant = {
   status: 'active',
   branding: {
     public_name: 'HIPOTECALY',
-    tag_line: 'Préstamos con Garantía Hipotecaria en Uruguay',
+    tag_line: 'Infraestructura Tecnológica Hipotecaria',
     primary_color: '#0B8A5A',
     secondary_color: '#0F1E36',
+    accent_color: '#2DA674',
+    background_color: '#F8FAFC',
+    surface_color: '#071A35',
+    text_primary: '#07152E',
+    border_radius: '10px',
+    powered_by_text: 'Plataforma Hipotecaly Core',
   },
   settings: {
     allow_borrower_portal: true,
@@ -75,7 +89,15 @@ export const NOVA_TENANT: Tenant = {
     public_name: 'Estudio Nova',
     tag_line: 'Financiación & inversión',
     primary_color: '#173a5e',
-    secondary_color: '#f4b43b',
+    secondary_color: '#102d49',
+    accent_color: '#f4b43b',
+    background_color: '#f5f7f9',
+    surface_color: '#102d49',
+    text_primary: '#27384a',
+    border_radius: '12px',
+    font_family_display: 'serif',
+    font_family_ui: 'sans',
+    powered_by_text: 'Tecnología provista por HIPOTECALY',
   },
   settings: {
     allow_borrower_portal: true,
@@ -98,6 +120,7 @@ export const NOT_FOUND_TENANT: Tenant = {
     tag_line: 'El portal o empresa especificada no existe o no se encuentra activo.',
     primary_color: '#64748B',
     secondary_color: '#0F172A',
+    accent_color: '#94A3B8',
   },
   settings: {
     allow_borrower_portal: false,
@@ -113,6 +136,7 @@ const REGISTERED_TENANTS: Record<string, Tenant> = {
   'estudio-nova': NOVA_TENANT,
   'nova': NOVA_TENANT,
   'nova-demo': NOVA_TENANT,
+  'estudio_nova': NOVA_TENANT,
   'estudio-notarial-este': {
     id: 'a0000000-0000-0000-0000-000000000002',
     slug: 'estudio-notarial-este',
@@ -124,6 +148,7 @@ const REGISTERED_TENANTS: Record<string, Tenant> = {
       tag_line: 'Especialistas en estructuración hipotecaria en Maldonado y Rocha',
       primary_color: '#1E40AF',
       secondary_color: '#172554',
+      accent_color: '#3B82F6',
     },
     settings: {
       allow_borrower_portal: true,
@@ -180,26 +205,76 @@ export function getAllRegisteredTenants(): Tenant[] {
 }
 
 /**
+ * Establece el tenant activo en sesión para persistir la experiencia
+ */
+export function setActiveTenantSession(slugOrId: string) {
+  if (typeof window !== 'undefined') {
+    try {
+      window.sessionStorage.setItem('active_tenant_slug', slugOrId);
+    } catch {}
+  }
+}
+
+export function getActiveTenantSession(): string | null {
+  if (typeof window !== 'undefined') {
+    try {
+      return window.sessionStorage.getItem('active_tenant_slug');
+    } catch {}
+  }
+  return null;
+}
+
+export function clearActiveTenantSession() {
+  if (typeof window !== 'undefined') {
+    try {
+      window.sessionStorage.removeItem('active_tenant_slug');
+    } catch {}
+  }
+}
+
+/**
  * Resuelve el tenant actual según:
- * 0. Rutas demo oficiales (/demo/nova/*)
- * 1. Prefijo de ruta: /org/:slug (con fallback a NOT_FOUND_TENANT si no existe)
- * 2. Dominio personalizado verificado (e.g. creditos.estudiodeleste.uy)
- * 3. Subdominio (e.g. cliente.hipotecaly.app)
- * 4. Matriz HIPOTECALY Central (solo para root de localhost o dominio principal)
+ * 0. Rutas demo oficiales (/demo/nova/*, /demo/estudio-nova)
+ * 1. Query params explícitos (?source=estudio_nova, ?tenant=estudio-nova, ?org=estudio-nova)
+ * 2. Prefijo de ruta: /org/:slug (con fallback a NOT_FOUND_TENANT si no existe)
+ * 3. Sesión activa en navegación de cliente (/solicitar, /mi-cuenta, /simulador)
+ * 4. Dominio personalizado verificado (e.g. creditos.estudiodeleste.uy)
+ * 5. Subdominio (e.g. cliente.hipotecaly.app)
+ * 6. Matriz HIPOTECALY Central (solo para root o páginas corporativas)
  */
 export async function resolveTenant(
   hostname: string = typeof window !== 'undefined' ? window.location.hostname : 'localhost',
-  pathname: string = typeof window !== 'undefined' ? window.location.pathname : '/'
+  pathname: string = typeof window !== 'undefined' ? window.location.pathname : '/',
+  search: string = typeof window !== 'undefined' ? window.location.search : ''
 ): Promise<Tenant> {
   // 0. Rutas demo de Estudio NOVA
   if (pathname.startsWith('/demo/estudio-nova') || pathname.startsWith('/demo/nova') || pathname === '/demo') {
+    setActiveTenantSession('estudio-nova');
     return NOVA_TENANT;
   }
 
-  // 1. Verificación por prefijo de ruta: /org/:slug
+  // 1. Verificación por Query Params (?source=estudio_nova, ?tenant=..., ?org=...)
+  if (search) {
+    const params = new URLSearchParams(search);
+    const sourceParam = params.get('source') || params.get('tenant') || params.get('org');
+    if (sourceParam) {
+      const cleanSource = sourceParam.toLowerCase().replace('_', '-');
+      if (cleanSource === 'estudio-nova' || cleanSource === 'nova') {
+        setActiveTenantSession('estudio-nova');
+        return NOVA_TENANT;
+      }
+      if (REGISTERED_TENANTS[cleanSource]) {
+        setActiveTenantSession(cleanSource);
+        return REGISTERED_TENANTS[cleanSource];
+      }
+    }
+  }
+
+  // 2. Verificación por prefijo de ruta: /org/:slug
   const orgMatch = pathname.match(/^\/org\/([^/]+)/);
   if (orgMatch && orgMatch[1]) {
     const slug = orgMatch[1].toLowerCase();
+    setActiveTenantSession(slug);
     
     // Consultar DB primero como fuente autoritativa
     if (isSupabaseConfigured) {
@@ -228,10 +303,12 @@ export async function resolveTenant(
             branding: {
               public_name: b.public_name || data.commercial_name || data.name,
               tag_line: b.tag_line || 'Soluciones financieras hipotecarias',
-              primary_color: b.primary_color || '#0B8A5A',
-              secondary_color: b.secondary_color || '#0F1E36',
+              primary_color: b.primary_color || '#173a5e',
+              secondary_color: b.secondary_color || '#102d49',
+              accent_color: b.accent_color || '#f4b43b',
               logo_url: b.logo_url,
               favicon_url: b.favicon_url,
+              powered_by_text: 'Tecnología provista por HIPOTECALY',
             },
             settings: s.allow_borrower_portal !== undefined ? s : DEFAULT_TENANT.settings,
             is_white_label: true,
@@ -241,8 +318,6 @@ export async function resolveTenant(
           return loadedTenant;
         }
 
-        // Si la organización no existe en Supabase, verificar si fue registrada en memoria
-        // (ej. tenants del sistema o creados dinámicamente en esta sesión)
         if (!error && !data) {
           if (REGISTERED_TENANTS[slug]) {
             return REGISTERED_TENANTS[slug];
@@ -250,16 +325,14 @@ export async function resolveTenant(
           return NOT_FOUND_TENANT;
         }
       } catch {
-        // Solo si la base no responde por corte de red se verifica fallback offline
+        // Fallback offline
       }
     }
 
-    // Check en memoria registrada
     if (REGISTERED_TENANTS[slug]) {
       return REGISTERED_TENANTS[slug];
     }
 
-    // Check en localStorage solo como fallback para modo offline/demo
     if (typeof window !== 'undefined') {
       const saved = window.localStorage.getItem('tenant_custom_' + slug);
       if (saved) {
@@ -267,36 +340,63 @@ export async function resolveTenant(
           const parsed = JSON.parse(saved);
           REGISTERED_TENANTS[slug] = parsed;
           return parsed;
-        } catch {
-          // Continuar
-        }
+        } catch {}
       }
     }
 
-    // SEGURIDAD: Un slug desconocido NUNCA hereda datos de otro tenant
     return NOT_FOUND_TENANT;
   }
 
-  // 2. Verificación por Hostname (custom domain)
+  // 3. Persistencia de contexto en rutas de cliente transaccional (/solicitar, /mi-cuenta, /ingresar, /registro)
+  const isConsumerRoute = (
+    pathname.startsWith('/solicitar') ||
+    pathname.startsWith('/mi-cuenta') ||
+    pathname.startsWith('/ingresar') ||
+    pathname.startsWith('/registro') ||
+    pathname.startsWith('/recuperar-password')
+  );
+
+  if (isConsumerRoute) {
+    const activeSlug = getActiveTenantSession();
+    if (activeSlug) {
+      if (activeSlug === 'estudio-nova' || activeSlug === 'nova' || activeSlug === 'estudio_nova') {
+        return NOVA_TENANT;
+      }
+      if (REGISTERED_TENANTS[activeSlug]) {
+        return REGISTERED_TENANTS[activeSlug];
+      }
+    }
+  }
+
+  // 4. Verificación por Hostname (custom domain)
   const host = hostname.toLowerCase().split(':')[0]; // quitar puerto si existe
   const allTenants = getAllRegisteredTenants();
   for (const t of allTenants) {
     if (t.custom_domain && t.custom_domain.toLowerCase() === host) {
+      setActiveTenantSession(t.slug);
       return t;
     }
   }
 
-  // 3. Verificación por subdominio (ej: cliente.hipotecaly.app o cliente.localhost)
+  // 5. Verificación por subdominio (ej: cliente.hipotecaly.app)
   if (host.includes('.hipotecaly.') || (host.includes('.localhost') && host !== 'localhost')) {
     const sub = host.split('.')[0];
     if (sub && sub !== 'app' && sub !== 'www') {
       const found = allTenants.find((t) => t.slug === sub);
-      if (found) return found;
+      if (found) {
+        setActiveTenantSession(found.slug);
+        return found;
+      }
       return NOT_FOUND_TENANT;
     }
   }
 
-  // 4. Hostname matriz / desarrollo local en raíz
+  // Si estamos en la home comercial o en SaaS corporativo, limpiar sesión de tenant si correspondiera
+  if (pathname === '/' || pathname.startsWith('/saas') || pathname.startsWith('/empresas')) {
+    clearActiveTenantSession();
+  }
+
+  // 6. Hostname matriz / desarrollo local en raíz
   if (
     host === 'localhost' ||
     host === '127.0.0.1' ||
@@ -309,18 +409,37 @@ export async function resolveTenant(
     return DEFAULT_TENANT;
   }
 
-  // Hostname desconocido: no revelar datos
   return NOT_FOUND_TENANT;
 }
 
 /**
- * Aplica los colores de marca del tenant de forma dinámica en el DOM
+ * Aplica los tokens de diseño de marca del tenant dinámicamente en variables CSS del DOM
  */
 export function applyTenantTheme(branding: TenantBranding) {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
+  
   if (branding.primary_color) {
+    root.style.setProperty('--tenant-primary', branding.primary_color);
     root.style.setProperty('--brand-green', branding.primary_color);
+  }
+  if (branding.secondary_color) {
+    root.style.setProperty('--tenant-secondary', branding.secondary_color);
+  }
+  if (branding.accent_color) {
+    root.style.setProperty('--tenant-accent', branding.accent_color);
+  }
+  if (branding.background_color) {
+    root.style.setProperty('--tenant-bg', branding.background_color);
+  }
+  if (branding.surface_color) {
+    root.style.setProperty('--tenant-surface', branding.surface_color);
+  }
+  if (branding.text_primary) {
+    root.style.setProperty('--tenant-text', branding.text_primary);
+  }
+  if (branding.border_radius) {
+    root.style.setProperty('--tenant-radius', branding.border_radius);
   }
 }
 

@@ -415,15 +415,15 @@ export const ApplicationMatchingTab: React.FC<ApplicationMatchingTabProps> = ({
         </div>
       </div>
 
-      {/* 3. SECCIÓN: REVELACIÓN CONTROLADA DE DATOS (ANTI-BYPASS) */}
+      {/* 3. SECCIÓN: PROTECCIÓN Y REVELACIÓN CONTROLADA DE DATOS */}
       <div className="space-y-4 pt-4 border-t border-slate-border">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h3 className="text-base font-bold text-navy flex items-center">
-              <Shield className="w-4 h-4 mr-2 text-brand-green" /> Revelación Controlada de Datos (Anti-Bypass)
+              <Shield className="w-4 h-4 mr-2 text-brand-green" /> Protección de Datos Sensibles (Revelación Controlada)
             </h3>
             <p className="text-xs text-slate-500">
-              Autorización granular de acceso a datos de contacto, títulos o dirección para formalización notarial.
+              Autorización granular y cifrada de acceso a datos de contacto, títulos o dirección para formalización notarial.
             </p>
           </div>
           <Button

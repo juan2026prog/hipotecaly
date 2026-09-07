@@ -25,8 +25,16 @@ const TenantContext = createContext<TenantContextType>({
 export function getInitialTenant(): Tenant {
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
+    const search = window.location.search;
     if (pathname.startsWith('/demo/estudio-nova') || pathname.startsWith('/demo/nova') || pathname === '/demo') {
       return NOVA_TENANT;
+    }
+    if (search) {
+      const params = new URLSearchParams(search);
+      const s = params.get('source') || params.get('tenant') || params.get('org');
+      if (s && (s.toLowerCase().includes('nova') || s.toLowerCase() === 'estudio_nova')) {
+        return NOVA_TENANT;
+      }
     }
     const orgMatch = pathname.match(/^\/org\/([^/]+)/);
     if (orgMatch && orgMatch[1]) {
@@ -49,9 +57,10 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     let isMounted = true;
     const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
     const pathname = location.pathname;
+    const search = location.search;
 
     setLoading(true);
-    resolveTenant(hostname, pathname).then((resolved) => {
+    resolveTenant(hostname, pathname, search).then((resolved) => {
       if (isMounted) {
         setTenant(resolved);
         applyTenantTheme(resolved.branding);
@@ -62,7 +71,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return () => {
       isMounted = false;
     };
-  }, [location.pathname]);
+  }, [location.pathname, location.search]);
 
   return (
     <TenantContext.Provider value={{ tenant, loading, setTenant }}>

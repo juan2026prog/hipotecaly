@@ -142,14 +142,14 @@ export const ApplicantAccount: React.FC = () => {
 
   const displayName = borrower?.first_name || user?.user_metadata?.first_name || 'Solicitante';
 
-  // Timeline de estados según Regla 28
+  // Timeline de estados según Regla 28 neutralizada (White Label)
   const timelineSteps = [
     { label: 'Solicitud recibida', status: 'completed' },
     { label: 'Información en revisión', status: 'current' },
-    { label: 'Propiedad en análisis', status: 'upcoming' },
-    { label: 'Buscando propuesta', status: 'upcoming' },
-    { label: 'Propuesta disponible', status: 'upcoming' },
-    { label: 'Formalización', status: 'upcoming' },
+    { label: 'Propiedad y documentación', status: 'upcoming' },
+    { label: 'Evaluación técnica', status: 'upcoming' },
+    { label: 'Condiciones de financiamiento', status: 'upcoming' },
+    { label: 'Formalización notarial', status: 'upcoming' },
     { label: 'Finalizada', status: 'upcoming' },
   ];
 
@@ -160,23 +160,23 @@ export const ApplicantAccount: React.FC = () => {
       <main className="flex-1 py-6 sm:py-10 max-w-5xl mx-auto px-4 sm:px-6 w-full text-left">
         
         {/* Banner Bienvenida PWA */}
-        <div className="bg-white rounded-card p-5 sm:p-7 border border-slate-border shadow-card mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="bg-white rounded-2xl p-5 sm:p-7 border border-slate-200/80 shadow-sm mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center space-x-2">
-              <span className="text-xs font-bold text-brand-green uppercase tracking-wider">
+              <span className="text-xs font-bold uppercase tracking-wider text-amber-700">
                 Portal del Solicitante
               </span>
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-green animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-navy tracking-tight mt-1">
+            <h1 className="text-2xl sm:text-3xl font-serif font-bold text-slate-900 tracking-tight mt-1">
               Hola, {displayName}
             </h1>
             {activeApp ? (
-              <p className="text-xs sm:text-sm text-slate-muted mt-0.5">
-                Expediente activo: <strong className="font-mono text-navy">{activeApp.publicId}</strong>
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                Expediente activo: <strong className="font-mono text-slate-800">{activeApp.publicId}</strong>
               </p>
             ) : hasLoadedApp ? (
-              <p className="text-xs sm:text-sm text-slate-muted mt-0.5">
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
                 No tenés solicitudes activas en este momento.
               </p>
             ) : (
@@ -186,7 +186,7 @@ export const ApplicantAccount: React.FC = () => {
 
           <div className="flex items-center space-x-3 w-full sm:w-auto">
             <Link to="/solicitar" className="flex-1 sm:flex-initial">
-              <Button variant="primary" size="md" className="w-full">
+              <Button variant="primary" size="md" className="w-full !bg-[#102d49] hover:!bg-[#173a5e] !text-white !font-semibold !rounded-xl !shadow-sm">
                 {activeApp ? 'Continuar solicitud' : 'Iniciar solicitud'} <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
@@ -194,10 +194,10 @@ export const ApplicantAccount: React.FC = () => {
         </div>
 
         {/* Desktop Tabs Header */}
-        <div className="hidden lg:flex space-x-2 border-b border-slate-border mb-6">
+        <div className="hidden lg:flex space-x-2 border-b border-slate-200 mb-6">
           {[
             { id: 'inicio', label: 'Inicio', icon: Home, visible: true },
-            { id: 'ofertas', label: 'Ofertas de Préstamo', icon: FileCheck, visible: isMarketplaceEnabled() },
+            { id: 'ofertas', label: 'Propuestas de Financiamiento', icon: FileCheck, visible: isMarketplaceEnabled() },
             { id: 'solicitud', label: 'Mi Solicitud', icon: FileText, visible: true },
             { id: 'documentos', label: 'Documentación', icon: Upload, visible: modules.documents_enabled },
             { id: 'mensajes', label: 'Mensajes', icon: MessageSquare, visible: modules.notifications_enabled },
@@ -210,8 +210,8 @@ export const ApplicantAccount: React.FC = () => {
                 onClick={() => setActiveTab(t.id as any)}
                 className={`flex items-center space-x-1.5 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors ${
                   activeTab === t.id
-                    ? 'border-brand-green text-navy'
-                    : 'border-transparent text-slate-400 hover:text-navy'
+                    ? 'border-amber-500 text-[#102d49]'
+                    : 'border-transparent text-slate-400 hover:text-slate-700'
                 }`}
               >
                 <t.icon className="w-4 h-4" />
@@ -225,14 +225,14 @@ export const ApplicantAccount: React.FC = () => {
         {/* ============================================================ */}
         {activeTab === 'ofertas' && isMarketplaceEnabled() && (
           <div className="space-y-6">
-            <div className="bg-white rounded-card p-6 border border-slate-border shadow-card space-y-4">
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
               <div>
-                <h3 className="text-lg font-bold text-navy flex items-center">
-                  <FileCheck className="w-5 h-5 mr-2 text-brand-green" />
+                <h3 className="text-lg font-bold text-slate-900 flex items-center font-serif">
+                  <FileCheck className="w-5 h-5 mr-2 text-amber-600" />
                   Propuestas de Financiamiento Disponibles
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  Revisá y compará las propuestas presentadas por los prestamistas para tu expediente.
+                  Revisá y compará las condiciones y alternativas disponibles para tu expediente.
                 </p>
               </div>
 
@@ -244,22 +244,22 @@ export const ApplicantAccount: React.FC = () => {
                       key={off.id}
                       className={`p-5 rounded-xl border transition-all ${
                         isAccepted
-                          ? 'border-brand-green bg-emerald-50/50 shadow-md'
-                          : 'border-slate-border bg-white shadow-sm hover:border-slate-300'
+                          ? 'border-amber-400 bg-amber-50/40 shadow-md'
+                          : 'border-slate-200 bg-white shadow-sm hover:border-slate-300'
                       }`}
                     >
                       <div className="flex items-start justify-between">
                         <div>
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                            {off.lender_name}
+                            {off.lender_name || 'Propuesta de Financiamiento'}
                           </span>
-                          <div className="text-2xl font-black text-navy mt-0.5">
+                          <div className="text-2xl font-black text-slate-900 mt-0.5">
                             USD {off.amount.toLocaleString('es-UY')}
                           </div>
                         </div>
                         {isAccepted ? (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
-                            <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-brand-green" /> Propuesta Aceptada
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900">
+                            <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-amber-600" /> Propuesta Aceptada
                           </span>
                         ) : (
                           <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
@@ -268,25 +268,25 @@ export const ApplicantAccount: React.FC = () => {
                         )}
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2 my-4 p-3 bg-slate-bg rounded-lg text-xs">
+                      <div className="grid grid-cols-3 gap-2 my-4 p-3 bg-slate-50 rounded-lg text-xs">
                         <div>
                           <span className="text-slate-400 block text-[10px]">Tasa Anual</span>
-                          <strong className="text-navy">{off.interest_rate}% ({off.rate_type})</strong>
+                          <strong className="text-slate-900">{off.interest_rate}% ({off.rate_type})</strong>
                         </div>
                         <div>
                           <span className="text-slate-400 block text-[10px]">Plazo</span>
-                          <strong className="text-navy">{off.term_months} meses</strong>
+                          <strong className="text-slate-900">{off.term_months} meses</strong>
                         </div>
                         <div>
                           <span className="text-slate-400 block text-[10px]">Cuota Est.</span>
-                          <strong className="text-brand-green">USD {off.estimated_monthly_payment}</strong>
+                          <strong className="text-amber-800">USD {off.estimated_monthly_payment}</strong>
                         </div>
                       </div>
 
                       <div className="text-xs text-slate-600 space-y-1 pb-4 border-b border-slate-100">
-                        <div><strong>Tipo de repago:</strong> {off.repayment_type === 'amortizing' ? 'Amortización mensual' : 'Solo intereses'}</div>
+                        <div><strong>Tipo de amortización:</strong> {off.repayment_type === 'amortizing' ? 'Mensual (Capital + Interés)' : 'Solo intereses'}</div>
                         <div><strong>Gastos estimativos:</strong> USD {off.estimated_costs}</div>
-                        <div><strong>Condición anticipada:</strong> {off.early_cancellation_terms}</div>
+                        <div><strong>Condición de prepago:</strong> {off.early_cancellation_terms}</div>
                       </div>
 
                       <div className="pt-4 flex items-center justify-between">
@@ -297,6 +297,7 @@ export const ApplicantAccount: React.FC = () => {
                           <Button
                             variant="primary"
                             size="sm"
+                            className="!bg-[#102d49] hover:!bg-[#173a5e] !text-white !font-semibold !rounded-lg"
                             onClick={async () => {
                               setAcceptedOfferId(off.id);
                               setPresentedOffers((prev) =>
@@ -321,7 +322,7 @@ export const ApplicantAccount: React.FC = () => {
               </div>
 
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-500 leading-relaxed">
-                <strong>Aviso sobre la aceptación:</strong> La aceptación de una propuesta comercial no constituye aún contrato definitivo ni escritura pública. A continuación se coordinará la revisión notarial de títulos y certificados de la propiedad para la formalización del préstamo con garantía hipotecaria.
+                <strong>Aviso sobre la aceptación:</strong> La aceptación de una propuesta de financiamiento no constituye aún contrato definitivo ni escritura pública. A continuación se coordinará la revisión notarial de títulos y certificados de la propiedad para la formalización del préstamo con garantía hipotecaria.
               </div>
 
             </div>
@@ -335,9 +336,9 @@ export const ApplicantAccount: React.FC = () => {
           <div className="space-y-6">
             
             {/* Timeline Horizontal / Vertical */}
-            <div className="bg-white rounded-card p-6 border border-slate-border shadow-card">
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
               <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-                <span className="text-xs font-bold text-navy uppercase tracking-wider">
+                <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                   Progreso del Expediente
                 </span>
                 <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 flex items-center">
@@ -352,16 +353,16 @@ export const ApplicantAccount: React.FC = () => {
                     <div
                       className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
                         step.status === 'completed'
-                          ? 'bg-brand-green text-white shadow-sm'
+                          ? 'bg-[#102d49] text-[#f4b43b] shadow-sm'
                           : step.status === 'current'
-                          ? 'bg-navy text-white ring-4 ring-navy/10'
+                          ? 'bg-[#102d49] text-white ring-4 ring-amber-400/30'
                           : 'bg-slate-100 text-slate-400'
                       }`}
                     >
                       {step.status === 'completed' ? (
-                        <CheckCircle2 className="w-5 h-5" />
+                        <CheckCircle2 className="w-5 h-5 text-[#f4b43b]" />
                       ) : step.status === 'current' ? (
-                        <div className="w-2.5 h-2.5 rounded-full bg-brand-green animate-ping" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#f4b43b] animate-ping" />
                       ) : (
                         idx + 1
                       )}
@@ -369,7 +370,7 @@ export const ApplicantAccount: React.FC = () => {
                     <span
                       className={`text-[11px] leading-tight font-medium ${
                         step.status === 'current'
-                          ? 'text-navy font-bold'
+                          ? 'text-[#102d49] font-bold'
                           : step.status === 'completed'
                           ? 'text-slate-700'
                           : 'text-slate-400'
@@ -384,38 +385,38 @@ export const ApplicantAccount: React.FC = () => {
 
             {/* 3 Metric Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-white p-5 rounded-card border border-slate-border shadow-card">
-                <span className="text-xs text-slate-muted font-medium block">Monto Solicitado</span>
-                <div className="text-2xl font-extrabold text-navy tracking-tight mt-1">
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <span className="text-xs text-slate-500 font-medium block">Monto Solicitado</span>
+                <div className="text-2xl font-black text-[#102d49] tracking-tight mt-1 font-serif">
                   USD 80.000
                 </div>
                 <span className="text-[11px] text-slate-400 mt-1 block">Plazo: 36 meses</span>
               </div>
 
-              <div className="bg-white p-5 rounded-card border border-slate-border shadow-card">
-                <span className="text-xs text-slate-muted font-medium block">Inmueble en Garantía</span>
-                <div className="text-xl font-bold text-navy tracking-tight mt-1 truncate">
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <span className="text-xs text-slate-500 font-medium block">Inmueble en Garantía</span>
+                <div className="text-xl font-bold text-slate-900 tracking-tight mt-1 truncate">
                   Casa en Montevideo
                 </div>
                 <span className="text-[11px] text-slate-400 mt-1 block">Valuación declarada: USD 240.000</span>
               </div>
 
-              <div className="bg-white p-5 rounded-card border border-slate-border shadow-card">
-                <span className="text-xs text-slate-muted font-medium block">LTV Preliminar</span>
-                <div className="text-2xl font-extrabold text-brand-green-dark tracking-tight mt-1">
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <span className="text-xs text-slate-500 font-medium block">LTV Preliminar</span>
+                <div className="text-2xl font-black text-amber-700 tracking-tight mt-1 font-serif">
                   33.3%
                 </div>
-                <span className="text-[11px] text-brand-green font-semibold mt-1 block">Dentro del rango elegible (40%)</span>
+                <span className="text-[11px] text-amber-800 font-semibold mt-1 block">Dentro del rango elegible (40%)</span>
               </div>
             </div>
 
             {/* Próximo Paso y Acciones Inmediatas */}
-            <div className="bg-gradient-to-r from-navy to-navy-surface text-white rounded-card p-6 shadow-floating flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="bg-gradient-to-r from-[#102d49] to-[#173a5e] text-white rounded-2xl p-6 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="space-y-1">
-                <span className="text-xs font-bold text-brand-green uppercase tracking-wider flex items-center">
-                  <Sparkles className="w-3.5 h-3.5 mr-1" /> Próximo Paso
+                <span className="text-xs font-bold text-[#f4b43b] uppercase tracking-wider flex items-center">
+                  <Sparkles className="w-3.5 h-3.5 mr-1 text-[#f4b43b]" /> Próximo Paso
                 </span>
-                <h4 className="text-lg font-bold text-white">Subir documentación de ingresos</h4>
+                <h4 className="text-lg font-serif font-bold text-white">Subir documentación de ingresos</h4>
                 <p className="text-xs text-slate-300 max-w-md">
                   Para emitir una propuesta formal, por favor adjuntá tu recibo de sueldo o certificación notarial/contable.
                 </p>
@@ -423,7 +424,7 @@ export const ApplicantAccount: React.FC = () => {
 
               <button
                 onClick={() => setActiveTab('documentos')}
-                className="inline-flex items-center px-5 py-2.5 rounded-btn bg-brand-green hover:bg-brand-green-hover text-white text-xs font-bold shadow-sm transition-colors shrink-0"
+                className="inline-flex items-center px-5 py-2.5 rounded-xl bg-[#f4b43b] hover:bg-[#e0a230] text-[#102d49] text-xs font-bold shadow-sm transition-colors shrink-0"
               >
                 <Upload className="w-4 h-4 mr-1.5" /> Subir documentos
               </button>
@@ -437,16 +438,16 @@ export const ApplicantAccount: React.FC = () => {
         {/* ============================================================ */}
         {activeTab === 'documentos' && (
           <div className="space-y-5">
-            <div className="bg-white rounded-card p-6 border border-slate-border shadow-card space-y-4">
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
                 <div>
-                  <h3 className="text-lg font-bold text-navy">Documentación del Expediente</h3>
-                  <p className="text-xs text-slate-muted mt-0.5">
+                  <h3 className="text-lg font-serif font-bold text-slate-900">Documentación del Expediente</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
                     Legajo oficial autollenado y respaldado con validez legal según Ley N° 18.600.
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <span className="text-[10px] font-bold bg-brand-green-light text-brand-green-dark px-2.5 py-1 rounded-full">
+                  <span className="text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200 px-2.5 py-1 rounded-full">
                     ✓ Encriptación RLS
                   </span>
                 </div>
@@ -457,7 +458,7 @@ export const ApplicantAccount: React.FC = () => {
                 <button
                   onClick={() => setDocSubFilter('todos')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                    docSubFilter === 'todos' ? 'bg-navy text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    docSubFilter === 'todos' ? 'bg-[#102d49] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
                   Documentos Generados ({docFlowDocs.length})
@@ -473,7 +474,7 @@ export const ApplicantAccount: React.FC = () => {
                 <button
                   onClick={() => setDocSubFilter('cargados')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                    docSubFilter === 'cargados' ? 'bg-emerald-700 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    docSubFilter === 'cargados' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
                   Recaudos Solicitados
@@ -523,9 +524,9 @@ export const ApplicantAccount: React.FC = () => {
                       className="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-slate-50/70"
                     >
                       <div className="flex items-center space-x-3">
-                        <FileText className="w-5 h-5 text-brand-green shrink-0" />
+                        <FileText className="w-5 h-5 text-amber-700 shrink-0" />
                         <div>
-                          <p className="text-xs font-bold text-navy">{doc.name}</p>
+                          <p className="text-xs font-bold text-slate-900">{doc.name}</p>
                           <span className="text-[10px] text-slate-500">Última actualización: {doc.date}</span>
                         </div>
                       </div>
@@ -542,7 +543,7 @@ export const ApplicantAccount: React.FC = () => {
                         >
                           {doc.status}
                         </span>
-                        <button className="text-xs font-bold text-brand-green hover:underline">
+                        <button className="text-xs font-bold text-amber-800 hover:underline">
                           Cargar
                         </button>
                       </div>
@@ -564,12 +565,12 @@ export const ApplicantAccount: React.FC = () => {
         {/* TAB 3: MENSAJES DEL EXPEDIENTE                               */}
         {/* ============================================================ */}
         {activeTab === 'mensajes' && (
-          <div className="bg-white rounded-card p-6 border border-slate-border shadow-card space-y-4">
-            <h3 className="text-lg font-bold text-navy">Mensajes y Notificaciones</h3>
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+            <h3 className="text-lg font-serif font-bold text-slate-900">Mensajes y Notificaciones</h3>
             <div className="space-y-3">
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
                 <div className="flex justify-between items-center text-xs">
-                  <span className="font-bold text-navy">Equipo de Análisis HIPOTECALY</span>
+                  <span className="font-bold text-slate-900">Equipo de Análisis Hipotecario</span>
                   <span className="text-[10px] text-slate-400">Hace 2 horas</span>
                 </div>
                 <p className="text-xs text-slate-600">
@@ -584,21 +585,21 @@ export const ApplicantAccount: React.FC = () => {
         {/* TAB 4: CUENTA Y AJUSTES                                      */}
         {/* ============================================================ */}
         {activeTab === 'cuenta' && (
-          <div className="bg-white rounded-card p-6 border border-slate-border shadow-card space-y-6">
-            <h3 className="text-lg font-bold text-navy">Datos de tu Cuenta</h3>
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+            <h3 className="text-lg font-serif font-bold text-slate-900">Datos de tu Cuenta</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div>
                 <label className="text-slate-400 font-medium">Nombre Completo</label>
-                <p className="font-bold text-navy text-sm mt-0.5">{displayName}</p>
+                <p className="font-bold text-slate-900 text-sm mt-0.5">{displayName}</p>
               </div>
               <div>
                 <label className="text-slate-400 font-medium">Email Registrado</label>
-                <p className="font-bold text-navy text-sm mt-0.5">{user?.email || borrower?.email || 'ignacio@ejemplo.com'}</p>
+                <p className="font-bold text-slate-900 text-sm mt-0.5">{user?.email || borrower?.email || 'ignacio@ejemplo.com'}</p>
               </div>
             </div>
 
             <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-              <Link to="/privacidad" className="text-xs text-brand-green hover:underline">
+              <Link to="/privacidad" className="text-xs text-amber-800 hover:underline font-semibold">
                 Gestionar privacidad de datos
               </Link>
               <button
@@ -614,13 +615,13 @@ export const ApplicantAccount: React.FC = () => {
       </main>
 
       {/* ============================================================ */}
-      {/* NAVEGACIÓN INFERIOR MÓVIL (PWA Mobile-First - Regla 13)       */}
+      {/* NAVEGACIÓN INFERIOR MÓVIL (PWA Mobile-First)                  */}
       {/* ============================================================ */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-border lg:hidden flex items-center justify-around h-16 shadow-lg">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 lg:hidden flex items-center justify-around h-16 shadow-lg">
         <button
           onClick={() => setActiveTab('inicio')}
           className={`flex flex-col items-center justify-center flex-1 h-full text-xs font-semibold ${
-            activeTab === 'inicio' ? 'text-brand-green' : 'text-slate-400'
+            activeTab === 'inicio' ? 'text-amber-600' : 'text-slate-400'
           }`}
         >
           <Home className="w-5 h-5 mb-0.5" />
@@ -631,18 +632,18 @@ export const ApplicantAccount: React.FC = () => {
           <button
             onClick={() => setActiveTab('ofertas')}
             className={`flex flex-col items-center justify-center flex-1 h-full text-xs font-semibold ${
-              activeTab === 'ofertas' ? 'text-brand-green' : 'text-slate-400'
+              activeTab === 'ofertas' ? 'text-amber-600' : 'text-slate-400'
             }`}
           >
             <FileCheck className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px]">Ofertas</span>
+            <span className="text-[10px]">Propuestas</span>
           </button>
         )}
 
         <button
           onClick={() => setActiveTab('solicitud')}
           className={`flex flex-col items-center justify-center flex-1 h-full text-xs font-semibold ${
-            activeTab === 'solicitud' ? 'text-brand-green' : 'text-slate-400'
+            activeTab === 'solicitud' ? 'text-amber-600' : 'text-slate-400'
           }`}
         >
           <FileText className="w-5 h-5 mb-0.5" />
@@ -653,7 +654,7 @@ export const ApplicantAccount: React.FC = () => {
           <button
             onClick={() => setActiveTab('documentos')}
             className={`flex flex-col items-center justify-center flex-1 h-full text-xs font-semibold ${
-              activeTab === 'documentos' ? 'text-brand-green' : 'text-slate-400'
+              activeTab === 'documentos' ? 'text-amber-600' : 'text-slate-400'
             }`}
           >
             <Upload className="w-5 h-5 mb-0.5" />
@@ -665,7 +666,7 @@ export const ApplicantAccount: React.FC = () => {
           <button
             onClick={() => setActiveTab('mensajes')}
             className={`flex flex-col items-center justify-center flex-1 h-full text-xs font-semibold ${
-              activeTab === 'mensajes' ? 'text-brand-green' : 'text-slate-400'
+              activeTab === 'mensajes' ? 'text-amber-600' : 'text-slate-400'
             }`}
           >
             <MessageSquare className="w-5 h-5 mb-0.5" />
@@ -676,7 +677,7 @@ export const ApplicantAccount: React.FC = () => {
         <button
           onClick={() => setActiveTab('cuenta')}
           className={`flex flex-col items-center justify-center flex-1 h-full text-xs font-semibold ${
-            activeTab === 'cuenta' ? 'text-brand-green' : 'text-slate-400'
+            activeTab === 'cuenta' ? 'text-amber-600' : 'text-slate-400'
           }`}
         >
           <User className="w-5 h-5 mb-0.5" />

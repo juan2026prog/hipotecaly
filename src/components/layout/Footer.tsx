@@ -2,8 +2,62 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ShieldCheck, Mail, MapPin, Sparkles } from 'lucide-react';
 import { TenantBrand } from '../common/TenantBrand';
+import { useTenant } from '../../contexts/TenantContext';
 
 export const Footer: React.FC = () => {
+  const { tenant } = useTenant();
+
+  const isNova = tenant.slug === 'estudio-nova' || tenant.slug === 'nova' || tenant.slug === 'estudio_nova';
+  const isWhiteLabel = tenant.is_white_label || isNova;
+
+  if (isWhiteLabel) {
+    return (
+      <footer className="bg-[#0b2238] text-slate-400 text-xs py-10 border-t border-[#102d49] text-left">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="space-y-3">
+            <TenantBrand isWhite size="md" />
+            <p className="text-slate-400 leading-relaxed text-xs">
+              {tenant.branding.tag_line || 'Financiación & inversión con respaldo inmobiliario en Uruguay.'}
+            </p>
+          </div>
+
+          <div>
+            <h5 className="font-bold text-white uppercase tracking-wider mb-3">Atención & Contacto</h5>
+            <ul className="space-y-2 text-xs">
+              <li>{tenant.settings.sender_email ? `Email: ${tenant.settings.sender_email}` : 'contacto@estudionova.uy'}</li>
+              <li>Montevideo, Uruguay</li>
+              <li>Horario: Lun a Vie 09:00 - 18:00 hs</li>
+            </ul>
+          </div>
+
+          <div>
+            <h5 className="font-bold text-white uppercase tracking-wider mb-3">Navegación</h5>
+            <ul className="space-y-2 text-xs">
+              <li><Link to="/demo/estudio-nova" className="hover:text-white">Inicio</Link></li>
+              <li><Link to="/simulador?source=estudio_nova" className="hover:text-white">Simulador en Línea</Link></li>
+              <li><Link to="/solicitar?source=estudio_nova" className="hover:text-white">Solicitar Financiación</Link></li>
+              <li><Link to="/mi-cuenta" className="hover:text-white">Portal de Clientes</Link></li>
+            </ul>
+          </div>
+
+          <div>
+            <h5 className="font-bold text-white uppercase tracking-wider mb-3">Marco Institucional</h5>
+            <p className="text-slate-400 leading-relaxed text-xs">
+              Estructuración legal y notarial de operaciones de crédito hipotecario con títulos en regla y peritaje técnico.
+            </p>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500">
+          <span>© {new Date().getFullYear()} {tenant.legal_name || tenant.branding.public_name}. Todos los derechos reservados.</span>
+          <span className="mt-2 sm:mt-0 font-mono text-slate-400">
+            {tenant.branding.powered_by_text || 'Tecnología provista por HIPOTECALY'}
+          </span>
+        </div>
+      </footer>
+    );
+  }
+
   return (
     <footer className="bg-navy text-white pt-16 pb-12 border-t border-navy-border text-left">
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6">
