@@ -42,47 +42,44 @@ export const clientSimulationService = {
       const key = getStorageKey(userId);
       const data = localStorage.getItem(key);
       if (!data) {
-        // Semilla de demostración si es usuario demo
-        if (userId && (userId.includes('borrower') || userId.includes('test') || userId === 'u-test-borrower')) {
-          const demoSimulations: SavedSimulation[] = [
-            {
-              id: 'sim-demo-01',
-              userId,
-              requestedAmount: 80000,
-              currency: 'USD',
-              propertyValue: 220000,
-              termMonths: 36,
-              propertyType: 'apartamento',
-              department: 'Montevideo',
-              repaymentMode: 'solo_intereses',
-              monthlyPaymentEstimated: 733,
-              rateAnnual: 11.0,
-              ltvPercentage: 36.36,
-              closingCostsEstimated: 2420,
-              createdAt: '2026-09-07T14:30:00Z',
-              applicationPublicId: 'HIP-2026-43776',
-            },
-            {
-              id: 'sim-demo-02',
-              userId,
-              requestedAmount: 50000,
-              currency: 'USD',
-              propertyValue: 160000,
-              termMonths: 24,
-              propertyType: 'casa',
-              department: 'Canelones',
-              repaymentMode: 'solo_intereses',
-              monthlyPaymentEstimated: 458,
-              rateAnnual: 11.0,
-              ltvPercentage: 31.25,
-              closingCostsEstimated: 1800,
-              createdAt: '2026-09-05T10:15:00Z',
-            },
-          ];
-          localStorage.setItem(key, JSON.stringify(demoSimulations));
-          return demoSimulations;
-        }
-        return [];
+        // Semilla de demostración para primera visualización
+        const demoSimulations: SavedSimulation[] = [
+          {
+            id: 'sim-demo-01',
+            userId,
+            requestedAmount: 80000,
+            currency: 'USD',
+            propertyValue: 220000,
+            termMonths: 36,
+            propertyType: 'apartamento',
+            department: 'Montevideo',
+            repaymentMode: 'solo_intereses',
+            monthlyPaymentEstimated: 733,
+            rateAnnual: 11.0,
+            ltvPercentage: 36.36,
+            closingCostsEstimated: 2420,
+            createdAt: '2026-09-07T14:30:00Z',
+            applicationPublicId: 'HIP-2026-43776',
+          },
+          {
+            id: 'sim-demo-02',
+            userId,
+            requestedAmount: 50000,
+            currency: 'USD',
+            propertyValue: 160000,
+            termMonths: 24,
+            propertyType: 'casa',
+            department: 'Canelones',
+            repaymentMode: 'solo_intereses',
+            monthlyPaymentEstimated: 458,
+            rateAnnual: 11.0,
+            ltvPercentage: 31.25,
+            closingCostsEstimated: 1800,
+            createdAt: '2026-09-05T10:15:00Z',
+          },
+        ];
+        localStorage.setItem(key, JSON.stringify(demoSimulations));
+        return demoSimulations;
       }
       return JSON.parse(data);
     } catch {

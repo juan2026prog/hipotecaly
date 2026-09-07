@@ -537,9 +537,49 @@ export const App: React.FC = () => {
               <Route path="/registro" element={<RegisterPage />} />
               <Route path="/recuperar-password" element={<ForgotPasswordPage />} />
 
-              {/* Portal del Solicitante / Cliente Base */}
+              {/* Portal del Solicitante / Cliente Base y Rutas Alias */}
               <Route
                 path="/mi-cuenta"
+                element={
+                  <ProtectedRoute allowedRoles={['borrower', 'super_admin']}>
+                    <ApplicantAccount />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/cliente"
+                element={
+                  <ProtectedRoute allowedRoles={['borrower', 'super_admin']}>
+                    <ApplicantAccount />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/portal"
+                element={
+                  <ProtectedRoute allowedRoles={['borrower', 'super_admin']}>
+                    <ApplicantAccount />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/panel-cliente"
+                element={
+                  <ProtectedRoute allowedRoles={['borrower', 'super_admin']}>
+                    <ApplicantAccount />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/cuenta"
+                element={
+                  <ProtectedRoute allowedRoles={['borrower', 'super_admin']}>
+                    <ApplicantAccount />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/account"
                 element={
                   <ProtectedRoute allowedRoles={['borrower', 'super_admin']}>
                     <ApplicantAccount />
