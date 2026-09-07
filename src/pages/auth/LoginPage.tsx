@@ -19,6 +19,9 @@ export const LoginPage: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const redirectTo = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
+  const searchParams = new URLSearchParams(location.search);
+  const isFromSaveSimulation = searchParams.get('action') === 'save_simulation';
+  const tenantParam = searchParams.get('tenant');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +44,15 @@ export const LoginPage: React.FC = () => {
       } else if (emailLower === 'escribano' || emailLower.startsWith('escriban') || emailLower.startsWith('notary')) {
         navigate(redirectTo || '/notary');
       } else {
-        navigate(redirectTo || '/demo/estudio-nova/cliente');
+        const clientTarget = tenantParam
+          ? `/demo/${tenantParam}/cliente`
+          : '/demo/estudio-nova/cliente';
+        
+        if (isFromSaveSimulation) {
+          navigate(`${clientTarget}?tab=simulaciones&saved=true`);
+        } else {
+          navigate(redirectTo || clientTarget);
+        }
       }
     }
   };
@@ -68,8 +79,21 @@ export const LoginPage: React.FC = () => {
   return (
     <AuthLayout
       title="Ingresar a tu cuenta"
-      subtitle="Consultá el estado de tu solicitud o gestioná tu expediente hipotecario."
+      subtitle={
+        isFromSaveSimulation
+          ? "Iniciá sesión para guardar esta simulación y consultarla cuando quieras."
+          : "Consultá el estado de tu solicitud o gestioná tu expediente hipotecario."
+      }
     >
+      {isFromSaveSimulation && (
+        <div className="mb-4 p-3.5 rounded-2xl bg-amber-50 border border-amber-200/90 text-xs text-amber-900 flex items-start space-x-2.5">
+          <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+          <span>
+            <strong>Simulación lista:</strong> Al iniciar sesión, guardaremos automáticamente el cálculo realizado en tu cuenta.
+          </span>
+        </div>
+      )}
+
       {errorMessage && (
         <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 flex items-start space-x-2.5 text-xs text-rose-700">
           <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />

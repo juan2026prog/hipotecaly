@@ -14,6 +14,8 @@ import {
   Scale,
   ChevronDown,
   ChevronUp,
+  Bookmark,
+  X,
 } from 'lucide-react';
 import { Navbar } from '../components/layout/Navbar';
 import { Footer } from '../components/layout/Footer';
@@ -29,6 +31,8 @@ import {
   DEFAULT_PILOT_RULESET,
 } from '../lib/rulesService';
 import { useTenant } from '../contexts/TenantContext';
+import { useAuth } from '../contexts/AuthContext';
+import { clientSimulationService } from '../lib/clientSimulationService';
 
 export const SimulatorPage: React.FC = () => {
   const navigate = useNavigate();
@@ -52,6 +56,12 @@ export const SimulatorPage: React.FC = () => {
 
     return () => unsubscribe();
   }, []);
+
+  const { user } = useAuth();
+
+  // Estados de Guardado de Simulación
+  const [savedSuccessToast, setSavedSuccessToast] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   // Paso actual del Progressive Disclosure (1: Valor y Monto, 2: Propiedad y Ubicación, 3: Ingresos y Resumen)
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
@@ -79,6 +89,37 @@ export const SimulatorPage: React.FC = () => {
   const registryCertificates = 180;
   const stampsAndFiling = 240;
   const totalEstimatedClosingCosts = notarialFees + notarialIva + registryCertificates + stampsAndFiling;
+
+  const estimatedMonthlyPayment = Math.round((requestedAmount * 0.11) / 12);
+
+  const handleSaveSimulation = () => {
+    const simData = {
+      requestedAmount,
+      currency: 'USD',
+      propertyValue,
+      termMonths: 36,
+      propertyType,
+      department,
+      legalStatus,
+      incomeType,
+      repaymentMode: 'solo_intereses',
+      monthlyPaymentEstimated: estimatedMonthlyPayment,
+      rateAnnual: 11.0,
+      ltvPercentage: currentLtv,
+      closingCostsEstimated: totalEstimatedClosingCosts,
+      organizationId: tenant.id,
+    };
+
+    if (user?.id) {
+      // Usuario autenticado: guardar de inmediato
+      clientSimulationService.saveSimulation(simData, user.id);
+      setSavedSuccessToast(true);
+    } else {
+      // Usuario NO autenticado: guardar pendiente y abrir diálogo/flujo de login
+      clientSimulationService.setPendingSimulation(simData);
+      setAuthModalOpen(true);
+    }
+  };
 
   const handleFinishSimulation = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -542,27 +583,125 @@ export const SimulatorPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="pt-2 flex items-center justify-between gap-3">
+                {/* Toast de Éxito de Guardado */}
+                {savedSuccessToast && (
+                  <div className="p-4 bg-emerald-900 text-white rounded-2xl shadow-lg border border-emerald-500 flex items-center justify-between text-xs font-bold animate-in fade-in">
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                      <span>Simulación guardada en tu cuenta.</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => navigate('/mi-cuenta?tab=simulaciones')}
+                        className="underline text-emerald-200 hover:text-white"
+                      >
+                        Ver mis simulaciones →
+                      </button>
+                      <button type="button" onClick={() => setSavedSuccessToast(false)} className="text-emerald-300 ml-2">✕</button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
                   <Button
                     type="button"
                     variant="ghost"
                     size="md"
                     onClick={() => setCurrentStep(2)}
+                    className="w-full sm:w-auto"
                   >
                     <ArrowLeft className="w-4 h-4 mr-1.5" /> Volver
                   </Button>
-                  <Button
-                    type="button"
-                    variant={isWhiteLabel ? 'navy' : 'primary'}
-                    size="lg"
-                    className={`shadow-md text-base min-h-[50px] px-8 ${
-                      isWhiteLabel ? 'bg-[#173a5e] hover:bg-[#102d49] text-white uppercase tracking-wider font-bold' : ''
-                    }`}
-                    disabled={isOverLtv}
-                    onClick={() => handleFinishSimulation()}
-                  >
-                    Continuar solicitud <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
+
+                  <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="lg"
+                      onClick={handleSaveSimulation}
+                      className="w-full sm:w-auto text-xs font-bold border-slate-300 hover:bg-slate-50 flex items-center justify-center !rounded-xl"
+                    >
+                      <Bookmark className="w-4 h-4 mr-1.5 text-slate-600" />
+                      Guardar simulación
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant={isWhiteLabel ? 'navy' : 'primary'}
+                      size="lg"
+                      className={`w-full sm:w-auto shadow-md text-sm min-h-[46px] px-6 ${
+                        isWhiteLabel ? 'bg-[#173a5e] hover:bg-[#102d49] text-white uppercase tracking-wider font-bold !rounded-xl' : '!rounded-xl'
+                      }`}
+                      disabled={isOverLtv}
+                      onClick={() => handleFinishSimulation()}
+                    >
+                      Continuar solicitud <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Modal para solicitar Login o Registro al Guardar */}
+            {authModalOpen && (
+              <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+                <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-200 space-y-5 text-left">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center">
+                        <Bookmark className="w-4 h-4 text-amber-700" />
+                      </div>
+                      <h3 className="text-base font-serif font-bold text-slate-900">
+                        Guardar Simulación
+                      </h3>
+                    </div>
+                    <button
+                      onClick={() => setAuthModalOpen(false)}
+                      className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                      Iniciá sesión para guardar esta simulación por <strong>USD {requestedAmount.toLocaleString('es-UY')}</strong> y consultarla o iniciar tu trámite cuando quieras.
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      Tus datos ya quedaron preservados; no tendrás que volver a completar el simulador.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t border-slate-100">
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="lg"
+                      fullWidth
+                      onClick={() => {
+                        setAuthModalOpen(false);
+                        navigate('/ingresar?action=save_simulation&redirect=simulador');
+                      }}
+                      className="!bg-[#102d49] text-white font-bold text-xs !rounded-xl"
+                    >
+                      Iniciar sesión para guardar →
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="lg"
+                      fullWidth
+                      onClick={() => {
+                        setAuthModalOpen(false);
+                        navigate('/registro?action=save_simulation&redirect=simulador');
+                      }}
+                      className="text-xs font-bold text-slate-700 hover:bg-slate-50 !rounded-xl"
+                    >
+                      Crear una cuenta gratis
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}

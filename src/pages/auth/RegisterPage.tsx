@@ -4,11 +4,17 @@ import { AuthLayout } from '../../components/auth/AuthLayout';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowRight, AlertCircle } from 'lucide-react';
+import { ArrowRight, AlertCircle, ShieldCheck } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { signUp } = useAuth();
+
+  const searchParams = new URLSearchParams(location.search);
+  const isFromSaveSimulation = searchParams.get('action') === 'save_simulation';
+  const tenantParam = searchParams.get('tenant');
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -29,15 +35,36 @@ export const RegisterPage: React.FC = () => {
     if (error) {
       setErrorMessage(error.message || 'Error al crear tu cuenta. Por favor verificá los datos.');
     } else {
-      navigate('/mi-cuenta');
+      const clientTarget = tenantParam
+        ? `/demo/${tenantParam}/cliente`
+        : '/demo/estudio-nova/cliente';
+
+      if (isFromSaveSimulation) {
+        navigate(`${clientTarget}?tab=simulaciones&saved=true`);
+      } else {
+        navigate(clientTarget);
+      }
     }
   };
 
   return (
     <AuthLayout
       title="Creá tu cuenta"
-      subtitle="Comenzá tu solicitud y gestioná tu expediente hipotecario con total seguridad."
+      subtitle={
+        isFromSaveSimulation
+          ? "Registrate para guardar tu simulación y consultarla cuando quieras."
+          : "Comenzá tu solicitud y gestioná tu expediente hipotecario con total seguridad."
+      }
     >
+      {isFromSaveSimulation && (
+        <div className="mb-4 p-3.5 rounded-2xl bg-amber-50 border border-amber-200/90 text-xs text-amber-900 flex items-start space-x-2.5">
+          <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+          <span>
+            <strong>Simulación lista:</strong> Al registrarte, guardaremos automáticamente el cálculo realizado en tu cuenta.
+          </span>
+        </div>
+      )}
+
       {errorMessage && (
         <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 flex items-start space-x-2.5 text-xs text-rose-700">
           <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />

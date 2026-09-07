@@ -16,6 +16,7 @@ import {
 } from '../../lib/applicationService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
+import { clientSimulationService } from '../../lib/clientSimulationService';
 import {
   ArrowRight,
   ArrowLeft,
@@ -47,6 +48,7 @@ export const ApplicationWizard: React.FC = () => {
   const [source, setSource] = useState<string>(isNova ? 'estudio_nova' : 'native_white_label');
   const [sourceMode, setSourceMode] = useState<string>('full');
   const [repaymentMode, setRepaymentMode] = useState<string>('solo_intereses');
+  const [linkedSimulationId, setLinkedSimulationId] = useState<string | null>(null);
 
   // Estados del Formulario
   const [appId, setAppId] = useState<string | undefined>(undefined);
@@ -102,6 +104,7 @@ export const ApplicationWizard: React.FC = () => {
     const queryMode = searchParams.get('modalidad') || searchParams.get('repayment_mode');
     const querySource = searchParams.get('source');
     const querySourceMode = searchParams.get('source_mode');
+    const querySimId = searchParams.get('simulation_id');
 
     const simState = location.state as {
       requestedAmount?: number;
@@ -114,7 +117,11 @@ export const ApplicationWizard: React.FC = () => {
       repaymentMode?: string;
       source?: string;
       sourceMode?: string;
+      simulationId?: string;
     } | null;
+
+    if (querySimId) setLinkedSimulationId(querySimId);
+    else if (simState?.simulationId) setLinkedSimulationId(simState.simulationId);
 
     if (querySource) setSource(querySource);
     else if (simState?.source) setSource(simState.source);
@@ -282,6 +289,9 @@ export const ApplicationWizard: React.FC = () => {
     const targetAppId = appId || draftRes?.application?.id;
 
     if (targetAppId) {
+      if (linkedSimulationId) {
+        clientSimulationService.linkSimulationToApplication(linkedSimulationId, publicId, user?.id);
+      }
       const { success, error } = await submitFinalApplication(targetAppId);
       if (success) {
         setSubmitting(false);
@@ -292,6 +302,9 @@ export const ApplicationWizard: React.FC = () => {
         return;
       }
     } else {
+      if (linkedSimulationId) {
+        clientSimulationService.linkSimulationToApplication(linkedSimulationId, publicId, user?.id);
+      }
       navigate('/mi-cuenta', { state: { justSubmitted: true, publicId, pendingSync: true } });
     }
     setSubmitting(false);

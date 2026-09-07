@@ -1,25 +1,32 @@
 // ==============================================================================
 // HIPOTECALY: Tenant Simulator Page (/demo/:tenantSlug/simulador)
 // Simulador transaccional adaptado a las reglas y marca del Tenant
+// Con guardado voluntario de simulaciones y enlace directo
 // ==============================================================================
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   ArrowRight,
+  Bookmark,
+  CheckCircle2,
+  X,
 } from 'lucide-react';
 import { useTenant } from '../../contexts/TenantContext';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   getTenantLendingRules,
   TenantLendingRules,
   DEFAULT_NOVA_LENDING_RULES,
 } from '../../lib/tenantRulesService';
+import { clientSimulationService } from '../../lib/clientSimulationService';
 import { Button } from '../../components/ui/Button';
 import { CurrencyInput } from '../../components/ui/CurrencyInput';
 
 export const TenantSimulatorPage: React.FC = () => {
   const navigate = useNavigate();
   const { tenant } = useTenant();
+  const { user } = useAuth();
 
   const brandName = tenant.branding?.public_name || tenant.name || 'Estudio Nova';
   const primaryColor = tenant.branding?.primary_color || '#173a5e';
@@ -30,6 +37,10 @@ export const TenantSimulatorPage: React.FC = () => {
   const [loanAmount, setLoanAmount] = useState<number>(70000);
   const [termMonths, setTermMonths] = useState<number>(36);
   const [repaymentMode, setRepaymentMode] = useState<'solo_intereses' | 'amortizable'>('solo_intereses');
+
+  // Estados de Guardado
+  const [savedSuccessToast, setSavedSuccessToast] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   useEffect(() => {
     document.title = `${brandName} | Simulador de Financiación`;
@@ -54,6 +65,32 @@ export const TenantSimulatorPage: React.FC = () => {
       (loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, n))) / (Math.pow(1 + monthlyRate, n) - 1)
     );
   }
+
+  const handleSaveSimulation = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    const simData = {
+      requestedAmount: loanAmount,
+      currency: 'USD',
+      propertyValue: propertyValue,
+      termMonths: termMonths,
+      propertyType: 'casa',
+      department: 'Montevideo',
+      repaymentMode: repaymentMode,
+      monthlyPaymentEstimated: estimatedMonthlyPayment,
+      rateAnnual: rules.defaultRate,
+      ltvPercentage: financedPercentage,
+      closingCostsEstimated: Math.round(loanAmount * 0.024),
+      organizationId: tenant.id,
+    };
+
+    if (user?.id) {
+      clientSimulationService.saveSimulation(simData, user.id);
+      setSavedSuccessToast(true);
+    } else {
+      clientSimulationService.setPendingSimulation(simData);
+      setAuthModalOpen(true);
+    }
+  };
 
   const handleStartApplication = (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,8 +154,29 @@ export const TenantSimulatorPage: React.FC = () => {
       </header>
 
       {/* Main Simulator Card */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 text-left">
-        <div className="mb-6 text-center">
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 text-left space-y-5">
+        
+        {/* Toast de Éxito de Guardado */}
+        {savedSuccessToast && (
+          <div className="p-4 bg-emerald-900 text-white rounded-2xl shadow-lg border border-emerald-500 flex items-center justify-between text-xs font-bold animate-in fade-in">
+            <div className="flex items-center space-x-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+              <span>Simulación guardada en tu cuenta de {brandName}.</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={() => navigate(`/demo/${tenant.slug}/cliente?tab=simulaciones`)}
+                className="underline text-emerald-200 hover:text-white"
+              >
+                Ver mis simulaciones →
+              </button>
+              <button type="button" onClick={() => setSavedSuccessToast(false)} className="text-emerald-300 ml-2">✕</button>
+            </div>
+          </div>
+        )}
+
+        <div className="text-center">
           <span
             className="text-xs font-bold uppercase tracking-widest"
             style={{ color: primaryColor }}
@@ -254,19 +312,95 @@ export const TenantSimulatorPage: React.FC = () => {
                 </span>
               </div>
 
-              <Button
-                type="submit"
-                disabled={isOverPercentage || isOverAmount || loanAmount <= 0}
-                size="lg"
-                className="w-full sm:w-auto shadow-md"
-                style={{ backgroundColor: primaryColor }}
-              >
-                Continuar con mi solicitud <ArrowRight className="w-4 h-4 ml-1.5" />
-              </Button>
+              <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  onClick={handleSaveSimulation}
+                  className="w-full sm:w-auto text-xs font-bold bg-white border-slate-300 hover:bg-slate-50 flex items-center justify-center !rounded-xl"
+                >
+                  <Bookmark className="w-4 h-4 mr-1.5 text-slate-600" />
+                  Guardar simulación
+                </Button>
+
+                <Button
+                  type="submit"
+                  disabled={isOverPercentage || isOverAmount || loanAmount <= 0}
+                  size="lg"
+                  className="w-full sm:w-auto shadow-md !rounded-xl text-xs font-bold"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  Continuar solicitud <ArrowRight className="w-4 h-4 ml-1.5" />
+                </Button>
+              </div>
             </div>
           </form>
         </div>
       </main>
+
+      {/* Modal para solicitar Login o Registro al Guardar */}
+      {authModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-200 space-y-5 text-left">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center">
+                  <Bookmark className="w-4 h-4 text-amber-700" />
+                </div>
+                <h3 className="text-base font-serif font-bold text-slate-900">
+                  Guardar Simulación en {brandName}
+                </h3>
+              </div>
+              <button
+                onClick={() => setAuthModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                Iniciá sesión para guardar esta simulación por <strong>USD {loanAmount.toLocaleString('es-UY')}</strong> y consultarla o iniciar tu trámite cuando quieras.
+              </p>
+              <p className="text-[11px] text-slate-400">
+                Tus datos calculados ya quedaron protegidos; no tendrás que volver a cargar los valores.
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              <Button
+                type="button"
+                variant="primary"
+                size="lg"
+                fullWidth
+                onClick={() => {
+                  setAuthModalOpen(false);
+                  navigate(`/ingresar?tenant=${tenant.slug}&action=save_simulation&redirect=simulador`);
+                }}
+                className="!bg-[#102d49] text-white font-bold text-xs !rounded-xl"
+              >
+                Iniciar sesión para guardar →
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                fullWidth
+                onClick={() => {
+                  setAuthModalOpen(false);
+                  navigate(`/registro?tenant=${tenant.slug}&action=save_simulation&redirect=simulador`);
+                }}
+                className="text-xs font-bold text-slate-700 hover:bg-slate-50 !rounded-xl"
+              >
+                Crear una cuenta en {brandName}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="border-t border-slate-200 bg-white py-4 px-4 text-center text-xs text-slate-400">
