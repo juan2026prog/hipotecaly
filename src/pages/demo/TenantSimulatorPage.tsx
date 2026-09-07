@@ -170,7 +170,7 @@ export const TenantSimulatorPage: React.FC = () => {
                 />
                 {isOverPercentage && (
                   <span className="text-[11px] text-rose-600 font-medium block">
-                    El monto supera el {rules.maxFinancedPercentage}% permitido (LTV máximo).
+                    El monto supera el {rules.maxFinancedPercentage}% permitido (porcentaje máximo de financiación).
                   </span>
                 )}
                 {isOverAmount && (

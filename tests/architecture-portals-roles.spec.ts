@@ -134,12 +134,12 @@ test.describe('HIPOTECALY — Arquitectura Definitiva de Portales, Roles y White
   // --------------------------------------------------------------------------
   test('11. Hub de Accesos Demo: Carga las 5 tarjetas de portal y meta noindex', async ({ page }) => {
     await page.goto('/demo/estudio-nova/accesos');
-    await expect(page.locator('text=Hub de Accesos de la Plataforma').first()).toBeVisible();
-    await expect(page.locator('text=Sitio Web Público Nova').first()).toBeVisible();
-    await expect(page.locator('text=Portal de Clientes').first()).toBeVisible();
-    await expect(page.locator('text=Backoffice Nova').first()).toBeVisible();
-    await expect(page.locator('text=Red de Inversores').first()).toBeVisible();
-    await expect(page.locator('text=Super Admin Hipotecaly').first()).toBeVisible();
+    await expect(page.locator('text=Recorré la plataforma desde la perspectiva de cada usuario').first()).toBeVisible();
+    await expect(page.locator('text=Sitio público').first()).toBeVisible();
+    await expect(page.locator('text=Portal del solicitante').first()).toBeVisible();
+    await expect(page.locator('text=Equipo Estudio Nova').first()).toBeVisible();
+    await expect(page.locator('text=Red privada de inversores').first()).toBeVisible();
+    await expect(page.locator('text=Super Admin').first()).toBeVisible();
   });
 
 });

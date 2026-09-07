@@ -170,7 +170,7 @@ export const TenantInvestorDashboardPage: React.FC = () => {
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-              <span className="text-xs font-medium text-slate-500">LTV Promedio</span>
+              <span className="text-xs font-medium text-slate-500">Financiación Promedio</span>
               <div className="text-2xl font-extrabold text-slate-900 mt-1">32.7%</div>
               <span className="text-[11px] text-slate-500 flex items-center mt-1">
                 Garantía sólida 1er rango
@@ -231,7 +231,7 @@ export const TenantInvestorDashboardPage: React.FC = () => {
                         Tasación: <strong className="text-slate-800">USD {opp.preliminary_valuation.toLocaleString()}</strong>
                       </span>
                       <span>
-                        LTV: <strong className="text-emerald-700 font-bold">{opp.ltv}%</strong>
+                        Financiación: <strong className="text-emerald-700 font-bold">{opp.ltv}%</strong>
                       </span>
                       <span>
                         Plazo: <strong className="text-slate-800">{opp.term_months} meses</strong>
