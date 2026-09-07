@@ -1,13 +1,19 @@
+// ==============================================================================
+// HIPOTECALY: Clientes de HIPOTECALY (/admin/clientes y /admin/tenants)
+// Gestión centralizada de organizaciones clientes, marcas y consumo
+// ==============================================================================
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Plus,
   Search,
-  ExternalLink,
   Sliders,
   CheckCircle2,
   AlertCircle,
   RefreshCw,
+  UserCheck,
+  Eye,
 } from 'lucide-react';
 import { SuperAdminLayout } from '../../components/admin/SuperAdminLayout';
 import { SuperAdminTenantDetailModal } from '../../components/admin/SuperAdminTenantDetailModal';
@@ -21,8 +27,6 @@ export const SuperAdminTenantsPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
   const [planFilter, setPlanFilter] = useState<'all' | 'whitelabel' | 'core'>('all');
   const [selectedTenantModal, setSelectedTenantModal] = useState<Tenant | null>(null);
-
-  // Mensajes y Modales
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const loadData = () => {
@@ -31,7 +35,7 @@ export const SuperAdminTenantsPage: React.FC = () => {
   };
 
   useEffect(() => {
-    document.title = 'HIPOTECALY | Gestión de Tenants';
+    document.title = 'HIPOTECALY | Clientes';
     loadData();
   }, []);
 
@@ -50,29 +54,30 @@ export const SuperAdminTenantsPage: React.FC = () => {
 
   const handleResetNova = async () => {
     await resetNovaDemoTenant();
-    setToastMessage('Tenant demo Estudio Nova restablecido a valores iniciales.');
+    setToastMessage('Cliente demo Estudio Nova restablecido a valores iniciales.');
     setTimeout(() => setToastMessage(null), 3000);
     loadData();
   };
 
   return (
-    <SuperAdminLayout title="Gestión de Tenants y Organizaciones">
+    <SuperAdminLayout title="Clientes" activeSection="clientes">
       <div className="space-y-8 max-w-7xl mx-auto text-left">
+        
         {/* Encabezado */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#152E4D] pb-5">
           <div>
             <div className="flex items-center space-x-2">
               <span className="text-[11px] font-mono font-bold text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                MULTI-TENANCY CORE
+                ORGANIZACIONES ACTIVAS
               </span>
               <span className="text-slate-500">•</span>
-              <span className="text-xs text-slate-400 font-mono">AISLAMIENTO RLS</span>
+              <span className="text-xs text-slate-400 font-mono">PANEL DE CLIENTES</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mt-1">
-              Organizaciones y Tenants B2B
+              Clientes de HIPOTECALY
             </h1>
             <p className="text-xs sm:text-sm text-slate-400 mt-1">
-              Administración centralizada de clientes White Label, reglas financieras, branding y módulos en caliente.
+              Administración de estudios, financieras, marcas personalizadas y consumo de servicios.
             </p>
           </div>
 
@@ -81,10 +86,10 @@ export const SuperAdminTenantsPage: React.FC = () => {
               variant="outline"
               size="sm"
               onClick={handleResetNova}
-              className="bg-[#09182C] border-[#1E3A5F] text-amber-300 hover:bg-[#152E4D] text-xs"
+              className="bg-[#09182C] border-[#1E3A5F] text-amber-300 hover:bg-[#152E4D] text-xs font-semibold"
             >
               <RefreshCw className="w-3.5 h-3.5 mr-1.5 text-amber-400" />
-              Reset Demo Nova
+              Restablecer Demo Nova
             </Button>
             <Link to="/admin/tenants/new">
               <Button
@@ -93,7 +98,7 @@ export const SuperAdminTenantsPage: React.FC = () => {
                 className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm"
               >
                 <Plus className="w-4 h-4 mr-1.5" />
-                Nuevo Tenant
+                + Nuevo cliente
               </Button>
             </Link>
           </div>
@@ -112,7 +117,7 @@ export const SuperAdminTenantsPage: React.FC = () => {
             <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
             <input
               type="text"
-              placeholder="Buscar tenant por nombre, slug o dominio..."
+              placeholder="Buscar cliente por nombre o dominio..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-3 py-2 bg-[#071322] border border-[#152E4D] rounded-lg text-slate-200 text-xs focus:border-emerald-500 focus:outline-none"
@@ -125,7 +130,7 @@ export const SuperAdminTenantsPage: React.FC = () => {
               onChange={(e) => setStatusFilter(e.target.value as any)}
               className="w-full py-2 px-3 bg-[#071322] border border-[#152E4D] rounded-lg text-slate-200 text-xs focus:border-emerald-500 focus:outline-none"
             >
-              <option value="all">Todos los Estados</option>
+              <option value="all">Todos los estados</option>
               <option value="active">Activos</option>
               <option value="suspended">Suspendidos</option>
             </select>
@@ -137,30 +142,31 @@ export const SuperAdminTenantsPage: React.FC = () => {
               onChange={(e) => setPlanFilter(e.target.value as any)}
               className="w-full py-2 px-3 bg-[#071322] border border-[#152E4D] rounded-lg text-slate-200 text-xs focus:border-emerald-500 focus:outline-none"
             >
-              <option value="all">Todos los Planes</option>
-              <option value="whitelabel">Full White Label</option>
-              <option value="core">Core Enterprise</option>
+              <option value="all">Todos los planes</option>
+              <option value="whitelabel">Marca Blanca (White Label)</option>
+              <option value="core">Estándar (Core)</option>
             </select>
           </div>
         </div>
 
-        {/* Tabla Central de Tenants */}
+        {/* Tabla Central de Clientes */}
         <div className="bg-[#09182C] rounded-xl border border-[#152E4D] overflow-hidden shadow-sm">
           <div className="p-4 border-b border-[#152E4D] flex items-center justify-between">
-            <span className="font-bold text-xs text-white">Tenants Registrados ({filteredTenants.length})</span>
+            <span className="font-bold text-xs text-white">Clientes registrados ({filteredTenants.length})</span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-[#071322] text-slate-400 font-mono border-b border-[#152E4D]">
+              <thead className="bg-[#071322] text-slate-400 border-b border-[#152E4D] font-semibold">
                 <tr>
-                  <th className="py-3 px-4 font-semibold">Tenant / Organización</th>
-                  <th className="py-3 px-4 font-semibold">Slug / Dominio</th>
-                  <th className="py-3 px-4 font-semibold">Tipo / Plan</th>
-                  <th className="py-3 px-4 font-semibold">Estado</th>
-                  <th className="py-3 px-4 font-semibold">Módulos Activos</th>
-                  <th className="py-3 px-4 font-semibold">Última Actividad</th>
-                  <th className="py-3 px-4 text-right font-semibold">Acciones</th>
+                  <th className="py-3 px-4">Cliente / Marca</th>
+                  <th className="py-3 px-4">Estado</th>
+                  <th className="py-3 px-4">Plan</th>
+                  <th className="py-3 px-4">Usuarios</th>
+                  <th className="py-3 px-4">Expedientes</th>
+                  <th className="py-3 px-4">Servicios activos</th>
+                  <th className="py-3 px-4">Última actividad</th>
+                  <th className="py-3 px-4 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#152E4D]">
@@ -169,27 +175,18 @@ export const SuperAdminTenantsPage: React.FC = () => {
                     <td className="py-3.5 px-4">
                       <div className="flex items-center space-x-3">
                         <div
-                          className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-xs shrink-0"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm"
                           style={{ backgroundColor: t.branding?.primary_color || '#102d49' }}
                         >
                           {t.name.charAt(0)}
                         </div>
                         <div>
                           <strong className="text-white block">{t.name}</strong>
-                          <span className="text-[11px] text-slate-400 font-mono">{t.id.slice(0, 18)}...</span>
+                          <span className="text-[11px] text-slate-400">
+                            {t.custom_domain || `/demo/${t.slug}`}
+                          </span>
                         </div>
                       </div>
-                    </td>
-
-                    <td className="py-3.5 px-4 font-mono text-[11px] text-slate-300">
-                      <div>/demo/{t.slug}</div>
-                      <div className="text-[10px] text-slate-500">{t.custom_domain || 'Subdominio estándar'}</div>
-                    </td>
-
-                    <td className="py-3.5 px-4">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/15 text-blue-400 border border-blue-500/20">
-                        {t.is_white_label ? 'White Label' : 'Enterprise Core'}
-                      </span>
                     </td>
 
                     <td className="py-3.5 px-4">
@@ -205,35 +202,75 @@ export const SuperAdminTenantsPage: React.FC = () => {
                     </td>
 
                     <td className="py-3.5 px-4">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/15 text-blue-400 border border-blue-500/20">
+                        {t.is_white_label ? 'Marca Blanca' : 'Plan Estándar'}
+                      </span>
+                    </td>
+
+                    <td className="py-3.5 px-4 font-mono text-slate-200">
+                      {t.slug === 'estudio-nova' ? '14 usuarios' : '6 usuarios'}
+                    </td>
+
+                    <td className="py-3.5 px-4 font-mono text-slate-200">
+                      {t.slug === 'estudio-nova' ? '5 créditos' : '2 créditos'}
+                    </td>
+
+                    <td className="py-3.5 px-4">
                       <div className="flex flex-wrap gap-1">
-                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-slate-800 text-slate-300 font-mono">DocFlow</span>
-                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-slate-800 text-slate-300 font-mono">Tasaciones</span>
-                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-slate-800 text-slate-300 font-mono">IA</span>
+                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-slate-800 text-slate-300">Documentos</span>
+                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-slate-800 text-slate-300">KYC</span>
+                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-slate-800 text-slate-300">IA</span>
                       </div>
                     </td>
 
-                    <td className="py-3.5 px-4 text-slate-400 font-mono text-[11px]">
-                      Hace 5 min
+                    <td className="py-3.5 px-4 text-slate-400 text-[11px]">
+                      Hace 10 min
                     </td>
 
                     <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end space-x-2">
+                      <div className="flex items-center justify-end space-x-1.5">
+                        {/* Ver cliente / Sitio público */}
+                        <Link
+                          to={`/demo/${t.slug}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Ver portal público"
+                        >
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 w-7 p-0 bg-[#09182C] border-[#1E3A5F] text-slate-300 hover:text-white"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </Button>
+                        </Link>
+
+                        {/* Ver como cliente */}
+                        <Link
+                          to={`/demo/${t.slug}/cliente`}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Ver como cliente"
+                        >
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 w-7 p-0 bg-[#09182C] border-[#1E3A5F] text-blue-400 hover:text-blue-300"
+                          >
+                            <UserCheck className="w-3.5 h-3.5" />
+                          </Button>
+                        </Link>
+
+                        {/* Administrar */}
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => setSelectedTenantModal(t)}
-                          className="h-7 text-[10px] bg-[#09182C] border-[#1E3A5F] text-slate-200 hover:bg-[#152E4D]"
+                          className="h-7 px-2.5 text-[10px] font-bold bg-[#152E4D] border-transparent text-emerald-400 hover:bg-[#1E3A5F]"
+                          title="Administrar configuración del cliente"
                         >
-                          <Sliders className="w-3 h-3 mr-1 text-emerald-400" /> Detalle
+                          <Sliders className="w-3 h-3 mr-1" /> Administrar
                         </Button>
-                        <a
-                          href={`/demo/${t.slug}/admin`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="h-7 px-2 py-1 rounded text-[10px] font-bold bg-[#152E4D] text-emerald-400 hover:bg-[#1E3A5F] flex items-center"
-                        >
-                          Backoffice <ExternalLink className="w-2.5 h-2.5 ml-1" />
-                        </a>
                       </div>
                     </td>
                   </tr>
@@ -243,7 +280,7 @@ export const SuperAdminTenantsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Modal de Detalle de Tenant */}
+        {/* Modal de Detalle de Cliente */}
         {selectedTenantModal && (
           <SuperAdminTenantDetailModal
             tenant={selectedTenantModal}

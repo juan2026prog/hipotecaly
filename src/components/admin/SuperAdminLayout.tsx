@@ -1,21 +1,22 @@
 // ==============================================================================
 // HIPOTECALY: Super Admin Layout (/admin)
-// Layout maestro de infraestructura y administración global
+// Layout maestro simplificado de centro de control y administración global
 // ==============================================================================
 
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  ShieldCheck,
-  Building2,
-  Cpu,
+  Home,
+  Users2,
+  Boxes,
+  UserCheck,
+  Activity,
+  Sliders,
   LogOut,
   Menu,
   X,
-  KeyRound,
   ExternalLink,
-  Activity,
-  Layers,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -23,12 +24,8 @@ interface SuperAdminNavItem {
   name: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
-  external?: boolean;
-}
-
-interface SuperAdminNavGroup {
-  title: string;
-  items: SuperAdminNavItem[];
+  badge?: string;
+  badgeColor?: string;
 }
 
 interface SuperAdminLayoutProps {
@@ -45,49 +42,46 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
   const { signOut, user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const navGroups: SuperAdminNavGroup[] = [
-    {
-      title: 'PLATAFORMA',
-      items: [
-        { name: 'Dashboard Global', href: '/admin', icon: Activity },
-        { name: 'Gestión de Tenants', href: '/admin/tenants', icon: Building2 },
-      ],
-    },
-    {
-      title: 'CONFIGURACIÓN & IA',
-      items: [
-        { name: 'Copiloto IA & Vault', href: '/admin/ai', icon: Cpu },
-        { name: 'Integraciones & Conectores', href: '/admin?tab=integrations', icon: KeyRound },
-      ],
-    },
-    {
-      title: 'OPERACIÓN, QA & AUDITORÍA',
-      items: [
-        { name: 'Acceso QA & Sesiones', href: '/admin?tab=qa', icon: ShieldCheck },
-        { name: 'Registro de Auditoría', href: '/admin?tab=audit', icon: Activity },
-        { name: 'Seguridad & RLS', href: '/admin?tab=security', icon: Layers },
-      ],
-    },
-    {
-      title: 'DEMOSTRACIONES',
-      items: [
-        { name: 'Estudio Nova (Home)', href: '/demo/estudio-nova', icon: ExternalLink, external: true },
-        { name: 'Nova Backoffice', href: '/demo/estudio-nova/admin', icon: Layers, external: true },
-      ],
-    },
+  // Las 6 áreas maestras de primer nivel
+  const primaryNavItems: SuperAdminNavItem[] = [
+    { name: 'Inicio', href: '/admin', icon: Home },
+    { name: 'Clientes', href: '/admin/clientes', icon: Users2 },
+    { name: 'Servicios', href: '/admin/servicios', icon: Boxes },
+    { name: 'Ver como cliente', href: '/admin/ver-como-cliente', icon: UserCheck },
+    { name: 'Actividad', href: '/admin/actividad', icon: Activity },
+    { name: 'Configuración técnica', href: '/admin/configuracion', icon: Sliders },
   ];
 
   const isItemActive = (href: string) => {
     if (activeSection) {
-      if (href.includes(`tab=${activeSection}`)) return true;
+      if (activeSection === 'overview' && href === '/admin') return true;
+      if (activeSection === 'clientes' && (href === '/admin/clientes' || href === '/admin/tenants')) return true;
+      if (activeSection === 'servicios' && (href === '/admin/servicios' || href === '/admin/ai' || href.includes('tab=integrations'))) return true;
+      if (activeSection === 'impersonate' && (href === '/admin/ver-como-cliente' || href.includes('tab=qa'))) return true;
+      if (activeSection === 'actividad' && (href === '/admin/actividad' || href.includes('tab=audit'))) return true;
+      if (activeSection === 'configuracion' && (href === '/admin/configuracion' || href.includes('tab=security'))) return true;
     }
+
+    const currentPath = location.pathname;
     if (href === '/admin') {
-      return location.pathname === '/admin' && (!location.search || location.search === '?tab=overview');
+      return currentPath === '/admin' && (!location.search || location.search === '?tab=overview');
     }
-    if (href.startsWith('/admin?tab=')) {
-      return location.pathname === '/admin' && location.search.includes(href.split('?')[1]);
+    if (href === '/admin/clientes') {
+      return currentPath === '/admin/clientes' || currentPath === '/admin/tenants' || currentPath.startsWith('/admin/tenants/');
     }
-    return location.pathname.startsWith(href);
+    if (href === '/admin/servicios') {
+      return currentPath === '/admin/servicios' || currentPath === '/admin/ai' || location.search.includes('tab=integrations');
+    }
+    if (href === '/admin/ver-como-cliente') {
+      return currentPath === '/admin/ver-como-cliente' || currentPath === '/admin/qa' || location.search.includes('tab=qa');
+    }
+    if (href === '/admin/actividad') {
+      return currentPath === '/admin/actividad' || location.search.includes('tab=audit');
+    }
+    if (href === '/admin/configuracion') {
+      return currentPath === '/admin/configuracion' || location.search.includes('tab=security');
+    }
+    return currentPath.startsWith(href);
   };
 
   return (
@@ -95,14 +89,14 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
       {/* Sidebar Desktop Super Admin */}
       <aside className="hidden md:flex flex-col w-64 bg-[#09182C] border-r border-[#152E4D] shrink-0 min-h-screen">
         {/* Brand Header */}
-        <div className="p-5 border-b border-[#152E4D] flex items-center justify-between">
-          <Link to="/admin" className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
+        <div className="p-5 border-b border-[#152E4D]">
+          <Link to="/admin" className="flex items-center space-x-3 group">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform">
               <ShieldCheck className="w-6 h-6" />
             </div>
             <div>
-              <span className="font-mono text-xs font-bold text-emerald-400 tracking-widest uppercase block">
-                CORE SYSTEM
+              <span className="font-mono text-[10px] font-bold text-emerald-400 tracking-widest uppercase block">
+                HIPOTECALY
               </span>
               <span className="font-extrabold text-base tracking-tight text-white block">
                 SUPER ADMIN
@@ -111,43 +105,63 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
           </Link>
         </div>
 
-        {/* Navigation */}
-        <div className="flex-1 px-3 py-6 space-y-6 overflow-y-auto">
-          {navGroups.map((group, idx) => (
-            <div key={idx} className="space-y-1.5">
-              <div className="px-3 text-[10px] font-mono font-bold tracking-wider text-slate-400 uppercase">
-                {group.title}
-              </div>
-              <div className="space-y-1">
-                {group.items.map((item, iIdx) => {
-                  const Icon = item.icon;
-                  const active = isItemActive(item.href);
-                  return (
-                    <Link
-                      key={iIdx}
-                      to={item.href}
-                      target={item.external ? '_blank' : undefined}
-                      rel={item.external ? 'noreferrer' : undefined}
-                      className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${
-                        active
-                          ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-                          : 'text-slate-300 hover:text-white hover:bg-white/5'
-                      }`}
-                    >
-                      <Icon className={`w-4 h-4 ${active ? 'text-emerald-400' : 'text-slate-400'}`} />
-                      <span>{item.name}</span>
-                    </Link>
-                  );
-                })}
-              </div>
+        {/* Navigation Principal */}
+        <div className="flex-1 px-3 py-6 space-y-2 overflow-y-auto">
+          <div className="px-3 text-[10px] font-mono font-bold tracking-wider text-slate-400 uppercase mb-2">
+            PANEL DE CONTROL
+          </div>
+          <nav className="space-y-1.5">
+            {primaryNavItems.map((item, idx) => {
+              const Icon = item.icon;
+              const active = isItemActive(item.href);
+              return (
+                <Link
+                  key={idx}
+                  to={item.href}
+                  className={`flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-semibold transition-all ${
+                    active
+                      ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-sm'
+                      : 'text-slate-300 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <Icon className={`w-4 h-4 ${active ? 'text-emerald-400' : 'text-slate-400'}`} />
+                    <span>{item.name}</span>
+                  </div>
+                  {item.badge && (
+                    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold ${item.badgeColor || 'bg-slate-800 text-slate-300'}`}>
+                      {item.badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Enlace Directo a Demostración */}
+          <div className="pt-6 mt-6 border-t border-[#152E4D]/80">
+            <div className="px-3 text-[10px] font-mono font-bold tracking-wider text-slate-500 uppercase mb-2">
+              DEMOSTRACIÓN EN VIVO
             </div>
-          ))}
+            <Link
+              to="/demo/estudio-nova"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-medium text-slate-400 hover:text-emerald-400 hover:bg-white/5 transition-all"
+            >
+              <span className="flex items-center space-x-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Estudio Nova (Demo)</span>
+              </span>
+              <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+            </Link>
+          </div>
         </div>
 
         {/* User Footer */}
         <div className="p-4 border-t border-[#152E4D] bg-[#071322]/80 flex items-center justify-between">
           <div className="text-left overflow-hidden">
-            <span className="text-[10px] font-mono text-emerald-400 block font-bold">SUPER ADMINISTRADOR</span>
+            <span className="text-[10px] font-mono text-emerald-400 block font-bold">ADMINISTRADOR</span>
             <span className="text-xs font-medium text-slate-300 truncate block max-w-[140px]">
               {user?.email || 'admin@hipotecaly.uy'}
             </span>
@@ -164,15 +178,15 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
 
       {/* Header Móvil */}
       <div className="md:hidden bg-[#09182C] border-b border-[#152E4D] p-4 flex items-center justify-between sticky top-0 z-50">
-        <Link to="/admin" className="flex items-center space-x-2">
+        <Link to="/admin" className="flex items-center space-x-2.5">
           <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white">
             <ShieldCheck className="w-5 h-5" />
           </div>
-          <span className="font-extrabold text-sm tracking-tight text-white">SUPER ADMIN</span>
+          <span className="font-extrabold text-sm tracking-tight text-white">HIPOTECALY ADMIN</span>
         </Link>
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2 text-slate-300 hover:text-white"
+          className="p-2 text-slate-300 hover:text-white rounded-lg focus:outline-none"
         >
           {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
@@ -180,29 +194,49 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
 
       {/* Drawer Móvil */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-[#09182C] border-b border-[#152E4D] p-4 space-y-4 text-left">
-          {navGroups.map((group, idx) => (
-            <div key={idx} className="space-y-1">
-              <div className="text-[10px] font-mono text-slate-400 uppercase font-bold">{group.title}</div>
-              {group.items.map((item, iIdx) => (
+        <div className="md:hidden bg-[#09182C] border-b border-[#152E4D] p-4 space-y-3 text-left">
+          <div className="text-[10px] font-mono text-slate-400 uppercase font-bold px-2">MENÚ PRINCIPAL</div>
+          <div className="space-y-1">
+            {primaryNavItems.map((item, idx) => {
+              const Icon = item.icon;
+              const active = isItemActive(item.href);
+              return (
                 <Link
-                  key={iIdx}
+                  key={idx}
                   to={item.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded text-xs font-semibold text-slate-200 hover:bg-white/5"
+                  className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold ${
+                    active
+                      ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                      : 'text-slate-300 hover:bg-white/5'
+                  }`}
                 >
-                  {item.name}
+                  <Icon className={`w-4 h-4 ${active ? 'text-emerald-400' : 'text-slate-400'}`} />
+                  <span>{item.name}</span>
                 </Link>
-              ))}
-            </div>
-          ))}
-          <button
-            onClick={() => (signOut ? signOut() : window.location.assign('/ingresar'))}
-            className="w-full text-left px-3 py-2 rounded text-xs font-semibold text-rose-400 hover:bg-rose-500/10 flex items-center space-x-2"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Cerrar sesión</span>
-          </button>
+              );
+            })}
+          </div>
+
+          <div className="pt-2 border-t border-[#152E4D] flex items-center justify-between">
+            <Link
+              to="/demo/estudio-nova"
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => setMobileMenuOpen(false)}
+              className="text-xs text-slate-400 hover:text-emerald-400 flex items-center space-x-1"
+            >
+              <span>Ver Demo Estudio Nova</span>
+              <ExternalLink className="w-3 h-3 ml-1" />
+            </Link>
+            <button
+              onClick={() => (signOut ? signOut() : window.location.assign('/ingresar'))}
+              className="text-xs font-semibold text-rose-400 hover:bg-rose-500/10 px-2 py-1 rounded flex items-center space-x-1"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Salir</span>
+            </button>
+          </div>
         </div>
       )}
 

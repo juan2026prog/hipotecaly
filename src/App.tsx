@@ -46,9 +46,12 @@ import { TenantInvestorDashboardPage } from './pages/demo/TenantInvestorDashboar
 // Super Admin Hub
 import { SuperAdminDashboardPage } from './pages/admin/SuperAdminDashboardPage';
 import { SuperAdminTenantsPage } from './pages/admin/SuperAdminTenantsPage';
+import { SuperAdminServicesPage } from './pages/admin/SuperAdminServicesPage';
+import { SuperAdminImpersonatePage } from './pages/admin/SuperAdminImpersonatePage';
+import { SuperAdminActivityPage } from './pages/admin/SuperAdminActivityPage';
+import { SuperAdminTechnicalConfigPage } from './pages/admin/SuperAdminTechnicalConfigPage';
 import { TenantOnboardingWizardPage } from './pages/admin/TenantOnboardingWizardPage';
 import { GenericWhiteLabelLanding } from './pages/landing/GenericWhiteLabelLanding';
-import { AdminAiPage } from './pages/admin/AdminAiPage';
 import { LendersSolutionPage } from './pages/solutions/LendersSolutionPage';
 import { FinancialsSolutionPage } from './pages/solutions/FinancialsSolutionPage';
 import { NotariesSolutionPage } from './pages/solutions/NotariesSolutionPage';
@@ -140,6 +143,14 @@ export const App: React.FC = () => {
                 }
               />
               <Route
+                path="/admin/clientes"
+                element={
+                  <ProtectedRoute requireSuperAdmin>
+                    <SuperAdminTenantsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/admin/tenants"
                 element={
                   <ProtectedRoute requireSuperAdmin>
@@ -156,17 +167,43 @@ export const App: React.FC = () => {
                 }
               />
               <Route
-                path="/admin/ai"
+                path="/admin/servicios"
                 element={
                   <ProtectedRoute requireSuperAdmin>
-                    <AdminAiPage />
+                    <SuperAdminServicesPage />
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/admin/ver-como-cliente"
+                element={
+                  <ProtectedRoute requireSuperAdmin>
+                    <SuperAdminImpersonatePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/actividad"
+                element={
+                  <ProtectedRoute requireSuperAdmin>
+                    <SuperAdminActivityPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/configuracion"
+                element={
+                  <ProtectedRoute requireSuperAdmin>
+                    <SuperAdminTechnicalConfigPage />
+                  </ProtectedRoute>
+                }
+              />
+
               {/* Redirecciones de compatibilidad para Super Admin */}
+              <Route path="/admin/ai" element={<Navigate to="/admin/servicios" replace />} />
+              <Route path="/admin/qa" element={<Navigate to="/admin/ver-como-cliente" replace />} />
               <Route path="/platform-admin" element={<Navigate to="/admin" replace />} />
-              <Route path="/admin/qa" element={<Navigate to="/admin?tab=qa" replace />} />
-              <Route path="/app/ai-admin" element={<Navigate to="/admin/ai" replace />} />
+              <Route path="/app/ai-admin" element={<Navigate to="/admin/servicios" replace />} />
 
               {/* ========================================================== */}
               {/* 4. ARQUITECTURA DEMO & TENANT DINÁMICO (/demo/:tenantSlug)  */}
