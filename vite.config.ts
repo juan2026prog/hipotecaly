@@ -48,6 +48,8 @@ export default defineConfig({
           /^\/rest\//,
           /^\/app/,
           /^\/admin/,
+          /^\/notary/,
+          /^\/demo/,
           /^\/mi-cuenta/,
         ],
         runtimeCaching: [

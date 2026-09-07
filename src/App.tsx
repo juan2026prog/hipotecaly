@@ -108,6 +108,14 @@ export const App: React.FC = () => {
               <Route path="/nosotros" element={<AboutPage />} />
               <Route path="/contacto" element={<ContactPage />} />
 
+              {/* Autenticación & Solicitud */}
+              <Route path="/solicitar" element={<ApplicationWizard />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/ingresar" element={<LoginPage />} />
+              <Route path="/registro" element={<RegisterPage />} />
+              <Route path="/recuperar-clave" element={<ForgotPasswordPage />} />
+              <Route path="/forgot-password" element={<Navigate to="/recuperar-clave" replace />} />
+
               {/* Páginas Legales */}
               <Route path="/terminos" element={<TermsPage />} />
               <Route path="/privacidad" element={<PrivacyPage />} />

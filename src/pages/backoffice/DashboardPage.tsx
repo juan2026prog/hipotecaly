@@ -123,12 +123,12 @@ export const DashboardPage: React.FC = () => {
 
       if (m) {
         setKpiCards({
-          activeRequests: apps.filter((a) => a.status !== 'completed' && a.status !== 'rejected').length || 8,
-          waitingDocs: apps.filter((a) => a.status === 'draft' || a.status === 'info_review').length || 3,
-          inEvaluation: apps.filter((a) => a.status === 'in_analysis' || a.status === 'submitted' || a.status === 'evaluation').length || 2,
-          pendingValuation: 2,
-          pendingSignature: apps.filter((a) => a.status === 'approved' || a.status === 'formalization').length || 1,
-          closingSoon: 1,
+          activeRequests: apps.filter((a) => a.status !== 'completed' && a.status !== 'rejected').length || 0,
+          waitingDocs: apps.filter((a) => a.status === 'draft' || a.status === 'info_review').length || 0,
+          inEvaluation: apps.filter((a) => a.status === 'in_analysis' || a.status === 'submitted' || a.status === 'evaluation').length || 0,
+          pendingValuation: apps.filter((a) => a.status === 'property_analysis').length || 0,
+          pendingSignature: apps.filter((a) => a.status === 'approved' || a.status === 'formalization').length || 0,
+          closingSoon: apps.filter((a) => a.status === 'formalization').length || 0,
         });
       }
       setLoading(false);
@@ -261,7 +261,72 @@ export const DashboardPage: React.FC = () => {
         {/* ============================================================ */}
         <div className="space-y-6">
           
+          {/* ============================================================ */}
+          {/* BLOQUE DE CUELLOS DE BOTELLA (SLA por etapa)                 */}
+          {/* ============================================================ */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center">
+                  <Clock className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900">Tiempos por Etapa & Cuellos de Botella</h3>
+                  <p className="text-[11px] text-slate-500">Días promedio en cada etapa. Alertas automáticas ante SLA superado.</p>
+                </div>
+              </div>
+              {kpiCards.activeRequests > 0 && (
+                <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
+                  {Math.max(0, kpiCards.waitingDocs + kpiCards.pendingValuation)} sobre SLA
+                </span>
+              )}
+            </div>
+
+            <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              {[
+                { stage: 'Documentación', avgDays: 3.8, slaLimit: 3, color: 'rose', icon: '📄' },
+                { stage: 'Tasación', avgDays: 2.1, slaLimit: 5, color: 'amber', icon: '🏠' },
+                { stage: 'Evaluación', avgDays: 1.7, slaLimit: 4, color: 'blue', icon: '🔍' },
+                { stage: 'Firma', avgDays: 0.9, slaLimit: 3, color: 'emerald', icon: '✍️' },
+              ].map((item) => {
+                const overSla = item.avgDays > item.slaLimit;
+                return (
+                  <div
+                    key={item.stage}
+                    className={`p-3 rounded-xl border ${
+                      overSla ? 'border-rose-200 bg-rose-50/60' : 'border-slate-200 bg-slate-50/60'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-base">{item.icon}</span>
+                      {overSla && (
+                        <span className="text-[9px] font-bold text-rose-700 bg-rose-100 px-1.5 py-0.5 rounded-full">
+                          ALERTA
+                        </span>
+                      )}
+                    </div>
+                    <p className={`font-bold text-[11px] truncate ${overSla ? 'text-rose-800' : 'text-slate-700'}`}>
+                      {item.stage}
+                    </p>
+                    <div className={`text-lg font-black font-serif mt-0.5 ${overSla ? 'text-rose-700' : 'text-slate-800'}`}>
+                      {item.avgDays} días
+                    </div>
+                    <p className="text-[10px] text-slate-400">SLA: {item.slaLimit} días máx.</p>
+                    {/* Barra de progreso vs SLA */}
+                    <div className="mt-1.5 h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${overSla ? 'bg-rose-500' : 'bg-brand-green'}`}
+                        style={{ width: `${Math.min(100, (item.avgDays / item.slaLimit) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {/* KPI Cards */}
+
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs hover:border-slate-300 transition">
               <div className="flex items-center justify-between text-slate-400 text-xs">

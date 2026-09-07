@@ -252,45 +252,78 @@ export const WhiteLabelBackofficePage: React.FC = () => {
         )}
 
         {/* ============================================================ */}
-        {/* 2. PESTAÑAS DE NAVEGACIÓN MODULAR                           */}
-        {/* ============================================================ */}
-        <div className="flex items-center space-x-1 overflow-x-auto border-b border-slate-200 pb-1 text-xs font-bold">
-          {[
-            { id: 'branding', label: '1. Identidad & Marca', icon: Palette },
-            { id: 'underwriting', label: '2. Políticas & Riesgo', icon: Sliders },
-            { id: 'domain', label: '3. Dominio & SSL', icon: Globe },
-            { id: 'landing', label: '4. Landing & Funnel', icon: Layout },
-            { id: 'costs', label: '5. Costos & Honorarios', icon: Receipt },
-            { id: 'communications', label: '6. Comunicaciones', icon: Mail },
-            { id: 'legal', label: '7. Legal & Privacidad', icon: ShieldAlert },
-            { id: 'modules', label: '8. Módulos & Add-ons', icon: Puzzle },
-          ].map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center space-x-2 px-4 py-3 rounded-t-xl transition-all whitespace-nowrap ${
-                  isActive
-                    ? 'bg-white text-brand-green border-t-2 border-x border-slate-200 -mb-[1px] shadow-xs'
-                    : 'text-slate-500 hover:text-navy hover:bg-slate-100/60'
-                }`}
-              >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-brand-green' : 'text-slate-400'}`} />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* ============================================================ */}
-        {/* 3. CONTENIDO PRINCIPAL EN 2 COLUMNAS (FORMULARIO + PREVIEW) */}
+        {/* 2. NAVEGACIÓN LATERAL (sidebar) + CONTENIDO                  */}
         {/* ============================================================ */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          
-          {/* Columna Izquierda: Formularios de Configuración */}
-          <div className={showLivePreview ? 'lg:col-span-7 space-y-6' : 'lg:col-span-12 space-y-6'}>
+
+          {/* Sidebar de navegación - Desktop */}
+          <div className="lg:col-span-3">
+            {/* Mobile: dropdown selector */}
+            <div className="lg:hidden mb-4">
+              <select
+                value={activeTab}
+                onChange={(e) => setActiveTab(e.target.value as any)}
+                className="w-full h-11 px-3 rounded-xl border border-slate-300 text-sm font-semibold text-navy bg-white focus:border-navy focus:ring-2 focus:ring-navy/20"
+              >
+                {[
+                  { id: 'branding', label: 'Identidad & Marca', icon: '🎨' },
+                  { id: 'underwriting', label: 'Políticas & Riesgo', icon: '⚖️' },
+                  { id: 'domain', label: 'Dominio & SSL', icon: '🌐' },
+                  { id: 'landing', label: 'Landing & Funnel', icon: '📱' },
+                  { id: 'costs', label: 'Costos & Honorarios', icon: '💰' },
+                  { id: 'communications', label: 'Comunicaciones', icon: '📧' },
+                  { id: 'legal', label: 'Legal & Privacidad', icon: '🛡️' },
+                  { id: 'modules', label: 'Módulos & Add-ons', icon: '🧩' },
+                ].map((tab) => (
+                  <option key={tab.id} value={tab.id}>{tab.icon} {tab.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Desktop: sidebar vertical */}
+            <div className="hidden lg:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden sticky top-24">
+              <div className="p-3 border-b border-slate-100">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2">White Label</span>
+              </div>
+              <nav className="p-2 space-y-0.5">
+                {[
+                  { id: 'branding', label: 'Identidad & Marca', icon: Palette, desc: 'Colores, logos, tipografía' },
+                  { id: 'underwriting', label: 'Políticas & Riesgo', icon: Sliders, desc: 'Tasas, LTV, requisitos' },
+                  { id: 'domain', label: 'Dominio & SSL', icon: Globe, desc: 'Dominio, CNAME, email' },
+                  { id: 'landing', label: 'Landing & Funnel', icon: Layout, desc: 'Hero, CTA, pasos' },
+                  { id: 'costs', label: 'Costos & Honorarios', icon: Receipt, desc: 'Honorarios, gastos' },
+                  { id: 'communications', label: 'Comunicaciones', icon: Mail, desc: 'Plantillas, canales' },
+                  { id: 'legal', label: 'Legal & Privacidad', icon: ShieldAlert, desc: 'T&C, privacidad' },
+                  { id: 'modules', label: 'Módulos & Add-ons', icon: Puzzle, desc: 'Funcionalidades SaaS' },
+                ].map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id as any)}
+                      className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-left transition-all ${
+                        isActive
+                          ? 'bg-navy text-white shadow-sm'
+                          : 'text-slate-600 hover:bg-slate-50 hover:text-navy'
+                      }`}
+                    >
+                      <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                      <div className="min-w-0">
+                        <p className={`text-xs font-semibold truncate ${isActive ? 'text-white' : 'text-navy'}`}>{tab.label}</p>
+                        <p className={`text-[10px] truncate ${isActive ? 'text-slate-300' : 'text-slate-400'}`}>{tab.desc}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+          </div>
+
+          {/* Área de contenido */}
+          <div className={showLivePreview ? 'lg:col-span-6 space-y-6' : 'lg:col-span-9 space-y-6'}>
+
+
             
             {/* -------------------------------------------------------- */}
             {/* TAB 1: IDENTIDAD & BRANDING                              */}

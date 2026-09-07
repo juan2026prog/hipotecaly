@@ -15,6 +15,9 @@ import {
   ExternalLink,
   UserCheck,
   Palette,
+  BarChart2,
+  ShieldCheck,
+  AlertTriangle,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
@@ -71,9 +74,10 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
       ],
     },
     {
-      title: 'COMERCIAL',
+      title: 'INTELIGENCIA',
       items: [
-        { name: 'Leads', href: `${baseRoute}/leads`, icon: Users },
+        { name: 'Analítica', href: `${baseRoute}/analitica`, icon: BarChart2 },
+        ...(canManageSettings ? [{ name: 'Auditoría', href: `${baseRoute}/auditoria`, icon: ShieldCheck }] : []),
       ],
     },
     {
@@ -92,6 +96,7 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
             items: [
               { name: 'Consola Central', href: '/admin', icon: UserCheck },
               { name: 'Gestión de Tenants', href: '/admin/tenants', icon: Building2 },
+              { name: 'Leads SaaS', href: '/admin/leads', icon: AlertTriangle },
             ],
           },
         ]
@@ -136,6 +141,23 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
             </span>
           </div>
         </div>
+
+        {/* Banner: Super Admin inspeccionando tenant */}
+        {isSuperAdmin && isTenantPath && (
+          <div className="mx-3 mt-2 mb-0 p-2.5 rounded-xl border border-amber-400/40 bg-amber-500/10 text-xs space-y-1.5">
+            <div className="flex items-center space-x-1.5">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span className="font-bold text-amber-300 uppercase tracking-wide text-[10px]">Estás inspeccionando</span>
+            </div>
+            <p className="text-amber-200 font-semibold truncate">{tenant.branding.public_name || tenant.name}</p>
+            <Link
+              to="/admin"
+              className="inline-flex items-center text-[10px] font-bold text-amber-400 hover:text-amber-300 transition-colors"
+            >
+              ← Volver al Super Admin
+            </Link>
+          </div>
+        )}
 
         {/* Navigation Menu Agrupado */}
         <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
@@ -217,13 +239,13 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
               target="_blank"
               className="hidden sm:inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-500 hover:text-brand-green transition-colors py-2 px-3 rounded-lg hover:bg-slate-50 min-h-[44px]"
             >
-              <span>Ver Marketplace</span>
+              <span>Ver Portal de Clientes</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </Link>
 
             <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-brand-green-dark border border-brand-green/20">
               <span className="w-1.5 h-1.5 rounded-full bg-brand-green mr-1.5 animate-pulse" />
-              PostgreSQL Online
+              Todos los servicios operativos
             </span>
           </div>
         </header>
@@ -293,7 +315,7 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
                 onClick={() => setMobileDrawerOpen(false)}
                 className="flex items-center justify-between text-xs text-slate-400 hover:text-white py-2 min-h-[44px]"
               >
-                <span>Ir al Marketplace</span>
+                <span>Abrir Portal de Clientes</span>
                 <ExternalLink className="w-4 h-4" />
               </Link>
               <button
