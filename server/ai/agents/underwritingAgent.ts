@@ -2,7 +2,7 @@
 // HIPOTECALY AI: Underwriting Agent (Motor Híbrido: Reglas Determinísticas + IA)
 // ==============================================================================
 
-import { UnderwritingOutput } from '../types';
+import { UnderwritingOutput } from '../types.js';
 
 export interface UnderwritingPolicyConfig {
   maxLtv: number; // Por ej. 40.0% o 50.0%

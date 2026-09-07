@@ -2,7 +2,7 @@
 // HIPOTECALY AI: Property Valuation Agent (Tasador Híbrido Inmobiliario)
 // ==============================================================================
 
-import { PropertyComparable, PropertyValuationOutput } from '../types';
+import { PropertyComparable, PropertyValuationOutput } from '../types.js';
 
 export interface PropertyValuationInput {
   propertyType: string;

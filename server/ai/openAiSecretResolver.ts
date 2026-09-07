@@ -3,7 +3,7 @@
 // Abstracción única server-only para resolución segura de OPENAI_API_KEY
 // ==============================================================================
 
-import { supabaseAdmin } from '../supabase';
+import { supabaseAdmin } from '../supabase.js';
 
 export interface SecretResolutionResult {
   apiKey: string;

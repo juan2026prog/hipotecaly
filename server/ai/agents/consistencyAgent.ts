@@ -2,8 +2,8 @@
 // HIPOTECALY AI: Consistency Agent (Cruce Documental, Inconsistencias y Faltantes)
 // ==============================================================================
 
-import { ConsistencyIssue } from '../types';
-import { DocumentAnalysisResult } from './documentIntelligenceAgent';
+import { ConsistencyIssue } from '../types.js';
+import { DocumentAnalysisResult } from './documentIntelligenceAgent.js';
 
 export interface ConsistencyCheckInput {
   borrower: {

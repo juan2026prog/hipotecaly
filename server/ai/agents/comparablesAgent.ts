@@ -2,7 +2,7 @@
 // HIPOTECALY AI: Comparables Agent (Búsqueda y Registro de Testigos de Mercado)
 // ==============================================================================
 
-import { PropertyComparable } from '../types';
+import { PropertyComparable } from '../types.js';
 
 export interface ComparablesQueryLog {
   queryText: string;

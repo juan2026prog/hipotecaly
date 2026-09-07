@@ -3,10 +3,10 @@
 // Punto de entrada consolidado para todos los endpoints de HIPOTECALY AI
 // ==============================================================================
 
-import { hipotecalyAiOrchestrator, ApplicationCaseInput } from '../../server/ai/orchestrator';
-import { aiWalletService } from '../../server/ai/walletService';
-import { openAiSecretResolver } from '../../server/ai/openAiSecretResolver';
-import { MemoryRetrievalAgent } from '../../server/ai/agents/memoryRetrievalAgent';
+import { hipotecalyAiOrchestrator, ApplicationCaseInput } from '../../server/ai/orchestrator.js';
+import { aiWalletService } from '../../server/ai/walletService.js';
+import { openAiSecretResolver } from '../../server/ai/openAiSecretResolver.js';
+import { MemoryRetrievalAgent } from '../../server/ai/agents/memoryRetrievalAgent.js';
 
 const memAgent = new MemoryRetrievalAgent();
 

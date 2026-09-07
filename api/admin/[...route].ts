@@ -3,12 +3,12 @@
 // Punto de entrada consolidado para /api/admin/ai/* y /api/admin/qa/*
 // ==============================================================================
 
-import { verifySuperAdmin } from '../../server/auth/superAdminGuard';
-import { openAiSecretResolver } from '../../server/ai/openAiSecretResolver';
-import { supabaseAdmin } from '../../server/supabase';
-import { AI_MODELS, calculateTokenCost } from '../../server/ai/config';
-import { QaSessionService } from '../../server/qa/qaSessionService';
-import { QA_CONFIGURED_USERS } from '../../server/qa/qaUserService';
+import { verifySuperAdmin } from '../../server/auth/superAdminGuard.js';
+import { openAiSecretResolver } from '../../server/ai/openAiSecretResolver.js';
+import { supabaseAdmin } from '../../server/supabase.js';
+import { AI_MODELS, calculateTokenCost } from '../../server/ai/config.js';
+import { QaSessionService } from '../../server/qa/qaSessionService.js';
+import { QA_CONFIGURED_USERS } from '../../server/qa/qaUserService.js';
 
 // ------------------------------------------------------------------------------
 // AI: /api/admin/ai/status

@@ -22,21 +22,27 @@ export const SuperAdminIntegrationsTab: React.FC = () => {
     try {
       const res = await fetch('/api/integrations/admin/settings');
       if (res.ok) {
-        const data = await res.json();
-        setSettings(data);
+        const text = await res.text();
+        const data = text ? JSON.parse(text) : null;
+        if (data && (data.kyc || data.signature)) {
+          setSettings(data);
+          return;
+        }
       }
     } catch {
-      // Defaults
-      setSettings({
-        kyc: {
-          provider: 'didit',
-          mode: 'sandbox',
-          configured: true,
-          freeTierAllowance: 'Hasta 500 verificaciones/mes según plan vigente (ID + Liveness + Face Match + Device/IP)',
-        },
-        signature: { provider: 'firma_gub', mode: 'mock', configured: true },
-      });
+      // Ignorar y usar fallback
     }
+
+    // Defaults
+    setSettings({
+      kyc: {
+        provider: 'didit',
+        mode: 'sandbox',
+        configured: true,
+        freeTierAllowance: 'Hasta 500 verificaciones/mes según plan vigente (ID + Liveness + Face Match + Device/IP)',
+      },
+      signature: { provider: 'firma_gub', mode: 'mock', configured: true },
+    });
   };
 
   useEffect(() => {
@@ -59,7 +65,10 @@ export const SuperAdminIntegrationsTab: React.FC = () => {
         }),
       });
 
-      const data = await res.json();
+      const text = await res.text();
+      let data: any = {};
+      try { data = text ? JSON.parse(text) : {}; } catch {}
+
       if (res.ok) {
         setForceSuccessMsg(`✓ Estado forzado exitosamente a '${testStatus.toUpperCase()}'.`);
         setTimeout(() => setForceSuccessMsg(null), 4000);

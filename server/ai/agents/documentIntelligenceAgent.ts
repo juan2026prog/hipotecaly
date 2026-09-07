@@ -2,7 +2,7 @@
 // HIPOTECALY AI: Document Intelligence Agent (Extracción Masiva e Ingesta Incremental)
 // ==============================================================================
 
-import { DocumentExtraction, DocumentExtractionSchema, DocumentType } from '../types';
+import { DocumentExtraction, DocumentExtractionSchema, DocumentType } from '../types.js';
 
 export interface RawDocumentInput {
   id?: string;

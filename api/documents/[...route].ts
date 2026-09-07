@@ -3,7 +3,6 @@
 // Generación y verificación de integridad documental server-side para HIPOTECALY DOCFLOW
 // ==============================================================================
 
-import crypto from 'crypto';
 import { supabaseAdmin } from '../../server/supabase.js';
 
 export default async function handler(req: any, res: any) {

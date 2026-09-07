@@ -6,16 +6,16 @@ import {
   HipotecalyAiReport,
   MANDATORY_AI_DISCLAIMER,
   AiUsageMetrics,
-} from './types';
-import { AI_MODELS, calculateTokenCost, AI_STANDARD_CASE_COST_USD } from './config';
-import { DocumentIntelligenceAgent, RawDocumentInput } from './agents/documentIntelligenceAgent';
-import { PropertyValuationAgent } from './agents/propertyValuationAgent';
-import { ConsistencyAgent } from './agents/consistencyAgent';
-import { UnderwritingAgent, DEFAULT_PILOT_UNDERWRITING_POLICY, UnderwritingPolicyConfig } from './agents/underwritingAgent';
-import { RiskAgent } from './agents/riskAgent';
-import { MemoryRetrievalAgent } from './agents/memoryRetrievalAgent';
-import { ComparablesAgent } from './agents/comparablesAgent';
-import { openAiSecretResolver } from './openAiSecretResolver';
+} from './types.js';
+import { AI_MODELS, calculateTokenCost, AI_STANDARD_CASE_COST_USD } from './config.js';
+import { DocumentIntelligenceAgent, RawDocumentInput } from './agents/documentIntelligenceAgent.js';
+import { PropertyValuationAgent } from './agents/propertyValuationAgent.js';
+import { ConsistencyAgent } from './agents/consistencyAgent.js';
+import { UnderwritingAgent, DEFAULT_PILOT_UNDERWRITING_POLICY, UnderwritingPolicyConfig } from './agents/underwritingAgent.js';
+import { RiskAgent } from './agents/riskAgent.js';
+import { MemoryRetrievalAgent } from './agents/memoryRetrievalAgent.js';
+import { ComparablesAgent } from './agents/comparablesAgent.js';
+import { openAiSecretResolver } from './openAiSecretResolver.js';
 
 export interface ApplicationCaseInput {
   applicationId: string;

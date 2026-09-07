@@ -2,9 +2,9 @@
 // HIPOTECALY AI: Wallet Service (Gestión de CASOS AI, Saldo y Esquema 10/5/3)
 // ==============================================================================
 
-import { supabase } from '../supabase';
-import { AiEstimationResult, AiWalletState } from './types';
-import { AI_STANDARD_CASE_COST_USD } from './config';
+import { supabase } from '../supabase.js';
+import { AiEstimationResult, AiWalletState } from './types.js';
+import { AI_STANDARD_CASE_COST_USD } from './config.js';
 
 export class AiWalletService {
   // Caché en memoria de billeteras para tests y funcionamiento offline

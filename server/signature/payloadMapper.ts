@@ -3,7 +3,7 @@
 // Paridad estricta con Postman Collection Oficial V1.0 y Manuales AGESIC
 // ==============================================================================
 
-import { SignatureProcessInput } from '../../src/lib/siteos/signature/types';
+import { SignatureProcessInput } from '../../src/lib/siteos/signature/types.js';
 
 export interface FirmaGubProceso1File {
   nombre: string;

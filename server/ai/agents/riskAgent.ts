@@ -2,11 +2,8 @@
 // HIPOTECALY AI: Risk Agent & Semáforo Multidimensional (10 Categorías 🟢 🟡 🔴)
 // ==============================================================================
 
-import { SemaphoreItem, SemaphoreStatus } from '../types';
-import { ConsistencyIssue } from '../types';
-import { UnderwritingOutput } from '../types';
-import { PropertyValuationOutput } from '../types';
-import { DocumentAnalysisResult } from './documentIntelligenceAgent';
+import { SemaphoreItem, SemaphoreStatus, ConsistencyIssue, UnderwritingOutput, PropertyValuationOutput } from '../types.js';
+import { DocumentAnalysisResult } from './documentIntelligenceAgent.js';
 
 export interface RiskEvaluationInput {
   underwriting: UnderwritingOutput;

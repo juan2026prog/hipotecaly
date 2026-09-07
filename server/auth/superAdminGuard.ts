@@ -3,7 +3,7 @@
 // Protección estricta server-side para endpoints administrativos de HIPOTECALY AI
 // ==============================================================================
 
-import { supabaseAdmin } from '../supabase';
+import { supabaseAdmin } from '../supabase.js';
 
 export interface SuperAdminAuthResult {
   authorized: boolean;

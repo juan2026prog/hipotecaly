@@ -2,8 +2,8 @@
 // HIPOTECALY AI: Memory Retrieval Agent (Memoria Global RAG "Memoria 3")
 // ==============================================================================
 
-import { supabase } from '../../supabase';
-import { GlobalMemorySanitizer } from '../sanitizer';
+import { supabase } from '../../supabase.js';
+import { GlobalMemorySanitizer } from '../sanitizer.js';
 
 export interface GlobalMemoryItem {
   id: string;

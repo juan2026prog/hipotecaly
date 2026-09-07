@@ -6,7 +6,6 @@
 import { KycService } from '../../server/identity/kycService.js';
 import { SignatureService } from '../../server/signature/signatureService.js';
 import { verifySuperAdmin } from '../../server/auth/superAdminGuard.js';
-import { supabaseAdmin } from '../../server/supabase.js';
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
