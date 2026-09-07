@@ -24,7 +24,9 @@ import {
 import { getNotaryStatusLabel, NotaryStatus, NotaryChecklistItem, NotaryObservation } from '../../lib/types';
 import { DocumentHub } from '../../components/docflow/DocumentHub';
 import { DocumentGenerationModal } from '../../components/docflow/DocumentGenerationModal';
-import { SignatureProcessCard } from '../../components/signature/SignatureProcessCard';
+import { AdvancedSignatureModal } from '../../components/signature/AdvancedSignatureModal';
+import { SignatureEvidenceModal } from '../../components/signature/SignatureEvidenceModal';
+import { NotaryElectronicSupportBadge } from '../../components/signature/NotaryElectronicSupportBadge';
 
 export const NotaryApplicationDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -55,6 +57,12 @@ export const NotaryApplicationDetailPage: React.FC = () => {
 
   // Modal DocFlow
   const [showDocGen, setShowDocGen] = useState(false);
+
+  // Modales Firma Electrónica Avanzada (FEA)
+  const [showFeaModal, setShowFeaModal] = useState(false);
+  const [showEvidenceModal, setShowEvidenceModal] = useState(false);
+  const [evidenceProcessId, setEvidenceProcessId] = useState('sp-demo-002');
+  const [signedSuccessToast, setSignedSuccessToast] = useState(false);
 
   // Notary status selector toast
   const [statusToast, setStatusToast] = useState<string | null>(null);
@@ -653,31 +661,205 @@ export const NotaryApplicationDetailPage: React.FC = () => {
       {/* TAB 8: FIRMAS */}
       {activeTab === 'firmas' && (
         <div className="space-y-6">
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">Proceso de Firma Notarial y Digital</h3>
-                <p className="text-xs text-slate-500">Valida la versión definitiva antes de enviar a firma de las partes.</p>
+          {/* Header de la pestaña */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-slate-900 to-slate-850 p-5 rounded-2xl text-white border border-slate-800 shadow-md">
+            <div>
+              <div className="flex items-center space-x-2 text-teal-400 text-xs font-bold uppercase tracking-wider mb-1">
+                <Stamp className="w-4 h-4" />
+                <span>Infraestructura de Firma Oficial · Firma.gub.uy</span>
               </div>
-              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-                Certificado Escribana Vigente
+              <h3 className="text-base font-black text-white">
+                Firma Electrónica Avanzada Notarial (Ley 18.600)
+              </h3>
+              <p className="text-slate-300 text-xs mt-0.5">
+                Valida la versión definitiva con certificado digital reconocido por AGESIC y genera evidencia inmutable.
+              </p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-bold text-emerald-400 bg-emerald-950/80 px-3 py-1.5 rounded-xl border border-emerald-500/30 flex items-center space-x-1.5">
+                <ShieldCheck className="w-4 h-4" />
+                <span>Certificado Notarial Activo</span>
               </span>
             </div>
+          </div>
 
-            <SignatureProcessCard
-              process={{
-                id: 'sig-proc-1',
-                status: 'prepared',
-                provider: 'firma_gub',
-                mode: 'mock',
-                documents: [{ title: 'Escritura Pública de Préstamo con Garantía Hipotecaria (v3).pdf' }],
-                signers: [
-                  { name: `${app.borrower?.first_name} ${app.borrower?.last_name}`, role: 'applicant', status: 'pending' },
-                  { name: 'Dr. Juan Manuel Fernández', role: 'lender', status: 'pending' },
-                  { name: 'Esc. María Pérez Morales', role: 'notary', status: 'pending' },
-                ],
-              }}
-            />
+          {/* Tarjeta Documento Listo para Firma por la Escribana */}
+          <div className="bg-white p-6 rounded-2xl border border-teal-500/40 shadow-sm space-y-4 ring-2 ring-teal-500/10">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2">
+                  <span className="font-mono text-xs font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                    Versión 4 (Definitiva)
+                  </span>
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">
+                    LISTO PARA FIRMA
+                  </span>
+                </div>
+                <h4 className="text-base font-black text-slate-900">
+                  Escritura Pública de Préstamo con Garantía Hipotecaria y Mutuo
+                </h4>
+              </div>
+
+              <NotaryElectronicSupportBadge
+                isNotarialElectronicDocument={true}
+                notarialSupportCode="SNE-2026-UY-48291-0021"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
+                <span className="text-slate-400 font-bold uppercase text-[10px]">Hash SHA-256 Previo</span>
+                <div className="font-mono font-bold text-slate-700 text-[11px] truncate" title="8f542a1b9e02c7891234567890abcdef482910fedcba0987654321fedcba0987">
+                  8f542a1b9e02c789...
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
+                <span className="text-slate-400 font-bold uppercase text-[10px]">Escribana Asignada</span>
+                <div className="font-bold text-slate-800 text-xs">
+                  Esc. María Pérez Morales
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
+                <span className="text-slate-400 font-bold uppercase text-[10px]">Proveedor FEA</span>
+                <div className="font-bold text-teal-700 text-xs">
+                  Firma.gub.uy (AGESIC)
+                </div>
+              </div>
+            </div>
+
+            {/* Acciones de Firma */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+              <span className="text-slate-400 text-xs">
+                Al firmar, el PDF se congelará inmutablemente en el repositorio privado.
+              </span>
+              <div className="flex items-center space-x-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => alert('Abriendo visor seguro del PDF borrador v4...')}
+                  className="px-3.5 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors flex items-center space-x-1.5"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Ver PDF</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowFeaModal(true)}
+                  className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md transition-all flex items-center space-x-2"
+                >
+                  <Stamp className="w-4 h-4" />
+                  <span>Firmar con Firma Electrónica Avanzada</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Partes Firmantes del Expediente */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-4">
+            <h4 className="text-sm font-bold text-slate-900">Firmantes Involucrados en el Acto</h4>
+            <div className="divide-y divide-slate-100 text-xs">
+              <div className="py-3 flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                    ✓
+                  </div>
+                  <div>
+                    <div className="font-bold text-slate-900">{app.borrower?.first_name} {app.borrower?.last_name}</div>
+                    <div className="text-slate-400 text-[11px]">Parte Deudora / Hipotecante · Firmado con TuID (Antel) el 07/09/2026 09:30</div>
+                  </div>
+                </div>
+                <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded text-[10px]">
+                  Firma Completada
+                </span>
+              </div>
+
+              <div className="py-3 flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                    ✓
+                  </div>
+                  <div>
+                    <div className="font-bold text-slate-900">Lic. Roberto Valdés (Fondo Inmobiliario del Este)</div>
+                    <div className="text-slate-400 text-[11px]">Parte Acreedora · Firmado con Token Abitab el 07/09/2026 10:15</div>
+                  </div>
+                </div>
+                <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded text-[10px]">
+                  Firma Completada
+                </span>
+              </div>
+
+              <div className="py-3 flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+                    ○
+                  </div>
+                  <div>
+                    <div className="font-bold text-slate-900">Esc. María Pérez Morales (CI 3.892.415-8)</div>
+                    <div className="text-slate-400 text-[11px]">Escribana Pública Actuante · Requiere Firma Electrónica Avanzada</div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowFeaModal(true)}
+                  className="px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-bold text-[11px] transition-colors"
+                >
+                  Firmar ahora
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Documentos Notariales Ya Firmados con Evidencia */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-bold text-slate-900">Documentos Notariales con Firma Validada</h4>
+              <span className="text-[11px] text-slate-400">1 documento archivado con FEA</span>
+            </div>
+
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-start space-x-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="font-bold text-slate-900 text-sm">
+                    Certificado de Gravámenes y Gravámenes Registrales — Versión 2
+                  </div>
+                  <div className="text-slate-500 text-[11px] mt-0.5">
+                    Firmado por <strong className="text-slate-800">Esc. María Pérez Morales</strong> · SNE-2026-UY-48291-0012
+                  </div>
+                  <div className="text-[10px] font-mono text-slate-400 mt-0.5">
+                    Hash PDF Firmado: 340ca881e102f901... (Preservado Byte-for-Byte)
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2 self-end sm:self-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEvidenceProcessId('sp-demo-002');
+                    setShowEvidenceModal(true);
+                  }}
+                  className="px-3 py-2 rounded-xl bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold text-xs transition-colors flex items-center space-x-1.5"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
+                  <span>Ver Evidencia</span>
+                </button>
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    alert('Descargando PDF firmado original byte-for-byte...');
+                  }}
+                  className="px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs transition-colors flex items-center space-x-1.5"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Descargar PDF</span>
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -813,6 +995,42 @@ export const NotaryApplicationDetailPage: React.FC = () => {
           setActiveTab('docflow');
         }}
       />
+
+      {/* Modal Firma Electrónica Avanzada (FEA) */}
+      <AdvancedSignatureModal
+        isOpen={showFeaModal}
+        onClose={() => setShowFeaModal(false)}
+        documentTitle="Escritura Pública de Préstamo con Garantía Hipotecaria y Mutuo"
+        documentVersion={4}
+        applicationId={app.id}
+        applicationPublicId={app.public_id || 'HIP-2026-00158'}
+        notaryUserId={user?.id || 'u-test-notary'}
+        onSignatureCompleted={() => {
+          setShowFeaModal(false);
+          setSignedSuccessToast(true);
+          setTimeout(() => setSignedSuccessToast(false), 5000);
+        }}
+      />
+
+      {/* Modal de Evidencia Criptográfica FEA */}
+      <SignatureEvidenceModal
+        isOpen={showEvidenceModal}
+        processId={evidenceProcessId}
+        onClose={() => setShowEvidenceModal(false)}
+      />
+
+      {/* Toast Notificación Firma Exitosa */}
+      {signedSuccessToast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white p-4 rounded-2xl shadow-2xl border border-teal-500/60 flex items-center space-x-3 animate-in fade-in slide-in-from-bottom-5">
+          <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="font-black text-xs text-white">Firma Electrónica Avanzada Exitosa</div>
+            <div className="text-[11px] text-teal-300">Documento validado con FEA y archivado inmutablemente.</div>
+          </div>
+        </div>
+      )}
     </NotaryLayout>
   );
 };
