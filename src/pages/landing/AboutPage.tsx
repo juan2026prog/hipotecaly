@@ -20,26 +20,26 @@ export const AboutPage: React.FC = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
             <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase bg-brand-green-light text-brand-green-dark border border-brand-green/20">
               <Shield className="w-3.5 h-3.5" />
-              <span>NUESTRA IDENTIDAD & MISIÓN</span>
+              <span>INFRAESTRUCTURA TECNOLÓGICA HIPOTECARIA</span>
             </div>
 
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-navy tracking-tight leading-[1.12] max-w-4xl">
-              Transformamos el acceso al crédito con garantía hipotecaria en Uruguay.
+              Software e infraestructura tecnológica para el crédito hipotecario.
             </h1>
 
             <p className="text-base sm:text-xl text-slate-muted max-w-3xl leading-relaxed">
-              HIPOTECALY nació para derribar las barreras burocráticas y la opacidad del crédito con garantía hipotecaria, uniendo tecnología financiera de vanguardia con acompañamiento notarial y técnico riguroso.
+              HIPOTECALY digitaliza y simplifica todo el ciclo de originación, estructuración, legajo digital, validación notarial y backoffice de créditos con garantía hipotecaria para organizaciones, financieras, estudios y prestamistas.
             </p>
 
             <div className="pt-2 flex flex-wrap gap-4">
               <Link to="/simulador">
                 <Button variant="primary" size="lg" className="shadow-md font-bold">
-                  Simular mi préstamo <ArrowRight className="w-4 h-4 ml-2" />
+                  Probar simulador <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </Link>
-              <Link to="/contacto">
+              <Link to="/contacto?demo=true">
                 <Button variant="secondary" size="lg">
-                  Contactar al equipo
+                  Agendar demo B2B
                 </Button>
               </Link>
             </div>

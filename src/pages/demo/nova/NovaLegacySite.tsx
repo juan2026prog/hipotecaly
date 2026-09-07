@@ -86,7 +86,7 @@ export const NovaLegacySite: React.FC = () => {
             </span>
             <span className="hidden sm:inline text-slate-400">|</span>
             <span className="hidden sm:inline text-slate-300 font-medium">
-              Caso A: Empresa hipotecaria tradicional con web existente
+              Modalidad A: Integración mediante Botón HIPOTECALY en web existente
             </span>
           </div>
           <div className="flex items-center space-x-3">

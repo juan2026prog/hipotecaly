@@ -30,23 +30,23 @@ export const HowItWorksPage: React.FC = () => {
           {[
             {
               step: '1',
-              title: 'Completá tu solicitud digital',
-              desc: 'Ingresá a nuestro simulador y completá los datos básicos del inmueble y el monto que necesitás. Podés guardar tu solicitud como borrador y continuarla en cualquier momento.',
+              title: 'Simulación y solicitud digital',
+              desc: 'Ingresá al simulador paramétrico y completá los datos del inmueble en garantía y el monto requerido. Podés guardar borradores y continuar en cualquier momento.',
             },
             {
               step: '2',
-              title: 'Análisis preliminar de la propiedad',
-              desc: 'Revisamos las características declaradas de tu inmueble y cotejamos parámetros de mercado. En esta etapa no revelamos tu identidad personal a los prestamistas.',
+              title: 'Análisis del inmueble y legajo digital',
+              desc: 'Revisión técnica de características, tasación preliminar y conformación del legajo documental estructurado con verificación de títulos.',
             },
             {
               step: '3',
-              title: 'Búsqueda de propuestas crediticias',
-              desc: 'Nuestro motor evalúa las reglas de los prestamistas habilitados para encontrar opciones compatibles con tu necesidad y LTV (hasta el 40% del valor).',
+              title: 'Evaluación y scoring paramétrico',
+              desc: 'La plataforma aplica las políticas de riesgo crediticio, LTV tope y reglas operativas de la organización para estructurar la operación.',
             },
             {
               step: '4',
-              title: 'Presentación de propuesta y formalización legal',
-              desc: 'Si contás con una propuesta viable y decidís avanzar, coordinamos la actuación notarial con el escribano para la titulación e hipoteca definitiva.',
+              title: 'DocFlow, KYC, firma y formalización notarial',
+              desc: 'Generación automática de contratos e hipotecas con DocFlow, verificación de identidad biométrica (KYC Didit), firmas digitales y coordinación con escribano público.',
             },
           ].map((item) => (
             <div key={item.step} className="flex items-start space-x-5 p-6 rounded-2xl bg-slate-50 border border-slate-border">
@@ -64,7 +64,7 @@ export const HowItWorksPage: React.FC = () => {
         <div className="mt-12 text-center">
           <Link to="/simulador">
             <Button variant="primary" size="lg" className="px-8">
-              Simular mi préstamo ahora <ArrowRight className="w-4 h-4 ml-2" />
+              Probar simulador ahora <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </Link>
         </div>
@@ -80,24 +80,24 @@ export const HowItWorksPage: React.FC = () => {
 export const FaqPage: React.FC = () => {
   const faqs = [
     {
-      q: '¿Qué es un préstamo con garantía hipotecaria?',
-      a: 'Es una operación crediticia donde se ofrece un inmueble propio como respaldo del cumplimiento del pago, lo que permite acceder a montos más elevados y plazos de hasta 5 años.',
+      q: '¿Qué es HIPOTECALY?',
+      a: 'HIPOTECALY es la infraestructura tecnológica y software modular que permite a empresas, financieras, prestamistas, estudios notariales e inmobiliarias digitalizar y gestionar todo el ciclo de préstamos con garantía hipotecaria.',
     },
     {
-      q: '¿HIPOTECALY es el prestamista?',
-      a: 'No. HIPOTECALY es la plataforma tecnológica y de intermediación que analiza, organiza y conecta tu solicitud con prestamistas calificados, protegiendo tus datos en todo momento.',
+      q: '¿Cuáles son las modalidades de integración disponibles?',
+      a: 'Ofrecemos tres modalidades: A) Botón HIPOTECALY (CTA en la web del cliente que inicia la solicitud), B) Simulador + Botón (widget embebible con cálculo paramétrico), y C) White-Label Completo (plataforma integral bajo tu propia marca y dominio).',
     },
     {
-      q: '¿Hasta qué porcentaje del valor de la propiedad puedo solicitar?',
-      a: 'El LTV (Loan to Value) máximo para el prestamista piloto es del 40% del valor de tasación preliminar, con un tope de hasta USD 200.000.',
+      q: '¿Qué es un crédito con garantía hipotecaria?',
+      a: 'Es una operación crediticia donde se ofrece un inmueble como respaldo de pago, permitiendo acceder a montos más elevados y plazos de hasta 5 a 10 años.',
     },
     {
-      q: '¿Puedo solicitar si estoy en el Clearing de Informes?',
-      a: 'Sí, el prestamista piloto acepta evaluar personas que figuren en Clearing, ya que el respaldo principal es la garantía inmobiliaria.',
+      q: '¿Cómo funciona el autollenado documental DocFlow?',
+      a: 'DocFlow toma los datos validados del expediente (titular, padrón, gravámenes, montos, tasas) y genera al instante minutas notariales, contratos de hipoteca y pagarés sin errores de tipeo manual.',
     },
     {
-      q: '¿Qué costos están involucrados?',
-      a: 'Los costos notariales, registrales y de tasación son a cargo del solicitante y se coordinan con total transparencia antes de la firma de la hipoteca.',
+      q: '¿Qué seguridad ofrece la plataforma?',
+      a: 'La plataforma implementa arquitectura multi-tenant con Row Level Security (RLS) en PostgreSQL, cifrado SSL/TLS de grado bancario, verificación biométrica KYC (Didit) y firma digital avanzada conforme a la normativa legal uruguaya.',
     },
   ];
 

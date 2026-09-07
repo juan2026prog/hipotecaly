@@ -15,6 +15,7 @@ import { HowItWorksPage, FaqPage, SaaSPricingPage, ContactPage } from './pages/M
 import { AboutPage } from './pages/landing/AboutPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { TermsPage, PrivacyPage, SecurityPage } from './pages/legal/LegalPages';
+import { SignatureReturnPage } from './pages/signature/SignatureReturnPage';
 
 // Backoffice Pages
 import { DashboardPage } from './pages/backoffice/DashboardPage';
@@ -35,10 +36,8 @@ import { OrganizationSettingsPage } from './pages/backoffice/OrganizationSetting
 import { WhiteLabelBackofficePage } from './pages/backoffice/WhiteLabelBackofficePage';
 import { LeadsManagementPage } from './pages/backoffice/LeadsManagementPage';
 
-// Tenant Demo NOVA & Super Admin
-import { NovaLegacySite } from './pages/demo/nova/NovaLegacySite';
-import { NovaIntegratedSite } from './pages/demo/nova/NovaIntegratedSite';
-import { NovaFullWhiteLabelSite } from './pages/demo/nova/NovaFullWhiteLabelSite';
+// Tenant Demo ESTUDIO NOVA & Super Admin
+import { EstudioNovaPage } from './pages/demo/nova/EstudioNovaPage';
 import { SuperAdminTenantsPage } from './pages/admin/SuperAdminTenantsPage';
 import { TenantOnboardingWizardPage } from './pages/admin/TenantOnboardingWizardPage';
 import { GenericWhiteLabelLanding } from './pages/landing/GenericWhiteLabelLanding';
@@ -47,7 +46,6 @@ import { PlatformAdminPage } from './pages/admin/PlatformAdminPage';
 import { LendersSolutionPage } from './pages/solutions/LendersSolutionPage';
 import { FinancialsSolutionPage } from './pages/solutions/FinancialsSolutionPage';
 import { NotariesSolutionPage } from './pages/solutions/NotariesSolutionPage';
-import { NovaShowroomPage } from './pages/demo/nova/NovaShowroomPage';
 import { SaaSModulesCatalogPage } from './pages/saas/SaaSModulesCatalogPage';
 import { TenantProvider } from './contexts/TenantContext';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
@@ -55,6 +53,16 @@ import { OfflineNotice } from './components/ui/OfflineNotice';
 import { DemoSalesModeBar } from './components/demo/DemoSalesModeBar';
 import { QaSessionBanner } from './components/qa/QaSessionBanner';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { useAuth } from './contexts/AuthContext';
+import { isMarketplaceEnabled } from './config/features';
+
+const LenderRouteGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isSuperAdmin } = useAuth();
+  if (!isMarketplaceEnabled() && !isSuperAdmin) {
+    return <NotFoundPage />;
+  }
+  return <>{children}</>;
+};
 
 export const App: React.FC = () => {
   return (
@@ -85,6 +93,7 @@ export const App: React.FC = () => {
               <Route path="/terminos" element={<TermsPage />} />
               <Route path="/privacidad" element={<PrivacyPage />} />
               <Route path="/seguridad" element={<SecurityPage />} />
+              <Route path="/signature/return" element={<SignatureReturnPage />} />
 
               {/* ========================================================== */}
               {/* 2. RUTAS PÚBLICAS SAAS (Línea B - Empresas & Estudios)     */}
@@ -113,12 +122,13 @@ export const App: React.FC = () => {
               <Route path="/empresas/financieras" element={<FinancialsSolutionPage />} />
               <Route path="/empresas/estudios" element={<NotariesSolutionPage />} />
 
-              {/* Demostración Comercial Showroom NOVA */}
-              <Route path="/demo" element={<NovaShowroomPage />} />
-              <Route path="/demo/nova" element={<NovaShowroomPage />} />
-              <Route path="/demo/nova/legacy" element={<NovaLegacySite />} />
-              <Route path="/demo/nova/integrado" element={<NovaIntegratedSite />} />
-              <Route path="/demo/nova/full" element={<NovaFullWhiteLabelSite />} />
+              {/* Tenant Demo Definitivo — ESTUDIO NOVA */}
+              <Route path="/demo/estudio-nova" element={<EstudioNovaPage />} />
+              <Route path="/demo" element={<Navigate to="/demo/estudio-nova" replace />} />
+              <Route path="/demo/nova" element={<Navigate to="/demo/estudio-nova" replace />} />
+              <Route path="/demo/nova/legacy" element={<Navigate to="/demo/estudio-nova" replace />} />
+              <Route path="/demo/nova/integrado" element={<Navigate to="/demo/estudio-nova" replace />} />
+              <Route path="/demo/nova/full" element={<Navigate to="/demo/estudio-nova" replace />} />
               <Route path="/demo/nova/login" element={<LoginPage />} />
               <Route path="/demo/nova/mi-cuenta" element={<ApplicantAccount />} />
 
@@ -335,7 +345,9 @@ export const App: React.FC = () => {
                 path="/lender"
                 element={
                   <ProtectedRoute allowedRoles={['lender', 'super_admin']}>
-                    <LenderDashboardPage />
+                    <LenderRouteGate>
+                      <LenderDashboardPage />
+                    </LenderRouteGate>
                   </ProtectedRoute>
                 }
               />
@@ -343,7 +355,9 @@ export const App: React.FC = () => {
                 path="/lender/oportunidades"
                 element={
                   <ProtectedRoute allowedRoles={['lender', 'super_admin']}>
-                    <LenderDashboardPage />
+                    <LenderRouteGate>
+                      <LenderDashboardPage />
+                    </LenderRouteGate>
                   </ProtectedRoute>
                 }
               />
@@ -351,7 +365,9 @@ export const App: React.FC = () => {
                 path="/lender/oportunidades/:id"
                 element={
                   <ProtectedRoute allowedRoles={['lender', 'super_admin']}>
-                    <LenderOpportunityDetailPage />
+                    <LenderRouteGate>
+                      <LenderOpportunityDetailPage />
+                    </LenderRouteGate>
                   </ProtectedRoute>
                 }
               />
@@ -359,7 +375,9 @@ export const App: React.FC = () => {
                 path="/lender/ofertas"
                 element={
                   <ProtectedRoute allowedRoles={['lender', 'super_admin']}>
-                    <LenderOffersPage />
+                    <LenderRouteGate>
+                      <LenderOffersPage />
+                    </LenderRouteGate>
                   </ProtectedRoute>
                 }
               />
@@ -367,7 +385,9 @@ export const App: React.FC = () => {
                 path="/lender/mensajes"
                 element={
                   <ProtectedRoute allowedRoles={['lender', 'super_admin']}>
-                    <LenderMessagesPage />
+                    <LenderRouteGate>
+                      <LenderMessagesPage />
+                    </LenderRouteGate>
                   </ProtectedRoute>
                 }
               />

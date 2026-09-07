@@ -34,12 +34,12 @@ export interface TenantPrivacyRules {
   allowDocumentDownloadAtStatus: string;
 }
 
-// Reglas por defecto para el tenant NOVA Demo
+// Reglas por defecto para el tenant Estudio Nova Demo
 export const DEFAULT_NOVA_LENDING_RULES: TenantLendingRules = {
   tenantId: 'd0000000-0000-0000-0000-000000000001',
   minLoanAmount: 15000,
-  maxLoanAmount: 250000,
-  maxFinancedPercentage: 50, // 50% por defecto
+  maxLoanAmount: 200000,
+  maxFinancedPercentage: 40, // 40% por defecto según especificación
   minTermMonths: 12,
   maxTermMonths: 60,
   availableTerms: [12, 24, 36, 48, 60],

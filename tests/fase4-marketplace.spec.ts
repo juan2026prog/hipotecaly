@@ -15,6 +15,12 @@ test.describe('FASE 4: SUITE DE TESTING DE MARKETPLACE, MATCHING, OFERTAS Y ANTI
 
   const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem('HIPOTECALY_FEATURE_MARKETPLACE', 'true');
+    });
+  });
+
   // 1. Matching correcto con reglas
   test('1. Matching correcto con reglas: solicitud cumple parámetros y obtiene MATCH elegible', async () => {
     const ltvRes = calculateLtv(80000, 240000); // 33.33%

@@ -4,6 +4,7 @@
 
 import { supabase } from './supabase';
 import { PropertyType } from './types';
+import { isMarketplaceEnabled } from '../config/features';
 
 export type OpportunityStatus =
   | 'matched'
@@ -185,6 +186,11 @@ export function calculateMatchScore(params: {
 export async function runMatchingForApplication(
   applicationId: string
 ): Promise<{ success: boolean; opportunities: Opportunity[]; error: string | null }> {
+  // Cuando el Marketplace se encuentra congelado/desactivado, no se dispara matching automático
+  if (!isMarketplaceEnabled()) {
+    return { success: true, opportunities: [], error: null };
+  }
+
   try {
     const { data: rpcRes, error: rpcErr } = await supabase.rpc('match_application_to_lenders', {
       target_application_id: applicationId,

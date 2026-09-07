@@ -266,11 +266,74 @@ export const SettingsPage: React.FC = () => {
             </div>
           </div>
 
+          {/* Configuración DocFlow por Tenant (Regla 34) */}
+          <div className="border-b border-slate-100 pb-4 space-y-4">
+            <div>
+              <h3 className="text-base font-bold text-navy flex items-center space-x-2">
+                <span>HIPOTECALY DOCFLOW — Configuración del Tenant</span>
+                <span className="text-[10px] font-bold bg-brand-green-light text-brand-green-dark px-2 py-0.5 rounded-full">
+                  Módulo Activo
+                </span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Datos legales, membretes institucionales y reglas documentales para {tenant.name}.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div>
+                <label className="text-slate-600 block mb-1 font-bold">Razón Social Legal</label>
+                <input
+                  type="text"
+                  defaultValue={`${tenant.name} S.A.S.`}
+                  className="w-full p-2.5 rounded-btn border border-slate-border text-navy focus:ring-2 focus:ring-brand-green"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-600 block mb-1 font-bold">Representante Legal Firmante</label>
+                <input
+                  type="text"
+                  defaultValue="Dr. Alejandro Méndez"
+                  className="w-full p-2.5 rounded-btn border border-slate-border text-navy focus:ring-2 focus:ring-brand-green"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-600 block mb-1 font-bold">Dirección Legal Notarial</label>
+                <input
+                  type="text"
+                  defaultValue="Plaza Independencia 848, Montevideo"
+                  className="w-full p-2.5 rounded-btn border border-slate-border text-navy focus:ring-2 focus:ring-brand-green"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-600 block mb-1 font-bold">Zona Horaria e Idioma</label>
+                <input
+                  type="text"
+                  readOnly
+                  value="America/Montevideo (es-UY)"
+                  className="w-full p-2.5 rounded-btn border border-slate-border bg-slate-50 text-slate-600 font-mono"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-slate-600 block mb-1 font-bold text-xs">Pie de Página Estándar para Documentos</label>
+              <textarea
+                rows={2}
+                defaultValue="Documento oficial emitido electrónicamente por HIPOTECALY DOCFLOW. Validez legal según Ley N° 18.600 de la República Oriental del Uruguay."
+                className="w-full p-2.5 rounded-btn border border-slate-border text-xs text-navy"
+              />
+            </div>
+          </div>
+
           <div className="space-y-2">
             <h4 className="text-sm font-bold text-navy">Seguridad y Aislamiento RLS</h4>
             <div className="flex items-center space-x-2 text-xs text-brand-green-dark">
               <ShieldCheck className="w-4 h-4 text-brand-green" />
-              <span>Row Level Security activa en PostgreSQL multi-tenant.</span>
+              <span>Row Level Security activa en PostgreSQL multi-tenant y Storage Privado.</span>
             </div>
           </div>
         </div>

@@ -1,110 +1,261 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { BackofficeLayout } from '../../components/backoffice/BackofficeLayout';
-import { getApplicationsList } from '../../lib/backofficeService';
 import { useTenant } from '../../contexts/TenantContext';
-import { FileText, Download, ShieldCheck, FolderX } from 'lucide-react';
+import {
+  FileText,
+  ShieldCheck,
+  FolderX,
+  Plus,
+  Search,
+  Layers,
+  Edit,
+} from 'lucide-react';
+import { DocumentTemplate, GeneratedDocument } from '../../lib/docflow/types';
+import { DocumentService } from '../../lib/docflow/documentService';
+import { DocumentCard } from '../../components/docflow/DocumentCard';
+import { DocumentPreviewModal } from '../../components/docflow/DocumentPreviewModal';
+import { TemplateEditorModal } from '../../components/docflow/TemplateEditorModal';
+import { Button } from '../../components/ui/Button';
 
 export const DocumentsPage: React.FC = () => {
   const { tenant } = useTenant();
-  const [documents, setDocuments] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'documentos' | 'plantillas'>('documentos');
+
+  // Documentos
+  const [documents, setDocuments] = useState<GeneratedDocument[]>([]);
+  const [docsLoading, setDocsLoading] = useState(true);
+  const [searchDoc, setSearchDoc] = useState('');
+
+  // Plantillas
+  const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
+  const [tplsLoading, setTplsLoading] = useState(true);
+  const [selectedTpl, setSelectedTpl] = useState<DocumentTemplate | null>(null);
+  const [showTplEditor, setShowTplEditor] = useState(false);
+
+  // Modal Preview
+  const [previewDoc, setPreviewDoc] = useState<GeneratedDocument | null>(null);
+
+  const loadDocuments = async () => {
+    setDocsLoading(true);
+    const docs = await DocumentService.getDocumentsByTenant(tenant.id);
+    setDocuments(docs);
+    setDocsLoading(false);
+  };
+
+  const loadTemplates = async () => {
+    setTplsLoading(true);
+    const tpls = await DocumentService.getTemplates(tenant.id);
+    setTemplates(tpls);
+    setTplsLoading(false);
+  };
 
   useEffect(() => {
-    async function loadDocs() {
-      setLoading(true);
-      const isDemo = Boolean(tenant.demo_mode);
-      const apps = await getApplicationsList({
-        organizationId: tenant.id,
-        useDemoMode: isDemo,
-      });
+    loadDocuments();
+    loadTemplates();
+  }, [tenant.id]);
 
-      const docs = apps.flatMap((app) =>
-        (app.documents || []).map((doc: any) => ({
-          ...doc,
-          appId: app.id,
-          publicId: app.public_id,
-          borrowerName: app.borrower ? `${app.borrower.first_name} ${app.borrower.last_name}` : 'Solicitante',
-        }))
-      );
-
-      setDocuments(docs);
-      setLoading(false);
-    }
-    loadDocs();
-  }, [tenant.id, tenant.demo_mode]);
+  const filteredDocs = documents.filter(
+    (d) =>
+      d.title.toLowerCase().includes(searchDoc.toLowerCase()) ||
+      d.category.toLowerCase().includes(searchDoc.toLowerCase()) ||
+      d.case_id.toLowerCase().includes(searchDoc.toLowerCase())
+  );
 
   return (
     <BackofficeLayout>
       <div className="space-y-6 text-left max-w-7xl mx-auto">
+        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-navy tracking-tight">
-              Gestión Documental
+            <div className="flex items-center space-x-2">
+              <span className="text-[11px] font-bold text-brand-green uppercase tracking-wider">
+                DocFlow Engine
+              </span>
+              <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+              <span className="text-[11px] font-mono text-slate-500">{tenant.name}</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-navy tracking-tight mt-0.5">
+              Infraestructura Documental & Plantillas
             </h1>
             <p className="text-xs sm:text-sm text-slate-muted mt-0.5">
-              Repositorio de documentación privada con enlaces firmados temporales para {tenant.name}.
+              Administración de plantillas oficiales, autollenado de expedientes y repositorio inmutable.
             </p>
           </div>
 
-          <div className="flex items-center space-x-2 text-xs text-brand-green bg-brand-green-light px-3 py-1.5 rounded-full font-semibold">
-            <ShieldCheck className="w-4 h-4" />
-            <span>Almacenamiento Seguro Privado</span>
+          <div className="flex items-center space-x-2">
+            {activeTab === 'plantillas' && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  setSelectedTpl(null);
+                  setShowTplEditor(true);
+                }}
+                className="text-xs font-bold bg-brand-green hover:bg-brand-green-dark text-white shadow-xs"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1.5" /> Nueva Plantilla
+              </Button>
+            )}
+
+            <div className="flex items-center space-x-2 text-xs text-brand-green bg-brand-green-light px-3 py-1.5 rounded-full font-semibold">
+              <ShieldCheck className="w-4 h-4" />
+              <span>Criptografía SHA-256</span>
+            </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-card border border-slate-border shadow-card overflow-hidden">
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between text-xs font-bold text-navy">
-            <span>Documentos Subidos ({documents.length})</span>
-          </div>
+        {/* Pestañas Principales */}
+        <div className="flex space-x-2 border-b border-slate-200">
+          <button
+            onClick={() => setActiveTab('documentos')}
+            className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors ${
+              activeTab === 'documentos'
+                ? 'border-brand-green text-brand-green'
+                : 'border-transparent text-slate-500 hover:text-navy'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            <span>Documentos Generados ({documents.length})</span>
+          </button>
 
-          {loading ? (
-            <div className="p-8 text-center text-xs text-slate-400">Cargando documentos...</div>
-          ) : documents.length === 0 ? (
-            <div className="p-12 text-center space-y-3">
-              <FolderX className="w-10 h-10 text-slate-300 mx-auto" />
-              <p className="text-sm font-semibold text-slate-600">No hay documentos registrados aún.</p>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                Los archivos adjuntados por solicitantes aparecerán listados aquí para su auditoría y descarga segura.
-              </p>
+          <button
+            onClick={() => setActiveTab('plantillas')}
+            className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors ${
+              activeTab === 'plantillas'
+                ? 'border-brand-green text-brand-green'
+                : 'border-transparent text-slate-500 hover:text-navy'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span>Plantillas Oficiales ({templates.length})</span>
+          </button>
+        </div>
+
+        {/* TAB 1: DOCUMENTOS GENERADOS */}
+        {activeTab === 'documentos' && (
+          <div className="space-y-4">
+            {/* Buscador */}
+            <div className="bg-white rounded-card p-4 border border-slate-border shadow-card flex items-center justify-between gap-3">
+              <div className="relative flex-1 max-w-md">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar documento por título, caso o categoría..."
+                  value={searchDoc}
+                  onChange={(e) => setSearchDoc(e.target.value)}
+                  className="w-full pl-8.5 pr-3 py-1.5 rounded-lg border border-slate-200 text-xs text-navy focus:ring-2 focus:ring-brand-green bg-slate-50 focus:bg-white"
+                />
+              </div>
+
+              <span className="text-xs text-slate-400 font-medium">
+                Mostrando {filteredDocs.length} de {documents.length} documentos
+              </span>
             </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {documents.map((doc: any) => (
-                <div
-                  key={doc.id}
-                  className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50 transition-colors text-xs"
-                >
-                  <div className="flex items-center space-x-3.5">
-                    <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
-                      <FileText className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h5 className="font-bold text-navy text-sm">{doc.document_type}</h5>
-                      <p className="text-slate-500 text-[11px] mt-0.5">
-                        {doc.file_name} · {((doc.file_size || 1048576) / (1024 * 1024)).toFixed(1)} MB · Solicitud{' '}
-                        <Link to={`/app/solicitudes/${doc.appId}`} className="font-mono text-brand-green font-bold hover:underline">
-                          {doc.publicId}
-                        </Link>{' '}
-                        ({doc.borrowerName})
+
+            {docsLoading ? (
+              <div className="p-12 text-center text-xs text-slate-400 bg-white rounded-card border border-slate-border">
+                Cargando repositorio documental...
+              </div>
+            ) : filteredDocs.length === 0 ? (
+              <div className="p-12 text-center space-y-3 bg-white rounded-card border border-slate-border shadow-card">
+                <FolderX className="w-10 h-10 text-slate-300 mx-auto" />
+                <h4 className="text-sm font-bold text-navy">No hay documentos generados aún</h4>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  Los documentos autollenados desde cada expediente aparecerán listados aquí para su auditoría y descarga segura.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredDocs.map((doc) => (
+                  <DocumentCard
+                    key={doc.id}
+                    document={doc}
+                    onPreview={(d) => setPreviewDoc(d)}
+                    onDownload={(d) => setPreviewDoc(d)}
+                    onSign={(d) => setPreviewDoc(d)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 2: PLANTILLAS OFICIALES */}
+        {activeTab === 'plantillas' && (
+          <div className="space-y-4">
+            {tplsLoading ? (
+              <div className="p-12 text-center text-xs text-slate-400 bg-white rounded-card border border-slate-border">
+                Cargando catálogo de plantillas...
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {templates.map((tpl) => (
+                  <div
+                    key={tpl.id}
+                    className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                          {tpl.category}
+                        </span>
+                        {tpl.is_global && (
+                          <span className="text-[10px] font-bold text-brand-green bg-brand-green-light px-2 py-0.5 rounded-full">
+                            Global Plataforma
+                          </span>
+                        )}
+                      </div>
+
+                      <h4 className="font-bold text-navy text-sm leading-snug">{tpl.name}</h4>
+                      <p className="text-xs text-slate-500 line-clamp-2">
+                        {tpl.description || 'Sin descripción.'}
                       </p>
+
+                      <div className="text-[11px] text-slate-400 pt-1 space-y-0.5">
+                        <p>Campos obligatorios: {tpl.required_fields?.length || 0}</p>
+                        <p>Firma requerida: {tpl.requires_signature ? 'Sí' : 'No'}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedTpl(tpl);
+                          setShowTplEditor(true);
+                        }}
+                        className="text-xs font-semibold"
+                      >
+                        <Edit className="w-3.5 h-3.5 mr-1" /> Editar
+                      </Button>
+
+                      <span className="text-[10px] font-mono text-slate-400">v{tpl.version}</span>
                     </div>
                   </div>
-
-                  <div className="flex items-center space-x-3">
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800">
-                      {doc.status || 'verificado'}
-                    </span>
-                    <button className="inline-flex items-center px-3 py-1.5 rounded-btn bg-slate-100 hover:bg-brand-green hover:text-white transition-colors text-slate-700 font-semibold text-[11px]">
-                      <Download className="w-3 h-3 mr-1" /> Enlace firmado
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Modales */}
+      <DocumentPreviewModal
+        isOpen={Boolean(previewDoc)}
+        document={previewDoc}
+        onClose={() => setPreviewDoc(null)}
+      />
+
+      <TemplateEditorModal
+        isOpen={showTplEditor}
+        templateToEdit={selectedTpl}
+        tenantId={tenant.id}
+        onClose={() => setShowTplEditor(false)}
+        onSaved={() => {
+          loadTemplates();
+        }}
+      />
     </BackofficeLayout>
   );
 };

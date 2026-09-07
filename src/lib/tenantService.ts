@@ -67,23 +67,23 @@ export const DEFAULT_TENANT: Tenant = {
 
 export const NOVA_TENANT: Tenant = {
   id: 'd0000000-0000-0000-0000-000000000001',
-  slug: 'nova-demo',
-  name: 'NOVA Crédito Hipotecario',
-  legal_name: 'NOVA Inversiones Hipotecarias S.A.S.',
+  slug: 'estudio-nova',
+  name: 'Estudio Nova',
+  legal_name: 'Estudio Nova S.A.S.',
   status: 'active',
   branding: {
-    public_name: 'NOVA Crédito Hipotecario',
-    tag_line: 'Soluciones financieras con respaldo inmobiliario.',
-    primary_color: '#0A3A60',
-    secondary_color: '#16A184',
+    public_name: 'Estudio Nova',
+    tag_line: 'Financiación & inversión',
+    primary_color: '#173a5e',
+    secondary_color: '#f4b43b',
   },
   settings: {
     allow_borrower_portal: true,
     default_currency: 'USD',
-    sender_name: 'NOVA Notificaciones',
-    sender_email: 'notificaciones@novacredito.uy',
+    sender_name: 'Estudio Nova',
+    sender_email: 'contacto@estudionova.uy',
   },
-  custom_domain: 'demo.novacredito.uy',
+  custom_domain: 'estudionova.uy',
   is_white_label: true,
   demo_mode: true,
 };
@@ -110,6 +110,7 @@ export const NOT_FOUND_TENANT: Tenant = {
 // Registro de tenants
 const REGISTERED_TENANTS: Record<string, Tenant> = {
   'hipotecaly': DEFAULT_TENANT,
+  'estudio-nova': NOVA_TENANT,
   'nova': NOVA_TENANT,
   'nova-demo': NOVA_TENANT,
   'estudio-notarial-este': {
@@ -190,8 +191,8 @@ export async function resolveTenant(
   hostname: string = typeof window !== 'undefined' ? window.location.hostname : 'localhost',
   pathname: string = typeof window !== 'undefined' ? window.location.pathname : '/'
 ): Promise<Tenant> {
-  // 0. Rutas demo de NOVA
-  if (pathname.startsWith('/demo/nova')) {
+  // 0. Rutas demo de Estudio NOVA
+  if (pathname.startsWith('/demo/estudio-nova') || pathname.startsWith('/demo/nova') || pathname === '/demo') {
     return NOVA_TENANT;
   }
 

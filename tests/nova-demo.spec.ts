@@ -1,15 +1,20 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('NOVA DEMO — E2E 19-STEP OPERATIONAL FLOW', () => {
-  test('1 to 4: Simular en NOVA Legacy y Continuar Solicitud con valores precargados', async ({ page }) => {
-    // 1. Abrir NOVA Legacy
-    await page.goto('/demo/nova/legacy');
-    await expect(page.locator('text=MODO DEMOSTRACIÓN HIPOTECALY')).toBeVisible();
-    await expect(page.locator('h1')).toContainText('Soluciones financieras con respaldo inmobiliario');
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem('hipotecaly_test_role', 'super_admin');
+    });
+  });
 
-    // 2. Verificar simulador tradicional con valores iniciales
+  test('1 to 4: Simular en Estudio Nova y Continuar Solicitud con valores precargados', async ({ page }) => {
+    // 1. Abrir Estudio Nova
+    await page.goto('/demo/estudio-nova');
+    await expect(page.locator('h1')).toContainText('Convertí el valor de tu inmueble en capital para avanzar');
+
+    // 2. Verificar simulador con valores iniciales
     const propInput = page.locator('label:has-text("Valor estimado del inmueble")').locator('..').locator('input');
-    const loanInput = page.locator('label:has-text("Monto que solicitás")').locator('..').locator('input');
+    const loanInput = page.locator('label:has-text("Monto solicitado")').locator('..').locator('input');
     
     await expect(propInput).toBeVisible();
     await expect(loanInput).toBeVisible();
@@ -59,8 +64,8 @@ test.describe('NOVA DEMO — E2E 19-STEP OPERATIONAL FLOW', () => {
     await expect(page.locator('text=HIP-DEMO-00124').first()).toBeVisible();
 
     // 12. Ir a pestaña Documentos
-    await page.click('button:has-text("Documentos")');
-    await expect(page.locator('text=Gestión Documental Privada')).toBeVisible();
+    await page.getByRole('button', { name: /^Documentos$/i }).first().click();
+    await expect(page.locator('text=Gestión Documental').first()).toBeVisible();
 
     // 13. Observar documento
     const observeBtn = page.locator('button:has-text("Observar")').first();
@@ -89,10 +94,10 @@ test.describe('NOVA DEMO — E2E 19-STEP OPERATIONAL FLOW', () => {
 
     await expect(page.locator('text=Regla actualizada en Supabase')).toBeVisible();
 
-    // 17 & 18. Volver a NOVA Full y confirmar que ahora el límite aplica 40% sin redeploy
-    await page.goto('/demo/nova/full');
-    await expect(page.locator('text=Hasta 40%')).toBeVisible();
-    await expect(page.locator('text=Límite 40%')).toBeVisible();
+    // 17 & 18. Volver a Estudio Nova y confirmar que el límite aplica 40%
+    await page.goto('/demo/estudio-nova');
+    await expect(page.locator('text=Hasta 40%').first()).toBeVisible();
+    await expect(page.locator('text=Límite 40%').first()).toBeVisible();
   });
 
   test('19: Verificación de protección de contacto anti-bypass por etapa', async ({ page }) => {

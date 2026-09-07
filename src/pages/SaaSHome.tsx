@@ -235,9 +235,9 @@ export const SaaSHome: React.FC = () => {
                     QUIERO INTEGRARLO <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </Link>
-                <Link to="/demo/nova/legacy">
+                <Link to="/demo/estudio-nova">
                   <Button variant="outline" size="md" fullWidth className="text-xs font-bold border-navy text-navy hover:bg-slate-50">
-                    VER DEMO — INTEGRACIÓN <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                    VER DEMO — ESTUDIO NOVA <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
                   </Button>
                 </Link>
                 <Link to="/saas/integracion" className="block text-center text-xs font-semibold text-navy hover:text-brand-green pt-1">
@@ -318,9 +318,9 @@ export const SaaSHome: React.FC = () => {
                     Quiero mi plataforma <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </Link>
-                <Link to="/demo/nova/full">
+                <Link to="/demo/estudio-nova">
                   <Button variant="outline" size="md" fullWidth className="text-xs font-bold border-white/30 text-white hover:bg-white/10">
-                    Ver demo plataforma completa <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                    Ver demo Estudio Nova <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
                   </Button>
                 </Link>
                 <Link to="/saas/plataforma-completa" className="block text-center text-xs font-semibold text-slate-300 hover:text-white pt-1">
@@ -414,16 +414,16 @@ export const SaaSHome: React.FC = () => {
             </Link>
           </div>
 
-          {/* Banner Showroom NOVA */}
+          {/* Banner Tenant Demo Estudio Nova */}
           <div className="mt-8 p-6 bg-gradient-to-r from-navy via-slate-900 to-navy text-white rounded-2xl border border-navy-border flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="space-y-1 text-center sm:text-left">
-              <span className="text-[10px] font-bold text-brand-green uppercase tracking-wider">SHOWROOM INTERACTIVO</span>
-              <h4 className="text-lg font-bold">¿Querés ver cómo opera una financiera real en White-Label?</h4>
-              <p className="text-xs text-slate-300">Explorá NOVA Créditos, nuestro tenant interactivo de demostración con motor de reglas en caliente.</p>
+              <span className="text-[10px] font-bold text-brand-green uppercase tracking-wider">TENANT DEMO EN VIVO</span>
+              <h4 className="text-lg font-bold">¿Querés ver cómo opera una entidad real con HIPOTECALY?</h4>
+              <p className="text-xs text-slate-300">Explorá Estudio Nova, nuestro tenant interactivo de demostración con motor de reglas en caliente.</p>
             </div>
-            <Link to="/demo/nova">
+            <Link to="/demo/estudio-nova">
               <Button variant="primary" size="md" className="shrink-0 font-bold shadow-md">
-                Ver Showroom NOVA <ArrowRight className="w-4 h-4 ml-1.5" />
+                Ver Demo Estudio Nova <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
             </Link>
           </div>

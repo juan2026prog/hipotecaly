@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { BackofficeLayout } from '../../components/backoffice/BackofficeLayout';
 import { SuperAdminQaToolsCard } from '../../components/admin/SuperAdminQaToolsCard';
+import { SuperAdminIntegrationsTab } from '../../components/admin/SuperAdminIntegrationsTab';
 import { Button } from '../../components/ui/Button';
 
 export const PlatformAdminPage: React.FC = () => {
@@ -57,8 +58,12 @@ export const PlatformAdminPage: React.FC = () => {
         {/* 1. SECCIÓN PRINCIPAL: ACCESO QA / INSPECCIÓN CONTROLADA */}
         <SuperAdminQaToolsCard />
 
+        {/* 2. GESTIÓN DE INTEGRACIONES UNIVERSALES (KYC & FIRMA DIGITAL) */}
+        <SuperAdminIntegrationsTab />
+
+
         {/* 2. ATAJOS DE ADMINISTRACIÓN GLOBAL */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           
           {/* Card Multi-Tenancy */}
           <div className="bg-white rounded-card p-5 border border-slate-border shadow-card flex flex-col justify-between space-y-4">
@@ -92,6 +97,24 @@ export const PlatformAdminPage: React.FC = () => {
             <Link to="/admin/ai">
               <Button variant="outline" size="sm" fullWidth className="text-xs">
                 Configurar Inteligencia <ExternalLink className="w-3.5 h-3.5 ml-1" />
+              </Button>
+            </Link>
+          </div>
+
+          {/* Card DocFlow Master */}
+          <div className="bg-white rounded-card p-5 border border-slate-border shadow-card flex flex-col justify-between space-y-4">
+            <div className="space-y-2">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-700">
+                <Zap className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-sm text-navy">DocFlow & Plantillas Maestras</h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Administrá las 15 plantillas globales oficiales, control de firmas, snapshots y hashes SHA-256.
+              </p>
+            </div>
+            <Link to="/app/documentos">
+              <Button variant="outline" size="sm" fullWidth className="text-xs">
+                Abrir DocFlow Hub <ExternalLink className="w-3.5 h-3.5 ml-1" />
               </Button>
             </Link>
           </div>

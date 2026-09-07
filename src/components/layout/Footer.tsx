@@ -6,156 +6,141 @@ import { TenantBrand } from '../common/TenantBrand';
 export const Footer: React.FC = () => {
   return (
     <footer className="bg-navy text-white pt-16 pb-12 border-t border-navy-border text-left">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1180px] mx-auto px-4 sm:px-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 pb-12 border-b border-navy-border/60">
           
-          {/* Col 1: Brand and mission */}
+          {/* Col 1: HIPOTECALY Brand */}
           <div className="space-y-4">
             <TenantBrand isWhite size="md" />
             <p className="text-xs text-slate-300 leading-relaxed max-w-sm">
-              Infraestructura tecnológica para créditos con garantía hipotecaria en Uruguay: marketplace para personas y plataforma SaaS White-Label para empresas e instituciones.
+              Infraestructura tecnológica modular para digitalizar y gestionar operaciones con garantía hipotecaria.
             </p>
             <div className="pt-2 flex items-center space-x-2 text-xs text-slate-400">
               <ShieldCheck className="w-4 h-4 text-brand-green shrink-0" />
-              <span>Plataforma financiera segura y cifrada</span>
+              <span>Aislamiento seguro multi-tenant (RLS)</span>
             </div>
           </div>
 
-          {/* Col 2: Para Personas (Marketplace) */}
+          {/* Col 2: Integraciones */}
           <div className="space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-brand-green">
-              Para personas
+              Integraciones
             </h4>
             <ul className="space-y-2.5 text-xs text-slate-300">
+              <li>
+                <a href="/#integraciones" className="hover:text-brand-green transition-colors">
+                  Botón de Solicitud
+                </a>
+              </li>
+              <li>
+                <a href="/#integraciones" className="hover:text-brand-green transition-colors">
+                  Simulador + Botón
+                </a>
+              </li>
+              <li>
+                <a href="/#integraciones" className="hover:text-brand-green transition-colors">
+                  White Label Completo
+                </a>
+              </li>
               <li>
                 <Link to="/simulador" className="hover:text-brand-green transition-colors">
-                  Simulador de cuotas
-                </Link>
-              </li>
-              <li>
-                <Link to="/solicitar" className="hover:text-brand-green transition-colors">
-                  Solicitar préstamo
-                </Link>
-              </li>
-              <li>
-                <Link to="/como-funciona" className="hover:text-brand-green transition-colors">
-                  Cómo funciona
-                </Link>
-              </li>
-              <li>
-                <Link to="/nosotros" className="hover:text-brand-green transition-colors">
-                  Sobre nosotros
-                </Link>
-              </li>
-              <li>
-                <Link to="/preguntas-frecuentes" className="hover:text-brand-green transition-colors">
-                  Preguntas frecuentes
-                </Link>
-              </li>
-              <li>
-                <Link to="/mi-cuenta" className="hover:text-brand-green transition-colors">
-                  Portal mi cuenta
+                  Simulador en vivo
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Col 3: Soluciones para Empresas & SaaS */}
+          {/* Col 3: Plataforma */}
           <div className="space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-brand-green">
-              Para empresas (SaaS)
+              Plataforma
             </h4>
             <ul className="space-y-2.5 text-xs text-slate-300">
               <li>
-                <Link to="/saas" className="hover:text-brand-green transition-colors">
-                  Visión general de la plataforma
-                </Link>
+                <a href="/#core" className="hover:text-brand-green transition-colors">
+                  DocFlow Notarial
+                </a>
               </li>
               <li>
-                <Link to="/saas/modulos" className="hover:text-brand-green transition-colors">
-                  Catálogo de módulos
-                </Link>
+                <a href="/#core" className="hover:text-brand-green transition-colors">
+                  Identidad & Firma Digital
+                </a>
               </li>
               <li>
-                <Link to="/empresas/prestamistas" className="hover:text-brand-green transition-colors">
-                  Para prestamistas privados
-                </Link>
+                <a href="/#core" className="hover:text-brand-green transition-colors">
+                  Valuación & LTV
+                </a>
               </li>
               <li>
-                <Link to="/empresas/financieras" className="hover:text-brand-green transition-colors">
-                  Para financieras y fondos
-                </Link>
-              </li>
-              <li>
-                <Link to="/empresas/estudios" className="hover:text-brand-green transition-colors">
-                  Para estudios notariales
-                </Link>
-              </li>
-              <li>
-                <Link to="/demo/nova" className="hover:text-brand-green transition-colors flex items-center space-x-1 font-semibold text-brand-green">
-                  <Sparkles className="w-3 h-3 text-brand-green" />
-                  <span>Showroom NOVA White-Label</span>
-                </Link>
-              </li>
-              <li>
-                <Link to="/saas/precios" className="hover:text-brand-green transition-colors">
-                  Planes y precios
-                </Link>
+                <a href="/#core" className="hover:text-brand-green transition-colors">
+                  Backoffice & AI Core
+                </a>
               </li>
             </ul>
           </div>
 
-          {/* Col 4: Contacto & Legal */}
+          {/* Col 4: HIPOTECALY / Soluciones */}
           <div className="space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Contacto & Legal
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+              HIPOTECALY
             </h4>
-            <div className="space-y-2.5 text-xs text-slate-300">
+            <ul className="space-y-2.5 text-xs text-slate-300">
+              <li>
+                <a href="/#soluciones" className="hover:text-brand-green transition-colors">
+                  Soluciones
+                </a>
+              </li>
+              <li>
+                <a href="/#seguridad" className="hover:text-brand-green transition-colors">
+                  Seguridad
+                </a>
+              </li>
+              <li>
+                <Link to="/demo/estudio-nova" className="hover:text-brand-green transition-colors flex items-center space-x-1 font-semibold text-brand-green">
+                  <Sparkles className="w-3.5 h-3.5 text-brand-green" />
+                  <span>Estudio Nova</span>
+                </Link>
+              </li>
+              <li>
+                <Link to="/contacto?demo=true" className="hover:text-brand-green transition-colors">
+                  Contacto & Demo
+                </Link>
+              </li>
+            </ul>
+            <div className="pt-2 space-y-1.5 text-xs text-slate-400">
               <div className="flex items-center space-x-2">
-                <MapPin className="w-4 h-4 text-brand-green shrink-0" />
+                <MapPin className="w-3.5 h-3.5 text-brand-green shrink-0" />
                 <span>Montevideo, Uruguay</span>
               </div>
               <div className="flex items-center space-x-2">
-                <Mail className="w-4 h-4 text-brand-green shrink-0" />
+                <Mail className="w-3.5 h-3.5 text-brand-green shrink-0" />
                 <span>contacto@hipotecaly.uy</span>
-              </div>
-              <div className="pt-3 space-y-2 text-slate-400 border-t border-navy-border/50">
-                <div>
-                  <Link to="/terminos" className="hover:text-white transition-colors">
-                    Términos del servicio
-                  </Link>
-                </div>
-                <div>
-                  <Link to="/privacidad" className="hover:text-white transition-colors">
-                    Política de privacidad
-                  </Link>
-                </div>
-                <div>
-                  <Link to="/seguridad" className="hover:text-white transition-colors">
-                    Seguridad de la información
-                  </Link>
-                </div>
               </div>
             </div>
           </div>
 
         </div>
 
-        {/* Disclaimer Regulatorio y Legal Obligatorio */}
-        <div className="pt-8 text-xs text-slate-400 space-y-3">
-          <p className="leading-relaxed text-[11px]">
-            <strong className="text-slate-300">Aviso Legal y Transparencia Operativa:</strong> HIPOTECALY opera como plataforma tecnológica y de intermediación digital para facilitar la presentación, análisis preliminar y gestión de solicitudes de préstamos con garantía hipotecaria. HIPOTECALY no concede préstamos directamente ni capta depósitos del público. La concesión definitiva, condiciones financieras, tasas de interés, costos y aprobación de cada operación corresponden exclusivamente al prestamista o institución financiera interviniente. Los montos calculados en el simulador son estimativos y no constituyen una oferta formal de crédito.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-between pt-4 border-t border-navy-border/40 text-slate-400 text-[11px] space-y-2 sm:space-y-0">
-            <span>© {new Date().getFullYear()} HIPOTECALY S.A. Todos los derechos reservados.</span>
-            <div className="flex space-x-4">
-              <Link to="/terminos" className="hover:text-slate-200 transition-colors">Términos</Link>
-              <Link to="/privacidad" className="hover:text-slate-200 transition-colors">Privacidad</Link>
-              <Link to="/seguridad" className="hover:text-slate-200 transition-colors">Seguridad</Link>
-            </div>
+        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+          <p>© {new Date().getFullYear()} HIPOTECALY. Infraestructura Tecnológica Hipotecaria.</p>
+          <div className="flex items-center space-x-6">
+            <Link to="/terminos" className="hover:text-slate-200 transition-colors">
+              Términos
+            </Link>
+            <Link to="/privacidad" className="hover:text-slate-200 transition-colors">
+              Privacidad
+            </Link>
+            <Link to="/seguridad" className="hover:text-slate-200 transition-colors">
+              Seguridad
+            </Link>
+            <span className="inline-flex items-center space-x-1.5 text-brand-green font-medium">
+              <span className="w-2 h-2 rounded-full bg-brand-green animate-pulse" />
+              <span>Sistemas 100% operativos</span>
+            </span>
           </div>
         </div>
       </div>
     </footer>
   );
 };
+

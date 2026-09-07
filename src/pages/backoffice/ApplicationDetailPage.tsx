@@ -27,28 +27,27 @@ import {
   Sparkles,
   ShieldAlert,
   Printer,
+  FileSignature,
 } from 'lucide-react';
 import { ApplicationMatchingTab } from '../../components/backoffice/ApplicationMatchingTab';
 import { HipotecalyAiTab } from '../../components/ai/HipotecalyAiTab';
 import { maskPhone, maskEmail } from '../../lib/sensitiveDataService';
+import { DocumentHub } from '../../components/docflow/DocumentHub';
+import { DocumentGenerationModal } from '../../components/docflow/DocumentGenerationModal';
+import { KycVerificationCard } from '../../components/identity/KycVerificationCard';
+import { SignatureProcessCard } from '../../components/signature/SignatureProcessCard';
+import { isMarketplaceEnabled } from '../../config/features';
+import { useAuth } from '../../contexts/AuthContext';
 
 export const ApplicationDetailPage: React.FC = () => {
+  const { isSuperAdmin } = useAuth();
+
   const { id } = useParams<{ id: string }>();
   const [app, setApp] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('resumen');
-
-  // Acciones sobre documentos (observar / aprobar)
-  const handleDocumentAction = (docId: string, action: 'verified' | 'observed') => {
-    if (!app) return;
-    const updated = (app.documents || []).map((d: any) => {
-      if (d.id === docId) {
-        return { ...d, status: action };
-      }
-      return d;
-    });
-    setApp({ ...app, documents: updated });
-  };
+  const [showDocGen, setShowDocGen] = useState(false);
+  const [docGenTplId, setDocGenTplId] = useState<string | undefined>(undefined);
 
   // Estados para valuación preliminar (Regla 22 & 40)
   const [preliminaryValue, setPreliminaryValue] = useState<number>(0);
@@ -163,8 +162,11 @@ export const ApplicationDetailPage: React.FC = () => {
     { id: 'ia', label: 'HIPOTECALY AI', icon: Sparkles },
     { id: 'fotos', label: 'Fotos', icon: Camera },
     { id: 'valuacion', label: 'Valuación', icon: Compass },
+    { id: 'firmas', label: 'Firmas Digitales', icon: FileSignature },
     { id: 'actividad', label: 'Actividad', icon: Activity },
-    { id: 'prestamistas', label: 'Prestamistas (F4)', icon: Lock },
+    ...(isMarketplaceEnabled() || isSuperAdmin
+      ? [{ id: 'prestamistas', label: 'Prestamistas (F4)', icon: Lock }]
+      : []),
   ];
 
   return (
@@ -308,22 +310,66 @@ export const ApplicationDetailPage: React.FC = () => {
                   </div>
                 </div>
 
+                {/* DocFlow Card Resumen (Regla 24) */}
+                <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-xl bg-brand-green-light flex items-center justify-center text-brand-green-dark shrink-0">
+                      <FileCheck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block">Legajo Documental DOCFLOW</span>
+                      <p className="font-bold text-navy text-sm">Autollenado & Versionado Activo</p>
+                      <p className="text-[11px] text-slate-500">Documentos autollenados con fuentes del expediente.</p>
+                    </div>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setActiveTab('documentos')}
+                    className="text-xs font-bold text-brand-green border-brand-green hover:bg-brand-green-light"
+                  >
+                    <FileText className="w-3.5 h-3.5 mr-1" /> Ver Documentos
+                  </Button>
+                </div>
+
+                {/* Tarjeta Universal de Verificación de Identidad (KYC) */}
+                <KycVerificationCard
+                  caseId={app.id || id || 'e0000000-0000-0000-0000-000000000001'}
+                  applicantName={app.borrower ? `${app.borrower.first_name} ${app.borrower.last_name}` : 'Solicitante'}
+                  applicantCi={app.borrower?.document_number || '4.892.114-2'}
+                />
+
                 <div className="p-4 rounded-xl bg-brand-green-light/40 border border-brand-green/20 text-xs text-brand-green-dark">
                   🛡️ <strong>Protección Anti-Bypass Activa:</strong> La dirección exacta y datos de contacto se mantienen enmascarados ante prestamistas hasta la formalización de oferta.
                 </div>
               </div>
             )}
 
+
             {/* TAB: SOLICITANTE */}
             {activeTab === 'solicitante' && (
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <div className="flex items-center justify-between">
                   <h3 className="text-base font-bold text-navy">Datos del Solicitante</h3>
-                  {app.status !== 'approved' && app.status !== 'formalization' && (
-                    <span className="flex items-center text-[11px] text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full font-medium">
-                      <ShieldAlert className="w-3.5 h-3.5 mr-1" /> Contacto Enmascarado
-                    </span>
-                  )}
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setDocGenTplId('tpl-seed-6'); // Ficha Solicitante
+                        setShowDocGen(true);
+                      }}
+                      className="text-xs font-semibold"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 mr-1 text-brand-green" /> Generar Ficha Solicitante
+                    </Button>
+                    {app.status !== 'approved' && app.status !== 'formalization' && (
+                      <span className="flex items-center text-[11px] text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full font-medium">
+                        <ShieldAlert className="w-3.5 h-3.5 mr-1" /> Contacto Enmascarado
+                      </span>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
@@ -363,8 +409,21 @@ export const ApplicationDetailPage: React.FC = () => {
 
             {/* TAB: PROPIEDAD */}
             {activeTab === 'propiedad' && (
-              <div className="space-y-4">
-                <h3 className="text-base font-bold text-navy">Detalles de la Propiedad en Garantía</h3>
+              <div className="space-y-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-bold text-navy">Detalles de la Propiedad en Garantía</h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setDocGenTplId('tpl-seed-7'); // Ficha Inmueble
+                      setShowDocGen(true);
+                    }}
+                    className="text-xs font-semibold"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 mr-1 text-brand-green" /> Generar Ficha Inmueble
+                  </Button>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                   <div>
                     <label className="text-slate-400 font-medium">Tipo</label>
@@ -394,70 +453,56 @@ export const ApplicationDetailPage: React.FC = () => {
               </div>
             )}
 
-            {/* TAB: DOCUMENTOS (Regla 23) */}
-            {activeTab === 'documentos' && (
-              <div className="space-y-4">
+            {/* TAB: INGRESOS */}
+            {activeTab === 'ingresos' && (
+              <div className="space-y-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-base font-bold text-navy">Gestión Documental Privada</h3>
-                    <p className="text-xs text-slate-500">Revisión, aprobación y observaciones de legajo.</p>
+                    <h3 className="text-base font-bold text-navy">Capacidad Financiera e Ingresos</h3>
+                    <p className="text-xs text-slate-500">Evaluación de flujos de fondos y justificación de solvencia.</p>
                   </div>
-                  <span className="text-[11px] px-2.5 py-1 rounded bg-slate-100 text-slate-600 font-mono font-bold">
-                    Storage Privado RLS
-                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setDocGenTplId('tpl-seed-4'); // Declaración Jurada
+                      setShowDocGen(true);
+                    }}
+                    className="text-xs font-semibold"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 mr-1 text-brand-green" /> Generar Declaración de Ingresos
+                  </Button>
                 </div>
 
-                <div className="space-y-2.5 text-xs">
-                  {(app.documents || []).length === 0 ? (
-                    <p className="p-6 text-center text-slate-400 bg-slate-50 rounded-xl">
-                      No hay documentos adjuntados todavía.
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <span className="text-slate-400 font-medium block">Ingreso Mensual Declarado</span>
+                    <p className="font-bold text-navy text-lg mt-1">
+                      UYU {(app.income?.monthly_amount || 95000).toLocaleString('es-UY')}
                     </p>
-                  ) : (
-                    app.documents.map((doc: any) => (
-                      <div
-                        key={doc.id}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 gap-3"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <FileText className="w-5 h-5 text-brand-green shrink-0" />
-                          <div>
-                            <p className="font-bold text-navy">{doc.document_type}</p>
-                            <p className="text-[10px] text-slate-500">{doc.file_name}</p>
-                          </div>
-                        </div>
+                    <p className="text-[11px] text-slate-500 mt-1 capitalize">
+                      Tipo de actividad: {app.income?.income_type || 'Dependiente'}
+                    </p>
+                  </div>
 
-                        <div className="flex items-center space-x-2">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              doc.status === 'verified'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : doc.status === 'observed'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-slate-200 text-slate-700'
-                            }`}
-                          >
-                            {doc.status === 'verified' ? 'Aprobado' : doc.status === 'observed' ? 'Observado' : 'Pendiente'}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleDocumentAction(doc.id, 'verified')}
-                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded text-[10px] transition-colors"
-                          >
-                            Aprobar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDocumentAction(doc.id, 'observed')}
-                            className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded text-[10px] transition-colors"
-                          >
-                            Observar
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <span className="text-slate-400 font-medium block">Relación Cuota / Ingreso</span>
+                    <p className="font-bold text-brand-green-dark text-lg mt-1">
+                      24.8% <span className="text-xs font-normal text-slate-500">(Saludable &lt; 35%)</span>
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-1">Margen holgado de repago de cuota.</p>
+                  </div>
                 </div>
               </div>
+            )}
+
+            {/* TAB: DOCUMENTOS (DOCFLOW HUB CENTRAL) */}
+            {activeTab === 'documentos' && (
+              <DocumentHub
+                caseId={app.id || id || 'e0000000-0000-0000-0000-000000000001'}
+                appData={app}
+                onGoToSection={(sec) => setActiveTab(sec)}
+              />
             )}
 
             {/* TAB: HIPOTECALY AI CORE */}
@@ -578,8 +623,87 @@ export const ApplicationDetailPage: React.FC = () => {
               </form>
             )}
 
+            {/* TAB: FIRMAS DIGITALES (Firma.gub.uy / TuID / Abitab / CI Digital) */}
+            {activeTab === 'firmas' && (
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-bold text-navy">Procesos de Firma Digital</h3>
+                    <p className="text-xs text-slate-muted">
+                      Orquestación de firma electrónica avanzada (Firma.gub.uy / TuID / Abitab) para documentos definitivos.
+                    </p>
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch('/api/integrations/signature/create-process', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            caseId: app.id || id,
+                            documentIds: ['doc-seed-1'],
+                            signers: [
+                              {
+                                name: app.borrower ? `${app.borrower.first_name} ${app.borrower.last_name}` : 'Titular Solicitante',
+                                email: app.borrower?.email || 'titular@demo.uy',
+                                role: 'applicant',
+                              },
+                            ],
+                          }),
+                        });
+                        if (res.ok) {
+                          alert('Proceso de firma creado exitosamente.');
+                          load(true);
+                        }
+                      } catch {
+                        alert('Error al iniciar proceso de firma.');
+                      }
+                    }}
+                    className="text-xs font-bold bg-brand-green text-white"
+                  >
+                    <FileSignature className="w-3.5 h-3.5 mr-1.5" />
+                    Enviar Documento a Firma
+                  </Button>
+                </div>
+
+                <div className="space-y-4">
+                  <SignatureProcessCard
+                    process={{
+                      id: 'sig-proc-current-01',
+                      provider_process_id: 'AGESIC-2026-00491',
+                      provider: 'firma_gub',
+                      mode: 'mock',
+                      status: 'signed',
+                      created_at: app.created_at,
+                      completed_at: new Date().toISOString(),
+                      documents: [
+                        {
+                          title: 'Solicitud de Crédito Hipotecario Definitiva',
+                          sha256_original: 'd41d8cd98f00b204e9800998ecf8427e9f1d8cd98f00b204e9800998ecf8427e',
+                          sha256_signed: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+                        },
+                      ],
+                      signers: [
+                        {
+                          name: app.borrower ? `${app.borrower.first_name} ${app.borrower.last_name}` : 'Titular Solicitante',
+                          email: app.borrower?.email || 'titular@demo.uy',
+                          role: 'applicant',
+                          status: 'signed',
+                          signedAt: new Date().toISOString(),
+                        },
+                      ],
+                    }}
+                    onRefresh={() => load(true)}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* TAB: ACTIVIDAD (Regla 39) */}
             {activeTab === 'actividad' && (
+
               <div className="space-y-4">
                 <h3 className="text-base font-bold text-navy">Historial de Actividad y Estados</h3>
                 <div className="space-y-3 text-xs">
@@ -693,6 +817,21 @@ export const ApplicationDetailPage: React.FC = () => {
         </div>
 
       </div>
+
+      <DocumentGenerationModal
+        isOpen={showDocGen}
+        caseId={app?.id || id || 'e0000000-0000-0000-0000-000000000001'}
+        appData={app}
+        preselectedTemplateId={docGenTplId}
+        onClose={() => {
+          setShowDocGen(false);
+          setDocGenTplId(undefined);
+        }}
+        onGenerated={() => {
+          setActiveTab('documentos');
+        }}
+        onGoToSection={(sec) => setActiveTab(sec)}
+      />
     </BackofficeLayout>
   );
 };

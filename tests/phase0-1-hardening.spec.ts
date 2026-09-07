@@ -82,18 +82,13 @@ test.describe('HIPOTECALY Macrofase 0–1: Hardening, Route Protection & SaaS Re
   // ----------------------------------------------------------------------
   // 4. Reposicionamiento Dual en Home y Navegación Pública
   // ----------------------------------------------------------------------
-  test('Home presenta selector dual y sección B2B dedicada a SaaS', async ({ page }) => {
+  test('Home presenta infraestructura tecnológica y las 3 modalidades de integración', async ({ page }) => {
     await page.goto('/');
 
-    // Selector dual
-    await expect(page.locator('text=Busco Financiación (Propietarios)')).toBeVisible();
-    await expect(page.locator('text=Quiero Digitalizar mi Operación (Empresas & Estudios)')).toBeVisible();
-
-    // Sección B2B
-    await expect(page.locator('text=Tu negocio hipotecario. Tu marca. Nuestra tecnología.')).toBeVisible();
-    await expect(page.locator('text=Integración a tu Web Existente')).toBeVisible();
-    await expect(page.locator('text=Plataforma Completa Llave en Mano')).toBeVisible();
-    await expect(page.locator('text=Full White-Label Institucional')).toBeVisible();
+    await expect(page.locator('text=La infraestructura tecnológica para originar y gestionar')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'A. Botón HIPOTECALY' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'B. Simulador + Botón' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'C. White-Label Completo' })).toBeVisible();
   });
 
   // ----------------------------------------------------------------------

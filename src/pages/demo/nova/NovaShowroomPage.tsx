@@ -149,22 +149,22 @@ export const NovaShowroomPage: React.FC = () => {
                   <Building2 className="w-6 h-6" />
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">MODO 1</span>
-                  <h3 className="text-xl font-bold text-navy">Marketplace Participant</h3>
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">MODO A</span>
+                  <h3 className="text-xl font-bold text-navy">Botón HIPOTECALY</h3>
                 </div>
                 <p className="text-sm text-slate-600 leading-relaxed">
-                  Operá como inversor o prestamista dentro del marketplace general de HIPOTECALY. Recibí carpetas pre-aprobadas bajo anonimato con blindaje Anti-Bypass.
+                  Tu empresa conserva su sitio web actual. HIPOTECALY aporta un botón inteligente que abre el flujo digital directo de solicitud y genera expedientes en tu backoffice.
                 </p>
                 <ul className="text-xs text-slate-500 space-y-2 pt-2 border-t border-slate-100">
-                  <li className="flex items-center">✓ Sin costo de infraestructura propio</li>
-                  <li className="flex items-center">✓ Panel de prestamista dedicado</li>
-                  <li className="flex items-center">✓ Operación 100% asistida</li>
+                  <li className="flex items-center">✓ Integración instantánea sin rehacer tu web</li>
+                  <li className="flex items-center">✓ Wizard de solicitud estructurado</li>
+                  <li className="flex items-center">✓ Conexión directa a tu backoffice</li>
                 </ul>
               </div>
 
               <Link to="/demo/nova/legacy">
                 <Button variant="outline" size="sm" className="w-full justify-center">
-                  Ver Vista Marketplace <ChevronRight className="w-4 h-4 ml-1" />
+                  Ver Demostración de Botón <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
               </Link>
             </div>
@@ -176,22 +176,22 @@ export const NovaShowroomPage: React.FC = () => {
                   <Code2 className="w-6 h-6" />
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wider">MODO 2</span>
-                  <h3 className="text-xl font-bold text-navy">Widget Embebido</h3>
+                  <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wider">MODO B</span>
+                  <h3 className="text-xl font-bold text-navy">Simulador + Botón</h3>
                 </div>
                 <p className="text-sm text-slate-600 leading-relaxed">
-                  Incrustá el simulador y formulario de pre-calificación dentro del sitio web existente de tu empresa manteniendo tu diseño y cabezal institucional.
+                  Incrustá el simulador paramétrico dentro del sitio web existente de tu organización. El usuario cotiza cuotas y LTV e inicia la solicitud en 1 clic.
                 </p>
                 <ul className="text-xs text-slate-500 space-y-2 pt-2 border-t border-slate-100">
-                  <li className="flex items-center">✓ Integración mediante script o iframe</li>
-                  <li className="flex items-center">✓ Captación directa de leads</li>
-                  <li className="flex items-center">✓ Envío automático a tu pipeline</li>
+                  <li className="flex items-center">✓ Widget embebible en cualquier web</li>
+                  <li className="flex items-center">✓ Simulación de cuotas en tiempo real</li>
+                  <li className="flex items-center">✓ Envío automático con datos precargados</li>
                 </ul>
               </div>
 
               <Link to="/demo/nova/integrado">
                 <Button variant="outline" size="sm" className="w-full justify-center">
-                  Ver Sitio con Widget Embebido <ChevronRight className="w-4 h-4 ml-1" />
+                  Ver Sitio con Simulador Embebido <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
               </Link>
             </div>

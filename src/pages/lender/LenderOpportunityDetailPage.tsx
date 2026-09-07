@@ -256,6 +256,48 @@ export const LenderOpportunityDetailPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* Documentación del Caso para el Prestamista (Regla 29) */}
+              <div className="space-y-3 pt-4 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-navy flex items-center">
+                    <FileCheck className="w-4 h-4 mr-1.5 text-brand-green" /> Legajo Documental Disponible
+                  </h4>
+                  <span className="text-[10px] text-slate-500 font-medium">Protección anti-bypass activa</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {[
+                    { title: 'Ficha Técnica del Inmueble', type: 'inmueble', date: '04/09/2026', version: 'v1' },
+                    { title: 'Informe Preliminar de Valuación', type: 'tasacion', date: '04/09/2026', version: 'v1' },
+                    { title: 'Resumen Ejecutivo de Operación', type: 'financiero', date: '04/09/2026', version: 'v1' },
+                    { title: 'Comprobante de Ingresos Verificado', type: 'legal', date: '04/09/2026', version: 'v1' },
+                  ].map((doc, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs hover:bg-slate-100/80 transition-colors"
+                    >
+                      <div className="flex items-center space-x-2.5">
+                        <FileCheck className="w-4 h-4 text-brand-green shrink-0" />
+                        <div>
+                          <p className="font-bold text-navy text-xs">{doc.title}</p>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {doc.version} · {doc.date}
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => alert(`Visualizando documento: ${doc.title}`)}
+                        className="px-2.5 py-1 bg-white hover:bg-navy hover:text-white border border-slate-200 rounded-md text-[11px] font-bold text-navy transition-all shadow-2xs"
+                      >
+                        Ver Documento
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
             </div>
           </div>
 

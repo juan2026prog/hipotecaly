@@ -25,7 +25,7 @@ const TenantContext = createContext<TenantContextType>({
 export function getInitialTenant(): Tenant {
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    if (pathname.startsWith('/demo/nova')) {
+    if (pathname.startsWith('/demo/estudio-nova') || pathname.startsWith('/demo/nova') || pathname === '/demo') {
       return NOVA_TENANT;
     }
     const orgMatch = pathname.match(/^\/org\/([^/]+)/);

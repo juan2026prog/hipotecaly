@@ -72,11 +72,11 @@ export const SaaSNavbar: React.FC = () => {
 
           <div className="flex items-center space-x-4">
             <Link
-              to="/demo/nova"
+              to="/demo/estudio-nova"
               className="text-slate-300 hover:text-brand-green transition-colors flex items-center space-x-1 font-medium"
             >
               <Sparkles className="w-3 h-3 text-brand-green" />
-              <span>Showroom NOVA</span>
+              <span>Ver Demo (Estudio Nova)</span>
             </Link>
             <span className="text-slate-700 hidden sm:inline">|</span>
             <Link
@@ -221,15 +221,15 @@ export const SaaSNavbar: React.FC = () => {
             Módulos
           </Link>
 
-          {/* Showroom NOVA */}
+          {/* Estudio Nova Demo */}
           <Link
-            to="/demo/nova"
+            to="/demo/estudio-nova"
             className={`text-sm font-medium transition-colors hover:text-brand-green flex items-center space-x-1.5 ${
               location.pathname.startsWith('/demo') ? 'text-brand-green font-semibold' : 'text-slate-text'
             }`}
           >
             <Sparkles className="w-3.5 h-3.5 text-brand-green" />
-            <span>Showroom NOVA</span>
+            <span>Estudio Nova (Demo)</span>
           </Link>
 
           {/* Precios y Planes */}
@@ -380,12 +380,12 @@ export const SaaSNavbar: React.FC = () => {
             </Link>
 
             <Link
-              to="/demo/nova"
+              to="/demo/estudio-nova"
               onClick={() => setMobileMenuOpen(false)}
               className="px-3 py-2 rounded-lg text-xs font-bold text-brand-green bg-emerald-50/70 hover:bg-emerald-50 flex items-center space-x-2 min-h-[44px]"
             >
               <Sparkles className="w-3.5 h-3.5 text-brand-green" />
-              <span>Showroom NOVA</span>
+              <span>Ver Demo (Estudio Nova)</span>
             </Link>
 
             <Link

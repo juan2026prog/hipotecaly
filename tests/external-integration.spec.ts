@@ -24,12 +24,12 @@ test.describe('INTEGRACIÓN CON SITIOS EXTERNOS & SANITIZACIÓN DE PARÁMETROS',
     expect(Number(val.replace(/\D/g, ''))).toBeGreaterThan(0);
   });
 
-  test('Flujo desde NOVA Integrado: Paso de parámetros entre web existente y expediente', async ({ page }) => {
-    await page.goto('/demo/nova/integrado');
-    await expect(page.locator('text=Así se conecta la web actual de NOVA con HIPOTECALY')).toBeVisible();
+  test('Flujo desde Estudio Nova: Paso de parámetros entre web existente y expediente', async ({ page }) => {
+    await page.goto('/demo/estudio-nova');
+    await expect(page.locator('h1')).toContainText('Convertí el valor de tu inmueble en capital para avanzar');
 
-    // Comprobar presencia de pipeline y código de integración
-    await expect(page.locator('text=Payload simulado')).toBeVisible();
+    // Comprobar presencia de simulador
+    await expect(page.locator('text=Calculá tu cuota y condiciones de referencia')).toBeVisible();
   });
 
 });

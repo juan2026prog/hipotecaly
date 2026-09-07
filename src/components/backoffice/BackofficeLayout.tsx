@@ -19,6 +19,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
 import { TenantBrand } from '../common/TenantBrand';
+import { isMarketplaceEnabled } from '../../config/features';
 
 interface NavItem {
   name: string;
@@ -52,7 +53,9 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
       items: [
         { name: 'Valuaciones', href: '/app/tasaciones', icon: Compass },
         { name: 'Documentos', href: '/app/documentos', icon: FileCheck },
-        { name: 'Prestamistas', href: '/app/prestamistas', icon: UserCheck },
+        ...(isMarketplaceEnabled() || isSuperAdmin
+          ? [{ name: 'Prestamistas', href: '/app/prestamistas', icon: UserCheck }]
+          : []),
         { name: 'Tareas', href: '/app/tareas', icon: CheckSquare },
       ],
     },

@@ -21,6 +21,11 @@ import { useTenant } from '../../contexts/TenantContext';
 import { getTenantModules, DEFAULT_MODULES_MAP } from '../../lib/tenantModulesService';
 import { getActiveDraft } from '../../lib/applicationService';
 import { supabase } from '../../lib/supabase';
+import { DocumentCard } from '../../components/docflow/DocumentCard';
+import { DocumentPreviewModal } from '../../components/docflow/DocumentPreviewModal';
+import { useCaseDocuments } from '../../lib/docflow/hooks';
+import { GeneratedDocument } from '../../lib/docflow/types';
+import { isMarketplaceEnabled } from '../../config/features';
 
 export const ApplicantAccount: React.FC = () => {
   const { user, borrower, signOut } = useAuth();
@@ -34,6 +39,11 @@ export const ApplicantAccount: React.FC = () => {
   // Solicitud activa
   const [activeApp, setActiveApp] = useState<{ publicId: string; status: string } | null>(null);
   const [hasLoadedApp, setHasLoadedApp] = useState(false);
+
+  // DocFlow Estados
+  const [docSubFilter, setDocSubFilter] = useState<'todos' | 'firmas' | 'cargados'>('todos');
+  const [previewDoc, setPreviewDoc] = useState<GeneratedDocument | null>(null);
+  const { documents: docFlowDocs } = useCaseDocuments(activeApp?.publicId || 'HPT-2026-00124');
 
   React.useEffect(() => {
     getTenantModules(tenant.id).then((m) => setModules(m));
@@ -187,7 +197,7 @@ export const ApplicantAccount: React.FC = () => {
         <div className="hidden lg:flex space-x-2 border-b border-slate-border mb-6">
           {[
             { id: 'inicio', label: 'Inicio', icon: Home, visible: true },
-            { id: 'ofertas', label: 'Ofertas de Préstamo', icon: FileCheck, visible: true },
+            { id: 'ofertas', label: 'Ofertas de Préstamo', icon: FileCheck, visible: isMarketplaceEnabled() },
             { id: 'solicitud', label: 'Mi Solicitud', icon: FileText, visible: true },
             { id: 'documentos', label: 'Documentación', icon: Upload, visible: modules.documents_enabled },
             { id: 'mensajes', label: 'Mensajes', icon: MessageSquare, visible: modules.notifications_enabled },
@@ -213,7 +223,7 @@ export const ApplicantAccount: React.FC = () => {
         {/* ============================================================ */}
         {/* TAB: OFERTAS (Fase 4: Comparador y Aceptación de Ofertas)     */}
         {/* ============================================================ */}
-        {activeTab === 'ofertas' && (
+        {activeTab === 'ofertas' && isMarketplaceEnabled() && (
           <div className="space-y-6">
             <div className="bg-white rounded-card p-6 border border-slate-border shadow-card space-y-4">
               <div>
@@ -426,52 +436,127 @@ export const ApplicantAccount: React.FC = () => {
         {/* TAB 2: DOCUMENTOS                                            */}
         {/* ============================================================ */}
         {activeTab === 'documentos' && (
-          <div className="bg-white rounded-card p-6 border border-slate-border shadow-card space-y-5">
-            <div>
-              <h3 className="text-lg font-bold text-navy">Documentación del Expediente</h3>
-              <p className="text-xs text-slate-muted mt-0.5">
-                Archivos privados protegidos con encriptación y acceso mediante enlaces seguros.
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              {[
-                { name: 'Cédula de Identidad (frente y dorso)', status: 'Verificado', required: true, date: 'Hoy' },
-                { name: 'Recibo de sueldo / Certificado contable', status: 'Pendiente', required: true, date: '-' },
-                { name: 'Fotos de la propiedad (6 fotos cargadas)', status: 'En revisión', required: true, date: 'Ayer' },
-                { name: 'Título o copia de padrón inmobiliario', status: 'Opcional', required: false, date: '-' },
-              ].map((doc, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-slate-50/70"
-                >
-                  <div className="flex items-center space-x-3">
-                    <FileText className="w-5 h-5 text-brand-green shrink-0" />
-                    <div>
-                      <p className="text-xs font-bold text-navy">{doc.name}</p>
-                      <span className="text-[10px] text-slate-500">Última actualización: {doc.date}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-3">
-                    <span
-                      className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
-                        doc.status === 'Verificado'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : doc.status === 'Pendiente'
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'bg-slate-200 text-slate-700'
-                      }`}
-                    >
-                      {doc.status}
-                    </span>
-                    <button className="text-xs font-bold text-brand-green hover:underline">
-                      Cargar
-                    </button>
-                  </div>
+          <div className="space-y-5">
+            <div className="bg-white rounded-card p-6 border border-slate-border shadow-card space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                <div>
+                  <h3 className="text-lg font-bold text-navy">Documentación del Expediente</h3>
+                  <p className="text-xs text-slate-muted mt-0.5">
+                    Legajo oficial autollenado y respaldado con validez legal según Ley N° 18.600.
+                  </p>
                 </div>
-              ))}
+                <div className="flex items-center space-x-2">
+                  <span className="text-[10px] font-bold bg-brand-green-light text-brand-green-dark px-2.5 py-1 rounded-full">
+                    ✓ Encriptación RLS
+                  </span>
+                </div>
+              </div>
+
+              {/* Sub-pestañas */}
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setDocSubFilter('todos')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                    docSubFilter === 'todos' ? 'bg-navy text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Documentos Generados ({docFlowDocs.length})
+                </button>
+                <button
+                  onClick={() => setDocSubFilter('firmas')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                    docSubFilter === 'firmas' ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Para Firmar ({docFlowDocs.filter((d) => d.status === 'ready_for_signature' || d.status === 'sent_for_signature').length})
+                </button>
+                <button
+                  onClick={() => setDocSubFilter('cargados')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                    docSubFilter === 'cargados' ? 'bg-emerald-700 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Recaudos Solicitados
+                </button>
+              </div>
+
+              {/* Lista según filtro */}
+              {docSubFilter !== 'cargados' ? (
+                <div className="space-y-3 pt-2">
+                  {docFlowDocs.length === 0 ? (
+                    <div className="p-8 text-center bg-slate-50 rounded-xl space-y-2">
+                      <FileText className="w-8 h-8 text-slate-300 mx-auto" />
+                      <p className="text-xs font-semibold text-slate-600">
+                        Aún no se han generado formularios oficiales para este expediente.
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        Aparecerán aquí tus autorizaciones de clearing, consentimientos y solicitudes de crédito.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {(docSubFilter === 'firmas'
+                        ? docFlowDocs.filter((d) => d.status === 'ready_for_signature' || d.status === 'sent_for_signature')
+                        : docFlowDocs
+                      ).map((doc) => (
+                        <DocumentCard
+                          key={doc.id}
+                          document={doc}
+                          onPreview={(d) => setPreviewDoc(d)}
+                          onDownload={(d) => setPreviewDoc(d)}
+                          onSign={(d) => setPreviewDoc(d)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3 pt-2">
+                  {[
+                    { name: 'Cédula de Identidad (frente y dorso)', status: 'Verificado', required: true, date: 'Hoy' },
+                    { name: 'Recibo de sueldo / Certificado contable', status: 'Pendiente', required: true, date: '-' },
+                    { name: 'Fotos de la propiedad (6 fotos cargadas)', status: 'En revisión', required: true, date: 'Ayer' },
+                    { name: 'Título o copia de padrón inmobiliario', status: 'Opcional', required: false, date: '-' },
+                  ].map((doc, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-slate-50/70"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <FileText className="w-5 h-5 text-brand-green shrink-0" />
+                        <div>
+                          <p className="text-xs font-bold text-navy">{doc.name}</p>
+                          <span className="text-[10px] text-slate-500">Última actualización: {doc.date}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-3">
+                        <span
+                          className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
+                            doc.status === 'Verificado'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : doc.status === 'Pendiente'
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-slate-200 text-slate-700'
+                          }`}
+                        >
+                          {doc.status}
+                        </span>
+                        <button className="text-xs font-bold text-brand-green hover:underline">
+                          Cargar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+
+            <DocumentPreviewModal
+              isOpen={Boolean(previewDoc)}
+              document={previewDoc}
+              onClose={() => setPreviewDoc(null)}
+            />
           </div>
         )}
 
@@ -542,15 +627,17 @@ export const ApplicantAccount: React.FC = () => {
           <span className="text-[10px]">Inicio</span>
         </button>
 
-        <button
-          onClick={() => setActiveTab('ofertas')}
-          className={`flex flex-col items-center justify-center flex-1 h-full text-xs font-semibold ${
-            activeTab === 'ofertas' ? 'text-brand-green' : 'text-slate-400'
-          }`}
-        >
-          <FileCheck className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px]">Ofertas</span>
-        </button>
+        {isMarketplaceEnabled() && (
+          <button
+            onClick={() => setActiveTab('ofertas')}
+            className={`flex flex-col items-center justify-center flex-1 h-full text-xs font-semibold ${
+              activeTab === 'ofertas' ? 'text-brand-green' : 'text-slate-400'
+            }`}
+          >
+            <FileCheck className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px]">Ofertas</span>
+          </button>
+        )}
 
         <button
           onClick={() => setActiveTab('solicitud')}

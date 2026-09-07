@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "siteosVersion": "0.8.0",
+  "projectName": "Hipotecaly",
+  "installedModules": {
+    "settings": {
+      "version": "0.8.0",
+      "installedAt": "2026-09-04T20:48:24.477Z"
+    },
+    "audit": {
+      "version": "0.8.0",
+      "installedAt": "2026-09-04T20:48:27.589Z"
+    },
+    "auth": {
+      "version": "0.8.0",
+      "installedAt": "2026-09-04T20:48:27.590Z"
+    },
+    "documents": {
+      "version": "0.8.0",
+      "installedAt": "2026-09-04T20:48:27.590Z"
+    },
+    "files": {
+      "version": "0.8.0",
+      "installedAt": "2026-09-04T20:48:27.590Z"
+    },
+    "notifications": {
+      "version": "0.8.0",
+      "installedAt": "2026-09-04T20:48:27.590Z"
+    },
+    "payments": {
+      "version": "0.8.0",
+      "installedAt": "2026-09-04T20:48:27.590Z"
+    },
+    "roles": {
+      "version": "0.8.0",
+      "installedAt": "2026-09-04T20:48:27.590Z"
+    },
+    "supabase": {
+      "version": "0.8.0",
+      "installedAt": "2026-09-04T20:48:27.590Z"
+    },
+    "users": {
+      "version": "0.8.0",
+      "installedAt": "2026-09-04T20:48:27.590Z"
+    },
+    "identity-core": {
+      "version": "1.0.0",
+      "installedAt": "2026-09-04T21:00:00.000Z",
+      "provider": "mock"
+    },
+    "kyc-didit": {
+      "version": "1.0.0",
+      "installedAt": "2026-09-04T22:00:00.000Z",
+      "mode": "sandbox"
+    },
+    "signature-core": {
+      "version": "1.0.0",
+      "installedAt": "2026-09-04T21:00:00.000Z",
+      "provider": "mock"
+    },
+    "signature-firma-gub": {
+      "version": "1.0.0",
+      "installedAt": "2026-09-04T21:00:00.000Z",
+      "mode": "mock"
+    }
+  },
+  "installedPacks": [
+    "identity-signature"
+  ],
+  "migrationsApplied": [
+    "20260904000014_identity_kyc_digital_signature_core.sql"
+  ],
+  "updatedAt": "2026-09-04T21:00:00.000Z"
+}

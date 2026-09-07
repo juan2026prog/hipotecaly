@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Monitor, Layers, Sparkles, User, Shield, Sliders, X } from 'lucide-react';
+import { Monitor, Sparkles, User, Shield, Sliders, X } from 'lucide-react';
 
 export const DemoSalesModeBar: React.FC = () => {
   const location = useLocation();
@@ -13,7 +13,7 @@ export const DemoSalesModeBar: React.FC = () => {
 
   useEffect(() => {
     const isPresentationQuery = location.search.includes('presentation=true');
-    const isDemoRoute = location.pathname.startsWith('/demo/nova');
+    const isDemoRoute = location.pathname.startsWith('/demo');
     setIsVisible(isPresentationQuery || isDemoRoute);
   }, [location.pathname, location.search]);
 
@@ -22,9 +22,8 @@ export const DemoSalesModeBar: React.FC = () => {
   const currentPath = location.pathname;
 
   const demoLinks = [
-    { label: 'NOVA Legacy', path: '/demo/nova/legacy', icon: Monitor, desc: 'Web tradicional' },
-    { label: 'NOVA Integrado', path: '/demo/nova/integrado', icon: Layers, desc: 'Botón + Pipeline' },
-    { label: 'NOVA Full White-Label', path: '/demo/nova/full', icon: Sparkles, desc: 'Sitio 100% propio' },
+    { label: 'Estudio Nova (Demo)', path: '/demo/estudio-nova', icon: Sparkles, desc: 'Tenant demo consolidado' },
+    { label: 'Simulador', path: '/simulador', icon: Monitor, desc: 'Simulador paramétrico' },
     { label: 'Portal Solicitante', path: '/mi-cuenta', icon: User, desc: 'Portal cliente' },
     { label: 'Backoffice', path: '/app/solicitudes', icon: Shield, desc: 'Bandeja de operaciones' },
     { label: 'Super Admin', path: '/admin/tenants', icon: Sliders, desc: 'Feature flags & reglas' },

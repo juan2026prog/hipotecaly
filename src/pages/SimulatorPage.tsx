@@ -498,11 +498,11 @@ export const SimulatorPage: React.FC = () => {
                   )}
                 </div>
 
-                {/* Nota sobre Clearing en Piloto */}
+                {/* Nota sobre Clearing */}
                 <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200/80 flex items-start space-x-3">
                   <CheckCircle2 className="w-4 h-4 text-brand-green shrink-0 mt-0.5" />
                   <div className="text-xs text-slate-700 leading-relaxed">
-                    <strong className="text-navy">Flexibilidad en antecedentes:</strong> El prestamista del Marketplace admite solicitudes con historial en Clearing de Informes para análisis técnico individualizado.
+                    <strong className="text-navy">Flexibilidad en antecedentes:</strong> Las políticas de crédito admiten evaluación con respaldo de la garantía inmobiliaria para cada caso individualizado.
                   </div>
                 </div>
 
