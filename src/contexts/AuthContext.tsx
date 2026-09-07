@@ -225,6 +225,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           role: testRole as UserRole,
           isActive: true,
         },
+        {
+          organizationId: 'd0000000-0000-0000-0000-000000000001',
+          role: testRole as UserRole,
+          isActive: true,
+        },
       ]);
       setLoading(false);
       return;
