@@ -247,8 +247,67 @@ export async function resolveTenant(
   pathname: string = typeof window !== 'undefined' ? window.location.pathname : '/',
   search: string = typeof window !== 'undefined' ? window.location.search : ''
 ): Promise<Tenant> {
-  // 0. Rutas demo de Estudio NOVA
-  if (pathname.startsWith('/demo/estudio-nova') || pathname.startsWith('/demo/nova') || pathname === '/demo') {
+  // 0. Rutas demo de Tenants (/demo/:tenantSlug/...)
+  const demoMatch = pathname.match(/^\/demo\/([^/]+)/);
+  if (demoMatch && demoMatch[1]) {
+    const rawSlug = demoMatch[1].toLowerCase().replace('_', '-');
+    if (rawSlug === 'estudio-nova' || rawSlug === 'nova' || rawSlug === 'nova-demo') {
+      setActiveTenantSession('estudio-nova');
+      return NOVA_TENANT;
+    }
+    if (REGISTERED_TENANTS[rawSlug]) {
+      setActiveTenantSession(rawSlug);
+      return REGISTERED_TENANTS[rawSlug];
+    }
+    // Intentar buscar en DB si existe
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from('organizations')
+          .select('*, organization_branding(*), organization_settings(*)')
+          .eq('slug', rawSlug)
+          .eq('status', 'active')
+          .maybeSingle();
+
+        if (!error && data) {
+          const b = Array.isArray(data.organization_branding)
+            ? data.organization_branding[0]
+            : (data.organization_branding || {});
+          const s = Array.isArray(data.organization_settings)
+            ? data.organization_settings[0]
+            : (data.organization_settings || {});
+
+          const loadedTenant: Tenant = {
+            id: data.id,
+            slug: data.slug,
+            name: data.name,
+            legal_name: data.legal_name,
+            status: data.status,
+            branding: {
+              public_name: b.public_name || data.commercial_name || data.name,
+              tag_line: b.tag_line || 'Soluciones financieras hipotecarias',
+              primary_color: b.primary_color || '#173a5e',
+              secondary_color: b.secondary_color || '#102d49',
+              accent_color: b.accent_color || '#f4b43b',
+              logo_url: b.logo_url,
+              favicon_url: b.favicon_url,
+              powered_by_text: 'Tecnología provista por HIPOTECALY',
+            },
+            settings: s.allow_borrower_portal !== undefined ? s : DEFAULT_TENANT.settings,
+            is_white_label: true,
+            demo_mode: Boolean(data.demo_mode),
+          };
+          registerDynamicTenant(loadedTenant);
+          setActiveTenantSession(loadedTenant.slug);
+          return loadedTenant;
+        }
+      } catch {
+        // Fallback
+      }
+    }
+    return NOT_FOUND_TENANT;
+  }
+  if (pathname === '/demo') {
     setActiveTenantSession('estudio-nova');
     return NOVA_TENANT;
   }
@@ -518,3 +577,30 @@ export async function inviteOrganizationMember(
     return { success: false, error: err instanceof Error ? err.message : 'Error al enviar invitación' };
   }
 }
+
+/**
+ * Actualiza dinámicamente el título del documento y el favicon según el tenant y sección
+ */
+export function updateDocumentMetadata(tenant: Tenant, sectionTitle?: string) {
+  if (typeof document === 'undefined') return;
+
+  const brandName = tenant.branding?.public_name || tenant.name || 'HIPOTECALY';
+  if (sectionTitle) {
+    document.title = `${brandName} | ${sectionTitle}`;
+  } else if (tenant.branding?.tag_line) {
+    document.title = `${brandName} — ${tenant.branding.tag_line}`;
+  } else {
+    document.title = brandName;
+  }
+
+  if (tenant.branding?.favicon_url) {
+    let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement | null;
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    link.href = tenant.branding.favicon_url;
+  }
+}
+

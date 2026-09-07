@@ -20,7 +20,8 @@ export type TenantModuleKey =
   | 'notifications_enabled'
   | 'protected_contact_enabled'
   | 'cost_breakdown_enabled'
-  | 'external_simulator_integration_enabled';
+  | 'external_simulator_integration_enabled'
+  | 'investor_portal_enabled';
 
 export interface TenantModule {
   id?: string;
@@ -48,6 +49,7 @@ export const DEFAULT_MODULES_MAP: Record<TenantModuleKey, boolean> = {
   protected_contact_enabled: true,
   cost_breakdown_enabled: true,
   external_simulator_integration_enabled: true,
+  investor_portal_enabled: true,
 };
 
 // Cache en memoria por tenant

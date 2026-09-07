@@ -36,13 +36,18 @@ import { OrganizationSettingsPage } from './pages/backoffice/OrganizationSetting
 import { WhiteLabelBackofficePage } from './pages/backoffice/WhiteLabelBackofficePage';
 import { LeadsManagementPage } from './pages/backoffice/LeadsManagementPage';
 
-// Tenant Demo ESTUDIO NOVA & Super Admin
+// Tenant Demo ESTUDIO NOVA & Portales Tenant
 import { EstudioNovaPage } from './pages/demo/nova/EstudioNovaPage';
+import { TenantSimulatorPage } from './pages/demo/TenantSimulatorPage';
+import { TenantWizardPage } from './pages/demo/TenantWizardPage';
+import { TenantInvestorDashboardPage } from './pages/demo/TenantInvestorDashboardPage';
+
+// Super Admin Hub
+import { SuperAdminDashboardPage } from './pages/admin/SuperAdminDashboardPage';
 import { SuperAdminTenantsPage } from './pages/admin/SuperAdminTenantsPage';
 import { TenantOnboardingWizardPage } from './pages/admin/TenantOnboardingWizardPage';
 import { GenericWhiteLabelLanding } from './pages/landing/GenericWhiteLabelLanding';
 import { AdminAiPage } from './pages/admin/AdminAiPage';
-import { PlatformAdminPage } from './pages/admin/PlatformAdminPage';
 import { LendersSolutionPage } from './pages/solutions/LendersSolutionPage';
 import { FinancialsSolutionPage } from './pages/solutions/FinancialsSolutionPage';
 import { NotariesSolutionPage } from './pages/solutions/NotariesSolutionPage';
@@ -79,7 +84,7 @@ export const App: React.FC = () => {
 
             <Routes>
               {/* ========================================================== */}
-              {/* 1. RUTAS PÚBLICAS MARKETPLACE (Línea A - Propietarios)    */}
+              {/* 1. RUTAS PÚBLICAS MARKETPLACE & INSTITUCIONALES           */}
               {/* ========================================================== */}
               <Route path="/" element={<MarketplaceHome />} />
               <Route path="/simulador" element={<SimulatorPage />} />
@@ -89,14 +94,14 @@ export const App: React.FC = () => {
               <Route path="/nosotros" element={<AboutPage />} />
               <Route path="/contacto" element={<ContactPage />} />
 
-              {/* Páginas Legales Institucionales (Sin Soft-404) */}
+              {/* Páginas Legales */}
               <Route path="/terminos" element={<TermsPage />} />
               <Route path="/privacidad" element={<PrivacyPage />} />
               <Route path="/seguridad" element={<SecurityPage />} />
               <Route path="/signature/return" element={<SignatureReturnPage />} />
 
               {/* ========================================================== */}
-              {/* 2. RUTAS PÚBLICAS SAAS (Línea B - Empresas & Estudios)     */}
+              {/* 2. RUTAS PÚBLICAS SAAS B2B                                 */}
               {/* ========================================================== */}
               <Route path="/saas" element={<SaaSHome />} />
               <Route path="/saas/modulos" element={<SaaSModulesCatalogPage />} />
@@ -104,7 +109,7 @@ export const App: React.FC = () => {
               <Route path="/saas/plataforma-completa" element={<SaaSFullPlatformPage />} />
               <Route path="/saas/precios" element={<SaaSPricingPage />} />
 
-              {/* Redirecciones canónicas desde /plataforma para evitar duplicación y canibalización SEO */}
+              {/* Redirecciones SEO de SaaS */}
               <Route path="/plataforma" element={<Navigate to="/saas" replace />} />
               <Route path="/plataforma/modulos" element={<Navigate to="/saas/modulos" replace />} />
               <Route path="/plataforma/integracion" element={<Navigate to="/saas/integracion" replace />} />
@@ -122,54 +127,14 @@ export const App: React.FC = () => {
               <Route path="/empresas/financieras" element={<FinancialsSolutionPage />} />
               <Route path="/empresas/estudios" element={<NotariesSolutionPage />} />
 
-              {/* Tenant Demo Definitivo — ESTUDIO NOVA */}
-              <Route path="/demo/estudio-nova" element={<EstudioNovaPage />} />
-              <Route path="/demo" element={<Navigate to="/demo/estudio-nova" replace />} />
-              <Route path="/demo/nova" element={<Navigate to="/demo/estudio-nova" replace />} />
-              <Route path="/demo/nova/legacy" element={<Navigate to="/demo/estudio-nova" replace />} />
-              <Route path="/demo/nova/integrado" element={<Navigate to="/demo/estudio-nova" replace />} />
-              <Route path="/demo/nova/full" element={<Navigate to="/demo/estudio-nova" replace />} />
-              <Route path="/demo/nova/login" element={<LoginPage />} />
-              <Route path="/demo/nova/mi-cuenta" element={<ApplicantAccount />} />
-
-              {/* White-Label Dinámico por URL */}
-              <Route path="/org/:slug" element={<GenericWhiteLabelLanding />} />
-              <Route path="/org/:slug/simulador" element={<GenericWhiteLabelLanding />} />
-
               {/* ========================================================== */}
-              {/* 3. AUTENTICACIÓN Y REGISTRO                                */}
-              {/* ========================================================== */}
-              <Route path="/solicitar" element={<ApplicationWizard />} />
-              <Route path="/ingresar" element={<LoginPage />} />
-              <Route path="/registro" element={<RegisterPage />} />
-              <Route path="/recuperar-password" element={<ForgotPasswordPage />} />
-
-              {/* Portal del Solicitante / Cliente (Protegido) */}
-              <Route
-                path="/mi-cuenta"
-                element={
-                  <ProtectedRoute allowedRoles={['borrower', 'super_admin']}>
-                    <ApplicantAccount />
-                  </ProtectedRoute>
-                }
-              />
-
-              {/* ========================================================== */}
-              {/* 4. SUPER ADMIN HIPOTECALY GLOBAL (Protegido Super Admin)   */}
+              {/* 3. SUPER ADMIN HIPOTECALY (/admin)                         */}
               {/* ========================================================== */}
               <Route
-                path="/platform-admin"
+                path="/admin"
                 element={
                   <ProtectedRoute requireSuperAdmin>
-                    <PlatformAdminPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/qa"
-                element={
-                  <ProtectedRoute requireSuperAdmin>
-                    <PlatformAdminPage />
+                    <SuperAdminDashboardPage />
                   </ProtectedRoute>
                 }
               />
@@ -197,22 +162,320 @@ export const App: React.FC = () => {
                   </ProtectedRoute>
                 }
               />
+              {/* Redirecciones de compatibilidad para Super Admin */}
+              <Route path="/platform-admin" element={<Navigate to="/admin" replace />} />
+              <Route path="/admin/qa" element={<Navigate to="/admin?tab=qa" replace />} />
+              <Route path="/app/ai-admin" element={<Navigate to="/admin/ai" replace />} />
+
+              {/* ========================================================== */}
+              {/* 4. ARQUITECTURA DEMO & TENANT DINÁMICO (/demo/:tenantSlug)  */}
+              {/* ========================================================== */}
+              
+              {/* Redirecciones Legacy de Estudio Nova */}
+              <Route path="/demo" element={<Navigate to="/demo/estudio-nova" replace />} />
+              <Route path="/demo/nova" element={<Navigate to="/demo/estudio-nova" replace />} />
+              <Route path="/demo/nova/simulador" element={<Navigate to="/demo/estudio-nova/simulador" replace />} />
+              <Route path="/demo/nova/solicitar" element={<Navigate to="/demo/estudio-nova/solicitar" replace />} />
+              <Route path="/demo/nova/cliente" element={<Navigate to="/demo/estudio-nova/cliente" replace />} />
+              <Route path="/demo/nova/mi-cuenta" element={<Navigate to="/demo/estudio-nova/cliente" replace />} />
+              <Route path="/demo/nova/admin" element={<Navigate to="/demo/estudio-nova/admin" replace />} />
+              <Route path="/demo/nova/inversor" element={<Navigate to="/demo/estudio-nova/inversor" replace />} />
+              <Route path="/demo/nova/login" element={<Navigate to="/ingresar?tenant=estudio-nova" replace />} />
+              <Route path="/demo/nova/legacy" element={<Navigate to="/demo/estudio-nova" replace />} />
+              <Route path="/demo/nova/integrado" element={<Navigate to="/demo/estudio-nova" replace />} />
+              <Route path="/demo/nova/full" element={<Navigate to="/demo/estudio-nova" replace />} />
+
+              {/* Tenant Home Pública */}
+              <Route path="/demo/estudio-nova" element={<EstudioNovaPage />} />
+              <Route path="/demo/:tenantSlug" element={<GenericWhiteLabelLanding />} />
+
+              {/* Tenant Simulador */}
+              <Route path="/demo/estudio-nova/simulador" element={<TenantSimulatorPage />} />
+              <Route path="/demo/:tenantSlug/simulador" element={<TenantSimulatorPage />} />
+
+              {/* Tenant Solicitar */}
+              <Route path="/demo/estudio-nova/solicitar" element={<TenantWizardPage />} />
+              <Route path="/demo/:tenantSlug/solicitar" element={<TenantWizardPage />} />
+
+              {/* Tenant Portal Cliente */}
               <Route
-                path="/app/ai-admin"
+                path="/demo/estudio-nova/cliente"
                 element={
-                  <ProtectedRoute requireSuperAdmin>
-                    <AdminAiPage />
+                  <ProtectedRoute allowedRoles={['borrower', 'super_admin']}>
+                    <ApplicantAccount />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/cliente"
+                element={
+                  <ProtectedRoute allowedRoles={['borrower', 'super_admin']}>
+                    <ApplicantAccount />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Tenant Backoffice Operativo */}
+              <Route
+                path="/demo/:tenantSlug/admin"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'viewer', 'super_admin']}
+                    requireTenantMatch
+                  >
+                    <DashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/admin/solicitudes"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'viewer', 'super_admin']}
+                    requireTenantMatch
+                  >
+                    <ApplicationsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/admin/solicitudes/:id"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'viewer', 'super_admin']}
+                    requireTenantMatch
+                  >
+                    <ApplicationDetailPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/admin/clientes"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'viewer', 'super_admin']}
+                    requireTenantMatch
+                  >
+                    <ClientsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/admin/leads"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={['tenant_admin', 'tenant_owner', 'super_admin']}
+                    requireTenantMatch
+                  >
+                    <LeadsManagementPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/admin/propiedades"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'viewer', 'super_admin']}
+                    requireTenantMatch
+                  >
+                    <PropertiesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/admin/documentos"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'viewer', 'super_admin']}
+                    requireTenantMatch
+                  >
+                    <DocumentsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/admin/tasaciones"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'viewer', 'super_admin']}
+                    requireTenantMatch
+                  >
+                    <ValuationsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/admin/tareas"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'viewer', 'super_admin']}
+                    requireTenantMatch
+                  >
+                    <TasksPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/admin/reportes"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'super_admin']}
+                    requireTenantMatch
+                  >
+                    <ReportsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/admin/configuracion"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={['tenant_admin', 'tenant_owner', 'super_admin']}
+                    requireTenantMatch
+                  >
+                    <SettingsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/admin/usuarios"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={['tenant_admin', 'tenant_owner', 'super_admin']}
+                    requireTenantMatch
+                  >
+                    <UsersManagementPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/admin/organizacion"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={['tenant_admin', 'tenant_owner', 'super_admin']}
+                    requireTenantMatch
+                  >
+                    <OrganizationSettingsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/admin/whitelabel"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={['tenant_admin', 'tenant_owner', 'super_admin']}
+                    requireTenantMatch
+                  >
+                    <WhiteLabelBackofficePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/admin/prestamistas"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'super_admin']}
+                    requireTenantMatch
+                  >
+                    <LendersPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/admin/inversores"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'super_admin']}
+                    requireTenantMatch
+                  >
+                    <LendersPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/admin/prestamistas/:id"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'super_admin']}
+                    requireTenantMatch
+                  >
+                    <LenderDetailPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Tenant Portal Inversor Privado */}
+              <Route
+                path="/demo/:tenantSlug/inversor"
+                element={
+                  <ProtectedRoute allowedRoles={['lender', 'super_admin']} requireTenantMatch>
+                    <TenantInvestorDashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/inversor/oportunidades"
+                element={
+                  <ProtectedRoute allowedRoles={['lender', 'super_admin']} requireTenantMatch>
+                    <TenantInvestorDashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/inversor/ofertas"
+                element={
+                  <ProtectedRoute allowedRoles={['lender', 'super_admin']} requireTenantMatch>
+                    <TenantInvestorDashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/inversor/mensajes"
+                element={
+                  <ProtectedRoute allowedRoles={['lender', 'super_admin']} requireTenantMatch>
+                    <TenantInvestorDashboardPage />
                   </ProtectedRoute>
                 }
               />
 
               {/* ========================================================== */}
-              {/* 5. BACKOFFICE MULTI-TENANT (Protegido Staff & Admins)      */}
+              {/* 5. AUTENTICACIÓN Y ACCESO GENERAL                         */}
+              {/* ========================================================== */}
+              <Route path="/solicitar" element={<ApplicationWizard />} />
+              <Route path="/ingresar" element={<LoginPage />} />
+              <Route path="/registro" element={<RegisterPage />} />
+              <Route path="/recuperar-password" element={<ForgotPasswordPage />} />
+
+              {/* Portal del Solicitante / Cliente Base */}
+              <Route
+                path="/mi-cuenta"
+                element={
+                  <ProtectedRoute allowedRoles={['borrower', 'super_admin']}>
+                    <ApplicantAccount />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* White-Label Dinámico por /org/:slug */}
+              <Route path="/org/:slug" element={<GenericWhiteLabelLanding />} />
+              <Route path="/org/:slug/simulador" element={<TenantSimulatorPage />} />
+              <Route path="/org/:slug/solicitar" element={<TenantWizardPage />} />
+              <Route
+                path="/org/:slug/cliente"
+                element={
+                  <ProtectedRoute allowedRoles={['borrower', 'super_admin']}>
+                    <ApplicantAccount />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* ========================================================== */}
+              {/* 6. RUTAS BACKOFFICE LEGACY /app/*                           */}
               {/* ========================================================== */}
               <Route
                 path="/app"
                 element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'analyst', 'notary', 'super_admin']}>
+                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'super_admin']}>
                     <DashboardPage />
                   </ProtectedRoute>
                 }
@@ -220,7 +483,7 @@ export const App: React.FC = () => {
               <Route
                 path="/app/solicitudes"
                 element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'analyst', 'notary', 'super_admin']}>
+                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'super_admin']}>
                     <ApplicationsPage />
                   </ProtectedRoute>
                 }
@@ -228,7 +491,7 @@ export const App: React.FC = () => {
               <Route
                 path="/app/solicitudes/:id"
                 element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'analyst', 'notary', 'super_admin']}>
+                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'super_admin']}>
                     <ApplicationDetailPage />
                   </ProtectedRoute>
                 }
@@ -236,7 +499,7 @@ export const App: React.FC = () => {
               <Route
                 path="/app/clientes"
                 element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'analyst', 'notary', 'super_admin']}>
+                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'super_admin']}>
                     <ClientsPage />
                   </ProtectedRoute>
                 }
@@ -244,7 +507,7 @@ export const App: React.FC = () => {
               <Route
                 path="/app/leads"
                 element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'super_admin']}>
+                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'super_admin']}>
                     <LeadsManagementPage />
                   </ProtectedRoute>
                 }
@@ -252,7 +515,7 @@ export const App: React.FC = () => {
               <Route
                 path="/app/propiedades"
                 element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'analyst', 'notary', 'super_admin']}>
+                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'super_admin']}>
                     <PropertiesPage />
                   </ProtectedRoute>
                 }
@@ -260,7 +523,7 @@ export const App: React.FC = () => {
               <Route
                 path="/app/documentos"
                 element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'analyst', 'notary', 'super_admin']}>
+                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'super_admin']}>
                     <DocumentsPage />
                   </ProtectedRoute>
                 }
@@ -268,7 +531,7 @@ export const App: React.FC = () => {
               <Route
                 path="/app/tasaciones"
                 element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'analyst', 'notary', 'super_admin']}>
+                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'super_admin']}>
                     <ValuationsPage />
                   </ProtectedRoute>
                 }
@@ -276,7 +539,7 @@ export const App: React.FC = () => {
               <Route
                 path="/app/tareas"
                 element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'analyst', 'notary', 'super_admin']}>
+                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'super_admin']}>
                     <TasksPage />
                   </ProtectedRoute>
                 }
@@ -284,7 +547,7 @@ export const App: React.FC = () => {
               <Route
                 path="/app/reportes"
                 element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'analyst', 'super_admin']}>
+                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'super_admin']}>
                     <ReportsPage />
                   </ProtectedRoute>
                 }
@@ -292,7 +555,7 @@ export const App: React.FC = () => {
               <Route
                 path="/app/configuracion"
                 element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'super_admin']}>
+                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'super_admin']}>
                     <SettingsPage />
                   </ProtectedRoute>
                 }
@@ -300,7 +563,7 @@ export const App: React.FC = () => {
               <Route
                 path="/app/prestamistas"
                 element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'analyst', 'super_admin']}>
+                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'super_admin']}>
                     <LendersPage />
                   </ProtectedRoute>
                 }
@@ -308,7 +571,7 @@ export const App: React.FC = () => {
               <Route
                 path="/app/prestamistas/:id"
                 element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'analyst', 'super_admin']}>
+                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'super_admin']}>
                     <LenderDetailPage />
                   </ProtectedRoute>
                 }
@@ -316,7 +579,7 @@ export const App: React.FC = () => {
               <Route
                 path="/app/usuarios"
                 element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'super_admin']}>
+                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'super_admin']}>
                     <UsersManagementPage />
                   </ProtectedRoute>
                 }
@@ -324,7 +587,7 @@ export const App: React.FC = () => {
               <Route
                 path="/app/organizacion"
                 element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'super_admin']}>
+                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'super_admin']}>
                     <OrganizationSettingsPage />
                   </ProtectedRoute>
                 }
@@ -332,14 +595,14 @@ export const App: React.FC = () => {
               <Route
                 path="/app/whitelabel"
                 element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'super_admin']}>
+                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'super_admin']}>
                     <WhiteLabelBackofficePage />
                   </ProtectedRoute>
                 }
               />
 
               {/* ========================================================== */}
-              {/* 6. PORTAL DEL PRESTAMISTA (Protegido Prestamistas & Admins) */}
+              {/* 7. PORTAL LENDER LEGACY MARKETPLACE (Bloqueado por flag)   */}
               {/* ========================================================== */}
               <Route
                 path="/lender"

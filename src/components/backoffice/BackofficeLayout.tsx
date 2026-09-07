@@ -19,7 +19,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
 import { TenantBrand } from '../common/TenantBrand';
-import { isMarketplaceEnabled } from '../../config/features';
+import { getTenantModules, DEFAULT_MODULES_MAP } from '../../lib/tenantModulesService';
 
 interface NavItem {
   name: string;
@@ -34,53 +34,64 @@ interface NavGroup {
 
 export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: string }> = ({ children }) => {
   const location = useLocation();
-  const { signOut, user, isSuperAdmin } = useAuth();
+  const { signOut, user, isSuperAdmin, hasRole } = useAuth();
   const { tenant } = useTenant();
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [modules, setModules] = useState(DEFAULT_MODULES_MAP);
+
+  React.useEffect(() => {
+    if (tenant.id) {
+      getTenantModules(tenant.id).then((m) => setModules(m));
+    }
+  }, [tenant.id]);
+
+  const isTenantPath = location.pathname.startsWith('/demo/');
+  const baseRoute = isTenantPath ? `/demo/${tenant.slug}/admin` : '/app';
+  const canManageSettings = isSuperAdmin || hasRole(['tenant_admin', 'tenant_owner'], tenant.id);
 
   const navigationGroups: NavGroup[] = [
     {
       title: 'OPERACIONES',
       items: [
-        { name: 'Dashboard', href: '/app', icon: LayoutDashboard },
-        { name: 'Solicitudes y Expedientes', href: '/app/solicitudes', icon: FileText },
-        { name: 'Clientes', href: '/app/clientes', icon: Users },
-        { name: 'Propiedades', href: '/app/propiedades', icon: Building2 },
+        { name: 'Dashboard', href: baseRoute, icon: LayoutDashboard },
+        { name: 'Solicitudes y Expedientes', href: `${baseRoute}/solicitudes`, icon: FileText },
+        { name: 'Clientes', href: `${baseRoute}/clientes`, icon: Users },
+        { name: 'Propiedades', href: `${baseRoute}/propiedades`, icon: Building2 },
       ],
     },
     {
       title: 'ANÁLISIS',
       items: [
-        { name: 'Valuaciones', href: '/app/tasaciones', icon: Compass },
-        { name: 'Documentos', href: '/app/documentos', icon: FileCheck },
-        ...(isMarketplaceEnabled() || isSuperAdmin
-          ? [{ name: 'Prestamistas', href: '/app/prestamistas', icon: UserCheck }]
+        { name: 'Valuaciones', href: `${baseRoute}/tasaciones`, icon: Compass },
+        { name: 'Documentos', href: `${baseRoute}/documentos`, icon: FileCheck },
+        ...(modules.investor_portal_enabled || isSuperAdmin
+          ? [{ name: 'Red de Inversores', href: `${baseRoute}/prestamistas`, icon: UserCheck }]
           : []),
-        { name: 'Tareas', href: '/app/tareas', icon: CheckSquare },
+        { name: 'Tareas', href: `${baseRoute}/tareas`, icon: CheckSquare },
       ],
     },
     {
       title: 'COMERCIAL',
       items: [
-        { name: 'Leads', href: '/app/leads', icon: Users },
+        { name: 'Leads', href: `${baseRoute}/leads`, icon: Users },
       ],
     },
     {
       title: 'ADMINISTRACIÓN',
       items: [
-        { name: 'White-Label & Marca', href: '/app/whitelabel', icon: Palette },
-        { name: 'Usuarios', href: '/app/usuarios', icon: Users },
-        { name: 'Organización', href: '/app/organizacion', icon: Building2 },
-        { name: 'Configuración', href: '/app/configuracion', icon: Settings },
+        ...(canManageSettings ? [{ name: 'White-Label & Marca', href: `${baseRoute}/whitelabel`, icon: Palette }] : []),
+        ...(canManageSettings ? [{ name: 'Usuarios', href: `${baseRoute}/usuarios`, icon: Users }] : []),
+        ...(canManageSettings ? [{ name: 'Organización', href: `${baseRoute}/organizacion`, icon: Building2 }] : []),
+        ...(canManageSettings ? [{ name: 'Configuración', href: `${baseRoute}/configuracion`, icon: Settings }] : []),
       ],
     },
     ...(isSuperAdmin
       ? [
           {
-            title: 'HERRAMIENTAS DE QA',
+            title: 'SUPER ADMIN GLOBAL',
             items: [
-              { name: 'Acceso QA / Inspección', href: '/platform-admin', icon: UserCheck },
-              { name: 'Clientes White-Label', href: '/admin/tenants', icon: Building2 },
+              { name: 'Consola Central', href: '/admin', icon: UserCheck },
+              { name: 'Gestión de Tenants', href: '/admin/tenants', icon: Building2 },
             ],
           },
         ]
@@ -88,8 +99,8 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
   ];
 
   const isItemActive = (href: string) => {
-    if (href === '/app') {
-      return location.pathname === '/app';
+    if (href === baseRoute) {
+      return location.pathname === baseRoute;
     }
     return location.pathname.startsWith(href);
   };

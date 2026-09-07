@@ -183,6 +183,7 @@ export const SuperAdminTenantsPage: React.FC = () => {
     protected_contact_enabled: { title: 'Protección Anti-Bypass de Contacto', desc: 'Enmascaramiento de teléfonos y emails hasta aprobación' },
     cost_breakdown_enabled: { title: 'Transparencia de Costos de Cierre', desc: 'Desglose visible de gastos notariales y neto a desembolsar' },
     external_simulator_integration_enabled: { title: 'Integración con Simulador Externo', desc: 'Recepción sanitizada desde sitios web ya existentes' },
+    investor_portal_enabled: { title: 'Red Privada de Inversores', desc: 'Portal exclusivo para asignación privada de operaciones a inversores' },
   };
 
   return (

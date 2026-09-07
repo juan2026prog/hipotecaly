@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Navbar } from '../../components/layout/Navbar';
 import { Footer } from '../../components/layout/Footer';
+import { TenantClientLayout } from '../../components/layout/TenantClientLayout';
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -153,21 +154,19 @@ export const ApplicantAccount: React.FC = () => {
     { label: 'Finalizada', status: 'upcoming' },
   ];
 
-  return (
-    <div className="min-h-screen flex flex-col bg-slate-bg pb-16 lg:pb-0">
-      <Navbar />
+  const isWhiteLabel = location.pathname.startsWith('/demo/') || tenant.is_white_label;
 
-      <main className="flex-1 py-6 sm:py-10 max-w-5xl mx-auto px-4 sm:px-6 w-full text-left">
-        
-        {/* Banner Bienvenida PWA */}
-        <div className="bg-white rounded-2xl p-5 sm:p-7 border border-slate-200/80 shadow-sm mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center space-x-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-amber-700">
-                Portal del Solicitante
-              </span>
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-            </div>
+  const innerContent = (
+    <>
+      {/* Banner Bienvenida PWA */}
+      <div className="bg-white rounded-2xl p-5 sm:p-7 border border-slate-200/80 shadow-sm mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center space-x-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-700">
+              Portal del Solicitante
+            </span>
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+          </div>
             <h1 className="text-2xl sm:text-3xl font-serif font-bold text-slate-900 tracking-tight mt-1">
               Hola, {displayName}
             </h1>
@@ -612,8 +611,6 @@ export const ApplicantAccount: React.FC = () => {
           </div>
         )}
 
-      </main>
-
       {/* ============================================================ */}
       {/* NAVEGACIÓN INFERIOR MÓVIL (PWA Mobile-First)                  */}
       {/* ============================================================ */}
@@ -684,7 +681,23 @@ export const ApplicantAccount: React.FC = () => {
           <span className="text-[10px]">Cuenta</span>
         </button>
       </nav>
+    </>
+  );
 
+  if (isWhiteLabel) {
+    return (
+      <TenantClientLayout activeTab={activeTab} onTabChange={setActiveTab}>
+        {innerContent}
+      </TenantClientLayout>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col bg-slate-bg pb-16 lg:pb-0">
+      <Navbar />
+      <main className="flex-1 py-6 sm:py-10 max-w-5xl mx-auto px-4 sm:px-6 w-full text-left">
+        {innerContent}
+      </main>
       <Footer />
     </div>
   );

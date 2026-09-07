@@ -79,15 +79,13 @@ export const EstudioNovaPage: React.FC = () => {
     if (isOverPercentage || isOverAmount) return;
 
     navigate(
-      `/solicitar?monto=${loanAmount}&valor_propiedad=${propertyValue}&plazo=${termMonths}&modalidad=${repaymentMode}&source=estudio_nova&source_mode=full`,
+      `/demo/estudio-nova/solicitar?monto=${loanAmount}&valor_propiedad=${propertyValue}&plazo=${termMonths}&modalidad=${repaymentMode}`,
       {
         state: {
           requestedAmount: loanAmount,
           propertyValue: propertyValue,
           termMonths: termMonths,
           repaymentMode: repaymentMode,
-          source: 'estudio_nova',
-          sourceMode: 'full',
           organizationId: tenantId,
         },
       }
@@ -123,7 +121,7 @@ export const EstudioNovaPage: React.FC = () => {
               Lun a Vie 09:00 – 18:00 hs
             </span>
             <Link
-              to="/mi-cuenta"
+              to="/demo/estudio-nova/cliente"
               className="flex items-center text-slate-200 hover:text-[#f4b43b] font-medium transition-colors"
             >
               <User className="w-3.5 h-3.5 mr-1 text-[#f4b43b]" />
@@ -180,14 +178,14 @@ export const EstudioNovaPage: React.FC = () => {
 
           {/* Acciones Header */}
           <div className="hidden sm:flex items-center space-x-3">
-            <a
-              href="#simulador"
+            <Link
+              to="/demo/estudio-nova/simulador"
               className="text-xs font-bold uppercase tracking-wider text-[#173a5e] hover:text-[#245f91] px-3 py-2 transition-colors"
             >
               SIMULAR AHORA
-            </a>
+            </Link>
             <Link
-              to="/solicitar?source=estudio_nova"
+              to="/demo/estudio-nova/solicitar"
               className="bg-[#173a5e] hover:bg-[#102d49] text-white text-xs font-bold uppercase tracking-wider px-5 py-2.5 rounded-lg shadow-sm transition-all flex items-center"
             >
               SOLICITAR FINANCIACIÓN
@@ -958,10 +956,10 @@ export const EstudioNovaPage: React.FC = () => {
             <ul className="space-y-2">
               <li><a href="#inicio" className="hover:text-white">Inicio</a></li>
               <li><a href="#financiacion" className="hover:text-white">Financiación</a></li>
-              <li><a href="#simulador" className="hover:text-white">Simulador en Línea</a></li>
-              <li><a href="#como-funciona" className="hover:text-white">Cómo Funciona</a></li>
-              <li><a href="#inversionistas" className="hover:text-white">Inversionistas</a></li>
-              <li><Link to="/mi-cuenta" className="hover:text-white">Portal de Clientes</Link></li>
+              <li><Link to="/demo/estudio-nova/simulador" className="hover:text-white">Simulador en Línea</Link></li>
+              <li><Link to="/demo/estudio-nova/inversor" className="hover:text-white">Red de Inversores</Link></li>
+              <li><Link to="/demo/estudio-nova/cliente" className="hover:text-white">Portal de Clientes</Link></li>
+              <li><Link to="/demo/estudio-nova/admin" className="hover:text-white">Acceso Operativo (Backoffice)</Link></li>
             </ul>
           </div>
 

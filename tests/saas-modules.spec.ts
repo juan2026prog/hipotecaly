@@ -2,9 +2,9 @@ import { test, expect } from '@playwright/test';
 
 test.describe('FEATURE FLAGS & MÓDULOS ACTIVABLES POR TENANT', () => {
 
-  test('Super Admin puede visualizar los 16 módulos del tenant NOVA', async ({ page }) => {
+  test('Super Admin puede visualizar los módulos del tenant', async ({ page }) => {
     await page.goto('/admin/tenants');
-    await expect(page.locator('text=Módulos y Feature Flags de NOVA Crédito Hipotecario')).toBeVisible();
+    await expect(page.locator('text=Módulos y Feature Flags de').first()).toBeVisible();
 
     // Validar presencia de módulos clave
     await expect(page.locator('text=Módulo de Solicitudes Digitales')).toBeVisible();

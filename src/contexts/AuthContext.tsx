@@ -12,8 +12,10 @@ import { adminQaService } from '../lib/adminQaService';
 export type UserRole =
   | 'super_admin'
   | 'platform_admin'
+  | 'tenant_owner'
   | 'tenant_admin'
   | 'analyst'
+  | 'operator'
   | 'notary'
   | 'lender'
   | 'borrower'
@@ -536,15 +538,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user || !userRole) return false;
     if (isSuperAdmin) return true; // Super Admin accede a todo
 
+    const expandedAllowed = new Set(allowedRoles);
+    if (expandedAllowed.has('tenant_admin')) {
+      expandedAllowed.add('tenant_owner');
+    }
+
     // Si se especifica un tenant, comprobar que el usuario es miembro activo con rol permitido
     if (tenantId && tenantId !== 'a0000000-0000-0000-0000-000000000001') {
       const match = memberships.find(
-        (m) => m.organizationId === tenantId && m.isActive && allowedRoles.includes(m.role)
+        (m) => m.organizationId === tenantId && m.isActive && (expandedAllowed.has(m.role) || (m.role as string) === 'admin')
       );
       if (match) return true;
     }
 
-    return allowedRoles.includes(userRole);
+    return expandedAllowed.has(userRole) || (userRole === 'tenant_owner' && allowedRoles.includes('tenant_admin'));
   };
 
   return (
