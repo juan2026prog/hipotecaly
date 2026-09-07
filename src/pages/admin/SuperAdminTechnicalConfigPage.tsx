@@ -13,11 +13,9 @@ import {
   Lock,
   KeyRound,
   Webhook,
-  Network,
   Activity,
   CheckCircle2,
   Play,
-  Eye,
   Key,
 } from 'lucide-react';
 import { SuperAdminLayout } from '../../components/admin/SuperAdminLayout';
@@ -26,6 +24,7 @@ import { Button } from '../../components/ui/Button';
 export const SuperAdminTechnicalConfigPage: React.FC = () => {
   const [activeGroup, setActiveGroup] = useState<'infra' | 'security' | 'integrations' | 'diagnostic'>('infra');
   const [diagnosing, setDiagnosing] = useState(false);
+  const [showTechDetailsModal, setShowTechDetailsModal] = useState(false);
   const [selectedModal, setSelectedModal] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -33,7 +32,7 @@ export const SuperAdminTechnicalConfigPage: React.FC = () => {
     setDiagnosing(true);
     setTimeout(() => {
       setDiagnosing(false);
-      setToastMessage('Diagnóstico completo: 7 de 7 componentes operativos.');
+      setToastMessage('Sistema comprobado: todos los componentes operativos.');
       setTimeout(() => setToastMessage(null), 4000);
     }, 1200);
   };
@@ -70,9 +69,9 @@ export const SuperAdminTechnicalConfigPage: React.FC = () => {
         <div className="flex border-b border-[#152E4D] space-x-2 overflow-x-auto">
           {[
             { id: 'infra', label: 'A. Infraestructura', icon: Database },
-            { id: 'security', label: 'B. Seguridad & RLS', icon: ShieldCheck },
-            { id: 'integrations', label: 'C. Integraciones Técnicas', icon: KeyRound },
-            { id: 'diagnostic', label: 'D. Diagnóstico & Registros', icon: Activity },
+            { id: 'security', label: 'B. Seguridad', icon: ShieldCheck },
+            { id: 'integrations', label: 'C. Integraciones técnicas', icon: KeyRound },
+            { id: 'diagnostic', label: 'D. Diagnóstico y registros', icon: Activity },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeGroup === tab.id;
@@ -100,115 +99,154 @@ export const SuperAdminTechnicalConfigPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* 1. Base de datos */}
             <div className="bg-[#09182C] border border-[#152E4D] rounded-2xl p-5 flex flex-col justify-between space-y-4">
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Database className="w-5 h-5 text-emerald-400" />
                     <h3 className="font-bold text-sm text-white">Base de datos</h3>
                   </div>
                   <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                    🟢 Funcionando
+                    🟢 Funcionando correctamente
                   </span>
                 </div>
 
-                <div className="text-xs space-y-1 text-slate-300">
-                  <p className="font-semibold text-white">
-                    Almacena usuarios, clientes, expedientes y configuraciones.
-                  </p>
-                  <p className="text-slate-400 text-[11px] leading-relaxed">
-                    Gestiona la conexión con la base relacional PostgreSQL. Normalmente no requiere intervención.
-                  </p>
+                <div className="text-xs space-y-2 text-slate-300">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Para qué sirve</span>
+                    <p className="font-semibold text-white">
+                      Almacena la información principal de HIPOTECALY: clientes, usuarios, expedientes, configuraciones y operaciones.
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Cuándo modificarlo</span>
+                    <p className="text-slate-400 text-[11px]">
+                      Normalmente no requiere intervención.
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Riesgo</span>
+                    <p className="text-slate-400 text-[11px]">
+                      Modificaciones estructurales no planificadas pueden interrumpir el servicio de expedientes.
+                    </p>
+                  </div>
                 </div>
 
-                <div className="p-2.5 bg-[#071322] rounded-lg border border-[#152E4D] text-[10px] font-mono text-slate-400 space-y-1">
-                  <div>Tecnología: PostgreSQL · Supabase DB</div>
-                  <div>Pool de conexiones: Activo (Latencia: 14ms)</div>
+                <div className="pt-2 border-t border-[#152E4D] text-[10px] text-slate-500">
+                  Tecnología: Supabase PostgreSQL
                 </div>
               </div>
 
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setSelectedModal('db')}
+                onClick={() => setSelectedModal('Base de datos')}
                 className="w-full bg-[#071322] border-[#1E3A5F] text-slate-200 hover:bg-[#152E4D] text-xs font-semibold"
               >
-                <Sliders className="w-3.5 h-3.5 mr-1" /> Administrar base de datos
+                <Sliders className="w-3.5 h-3.5 mr-1" /> Administrar
               </Button>
             </div>
 
             {/* 2. Archivos privados */}
             <div className="bg-[#09182C] border border-[#152E4D] rounded-2xl p-5 flex flex-col justify-between space-y-4">
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <HardDrive className="w-5 h-5 text-blue-400" />
                     <h3 className="font-bold text-sm text-white">Archivos privados</h3>
                   </div>
                   <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                    🟢 Funcionando
+                    🟢 Funcionando correctamente
                   </span>
                 </div>
 
-                <div className="text-xs space-y-1 text-slate-300">
-                  <p className="font-semibold text-white">
-                    Almacenamiento seguro de documentos y fotos.
-                  </p>
-                  <p className="text-slate-400 text-[11px] leading-relaxed">
-                    Gestiona los buckets privados con permisos restringidos y URLs firmadas de corta duración.
-                  </p>
+                <div className="text-xs space-y-2 text-slate-300">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Para qué sirve</span>
+                    <p className="font-semibold text-white">
+                      Almacena de forma privada documentos, fotografías y archivos asociados a los expedientes.
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Cuándo modificarlo</span>
+                    <p className="text-slate-400 text-[11px]">
+                      Solamente si se requiere ampliar cuotas o configurar políticas de retención.
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Riesgo</span>
+                    <p className="text-slate-400 text-[11px]">
+                      Alterar permisos de almacenamiento puede impedir la descarga segura de títulos y recibos.
+                    </p>
+                  </div>
                 </div>
 
-                <div className="p-2.5 bg-[#071322] rounded-lg border border-[#152E4D] text-[10px] font-mono text-slate-400 space-y-1">
-                  <div>Tecnología: Supabase Storage Buckets</div>
-                  <div>Políticas de acceso: RLS por cliente</div>
+                <div className="pt-2 border-t border-[#152E4D] text-[10px] text-slate-500">
+                  Tecnología: Supabase Storage
                 </div>
               </div>
 
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setSelectedModal('storage')}
+                onClick={() => setSelectedModal('Archivos privados')}
                 className="w-full bg-[#071322] border-[#1E3A5F] text-slate-200 hover:bg-[#152E4D] text-xs font-semibold"
               >
-                <Sliders className="w-3.5 h-3.5 mr-1" /> Administrar almacenamiento
+                <Sliders className="w-3.5 h-3.5 mr-1" /> Administrar
               </Button>
             </div>
 
             {/* 3. Procesos automáticos */}
             <div className="bg-[#09182C] border border-[#152E4D] rounded-2xl p-5 flex flex-col justify-between space-y-4">
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Clock className="w-5 h-5 text-amber-400" />
                     <h3 className="font-bold text-sm text-white">Procesos automáticos</h3>
                   </div>
                   <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                    🟢 12 procesos activos
+                    🟢 12 procesos funcionando
                   </span>
                 </div>
 
-                <div className="text-xs space-y-1 text-slate-300">
-                  <p className="font-semibold text-white">
-                    Tareas que se ejecutan sin intervención humana.
-                  </p>
-                  <p className="text-slate-400 text-[11px] leading-relaxed">
-                    Recordatorios de crédito, sincronizaciones periódicas, limpiezas y conciliaciones programadas.
-                  </p>
+                <div className="text-xs space-y-2 text-slate-300">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Para qué sirve</span>
+                    <p className="font-semibold text-white">
+                      Ejecuta tareas programadas sin intervención manual: recordatorios, sincronizaciones, limpiezas y conciliaciones.
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Cuándo modificarlo</span>
+                    <p className="text-slate-400 text-[11px]">
+                      Solamente si se necesita ajustar la frecuencia de una tarea o pausar una rutina.
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Riesgo</span>
+                    <p className="text-slate-400 text-[11px]">
+                      Desactivar procesos puede retrasar notificaciones automáticas o conciliaciones diarias.
+                    </p>
+                  </div>
                 </div>
 
-                <div className="p-2.5 bg-[#071322] rounded-lg border border-[#152E4D] text-[10px] font-mono text-slate-400 space-y-1">
-                  <div>Tecnología: Edge Functions Cron Jobs</div>
-                  <div>Última ejecución: Hace 3 minutos</div>
+                <div className="pt-2 border-t border-[#152E4D] text-[10px] text-slate-500">
+                  Tecnología: tareas programadas / cron
                 </div>
               </div>
 
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setSelectedModal('cron')}
+                onClick={() => setSelectedModal('Procesos automáticos')}
                 className="w-full bg-[#071322] border-[#1E3A5F] text-slate-200 hover:bg-[#152E4D] text-xs font-semibold"
               >
-                <Eye className="w-3.5 h-3.5 mr-1" /> Ver procesos automáticos
+                <Sliders className="w-3.5 h-3.5 mr-1" /> Ver procesos
               </Button>
             </div>
           </div>
@@ -221,36 +259,49 @@ export const SuperAdminTechnicalConfigPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* 1. Permisos y aislamiento de clientes */}
             <div className="bg-[#09182C] border border-[#152E4D] rounded-2xl p-5 flex flex-col justify-between space-y-4">
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                    <h3 className="font-bold text-sm text-white">Aislamiento de clientes</h3>
+                    <h3 className="font-bold text-sm text-white">Permisos y aislamiento de clientes</h3>
                   </div>
                   <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                    🟢 RLS Activo
+                    🟢 Configuración correcta
                   </span>
                 </div>
 
-                <div className="text-xs space-y-1 text-slate-300">
-                  <p className="font-semibold text-white">
-                    Controla qué información puede ver cada organización.
-                  </p>
-                  <p className="text-slate-400 text-[11px] leading-relaxed">
-                    Protege la estricta separación de datos entre clientes. No modificar salvo necesidad justificada.
-                  </p>
+                <div className="text-xs space-y-2 text-slate-300">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Para qué sirve</span>
+                    <p className="font-semibold text-white">
+                      Controla qué información puede ver cada organización y cada tipo de usuario, evitando accesos cruzados.
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Cuándo modificarlo</span>
+                    <p className="text-slate-400 text-[11px]">
+                      Normalmente no necesitas modificar esta configuración. Úsala solamente si cambias permisos o investigas un problema de acceso.
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Riesgo</span>
+                    <p className="text-slate-400 text-[11px]">
+                      Cambiar incorrectamente estos permisos puede provocar que determinados usuarios pierdan acceso a información que necesitan.
+                    </p>
+                  </div>
                 </div>
 
-                <div className="p-2.5 bg-[#071322] rounded-lg border border-[#152E4D] text-[10px] font-mono text-slate-400 space-y-1">
-                  <div>Tecnología: Row Level Security · RLS</div>
-                  <div>Tablas protegidas: 18 / 18</div>
+                <div className="pt-2 border-t border-[#152E4D] text-[10px] text-slate-500">
+                  Tecnología: Supabase Row Level Security · RLS
                 </div>
               </div>
 
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setSelectedModal('rls')}
+                onClick={() => setSelectedModal('Permisos y aislamiento')}
                 className="w-full bg-[#071322] border-[#1E3A5F] text-slate-200 hover:bg-[#152E4D] text-xs font-semibold"
               >
                 <Sliders className="w-3.5 h-3.5 mr-1" /> Administrar permisos
@@ -259,36 +310,49 @@ export const SuperAdminTechnicalConfigPage: React.FC = () => {
 
             {/* 2. Credenciales seguras */}
             <div className="bg-[#09182C] border border-[#152E4D] rounded-2xl p-5 flex flex-col justify-between space-y-4">
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Lock className="w-5 h-5 text-teal-400" />
                     <h3 className="font-bold text-sm text-white">Credenciales seguras</h3>
                   </div>
                   <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                    🟢 Bóveda Cifrada
+                    🟢 Credenciales configuradas
                   </span>
                 </div>
 
-                <div className="text-xs space-y-1 text-slate-300">
-                  <p className="font-semibold text-white">
-                    Guarda de forma encriptada las claves privadas.
-                  </p>
-                  <p className="text-slate-400 text-[11px] leading-relaxed">
-                    Almacena las credenciales de IA, KYC, Firma y Correo con encriptación hardware sin exponerse al navegador.
-                  </p>
+                <div className="text-xs space-y-2 text-slate-300">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Para qué sirve</span>
+                    <p className="font-semibold text-white">
+                      Protege las claves privadas utilizadas para conectar HIPOTECALY con proveedores externos (IA, KYC, Firma).
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Cuándo modificarlo</span>
+                    <p className="text-slate-400 text-[11px]">
+                      Solamente al renovar o reemplazar una clave con un proveedor de servicios.
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Riesgo</span>
+                    <p className="text-slate-400 text-[11px]">
+                      Ingresar una clave incorrecta pausará la comunicación con el servicio externo correspondiente.
+                    </p>
+                  </div>
                 </div>
 
-                <div className="p-2.5 bg-[#071322] rounded-lg border border-[#152E4D] text-[10px] font-mono text-slate-400 space-y-1">
-                  <div>Tecnología: Supabase Vault (AEAD)</div>
-                  <div>Variables custodiadas: 4 críticas</div>
+                <div className="pt-2 border-t border-[#152E4D] text-[10px] text-slate-500">
+                  Tecnología: Supabase Vault
                 </div>
               </div>
 
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setSelectedModal('vault')}
+                onClick={() => setSelectedModal('Credenciales seguras')}
                 className="w-full bg-[#071322] border-[#1E3A5F] text-slate-200 hover:bg-[#152E4D] text-xs font-semibold"
               >
                 <Sliders className="w-3.5 h-3.5 mr-1" /> Administrar credenciales
@@ -297,39 +361,52 @@ export const SuperAdminTechnicalConfigPage: React.FC = () => {
 
             {/* 3. Sesiones y accesos */}
             <div className="bg-[#09182C] border border-[#152E4D] rounded-2xl p-5 flex flex-col justify-between space-y-4">
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <KeyRound className="w-5 h-5 text-indigo-400" />
                     <h3 className="font-bold text-sm text-white">Sesiones y accesos</h3>
                   </div>
                   <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                    🟢 Sin incidentes
+                    🟢 Sin problemas detectados
                   </span>
                 </div>
 
-                <div className="text-xs space-y-1 text-slate-300">
-                  <p className="font-semibold text-white">
-                    Control de autenticación de usuarios y administradores.
-                  </p>
-                  <p className="text-slate-400 text-[11px] leading-relaxed">
-                    Gestiona sesiones JWT, verificación en dos pasos y tokens de acceso temporales.
-                  </p>
+                <div className="text-xs space-y-2 text-slate-300">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Para qué sirve</span>
+                    <p className="font-semibold text-white">
+                      Controla las sesiones de usuarios, administradores y accesos especiales de la plataforma.
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Cuándo modificarlo</span>
+                    <p className="text-slate-400 text-[11px]">
+                      Para revocar accesos masivos o auditar sesiones concurrentes.
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Riesgo</span>
+                    <p className="text-slate-400 text-[11px]">
+                      Cerrar sesiones activas forzará a los usuarios a volver a ingresar.
+                    </p>
+                  </div>
                 </div>
 
-                <div className="p-2.5 bg-[#071322] rounded-lg border border-[#152E4D] text-[10px] font-mono text-slate-400 space-y-1">
-                  <div>Tecnología: Supabase Auth Core</div>
-                  <div>Tokens activos: Válidos</div>
+                <div className="pt-2 border-t border-[#152E4D] text-[10px] text-slate-500">
+                  Tecnología: Supabase Auth
                 </div>
               </div>
 
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setSelectedModal('auth')}
+                onClick={() => setSelectedModal('Sesiones y accesos')}
                 className="w-full bg-[#071322] border-[#1E3A5F] text-slate-200 hover:bg-[#152E4D] text-xs font-semibold"
               >
-                <Sliders className="w-3.5 h-3.5 mr-1" /> Administrar sesiones
+                <Sliders className="w-3.5 h-3.5 mr-1" /> Administrar
               </Button>
             </div>
           </div>
@@ -339,138 +416,119 @@ export const SuperAdminTechnicalConfigPage: React.FC = () => {
         {/* GRUPO C: INTEGRACIONES TÉCNICAS                              */}
         {/* ============================================================ */}
         {activeGroup === 'integrations' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {/* 1. Claves API */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* 1. Credenciales de servicios */}
             <div className="bg-[#09182C] border border-[#152E4D] rounded-2xl p-5 flex flex-col justify-between space-y-4">
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Key className="w-5 h-5 text-emerald-400" />
-                    <h3 className="font-bold text-sm text-white">Claves API</h3>
+                    <h3 className="font-bold text-sm text-white">Credenciales de servicios</h3>
                   </div>
                   <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">
-                    🟢 Válidas
+                    🟢 Claves activas
                   </span>
                 </div>
 
-                <div className="text-xs space-y-1 text-slate-300">
-                  <p className="font-semibold text-white">
-                    Conexión con proveedores externos.
-                  </p>
-                  <p className="text-slate-400 text-[11px]">
-                    Permite verificar estado, reemplazar y probar conectividad con OpenAI, Didit y Firma.gub.uy.
-                  </p>
+                <div className="text-xs space-y-2 text-slate-300">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Para qué sirve</span>
+                    <p className="font-semibold text-white">
+                      Claves utilizadas para conectar HIPOTECALY con proveedores externos como OpenAI y Didit.
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Cuándo modificarlo</span>
+                    <p className="text-slate-400 text-[11px]">
+                      Solo necesitas modificar esta configuración si cambias de proveedor o si la integración deja de funcionar.
+                    </p>
+                  </div>
                 </div>
 
-                <div className="p-2.5 bg-[#071322] rounded-lg border border-[#152E4D] text-[10px] font-mono text-slate-400 space-y-1">
-                  <div>OpenAI: sk-proj-••••••••3a9F</div>
-                  <div>Didit KYC: didit_sec_••••8801</div>
+                <div className="p-3 bg-[#071322] rounded-xl border border-[#152E4D] text-[11px] font-mono text-slate-300 space-y-1">
+                  <div className="flex justify-between">
+                    <span>OpenAI:</span>
+                    <span className="text-emerald-400">••••••••••••3a9F (Validada)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Didit KYC:</span>
+                    <span className="text-emerald-400">••••••••••••8801 (Validada)</span>
+                  </div>
                 </div>
               </div>
 
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setSelectedModal('api-keys')}
+                onClick={() => setSelectedModal('Credenciales de servicios')}
                 className="w-full bg-[#071322] border-[#1E3A5F] text-slate-200 hover:bg-[#152E4D] text-xs font-semibold"
               >
-                <Sliders className="w-3.5 h-3.5 mr-1" /> Gestionar Claves
+                <Sliders className="w-3.5 h-3.5 mr-1" /> Reemplazar credencial
               </Button>
             </div>
 
-            {/* 2. Webhooks */}
+            {/* 2. Notificaciones entre servicios (Webhooks) */}
             <div className="bg-[#09182C] border border-[#152E4D] rounded-2xl p-5 flex flex-col justify-between space-y-4">
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Webhook className="w-5 h-5 text-purple-400" />
-                    <h3 className="font-bold text-sm text-white">Webhooks y Notificaciones</h3>
+                    <h3 className="font-bold text-sm text-white">Notificaciones entre servicios</h3>
                   </div>
                   <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">
-                    🟢 Operativo
+                    🟢 Funcionando correctamente
                   </span>
                 </div>
 
-                <div className="text-xs space-y-1 text-slate-300">
-                  <p className="font-semibold text-white">
-                    Recepción automática de eventos de servicios.
-                  </p>
-                  <p className="text-slate-400 text-[11px]">
-                    Recibe avisos cuando un usuario completa KYC o cuando se firma un documento.
-                  </p>
+                <div className="text-xs space-y-2 text-slate-300">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Para qué sirve</span>
+                    <p className="font-semibold text-white">
+                      Permiten que un proveedor informe automáticamente a HIPOTECALY cuando ocurre un evento (KYC aprobado, firma completada).
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Cuándo modificarlo</span>
+                    <p className="text-slate-400 text-[11px]">
+                      Si el proveedor requiere cambiar la dirección de recepción o renovar la firma criptográfica.
+                    </p>
+                  </div>
                 </div>
 
-                <div className="p-2.5 bg-[#071322] rounded-lg border border-[#152E4D] text-[10px] font-mono text-slate-400 space-y-1">
-                  <div>Firma HMAC SHA-256: Verificada</div>
-                  <div>Eventos procesados: 1.820 este mes</div>
+                <div className="pt-2 border-t border-[#152E4D] text-[10px] text-slate-500">
+                  Tecnología: Webhooks con verificación HMAC
                 </div>
               </div>
 
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setSelectedModal('webhooks')}
+                onClick={() => setSelectedModal('Notificaciones')}
                 className="w-full bg-[#071322] border-[#1E3A5F] text-slate-200 hover:bg-[#152E4D] text-xs font-semibold"
               >
-                <Sliders className="w-3.5 h-3.5 mr-1" /> Ver Webhooks
-              </Button>
-            </div>
-
-            {/* 3. Conexiones y Endpoints */}
-            <div className="bg-[#09182C] border border-[#152E4D] rounded-2xl p-5 flex flex-col justify-between space-y-4">
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Network className="w-5 h-5 text-sky-400" />
-                    <h3 className="font-bold text-sm text-white">Endpoints del Sistema</h3>
-                  </div>
-                  <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">
-                    🟢 100% Online
-                  </span>
-                </div>
-
-                <div className="text-xs space-y-1 text-slate-300">
-                  <p className="font-semibold text-white">
-                    Rutas de comunicación interna y APIs.
-                  </p>
-                  <p className="text-slate-400 text-[11px]">
-                    Direcciones utilizadas por el frontend y los clientes para interactuar con el motor central.
-                  </p>
-                </div>
-
-                <div className="p-2.5 bg-[#071322] rounded-lg border border-[#152E4D] text-[10px] font-mono text-slate-400 space-y-1">
-                  <div>API Base: /api/v1/*</div>
-                  <div>Edge Functions: Activas</div>
-                </div>
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSelectedModal('endpoints')}
-                className="w-full bg-[#071322] border-[#1E3A5F] text-slate-200 hover:bg-[#152E4D] text-xs font-semibold"
-              >
-                <Sliders className="w-3.5 h-3.5 mr-1" /> Ver Endpoints
+                <Sliders className="w-3.5 h-3.5 mr-1" /> Administrar
               </Button>
             </div>
           </div>
         )}
 
         {/* ============================================================ */}
-        {/* GRUPO D: DIAGNÓSTICO                                         */}
+        {/* GRUPO D: DIAGNÓSTICO Y REGISTROS                             */}
         {/* ============================================================ */}
         {activeGroup === 'diagnostic' && (
           <div className="space-y-6">
-            {/* Panel de Ejecución de Diagnóstico */}
+            {/* 1. Comprobar sistema */}
             <div className="bg-[#09182C] border border-[#152E4D] rounded-2xl p-6 space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#152E4D] pb-4">
                 <div>
                   <h3 className="font-bold text-base text-white flex items-center">
                     <Activity className="w-5 h-5 mr-2 text-emerald-400" />
-                    Diagnóstico Integral de Componentes
+                    Comprobar sistema
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Comprueba en vivo que todos los servicios e infraestructuras internas de HIPOTECALY respondan adecuadamente.
+                    Revisa automáticamente que los principales componentes de HIPOTECALY estén funcionando.
                   </p>
                 </div>
 
@@ -479,58 +537,82 @@ export const SuperAdminTechnicalConfigPage: React.FC = () => {
                   size="md"
                   onClick={runDiagnostic}
                   disabled={diagnosing}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shrink-0"
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shrink-0 shadow-sm"
                 >
                   <Play className={`w-3.5 h-3.5 mr-1.5 ${diagnosing ? 'animate-spin' : ''}`} />
-                  {diagnosing ? 'Comprobando componentes...' : 'Ejecutar diagnóstico'}
+                  {diagnosing ? 'Comprobando...' : 'Comprobar ahora'}
                 </Button>
               </div>
 
-              {/* Resultados del Diagnóstico */}
+              {/* Resultados sencillos */}
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 text-xs">
                 {[
-                  { name: 'Base de datos', status: 'OK' },
-                  { name: 'Almacenamiento', status: 'OK' },
-                  { name: 'Inteligencia Artificial', status: 'OK' },
-                  { name: 'Identidad KYC', status: 'OK' },
-                  { name: 'Firma Digital', status: 'OK' },
-                  { name: 'Email Transaccional', status: 'OK' },
-                  { name: 'Webhooks Bus', status: 'OK' },
+                  { name: 'Base de datos', status: '🟢 Funcionando' },
+                  { name: 'Archivos', status: '🟢 Funcionando' },
+                  { name: 'Inteligencia Artificial', status: '🟢 Funcionando' },
+                  { name: 'Identidad y KYC', status: '🟢 Funcionando' },
+                  { name: 'Firma Digital', status: '🟢 Funcionando' },
+                  { name: 'Email', status: '🟢 Funcionando' },
+                  { name: 'Notificaciones', status: '🟢 Funcionando' },
                 ].map((item, idx) => (
-                  <div key={idx} className="p-3.5 bg-[#071322] border border-[#152E4D] rounded-xl space-y-1 text-center">
+                  <div key={idx} className="p-3 bg-[#071322] border border-[#152E4D] rounded-xl space-y-1 text-center">
                     <span className="text-[11px] font-semibold text-slate-300 block">{item.name}</span>
-                    <span className="inline-flex items-center text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">
-                      <CheckCircle2 className="w-3 h-3 mr-1" />
-                      {item.status}
-                    </span>
+                    <span className="text-[10px] text-emerald-400 font-bold block">{item.status}</span>
                   </div>
                 ))}
               </div>
+
+              <div className="flex justify-end pt-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowTechDetailsModal(true)}
+                  className="text-xs text-slate-400 hover:text-white border-[#152E4D]"
+                >
+                  Ver detalles técnicos
+                </Button>
+              </div>
             </div>
 
-            {/* Registros e Historial */}
+            {/* 2. Registros e Historial */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="bg-[#09182C] border border-[#152E4D] rounded-2xl p-5 space-y-3">
-                <h4 className="font-bold text-sm text-white">Registros técnicos (Logs)</h4>
-                <p className="text-xs text-slate-400">
-                  Información técnica utilizada para investigar errores o anomalías.
-                </p>
-                <div className="p-3 bg-[#071322] rounded-xl font-mono text-[11px] text-slate-400 space-y-1">
-                  <div>[2026-09-07 04:30:11] INFO: Health check passed for 7 services</div>
-                  <div>[2026-09-07 04:15:02] INFO: DocFlow render completed without errors</div>
-                  <div>[2026-09-07 03:55:40] INFO: Vacuum routine executed on db pool</div>
+              <div className="bg-[#09182C] border border-[#152E4D] rounded-2xl p-5 flex flex-col justify-between space-y-3">
+                <div className="space-y-1.5">
+                  <h4 className="font-bold text-sm text-white">Registros técnicos</h4>
+                  <p className="text-xs text-slate-400">
+                    Información utilizada para investigar errores o comportamientos inesperados de la plataforma.
+                  </p>
+                </div>
+
+                <div className="pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedModal('Registros')}
+                    className="bg-[#071322] border-[#1E3A5F] text-slate-200 text-xs"
+                  >
+                    Ver registros
+                  </Button>
                 </div>
               </div>
 
-              <div className="bg-[#09182C] border border-[#152E4D] rounded-2xl p-5 space-y-3">
-                <h4 className="font-bold text-sm text-white">Historial de cambios técnicos</h4>
-                <p className="text-xs text-slate-400">
-                  Permite saber quién modificó una configuración importante y cuándo.
-                </p>
-                <div className="p-3 bg-[#071322] rounded-xl font-mono text-[11px] text-slate-400 space-y-1">
-                  <div>2026-09-07: Se actualizó modelo de OCR a GPT-5.6-luna (Admin)</div>
-                  <div>2026-09-06: Se configuró webhook receiver de Didit v3</div>
-                  <div>2026-09-05: Se habilitó aislamiento RLS para nuevo cliente</div>
+              <div className="bg-[#09182C] border border-[#152E4D] rounded-2xl p-5 flex flex-col justify-between space-y-3">
+                <div className="space-y-1.5">
+                  <h4 className="font-bold text-sm text-white">Historial de cambios</h4>
+                  <p className="text-xs text-slate-400">
+                    Permite saber quién modificó una configuración importante y cuándo.
+                  </p>
+                </div>
+
+                <div className="pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedModal('Historial')}
+                    className="bg-[#071322] border-[#1E3A5F] text-slate-200 text-xs"
+                  >
+                    Ver historial
+                  </Button>
                 </div>
               </div>
             </div>
@@ -538,27 +620,42 @@ export const SuperAdminTechnicalConfigPage: React.FC = () => {
         )}
 
         {/* Modal de Detalle Técnico */}
-        {selectedModal && (
+        {(selectedModal || showTechDetailsModal) && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-[#09182C] border border-[#152E4D] rounded-2xl max-w-lg w-full p-6 space-y-4 text-left shadow-2xl">
               <div className="flex items-center justify-between border-b border-[#152E4D] pb-3">
-                <h3 className="font-bold text-base text-white capitalize">Detalle: {selectedModal}</h3>
-                <button onClick={() => setSelectedModal(null)} className="text-slate-400 hover:text-white text-lg">×</button>
+                <h3 className="font-bold text-base text-white">
+                  {showTechDetailsModal ? 'Detalles técnicos del sistema' : `Detalles: ${selectedModal}`}
+                </h3>
+                <button
+                  onClick={() => {
+                    setSelectedModal(null);
+                    setShowTechDetailsModal(false);
+                  }}
+                  className="text-slate-400 hover:text-white text-lg"
+                >
+                  ×
+                </button>
               </div>
 
               <p className="text-xs text-slate-300 leading-relaxed">
                 Este componente se encuentra actualmente sincronizado y gestionado por la infraestructura segura server-side de HIPOTECALY.
               </p>
 
-              <div className="p-3 bg-[#071322] rounded-xl border border-[#152E4D] text-xs font-mono text-emerald-400">
-                Estado: 100% OPERATIVO · Sin incidentes
+              <div className="p-3 bg-[#071322] rounded-xl border border-[#152E4D] text-xs font-mono text-emerald-400 space-y-1">
+                <div>Estado: 🟢 Operativo</div>
+                <div>Latencia: 14ms</div>
+                <div>Seguridad: RLS y Vault activos</div>
               </div>
 
               <div className="flex justify-end pt-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setSelectedModal(null)}
+                  onClick={() => {
+                    setSelectedModal(null);
+                    setShowTechDetailsModal(false);
+                  }}
                   className="bg-[#071322] border-[#152E4D] text-slate-300"
                 >
                   Cerrar

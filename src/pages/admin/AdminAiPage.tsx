@@ -281,7 +281,7 @@ export const AdminAiPage: React.FC = () => {
           {/* Master Switch Rápido */}
           <div className="flex items-center space-x-3 bg-white p-2.5 rounded-2xl border border-slate-200 shadow-sm">
             <div className="text-right">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block">Master Switch</span>
+              <span className="text-[10px] uppercase font-bold text-slate-400 block">Inteligencia Artificial</span>
               <span className={`text-xs font-black ${adminStatus?.active ? 'text-emerald-700' : 'text-slate-500'}`}>
                 {adminStatus?.active ? '● AI ACTIVO' : '○ AI DESACTIVADO'}
               </span>
@@ -401,7 +401,7 @@ export const AdminAiPage: React.FC = () => {
               {/* Master Switch Panel */}
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-0.5">
-                  <span className="text-xs font-bold text-navy">HIPOTECALY AI MASTER SWITCH</span>
+                  <span className="text-xs font-bold text-navy">CONTROL DE INTELIGENCIA ARTIFICIAL</span>
                   <p className="text-xs text-slate-600">
                     {adminStatus?.active
                       ? 'Todos los análisis AI están disponibles para los estudios y solicitudes en curso.'

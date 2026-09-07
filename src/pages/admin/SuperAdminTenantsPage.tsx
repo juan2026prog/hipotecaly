@@ -159,7 +159,7 @@ export const SuperAdminTenantsPage: React.FC = () => {
             <table className="w-full text-left text-xs">
               <thead className="bg-[#071322] text-slate-400 border-b border-[#152E4D] font-semibold">
                 <tr>
-                  <th className="py-3 px-4">Cliente / Marca</th>
+                  <th className="py-3 px-4">Cliente</th>
                   <th className="py-3 px-4">Estado</th>
                   <th className="py-3 px-4">Plan</th>
                   <th className="py-3 px-4">Usuarios</th>
@@ -170,111 +170,122 @@ export const SuperAdminTenantsPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#152E4D]">
-                {filteredTenants.map((t: Tenant) => (
-                  <tr key={t.id} className="hover:bg-white/5 transition-colors">
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center space-x-3">
-                        <div
-                          className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm"
-                          style={{ backgroundColor: t.branding?.primary_color || '#102d49' }}
-                        >
-                          {t.name.charAt(0)}
-                        </div>
-                        <div>
-                          <strong className="text-white block">{t.name}</strong>
-                          <span className="text-[11px] text-slate-400">
-                            {t.custom_domain || `/demo/${t.slug}`}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-
-                    <td className="py-3.5 px-4">
-                      {t.status === 'active' ? (
-                        <span className="inline-flex items-center text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                          <CheckCircle2 className="w-3 h-3 mr-1" /> Activo
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center text-[11px] font-bold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">
-                          <AlertCircle className="w-3 h-3 mr-1" /> Suspendido
-                        </span>
-                      )}
-                    </td>
-
-                    <td className="py-3.5 px-4">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/15 text-blue-400 border border-blue-500/20">
-                        {t.is_white_label ? 'Marca Blanca' : 'Plan Estándar'}
-                      </span>
-                    </td>
-
-                    <td className="py-3.5 px-4 font-mono text-slate-200">
-                      {t.slug === 'estudio-nova' ? '14 usuarios' : '6 usuarios'}
-                    </td>
-
-                    <td className="py-3.5 px-4 font-mono text-slate-200">
-                      {t.slug === 'estudio-nova' ? '5 créditos' : '2 créditos'}
-                    </td>
-
-                    <td className="py-3.5 px-4">
-                      <div className="flex flex-wrap gap-1">
-                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-slate-800 text-slate-300">Documentos</span>
-                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-slate-800 text-slate-300">KYC</span>
-                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-slate-800 text-slate-300">IA</span>
-                      </div>
-                    </td>
-
-                    <td className="py-3.5 px-4 text-slate-400 text-[11px]">
-                      Hace 10 min
-                    </td>
-
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end space-x-1.5">
-                        {/* Ver cliente / Sitio público */}
-                        <Link
-                          to={`/demo/${t.slug}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          title="Ver portal público"
-                        >
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 w-7 p-0 bg-[#09182C] border-[#1E3A5F] text-slate-300 hover:text-white"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </Button>
-                        </Link>
-
-                        {/* Ver como cliente */}
-                        <Link
-                          to={`/demo/${t.slug}/cliente`}
-                          target="_blank"
-                          rel="noreferrer"
-                          title="Ver como cliente"
-                        >
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 w-7 p-0 bg-[#09182C] border-[#1E3A5F] text-blue-400 hover:text-blue-300"
-                          >
-                            <UserCheck className="w-3.5 h-3.5" />
-                          </Button>
-                        </Link>
-
-                        {/* Administrar */}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSelectedTenantModal(t)}
-                          className="h-7 px-2.5 text-[10px] font-bold bg-[#152E4D] border-transparent text-emerald-400 hover:bg-[#1E3A5F]"
-                          title="Administrar configuración del cliente"
-                        >
-                          <Sliders className="w-3 h-3 mr-1" /> Administrar
-                        </Button>
-                      </div>
+                {filteredTenants.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center text-slate-400">
+                      <p className="font-semibold text-slate-300">No existen clientes que coincidan con la búsqueda.</p>
+                      <Link to="/admin/tenants/new" className="mt-2 inline-block text-emerald-400 font-bold hover:underline">
+                        + Crear nuevo cliente
+                      </Link>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredTenants.map((t: Tenant) => (
+                    <tr key={t.id} className="hover:bg-white/5 transition-colors">
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center space-x-3">
+                          <div
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm"
+                            style={{ backgroundColor: t.branding?.primary_color || '#102d49' }}
+                          >
+                            {t.name.charAt(0)}
+                          </div>
+                          <div>
+                            <strong className="text-white block">{t.name}</strong>
+                            <span className="text-[11px] text-slate-400">
+                              {t.custom_domain || `/demo/${t.slug}`}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="py-3.5 px-4">
+                        {t.status === 'active' ? (
+                          <span className="inline-flex items-center text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                            <CheckCircle2 className="w-3 h-3 mr-1" /> Activo
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center text-[11px] font-bold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">
+                            <AlertCircle className="w-3 h-3 mr-1" /> Suspendido
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="py-3.5 px-4">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/15 text-blue-400 border border-blue-500/20">
+                          {t.is_white_label ? 'Marca Blanca' : 'Plan Estándar'}
+                        </span>
+                      </td>
+
+                      <td className="py-3.5 px-4 text-slate-200">
+                        {t.slug === 'estudio-nova' ? '14 usuarios' : '6 usuarios'}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-slate-200">
+                        {t.slug === 'estudio-nova' ? '5 activos' : '2 activos'}
+                      </td>
+
+                      <td className="py-3.5 px-4">
+                        <div className="flex flex-wrap gap-1">
+                          <span className="px-1.5 py-0.5 rounded text-[9px] bg-slate-800 text-slate-300">Documentos</span>
+                          <span className="px-1.5 py-0.5 rounded text-[9px] bg-slate-800 text-slate-300">KYC</span>
+                          <span className="px-1.5 py-0.5 rounded text-[9px] bg-slate-800 text-slate-300">IA</span>
+                        </div>
+                      </td>
+
+                      <td className="py-3.5 px-4 text-slate-400 text-[11px]">
+                        Hace 10 min
+                      </td>
+
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="flex items-center justify-end space-x-1.5">
+                          {/* Ver cliente / Sitio público */}
+                          <Link
+                            to={`/demo/${t.slug}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            title="Ver portal público"
+                          >
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 bg-[#09182C] border-[#1E3A5F] text-slate-300 hover:text-white text-[11px] font-semibold"
+                            >
+                              <Eye className="w-3.5 h-3.5 mr-1" /> Ver
+                            </Button>
+                          </Link>
+
+                          {/* Ver como cliente */}
+                          <Link
+                            to={`/demo/${t.slug}/cliente`}
+                            target="_blank"
+                            rel="noreferrer"
+                            title="Ver como cliente"
+                          >
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 bg-[#09182C] border-[#1E3A5F] text-blue-400 hover:text-blue-300 text-[11px] font-semibold"
+                            >
+                              <UserCheck className="w-3.5 h-3.5 mr-1" /> Ver como cliente
+                            </Button>
+                          </Link>
+
+                          {/* Administrar */}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedTenantModal(t)}
+                            className="h-7 px-2.5 text-[10px] font-bold bg-[#152E4D] border-transparent text-emerald-400 hover:bg-[#1E3A5F]"
+                            title="Administrar configuración del cliente"
+                          >
+                            <Sliders className="w-3 h-3 mr-1" /> Administrar
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

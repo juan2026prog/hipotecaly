@@ -1,3 +1,8 @@
+// ==============================================================================
+// HIPOTECALY: Modal de Detalle y Administración de Cliente
+// Configuración de branding, módulos, reglas financieras y permisos
+// ==============================================================================
+
 import React, { useState, useEffect } from 'react';
 import {
   X,
@@ -22,7 +27,7 @@ export const SuperAdminTenantDetailModal: React.FC<SuperAdminTenantDetailModalPr
   onClose,
   onUpdated,
 }) => {
-  const [activeTab, setActiveTab] = useState<'resumen' | 'branding' | 'modulos' | 'usuarios' | 'reglas' | 'integraciones' | 'uso' | 'auditoria' | 'qa'>('resumen');
+  const [activeTab, setActiveTab] = useState<'resumen' | 'branding' | 'modulos' | 'reglas' | 'usuarios' | 'integraciones' | 'uso' | 'auditoria'>('resumen');
   const [modules, setModules] = useState<Record<TenantModuleKey, boolean>>(DEFAULT_MODULES_MAP);
   const [rules, setRules] = useState<TenantLendingRules>(DEFAULT_NOVA_LENDING_RULES);
   const [isSaving, setIsSaving] = useState(false);
@@ -57,16 +62,16 @@ export const SuperAdminTenantDetailModal: React.FC<SuperAdminTenantDetailModalPr
   };
 
   const moduleList: { key: TenantModuleKey; name: string; desc: string }[] = [
-    { key: 'application_module_enabled', name: 'Solicitudes Digitales', desc: 'Recepción y validación online' },
-    { key: 'simulator_enabled', name: 'Simulador Crediticio', desc: 'Calculadora de financiación por porcentaje' },
+    { key: 'application_module_enabled', name: 'Solicitudes Digitales', desc: 'Recepción y validación online de solicitudes' },
+    { key: 'simulator_enabled', name: 'Simulador Crediticio', desc: 'Calculadora de financiación para clientes' },
     { key: 'client_portal_enabled', name: 'Portal del Solicitante', desc: 'Autogestión de expedientes y legajo' },
-    { key: 'staff_portal_enabled', name: 'Backoffice Operativo', desc: 'Bandeja para analistas y escribanos' },
-    { key: 'documents_enabled', name: 'DocFlow & Legajo', desc: 'Generación, revisión y firma de recaudos' },
-    { key: 'ai_enabled', name: 'Copiloto de IA', desc: 'Análisis asistido de tasaciones y riesgo' },
+    { key: 'staff_portal_enabled', name: 'Backoffice Operativo', desc: 'Bandeja de gestión para analistas y escribanos' },
+    { key: 'documents_enabled', name: 'Documentos y Formularios', desc: 'Generación, autollenado, versionado y gestión de documentos' },
+    { key: 'ai_enabled', name: 'Inteligencia Artificial', desc: 'Análisis asistido de tasaciones y documentación' },
     { key: 'valuations_enabled', name: 'Módulo de Tasaciones', desc: 'Peritajes técnicos y cálculo de rangos' },
     { key: 'signatures_enabled', name: 'Firma Digital Notarial', desc: 'Firma electrónica e integración notarial' },
-    { key: 'investor_portal_enabled', name: 'Red Privada de Inversores', desc: 'Portal exclusivo para inversores del tenant' },
-    { key: 'protected_contact_enabled', name: 'Protección Anti-Bypass', desc: 'Enmascaramiento de datos personales' },
+    { key: 'investor_portal_enabled', name: 'Red Privada de Inversores', desc: 'Portal exclusivo para inversores del cliente' },
+    { key: 'protected_contact_enabled', name: 'Protección de Contactos', desc: 'Privacidad y protección anti-bypass' },
   ];
 
   return (
@@ -84,11 +89,11 @@ export const SuperAdminTenantDetailModal: React.FC<SuperAdminTenantDetailModalPr
             <div>
               <div className="flex items-center space-x-2">
                 <h2 className="text-base font-extrabold text-white">{tenant.name}</h2>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                   {tenant.status === 'active' ? 'ACTIVO' : 'SUSPENDIDO'}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 font-mono">/demo/{tenant.slug} • {tenant.custom_domain || 'Sin dominio custom'}</p>
+              <p className="text-xs text-slate-400 font-mono">/demo/{tenant.slug} • {tenant.custom_domain || 'Subdominio estándar'}</p>
             </div>
           </div>
 
@@ -111,20 +116,20 @@ export const SuperAdminTenantDetailModal: React.FC<SuperAdminTenantDetailModalPr
         <div className="flex border-b border-[#152E4D] px-4 overflow-x-auto text-xs font-bold bg-[#071322]">
           {[
             { id: 'resumen', label: 'Resumen' },
-            { id: 'branding', label: 'Branding' },
-            { id: 'modulos', label: 'Módulos' },
-            { id: 'reglas', label: 'Reglas Financieras' },
+            { id: 'branding', label: 'Marca & Dominio' },
+            { id: 'modulos', label: 'Servicios Activos' },
+            { id: 'reglas', label: 'Reglas de Crédito' },
             { id: 'usuarios', label: 'Usuarios' },
             { id: 'integraciones', label: 'Integraciones' },
-            { id: 'uso', label: 'Uso & Métricas' },
-            { id: 'auditoria', label: 'Auditoría' },
+            { id: 'uso', label: 'Uso & Consumo' },
+            { id: 'auditoria', label: 'Actividad' },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
               className={`px-3.5 py-3 border-b-2 whitespace-nowrap transition-colors ${
                 activeTab === tab.id
-                  ? 'border-brand-green text-brand-green font-bold'
+                  ? 'border-emerald-500 text-emerald-400 font-bold'
                   : 'border-transparent text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -147,19 +152,18 @@ export const SuperAdminTenantDetailModal: React.FC<SuperAdminTenantDetailModalPr
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-4 rounded-xl bg-[#071322] border border-[#152E4D] space-y-2">
-                  <span className="text-slate-400 font-semibold block">Datos de Identificación</span>
-                  <div><strong>ID:</strong> <span className="font-mono text-slate-300">{tenant.id}</span></div>
-                  <div><strong>Nombre Legal:</strong> {tenant.name} S.A.S.</div>
-                  <div><strong>Ruta Slug:</strong> <span className="font-mono text-emerald-400">/demo/{tenant.slug}</span></div>
-                  <div><strong>Tipo de Plan:</strong> {tenant.is_white_label ? 'Full White Label' : 'Core Enterprise'}</div>
+                  <span className="text-slate-400 font-semibold block">Información General</span>
+                  <div><strong>Cliente:</strong> {tenant.name}</div>
+                  <div><strong>Ruta de acceso:</strong> <span className="text-emerald-400">/demo/{tenant.slug}</span></div>
+                  <div><strong>Plan contratado:</strong> {tenant.is_white_label ? 'Marca Blanca (White Label)' : 'Plan Estándar'}</div>
+                  <div><strong>Estado:</strong> {tenant.status === 'active' ? '🟢 Operativo' : '🔴 Inactivo'}</div>
                 </div>
 
                 <div className="p-4 rounded-xl bg-[#071322] border border-[#152E4D] space-y-2">
-                  <span className="text-slate-400 font-semibold block">Infraestructura & Estado</span>
-                  <div><strong>Aislamiento RLS:</strong> <span className="text-emerald-400 font-bold">Activo 100%</span></div>
-                  <div><strong>Modo Demo:</strong> {tenant.demo_mode ? 'Sí (Dataset seguro)' : 'Producción'}</div>
+                  <span className="text-slate-400 font-semibold block">Seguridad y Aislamiento</span>
+                  <div><strong>Aislamiento de datos:</strong> <span className="text-emerald-400 font-bold">🟢 Protegido</span></div>
                   <div><strong>Red de Inversores:</strong> {modules.investor_portal_enabled ? 'Habilitada' : 'Inactiva'}</div>
-                  <div><strong>Bóveda IA:</strong> Supabase Vault Conectada</div>
+                  <div><strong>Credenciales seguras:</strong> Encriptadas en bóveda</div>
                 </div>
               </div>
             </div>
@@ -201,7 +205,7 @@ export const SuperAdminTenantDetailModal: React.FC<SuperAdminTenantDetailModalPr
                   />
                 </div>
                 <div>
-                  <label className="text-slate-400 block mb-1 font-semibold">Powered By Hipotecaly</label>
+                  <label className="text-slate-400 block mb-1 font-semibold">Insignia de Plataforma</label>
                   <select className="w-full p-2.5 rounded-lg bg-[#071322] border border-[#152E4D] text-slate-100">
                     <option value="minimal">Minimalista (Recomendado)</option>
                     <option value="hidden">Oculto (Plan Enterprise)</option>
@@ -236,7 +240,7 @@ export const SuperAdminTenantDetailModal: React.FC<SuperAdminTenantDetailModalPr
                         }`}
                       >
                         {isEnabled ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
-                        <span>{isEnabled ? 'Activo' : 'Off'}</span>
+                        <span>{isEnabled ? 'Activo' : 'Inactivo'}</span>
                       </button>
                     </div>
                   );
@@ -250,14 +254,14 @@ export const SuperAdminTenantDetailModal: React.FC<SuperAdminTenantDetailModalPr
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="text-slate-400 block mb-1 font-semibold">Porcentaje Financiado Máx (%)</label>
+                  <label className="text-slate-400 block mb-1 font-semibold">Porcentaje de Financiación Máx (%)</label>
                   <input
                     type="number"
                     value={rules.maxFinancedPercentage}
                     onChange={(e) => setRules({ ...rules, maxFinancedPercentage: Number(e.target.value) })}
-                    className="w-full p-2.5 rounded-lg bg-[#071322] border border-[#152E4D] text-slate-100 font-mono font-bold"
+                    className="w-full p-2.5 rounded-lg bg-[#071322] border border-[#152E4D] text-slate-100 font-bold"
                   />
-                  <span className="text-[10px] text-slate-500 mt-1 block">Visible en UI como Porcentaje de financiación</span>
+                  <span className="text-[10px] text-slate-500 mt-1 block">Porcentaje máximo sobre el valor del inmueble</span>
                 </div>
                 <div>
                   <label className="text-slate-400 block mb-1 font-semibold">Monto Máximo (USD)</label>
@@ -265,7 +269,7 @@ export const SuperAdminTenantDetailModal: React.FC<SuperAdminTenantDetailModalPr
                     type="number"
                     value={rules.maxLoanAmount}
                     onChange={(e) => setRules({ ...rules, maxLoanAmount: Number(e.target.value) })}
-                    className="w-full p-2.5 rounded-lg bg-[#071322] border border-[#152E4D] text-slate-100 font-mono font-bold"
+                    className="w-full p-2.5 rounded-lg bg-[#071322] border border-[#152E4D] text-slate-100 font-bold"
                   />
                 </div>
                 <div>
@@ -274,7 +278,7 @@ export const SuperAdminTenantDetailModal: React.FC<SuperAdminTenantDetailModalPr
                     type="number"
                     value={rules.maxTermMonths}
                     onChange={(e) => setRules({ ...rules, maxTermMonths: Number(e.target.value) })}
-                    className="w-full p-2.5 rounded-lg bg-[#071322] border border-[#152E4D] text-slate-100 font-mono font-bold"
+                    className="w-full p-2.5 rounded-lg bg-[#071322] border border-[#152E4D] text-slate-100 font-bold"
                   />
                 </div>
               </div>
@@ -287,7 +291,7 @@ export const SuperAdminTenantDetailModal: React.FC<SuperAdminTenantDetailModalPr
                   disabled={isSaving}
                   className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
                 >
-                  {isSaving ? 'Guardando...' : 'Guardar Reglas Financieras'}
+                  {isSaving ? 'Guardando...' : 'Guardar Reglas de Crédito'}
                 </Button>
               </div>
             </div>
@@ -300,19 +304,19 @@ export const SuperAdminTenantDetailModal: React.FC<SuperAdminTenantDetailModalPr
                 <div className="p-3 flex items-center justify-between">
                   <div>
                     <strong className="text-slate-200 block">Dr. Alejandro Méndez</strong>
-                    <span className="text-slate-400 font-mono text-[11px]">operaciones@estudionova.uy</span>
+                    <span className="text-slate-400 text-[11px]">operaciones@estudionova.uy</span>
                   </div>
                   <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
-                    tenant_owner
+                    Administrador del cliente
                   </span>
                 </div>
                 <div className="p-3 flex items-center justify-between">
                   <div>
                     <strong className="text-slate-200 block">Esc. Mariana Torres</strong>
-                    <span className="text-slate-400 font-mono text-[11px]">notaria@estudionova.uy</span>
+                    <span className="text-slate-400 text-[11px]">notaria@estudionova.uy</span>
                   </div>
                   <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 font-bold border border-blue-500/20">
-                    notary
+                    Escribano
                   </span>
                 </div>
               </div>
@@ -325,17 +329,17 @@ export const SuperAdminTenantDetailModal: React.FC<SuperAdminTenantDetailModalPr
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="p-3.5 rounded-xl bg-[#071322] border border-[#152E4D] space-y-1">
                   <div className="flex items-center justify-between">
-                    <strong className="text-slate-200">Firma.gub.uy / Notarial</strong>
-                    <span className="text-emerald-400 font-bold">✓ Operativo</span>
+                    <strong className="text-slate-200">Firma Digital</strong>
+                    <span className="text-emerald-400 font-bold">🟢 Operativo</span>
                   </div>
-                  <p className="text-slate-400 text-[11px]">Conector para emisión de certificados con validez Ley N° 18.600</p>
+                  <p className="text-slate-400 text-[11px]">Firma electrónica con validez Ley N° 18.600</p>
                 </div>
                 <div className="p-3.5 rounded-xl bg-[#071322] border border-[#152E4D] space-y-1">
                   <div className="flex items-center justify-between">
-                    <strong className="text-slate-200">Didit KYC</strong>
-                    <span className="text-emerald-400 font-bold">✓ Configurado</span>
+                    <strong className="text-slate-200">Identidad y KYC</strong>
+                    <span className="text-emerald-400 font-bold">🟢 Configurado</span>
                   </div>
-                  <p className="text-slate-400 text-[11px]">Validación biométrica y documento uruguayo</p>
+                  <p className="text-slate-400 text-[11px]">Validación de identidad y Cédula de Identidad</p>
                 </div>
               </div>
             </div>
@@ -349,16 +353,16 @@ export const SuperAdminTenantDetailModal: React.FC<SuperAdminTenantDetailModalPr
                 <span className="text-xl font-extrabold text-white mt-1 block">12</span>
               </div>
               <div className="p-4 rounded-xl bg-[#071322] border border-[#152E4D]">
-                <span className="text-slate-400 block text-[11px]">Documentos Generados</span>
+                <span className="text-slate-400 block text-[11px]">Documentos y Formularios</span>
                 <span className="text-xl font-extrabold text-white mt-1 block">38</span>
               </div>
               <div className="p-4 rounded-xl bg-[#071322] border border-[#152E4D]">
-                <span className="text-slate-400 block text-[11px]">Firmas Notariales</span>
+                <span className="text-slate-400 block text-[11px]">Firmas Realizadas</span>
                 <span className="text-xl font-extrabold text-emerald-400 mt-1 block">8</span>
               </div>
               <div className="p-4 rounded-xl bg-[#071322] border border-[#152E4D]">
-                <span className="text-slate-400 block text-[11px]">Saldo IA Casos</span>
-                <span className="text-xl font-extrabold text-teal-400 mt-1 block">8.64</span>
+                <span className="text-slate-400 block text-[11px]">Casos de IA Utilizados</span>
+                <span className="text-xl font-extrabold text-teal-400 mt-1 block">8 / 100</span>
               </div>
             </div>
           )}
@@ -367,12 +371,12 @@ export const SuperAdminTenantDetailModal: React.FC<SuperAdminTenantDetailModalPr
           {activeTab === 'auditoria' && (
             <div className="space-y-2">
               <div className="p-3 rounded-lg bg-[#071322] border border-[#152E4D] flex justify-between items-center">
-                <span>Modificación de reglas crediticias (Porcentaje 35%)</span>
-                <span className="text-slate-400 font-mono">Hace 2 horas</span>
+                <span>Se actualizaron las reglas de crédito (Porcentaje de financiación 35%)</span>
+                <span className="text-slate-400">Hace 2 horas</span>
               </div>
               <div className="p-3 rounded-lg bg-[#071322] border border-[#152E4D] flex justify-between items-center">
-                <span>Emisión de paquete DocFlow para solicitud HPT-00124</span>
-                <span className="text-slate-400 font-mono">Ayer</span>
+                <span>Se generó formulario para la solicitud HPT-00124</span>
+                <span className="text-slate-400">Ayer</span>
               </div>
             </div>
           )}

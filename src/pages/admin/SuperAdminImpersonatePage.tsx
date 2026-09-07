@@ -1,6 +1,6 @@
 // ==============================================================================
 // HIPOTECALY: Ver como cliente (/admin/ver-como-cliente)
-// Flujo ultra simple de 3 pasos para inspeccionar la experiencia de cualquier usuario
+// Flujo ultra simple de 3 pasos para comprobar qué ve cualquier usuario
 // ==============================================================================
 
 import React, { useState, useEffect } from 'react';
@@ -38,35 +38,35 @@ export const SuperAdminImpersonatePage: React.FC = () => {
     {
       id: 'borrower',
       title: 'Solicitante',
-      desc: 'Portal del cliente que solicita el préstamo hipotecario y sube su documentación.',
+      desc: 'Comprueba el portal donde el solicitante pide su préstamo y sube documentación.',
       targetPath: '/mi-cuenta',
       email: 'qa.applicant@hipotecaly.local',
     },
     {
       id: 'analyst',
-      title: 'Operador / Analista',
-      desc: 'Mesa de operaciones interna que evalúa la solicitud y revisa las tasaciones.',
+      title: 'Operador',
+      desc: 'Comprueba la bandeja de trabajo de los operadores para revisar expedientes.',
       targetPath: '/app',
       email: 'qa.operator@hipotecaly.local',
     },
     {
       id: 'notary',
       title: 'Escribano',
-      desc: 'Notario responsable de revisar títulos, minutas y preparar el otorgamiento.',
+      desc: 'Comprueba el área notarial para revisión de títulos y minutas.',
       targetPath: '/app/documentos',
       email: 'qa.notary@hipotecaly.local',
     },
     {
       id: 'lender',
-      title: 'Prestamista / Inversor',
-      desc: 'Portal privado para consultar legajos crediticios y realizar ofertas de financiamiento.',
+      title: 'Prestamista',
+      desc: 'Comprueba el portal privado de los inversores para evaluar oportunidades.',
       targetPath: '/lender',
       email: 'qa.lender@hipotecaly.local',
     },
     {
       id: 'tenant_admin',
       title: 'Administrador del cliente',
-      desc: 'Administrador del estudio o financiera con acceso completo a su organización.',
+      desc: 'Comprueba el panel del administrador del estudio o financiera.',
       targetPath: '/demo/estudio-nova/admin',
       email: 'qa.tenantadmin@hipotecaly.local',
     },
@@ -95,7 +95,7 @@ export const SuperAdminImpersonatePage: React.FC = () => {
     const roleObj = roles.find((r) => r.id === selectedRole) || roles[0];
     const selectedTenant = tenants.find((t) => t.id === selectedTenantId);
     
-    // Si es un tenant con marca blanca y rol tenant_admin o borrower, personalizar la ruta
+    // Si es un cliente con marca y rol específico, dirigir a su portal correspondiente
     let target = roleObj.targetPath;
     if (selectedTenant && selectedTenant.slug !== 'hipotecaly') {
       if (selectedRole === 'borrower') target = `/demo/${selectedTenant.slug}/cliente`;
@@ -112,7 +112,7 @@ export const SuperAdminImpersonatePage: React.FC = () => {
 
       setStatusMessage({
         type: 'success',
-        text: `Iniciando sesión segura como ${roleObj.title}...`,
+        text: `Iniciando acceso seguro como ${roleObj.title}...`,
       });
 
       setTimeout(() => {
@@ -121,7 +121,7 @@ export const SuperAdminImpersonatePage: React.FC = () => {
     } catch (err: any) {
       setStatusMessage({
         type: 'error',
-        text: err?.message || 'Error al generar la sesión de inspección.',
+        text: err?.message || 'No fue posible iniciar el acceso de inspección.',
       });
       setLoading(false);
     }
@@ -131,10 +131,10 @@ export const SuperAdminImpersonatePage: React.FC = () => {
     try {
       await adminQaService.revokeSession(id);
       await loadSessions();
-      setStatusMessage({ type: 'success', text: 'Sesión revocada exitosamente.' });
+      setStatusMessage({ type: 'success', text: 'Acceso revocado exitosamente.' });
       setTimeout(() => setStatusMessage(null), 3000);
     } catch (err: any) {
-      setStatusMessage({ type: 'error', text: err?.message || 'No se pudo revocar la sesión.' });
+      setStatusMessage({ type: 'error', text: err?.message || 'No se pudo revocar el acceso.' });
     }
   };
 
@@ -151,14 +151,14 @@ export const SuperAdminImpersonatePage: React.FC = () => {
               INSPECCIÓN EN VIVO
             </span>
             <span className="text-slate-500">•</span>
-            <span className="text-xs text-slate-400 font-mono">SESIONES SEGURAS</span>
+            <span className="text-xs text-slate-400 font-mono">ACCESO CONTROLADO</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mt-1 flex items-center">
             <UserCheck className="w-7 h-7 mr-3 text-emerald-400" />
             Ver como cliente
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Permite comprobar exactamente qué ve un usuario dentro de HIPOTECALY sin requerir contraseñas ni comprometer la seguridad.
+            Permite comprobar exactamente qué ve un usuario dentro de HIPOTECALY.
           </p>
         </div>
 
@@ -190,7 +190,7 @@ export const SuperAdminImpersonatePage: React.FC = () => {
                 1
               </span>
               <h2 className="text-sm font-bold text-white uppercase tracking-wide">
-                Elegir cliente u organización
+                Elegir cliente
               </h2>
             </div>
 
@@ -202,7 +202,7 @@ export const SuperAdminImpersonatePage: React.FC = () => {
                   onChange={(e) => setSelectedTenantId(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-[#071322] border border-[#152E4D] rounded-xl text-slate-200 text-xs font-bold focus:border-emerald-500 focus:outline-none"
                 >
-                  <option value="a0000000-0000-0000-0000-000000000001">HIPOTECALY Central (Plataforma Global)</option>
+                  <option value="a0000000-0000-0000-0000-000000000001">HIPOTECALY Central</option>
                   {tenants
                     .filter((t) => t.id !== 'a0000000-0000-0000-0000-000000000001')
                     .map((t) => (
@@ -266,13 +266,13 @@ export const SuperAdminImpersonatePage: React.FC = () => {
                 3
               </span>
               <h2 className="text-sm font-bold text-white uppercase tracking-wide">
-                Iniciar acceso
+                Entrar como este usuario
               </h2>
             </div>
 
             <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <p className="text-xs text-slate-400">
-                Accederás directamente con el rol de <strong className="text-emerald-400">{currentRole.title}</strong>.
+                Se abrirá la plataforma exactamente con la vista y permisos de <strong className="text-emerald-400">{currentRole.title}</strong>.
               </p>
 
               <Button
@@ -282,7 +282,7 @@ export const SuperAdminImpersonatePage: React.FC = () => {
                 onClick={handleLaunch}
                 className="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm px-6 py-3 shadow-lg shadow-emerald-500/20 shrink-0"
               >
-                <span>{loading ? 'Generando sesión...' : 'Entrar como este usuario →'}</span>
+                <span>{loading ? 'Preparando vista...' : 'Entrar como este usuario →'}</span>
               </Button>
             </div>
           </div>
@@ -291,7 +291,7 @@ export const SuperAdminImpersonatePage: React.FC = () => {
           <div className="p-3.5 bg-[#071322] rounded-xl border border-[#152E4D] text-xs text-slate-400 flex items-center space-x-2.5">
             <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>
-              Todos los accesos de inspección quedan registrados por seguridad y son auditables en la bitácora de actividad.
+              Todos los accesos de inspección quedan registrados por seguridad.
             </span>
           </div>
 
@@ -303,14 +303,14 @@ export const SuperAdminImpersonatePage: React.FC = () => {
               className="text-xs font-semibold text-slate-400 hover:text-white flex items-center space-x-1"
             >
               <Sliders className="w-3.5 h-3.5 mr-1" />
-              <span>{showAdvanced ? 'Ocultar opciones avanzadas' : 'Mostrar opciones avanzadas'}</span>
+              <span>{showAdvanced ? 'Ocultar opciones avanzadas' : 'Opciones avanzadas'}</span>
             </button>
 
             {showAdvanced && (
               <div className="mt-4 p-4 rounded-xl bg-[#071322] border border-[#152E4D] space-y-4 text-xs">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-slate-300 font-bold block">Duración de la sesión:</label>
+                    <label className="text-slate-300 font-bold block">Duración del acceso:</label>
                     <select
                       value={selectedDuration}
                       onChange={(e) => setSelectedDuration(Number(e.target.value))}
@@ -324,7 +324,7 @@ export const SuperAdminImpersonatePage: React.FC = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-slate-300 font-bold block">Usuario simulado asignado:</label>
+                    <label className="text-slate-300 font-bold block">Usuario asignado para inspección:</label>
                     <div className="p-2 bg-[#09182C] border border-[#152E4D] rounded-lg font-mono text-slate-300 text-xs truncate">
                       {currentRole.email}
                     </div>
@@ -338,13 +338,13 @@ export const SuperAdminImpersonatePage: React.FC = () => {
                     onChange={(e) => setKeepOnDevice(e.target.checked)}
                     className="w-4 h-4 rounded text-emerald-500"
                   />
-                  <span>Mantener acceso en este dispositivo sin pedir login en rutas protegidas</span>
+                  <span>Mantener acceso en este dispositivo sin solicitar contraseña nuevamente</span>
                 </label>
 
                 {/* Tabla de Sesiones Activas */}
                 <div className="pt-3 border-t border-[#152E4D] space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-200">Sesiones de inspección activas</span>
+                    <span className="font-bold text-slate-200">Accesos activos registrados</span>
                     <button onClick={loadSessions} className="text-[11px] text-emerald-400 hover:underline flex items-center">
                       <RefreshCw className="w-3 h-3 mr-1" /> Actualizar
                     </button>
@@ -353,8 +353,8 @@ export const SuperAdminImpersonatePage: React.FC = () => {
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-[11px]">
                       <thead>
-                        <tr className="border-b border-[#152E4D] text-slate-400 font-mono">
-                          <th className="py-2">Rol</th>
+                        <tr className="border-b border-[#152E4D] text-slate-400">
+                          <th className="py-2">Tipo de usuario</th>
                           <th className="py-2">Inicio</th>
                           <th className="py-2">Expira</th>
                           <th className="py-2 text-right">Acción</th>
@@ -364,17 +364,17 @@ export const SuperAdminImpersonatePage: React.FC = () => {
                         {activeSessions.length === 0 ? (
                           <tr>
                             <td colSpan={4} className="py-3 text-slate-500 italic text-center">
-                              No hay sesiones activas en este momento.
+                              No hay accesos de inspección activos en este momento.
                             </td>
                           </tr>
                         ) : (
                           activeSessions.map((s) => (
                             <tr key={s.id}>
                               <td className="py-2 font-bold text-white capitalize">{s.role}</td>
-                              <td className="py-2 text-slate-400 font-mono">
+                              <td className="py-2 text-slate-400">
                                 {new Date(s.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </td>
-                              <td className="py-2 text-slate-400 font-mono">
+                              <td className="py-2 text-slate-400">
                                 {new Date(s.expires_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </td>
                               <td className="py-2 text-right">
@@ -383,7 +383,7 @@ export const SuperAdminImpersonatePage: React.FC = () => {
                                     onClick={() => handleRevoke(s.id)}
                                     className="text-rose-400 hover:underline inline-flex items-center font-bold"
                                   >
-                                    <Trash2 className="w-3 h-3 mr-1" /> Revocar
+                                    <Trash2 className="w-3 h-3 mr-1" /> Revocar acceso
                                   </button>
                                 )}
                               </td>

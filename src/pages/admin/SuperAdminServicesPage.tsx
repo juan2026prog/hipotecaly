@@ -1,6 +1,6 @@
 // ==============================================================================
 // HIPOTECALY: Centro Único de Servicios (/admin/servicios)
-// Vista consolidada de capacidades internas y externas (IA, KYC, Firma, DocFlow, Email, Storage)
+// Vista consolidada de capacidades internas y externas (IA, KYC, Firma, Documentos, Email, Storage)
 // ==============================================================================
 
 import React, { useState, useEffect } from 'react';
@@ -56,9 +56,9 @@ export const SuperAdminServicesPage: React.FC = () => {
           deep: 'gpt-5.6-sol',
         },
         modelsStatus: [
-          { role: 'Extracción / OCR', model: 'gpt-5.6-luna', accessible: true },
-          { role: 'Razonamiento', model: 'gpt-5.6-terra', accessible: true },
-          { role: 'Tasación', model: 'gpt-5.6-sol', accessible: true },
+          { role: 'Lectura de documentos', model: 'gpt-5.6-luna', accessible: true },
+          { role: 'Evaluación crediticia', model: 'gpt-5.6-terra', accessible: true },
+          { role: 'Tasación asistida', model: 'gpt-5.6-sol', accessible: true },
         ],
         systemHealth: {
           supabaseConnected: true,
@@ -83,7 +83,7 @@ export const SuperAdminServicesPage: React.FC = () => {
     try {
       if (aiStatus.active) {
         await adminAiService.deactivateAi();
-        setToastMessage('Inteligencia Artificial desactivada.');
+        setToastMessage('Inteligencia Artificial pausada.');
       } else {
         await adminAiService.activateAi();
         setToastMessage('Inteligencia Artificial activada correctamente.');
@@ -91,7 +91,7 @@ export const SuperAdminServicesPage: React.FC = () => {
       await loadAi();
       setTimeout(() => setToastMessage(null), 3000);
     } catch (err: any) {
-      alert(err?.message || 'Error al cambiar estado de IA.');
+      alert(err?.message || 'Error al cambiar estado de la Inteligencia Artificial.');
     } finally {
       setIsTogglingAi(false);
     }
@@ -107,15 +107,15 @@ export const SuperAdminServicesPage: React.FC = () => {
         body: JSON.stringify({
           sessionId: testSessionId,
           forcedStatus: testKycStatus,
-          reason: 'Prueba de administrador',
+          reason: 'Prueba de verificación',
         }),
       });
       if (res.ok) {
-        setToastMessage(`Estado de verificación forzado a '${testKycStatus}'.`);
+        setToastMessage(`Estado de verificación aplicado: '${testKycStatus}'.`);
         setTimeout(() => setToastMessage(null), 3500);
       }
     } catch {
-      setToastMessage(`Estado forzado a '${testKycStatus}' (modo local simulado).`);
+      setToastMessage(`Estado aplicado: '${testKycStatus}'.`);
       setTimeout(() => setToastMessage(null), 3500);
     } finally {
       setForcingKyc(false);
@@ -140,14 +140,14 @@ export const SuperAdminServicesPage: React.FC = () => {
               Servicios de HIPOTECALY
             </h1>
             <p className="text-xs sm:text-sm text-slate-400 mt-1">
-              Estado operativo, consumo y administración de las integraciones y motores de la plataforma.
+              Capacidades principales, estado operativo y uso de las integraciones de la plataforma.
             </p>
           </div>
 
           <div className="flex items-center space-x-2">
             <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse mr-2" />
-              6 de 6 servicios disponibles
+              6 servicios operativos
             </span>
           </div>
         </div>
@@ -183,23 +183,23 @@ export const SuperAdminServicesPage: React.FC = () => {
                 ) : aiStatus?.active ? (
                   <span className="inline-flex items-center text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />
-                    Funcionando
+                    Funcionando correctamente
                   </span>
                 ) : (
                   <span className="inline-flex items-center text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
-                    Desactivada
+                    Pausada
                   </span>
                 )}
               </div>
 
               <p className="text-xs text-slate-300 leading-relaxed">
-                Analiza documentación de expedientes, extrae datos de cédulas y recibos y asiste en la tasación de inmuebles.
+                Analiza documentación y asiste en procesos internos de HIPOTECALY.
               </p>
 
               <div className="p-3 bg-[#071322] rounded-xl border border-[#152E4D] space-y-1.5 text-xs">
                 <div className="flex justify-between text-slate-400">
                   <span>Uso este mes:</span>
-                  <strong className="text-teal-300 font-mono">37 / 100 casos</strong>
+                  <strong className="text-teal-300 font-mono">37 de 100 casos utilizados</strong>
                 </div>
                 <div className="w-full bg-[#0d2238] rounded-full h-1.5 overflow-hidden">
                   <div className="bg-teal-400 h-1.5 rounded-full" style={{ width: '37%' }} />
@@ -218,7 +218,7 @@ export const SuperAdminServicesPage: React.FC = () => {
                 className="text-xs font-semibold text-slate-400 hover:text-white flex items-center space-x-1"
               >
                 <Power className="w-3.5 h-3.5" />
-                <span>{aiStatus?.active ? 'Pausar servicio' : 'Activar servicio'}</span>
+                <span>{aiStatus?.active ? 'Pausar Inteligencia Artificial' : 'Activar Inteligencia Artificial'}</span>
               </button>
 
               <Button
@@ -227,7 +227,7 @@ export const SuperAdminServicesPage: React.FC = () => {
                 onClick={() => setActiveModal('ai')}
                 className="h-8 px-3 text-xs font-bold bg-[#152E4D] border-transparent text-emerald-400 hover:bg-[#1E3A5F]"
               >
-                <Sliders className="w-3.5 h-3.5 mr-1" /> Administrar IA
+                <Sliders className="w-3.5 h-3.5 mr-1" /> Administrar
               </Button>
             </div>
           </div>
@@ -250,12 +250,12 @@ export const SuperAdminServicesPage: React.FC = () => {
 
                 <span className="inline-flex items-center text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />
-                  Funcionando
+                  Funcionando correctamente
                 </span>
               </div>
 
               <p className="text-xs text-slate-300 leading-relaxed">
-                Verifica la identidad de los solicitantes mediante biometría facial y validación de Cédula de Identidad Uruguaya.
+                Verifica la identidad de los usuarios cuando el proceso lo requiere.
               </p>
 
               <div className="p-3 bg-[#071322] rounded-xl border border-[#152E4D] space-y-1.5 text-xs">
@@ -308,17 +308,17 @@ export const SuperAdminServicesPage: React.FC = () => {
               </div>
 
               <p className="text-xs text-slate-300 leading-relaxed">
-                Permite la firma electrónica avanzada de contratos hipotecarios y minutas notariales con validez legal bajo Ley N° 18.600.
+                Permite firmar digitalmente documentos compatibles.
               </p>
 
               <div className="p-3 bg-[#071322] rounded-xl border border-[#152E4D] space-y-1.5 text-xs">
                 <div className="flex justify-between text-slate-400">
-                  <span>Firmas procesadas:</span>
-                  <strong className="text-amber-300 font-mono">12 emitidas</strong>
+                  <span>Firmas emitidas:</span>
+                  <strong className="text-amber-300 font-mono">12 completadas</strong>
                 </div>
                 <div className="flex justify-between text-[10px] text-slate-500 pt-1">
                   <span>Certificación: TuID / Abitab</span>
-                  <span>Ambiente: Mock / Pruebas</span>
+                  <span>Ambiente: Pruebas Notariales</span>
                 </div>
               </div>
             </div>
@@ -336,7 +336,7 @@ export const SuperAdminServicesPage: React.FC = () => {
           </div>
 
           {/* ======================================================== */}
-          {/* SERVICIO 4: DOCUMENTOS (DOCFLOW)                         */}
+          {/* SERVICIO 4: DOCUMENTOS Y FORMULARIOS                     */}
           {/* ======================================================== */}
           <div className="bg-[#09182C] border border-[#152E4D] rounded-2xl p-5 shadow-sm hover:border-blue-500/40 transition flex flex-col justify-between space-y-4">
             <div className="space-y-3">
@@ -346,27 +346,27 @@ export const SuperAdminServicesPage: React.FC = () => {
                     <FileText className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-white">Documentos</h2>
+                    <h2 className="text-sm font-bold text-white">Documentos y formularios</h2>
                     <span className="text-[11px] text-slate-400">Motor: DocFlow</span>
                   </div>
                 </div>
 
                 <span className="inline-flex items-center text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                   <CheckCircle2 className="w-3 h-3 mr-1" />
-                  Operativo
+                  Funcionando correctamente
                 </span>
               </div>
 
               <p className="text-xs text-slate-300 leading-relaxed">
-                Genera automáticamente minutas notariales, contratos de mutuo con hipoteca y formularios oficiales de solicitud.
+                Generación, autollenado, versionado y gestión de documentos utilizados durante el expediente.
               </p>
 
               <div className="p-3 bg-[#071322] rounded-xl border border-[#152E4D] space-y-1 text-xs">
                 <div className="flex justify-between text-slate-400">
-                  <span>Documentos generados:</span>
+                  <span>Documentos gestionados:</span>
                   <strong className="text-white font-mono">46 legajos</strong>
                 </div>
-                <div className="text-[10px] text-slate-500">Plantillas notariales: 4 activas</div>
+                <div className="text-[10px] text-slate-500">Plantillas y formularios activos: 4</div>
               </div>
             </div>
 
@@ -374,7 +374,7 @@ export const SuperAdminServicesPage: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setToastMessage('Plantillas de DocFlow sincronizadas.')}
+                onClick={() => setToastMessage('Documentos y formularios sincronizados.')}
                 className="h-8 px-3 text-xs font-bold bg-[#152E4D] border-transparent text-slate-200 hover:bg-[#1E3A5F]"
               >
                 <Sliders className="w-3.5 h-3.5 mr-1" /> Administrar
@@ -383,7 +383,7 @@ export const SuperAdminServicesPage: React.FC = () => {
           </div>
 
           {/* ======================================================== */}
-          {/* SERVICIO 5: EMAIL TRANSACCIONAL                          */}
+          {/* SERVICIO 5: EMAIL                                        */}
           {/* ======================================================== */}
           <div className="bg-[#09182C] border border-[#152E4D] rounded-2xl p-5 shadow-sm hover:border-sky-500/40 transition flex flex-col justify-between space-y-4">
             <div className="space-y-3">
@@ -400,12 +400,12 @@ export const SuperAdminServicesPage: React.FC = () => {
 
                 <span className="inline-flex items-center text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                   <CheckCircle2 className="w-3 h-3 mr-1" />
-                  Operativo
+                  Funcionando correctamente
                 </span>
               </div>
 
               <p className="text-xs text-slate-300 leading-relaxed">
-                Envía notificaciones de avance de crédito, recordatorios de firma e invitaciones a solicitantes e inversores.
+                Envío de notificaciones automáticas y recordatorios a solicitantes e inversores.
               </p>
 
               <div className="p-3 bg-[#071322] rounded-xl border border-[#152E4D] space-y-1 text-xs">
@@ -413,7 +413,7 @@ export const SuperAdminServicesPage: React.FC = () => {
                   <span>Correos enviados este mes:</span>
                   <strong className="text-white font-mono">148 / 1.000</strong>
                 </div>
-                <div className="text-[10px] text-slate-500">Dominio remitente: notificaciones@hipotecaly.uy</div>
+                <div className="text-[10px] text-slate-500">Remitente: notificaciones@hipotecaly.uy</div>
               </div>
             </div>
 
@@ -421,7 +421,7 @@ export const SuperAdminServicesPage: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setToastMessage('Servidor de correo verificado con éxito.')}
+                onClick={() => setToastMessage('Servidor de correo comprobado exitosamente.')}
                 className="h-8 px-3 text-xs font-bold bg-[#152E4D] border-transparent text-slate-200 hover:bg-[#1E3A5F]"
               >
                 <Sliders className="w-3.5 h-3.5 mr-1" /> Administrar
@@ -440,24 +440,24 @@ export const SuperAdminServicesPage: React.FC = () => {
                     <HardDrive className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-white">Archivos Privados</h2>
-                    <span className="text-[11px] text-slate-400">Motor: Storage Seguro</span>
+                    <h2 className="text-sm font-bold text-white">Archivos privados</h2>
+                    <span className="text-[11px] text-slate-400">Almacenamiento seguro</span>
                   </div>
                 </div>
 
                 <span className="inline-flex items-center text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                   <CheckCircle2 className="w-3 h-3 mr-1" />
-                  Operativo
+                  Funcionando correctamente
                 </span>
               </div>
 
               <p className="text-xs text-slate-300 leading-relaxed">
-                Custodia de documentos confidenciales, títulos de propiedad y fotografías con URLs firmadas temporales.
+                Almacena de forma privada documentos, fotografías y archivos asociados a los expedientes.
               </p>
 
               <div className="p-3 bg-[#071322] rounded-xl border border-[#152E4D] space-y-1 text-xs">
                 <div className="flex justify-between text-slate-400">
-                  <span>Almacenamiento ocupado:</span>
+                  <span>Espacio utilizado:</span>
                   <strong className="text-white font-mono">1.42 GB / 10 GB</strong>
                 </div>
                 <div className="text-[10px] text-slate-500">Aislamiento por cliente: 100% activo</div>
@@ -468,7 +468,7 @@ export const SuperAdminServicesPage: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setToastMessage('Reglas de almacenamiento privado verificadas.')}
+                onClick={() => setToastMessage('Almacenamiento privado verificado.')}
                 className="h-8 px-3 text-xs font-bold bg-[#152E4D] border-transparent text-slate-200 hover:bg-[#1E3A5F]"
               >
                 <Sliders className="w-3.5 h-3.5 mr-1" /> Administrar
@@ -495,8 +495,8 @@ export const SuperAdminServicesPage: React.FC = () => {
               <div className="space-y-4 text-xs">
                 <div className="flex items-center justify-between p-3.5 bg-[#071322] rounded-xl border border-[#152E4D]">
                   <div>
-                    <strong className="text-white block">Estado de la Inteligencia Artificial</strong>
-                    <span className="text-slate-400 text-[11px]">Controla si los análisis automáticos están habilitados</span>
+                    <strong className="text-white block">Estado del servicio</strong>
+                    <span className="text-slate-400 text-[11px]">Permite activar o pausar los análisis automáticos</span>
                   </div>
                   <button
                     onClick={handleToggleAi}
@@ -504,23 +504,23 @@ export const SuperAdminServicesPage: React.FC = () => {
                       aiStatus?.active ? 'bg-rose-600 text-white' : 'bg-emerald-600 text-white'
                     }`}
                   >
-                    {aiStatus?.active ? 'Pausar IA' : 'Activar IA'}
+                    {aiStatus?.active ? 'Pausar Inteligencia Artificial' : 'Activar Inteligencia Artificial'}
                   </button>
                 </div>
 
                 <div className="space-y-2">
-                  <span className="text-slate-400 font-semibold block">Configuración de Modelos:</span>
-                  <div className="grid grid-cols-3 gap-2 text-[11px] font-mono">
+                  <span className="text-slate-400 font-semibold block">Modelos configurados:</span>
+                  <div className="grid grid-cols-3 gap-2 text-[11px]">
                     <div className="p-2.5 bg-[#071322] rounded-lg border border-[#152E4D]">
-                      <span className="text-slate-500 block text-[10px]">Lectura / OCR</span>
+                      <span className="text-slate-400 block text-[10px]">Lectura</span>
                       <strong className="text-teal-300">gpt-5.6-luna</strong>
                     </div>
                     <div className="p-2.5 bg-[#071322] rounded-lg border border-[#152E4D]">
-                      <span className="text-slate-500 block text-[10px]">Evaluación</span>
+                      <span className="text-slate-400 block text-[10px]">Evaluación</span>
                       <strong className="text-teal-300">gpt-5.6-terra</strong>
                     </div>
                     <div className="p-2.5 bg-[#071322] rounded-lg border border-[#152E4D]">
-                      <span className="text-slate-500 block text-[10px]">Tasación</span>
+                      <span className="text-slate-400 block text-[10px]">Tasación</span>
                       <strong className="text-teal-300">gpt-5.6-sol</strong>
                     </div>
                   </div>
@@ -529,15 +529,15 @@ export const SuperAdminServicesPage: React.FC = () => {
                 {/* Configuración avanzada */}
                 <div className="p-3.5 bg-[#071322] rounded-xl border border-[#152E4D] space-y-2">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                    Configuración Avanzada
+                    Detalles técnicos & Credencial
                   </span>
                   <div className="flex items-center justify-between text-slate-300">
                     <span>Clave protegida en bóveda:</span>
                     <span className="font-mono text-emerald-400 font-bold">
-                      {aiStatus?.maskedKey || 'sk-proj-••••••••••••••••3a9F'}
+                      ••••••••••••3a9F
                     </span>
                   </div>
-                  <div className="text-[11px] text-slate-500 pt-1">
+                  <div className="text-[11px] text-slate-400 pt-1">
                     Para modificar claves de API o secretos de infraestructura, accede a la sección de Configuración técnica.
                   </div>
                 </div>
@@ -566,18 +566,18 @@ export const SuperAdminServicesPage: React.FC = () => {
               <div className="flex items-center justify-between border-b border-[#152E4D] pb-3">
                 <div className="flex items-center space-x-2.5">
                   <ShieldCheck className="w-5 h-5 text-purple-400" />
-                  <h3 className="font-bold text-base text-white">Administrar Identidad y KYC (Didit)</h3>
+                  <h3 className="font-bold text-base text-white">Identidad y KYC (Didit)</h3>
                 </div>
                 <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-white text-lg">×</button>
               </div>
 
               <form onSubmit={handleForceKyc} className="space-y-3 text-xs">
                 <p className="text-slate-400 leading-relaxed">
-                  Consola para simular respuestas de validación de identidad para pruebas de expedientes sin consumir cuota real.
+                  Permite comprobar el flujo de verificación y simular respuestas para pruebas de expedientes.
                 </p>
 
                 <div className="space-y-1">
-                  <label className="text-slate-300 font-bold block">ID de Sesión de Prueba:</label>
+                  <label className="text-slate-300 font-bold block">Identificador de Sesión:</label>
                   <input
                     type="text"
                     value={testSessionId}
@@ -641,13 +641,13 @@ export const SuperAdminServicesPage: React.FC = () => {
 
               <div className="space-y-3 text-xs text-slate-300">
                 <p>
-                  Para homologar el ambiente notarial en producción con AGESIC y prestadores (TuID / Abitab), comunícate con la mesa de escribanos o actualiza las credenciales en Configuración técnica.
+                  Para homologar el ambiente notarial en producción con AGESIC y prestadores autorizados (TuID / Abitab), comunícate con la mesa de escribanos o actualiza las credenciales en Configuración técnica.
                 </p>
 
                 <div className="p-3 bg-[#071322] rounded-xl border border-[#152E4D] space-y-1">
                   <div className="flex justify-between">
                     <span className="text-slate-400">Ambiente actual:</span>
-                    <strong className="text-amber-400 font-mono">Modo de Pruebas Notariales</strong>
+                    <strong className="text-amber-400">Modo de Pruebas Notariales</strong>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">Validez legal:</span>

@@ -19,6 +19,7 @@ import {
   Eye,
   Sliders,
   CheckCircle2,
+  HelpCircle,
 } from 'lucide-react';
 import { SuperAdminLayout } from '../../components/admin/SuperAdminLayout';
 import { SuperAdminTenantDetailModal } from '../../components/admin/SuperAdminTenantDetailModal';
@@ -51,17 +52,17 @@ export const SuperAdminDashboardPage: React.FC = () => {
     {
       id: 'att-1',
       title: 'Firma Digital',
-      description: 'Falta completar homologación en ambiente notarial de pruebas.',
+      description: 'Falta completar la homologación en el ambiente notarial de pruebas.',
       severity: 'high',
       serviceName: 'Firma Digital',
       timeAgo: 'Hace 15 min',
-      actionLabel: 'Resolver',
+      actionLabel: 'Completar configuración',
       actionLink: '/admin/servicios',
     },
     {
       id: 'att-2',
       title: 'Cliente Estudio Nova',
-      description: 'Quedan 3 casos de Inteligencia Artificial disponibles para este ciclo.',
+      description: 'Quedan 3 casos de Inteligencia Artificial disponibles para este ciclo mensual.',
       severity: 'medium',
       serviceName: 'Inteligencia Artificial',
       timeAgo: 'Hoy 09:30',
@@ -71,7 +72,7 @@ export const SuperAdminDashboardPage: React.FC = () => {
     {
       id: 'att-3',
       title: 'Estudio Notarial del Este',
-      description: 'Dominio creditos.estudiodeleste.uy pendiente de validación DNS CNAME.',
+      description: 'Dominio personalizado creditos.estudiodeleste.uy pendiente de validación DNS.',
       severity: 'medium',
       serviceName: 'Clientes',
       timeAgo: 'Hace 2 horas',
@@ -167,7 +168,7 @@ export const SuperAdminDashboardPage: React.FC = () => {
               </div>
               <div className="text-2xl font-black text-white">{activeTenantsCount}</div>
               <span className="text-[10px] text-emerald-400 flex items-center">
-                <CheckCircle2 className="w-3 h-3 mr-1" /> Funcionando
+                <CheckCircle2 className="w-3 h-3 mr-1" /> Funcionando correctamente
               </span>
             </div>
 
@@ -184,11 +185,13 @@ export const SuperAdminDashboardPage: React.FC = () => {
             {/* Casos IA utilizados */}
             <div className="bg-[#09182C] border border-[#152E4D] rounded-xl p-4 shadow-sm space-y-1.5 hover:border-teal-500/40 transition">
               <div className="flex items-center justify-between text-slate-400">
-                <span className="text-xs font-semibold">Casos IA utilizados</span>
+                <span className="text-xs font-semibold flex items-center" title="Un caso corresponde a una utilización del motor de Inteligencia Artificial para procesar una tarea del expediente.">
+                  Casos de IA <HelpCircle className="w-3 h-3 ml-1 text-slate-500" />
+                </span>
                 <Sparkles className="w-4 h-4 text-teal-400" />
               </div>
               <div className="text-2xl font-black text-teal-300">37 <span className="text-xs font-normal text-slate-400">/ 100</span></div>
-              <span className="text-[10px] text-teal-400">37% consumo mensual</span>
+              <span className="text-[10px] text-teal-400">37% utilizado este mes</span>
             </div>
 
             {/* Firmas realizadas */}
@@ -198,27 +201,27 @@ export const SuperAdminDashboardPage: React.FC = () => {
                 <FileCheck2 className="w-4 h-4 text-emerald-400" />
               </div>
               <div className="text-2xl font-black text-emerald-400">12</div>
-              <span className="text-[10px] text-slate-400">Documentos oficiales</span>
+              <span className="text-[10px] text-slate-400">Firmas digitales válidas</span>
             </div>
 
             {/* Validaciones KYC */}
             <div className="bg-[#09182C] border border-[#152E4D] rounded-xl p-4 shadow-sm space-y-1.5 hover:border-purple-500/40 transition">
               <div className="flex items-center justify-between text-slate-400">
-                <span className="text-xs font-semibold">Validaciones KYC</span>
+                <span className="text-xs font-semibold">Identidad y KYC</span>
                 <Fingerprint className="w-4 h-4 text-purple-400" />
               </div>
               <div className="text-2xl font-black text-purple-400">18</div>
               <span className="text-[10px] text-purple-300">Identidades verificadas</span>
             </div>
 
-            {/* Documentos generados */}
+            {/* Documentos y formularios */}
             <div className="bg-[#09182C] border border-[#152E4D] rounded-xl p-4 shadow-sm space-y-1.5 hover:border-amber-500/40 transition">
               <div className="flex items-center justify-between text-slate-400">
                 <span className="text-xs font-semibold">Documentos</span>
                 <FileText className="w-4 h-4 text-amber-400" />
               </div>
               <div className="text-2xl font-black text-white">46</div>
-              <span className="text-[10px] text-slate-400">Minutas y contratos</span>
+              <span className="text-[10px] text-slate-400">Formularios y legajos</span>
             </div>
           </div>
         </div>
@@ -254,7 +257,7 @@ export const SuperAdminDashboardPage: React.FC = () => {
                     <span className="text-[10px] font-mono text-slate-400">{item.timeAgo}</span>
                   </div>
                   <p className="text-xs text-slate-300 leading-relaxed">{item.description}</p>
-                  <span className="inline-block text-[10px] font-mono text-emerald-400">
+                  <span className="inline-block text-[10px] text-emerald-400">
                     Servicio: {item.serviceName}
                   </span>
                 </div>
@@ -318,7 +321,9 @@ export const SuperAdminDashboardPage: React.FC = () => {
                       </div>
                       <div>
                         <strong className="text-xs text-white block">{t.name}</strong>
-                        <span className="text-[10px] text-slate-400 font-mono">/demo/{t.slug}</span>
+                        <span className="text-[10px] text-slate-400">
+                          {t.custom_domain || 'Subdominio estándar'}
+                        </span>
                       </div>
                     </div>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
@@ -327,7 +332,7 @@ export const SuperAdminDashboardPage: React.FC = () => {
                   </div>
 
                   <div className="mt-3 pt-2 border-t border-[#152E4D]/80 flex items-center justify-between text-[11px] text-slate-400">
-                    <span>Plan: <strong className="text-slate-200">{t.is_white_label ? 'White Label' : 'Core'}</strong></span>
+                    <span>Plan: <strong className="text-slate-200">{t.is_white_label ? 'Marca Blanca' : 'Plan Estándar'}</strong></span>
                     <span>Servicios: <strong className="text-emerald-400">6 activos</strong></span>
                   </div>
                 </div>
@@ -338,7 +343,7 @@ export const SuperAdminDashboardPage: React.FC = () => {
                     target="_blank"
                     rel="noreferrer"
                     className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5"
-                    title="Ver sitio público"
+                    title="Ver portal público"
                   >
                     <Eye className="w-4 h-4" />
                   </Link>
@@ -355,7 +360,7 @@ export const SuperAdminDashboardPage: React.FC = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => setSelectedTenantModal(t)}
-                    className="h-7 px-2 text-[10px] font-bold bg-[#071322] border-[#152E4D] text-slate-300 hover:bg-[#152E4D]"
+                    className="h-7 px-2.5 text-[10px] font-bold bg-[#071322] border-[#152E4D] text-slate-300 hover:bg-[#152E4D]"
                     title="Administrar cliente"
                   >
                     <Sliders className="w-3 h-3 mr-1 text-slate-400" /> Administrar
@@ -366,7 +371,7 @@ export const SuperAdminDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Modal de Detalle de Tenant / Cliente */}
+        {/* Modal de Detalle de Cliente */}
         {selectedTenantModal && (
           <SuperAdminTenantDetailModal
             tenant={selectedTenantModal}

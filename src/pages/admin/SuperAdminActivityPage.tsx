@@ -1,6 +1,6 @@
 // ==============================================================================
 // HIPOTECALY: Actividad y Bitácora de Plataforma (/admin/actividad)
-// Feed en lenguaje natural con filtros claros y vista de auditoría inmutable
+// Feed en lenguaje natural, exportación CSV/JSON y vista de auditoría inmutable
 // ==============================================================================
 
 import React, { useState, useEffect } from 'react';
@@ -12,6 +12,8 @@ import {
   AlertTriangle,
   XCircle,
   FileSpreadsheet,
+  ChevronDown,
+  Info,
 } from 'lucide-react';
 import { SuperAdminLayout } from '../../components/admin/SuperAdminLayout';
 import { Button } from '../../components/ui/Button';
@@ -35,6 +37,8 @@ export const SuperAdminActivityPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedClient, setSelectedClient] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<'feed' | 'audit'>('feed');
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [selectedEventModal, setSelectedEventModal] = useState<ActivityEvent | null>(null);
 
   useEffect(() => {
     document.title = 'HIPOTECALY | Actividad';
@@ -47,7 +51,7 @@ export const SuperAdminActivityPage: React.FC = () => {
       clientName: 'Estudio Nova',
       clientSlug: 'estudio-nova',
       userDescription: 'Ignacio Silva (Solicitante)',
-      title: 'Usuario completó validación de identidad KYC',
+      title: 'Didit completó una verificación de identidad',
       category: 'servicios',
       serviceName: 'Identidad y KYC',
       status: 'success',
@@ -60,9 +64,9 @@ export const SuperAdminActivityPage: React.FC = () => {
       clientName: 'Estudio Nova',
       clientSlug: 'estudio-nova',
       userDescription: 'Dra. Valentina Ramos (Escribana)',
-      title: 'Documento generado: Minuta de Compraventa con Hipoteca',
+      title: 'Se generó un documento para el expediente: Minuta de Compraventa',
       category: 'servicios',
-      serviceName: 'Documentos',
+      serviceName: 'Documentos y formularios',
       status: 'success',
       technicalDetails: 'DocFlow generated Minuta-NOV-00124.pdf (Hash SHA-256 verified)',
       ipAddress: '179.27.142.18',
@@ -70,7 +74,7 @@ export const SuperAdminActivityPage: React.FC = () => {
     {
       id: 'act-3',
       timestamp: new Date(Date.now() - 32 * 60 * 1000).toISOString(),
-      clientName: 'Plataforma Central',
+      clientName: 'HIPOTECALY Central',
       clientSlug: 'hipotecaly',
       userDescription: 'Super Administrador',
       title: 'Se accedió mediante Ver como cliente con rol Solicitante',
@@ -86,7 +90,7 @@ export const SuperAdminActivityPage: React.FC = () => {
       clientName: 'ORION Crédito',
       clientSlug: 'orion-credito',
       userDescription: 'Motor de Inteligencia Artificial',
-      title: 'IA procesó expediente para tasación y OCR de cédula',
+      title: 'Se utilizó un caso de Inteligencia Artificial para lectura de documento',
       category: 'servicios',
       serviceName: 'Inteligencia Artificial',
       status: 'success',
@@ -109,9 +113,9 @@ export const SuperAdminActivityPage: React.FC = () => {
     {
       id: 'act-6',
       timestamp: new Date(Date.now() - 180 * 60 * 1000).toISOString(),
-      clientName: 'Plataforma Global',
+      clientName: 'HIPOTECALY Central',
       clientSlug: 'hipotecaly',
-      userDescription: 'Intento externo no autorizado',
+      userDescription: 'Acceso no autorizado',
       title: 'Acceso bloqueado por reglas de seguridad y aislamiento',
       category: 'seguridad',
       serviceName: 'Seguridad técnica',
@@ -132,6 +136,19 @@ export const SuperAdminActivityPage: React.FC = () => {
       technicalDetails: 'Firma.gub.uy webhook notification verified and applied to mortgage #102',
       ipAddress: '186.54.210.4',
     },
+    {
+      id: 'act-8',
+      timestamp: new Date(Date.now() - 300 * 60 * 1000).toISOString(),
+      clientName: 'Estudio Nova',
+      clientSlug: 'estudio-nova',
+      userDescription: 'Sistema Automático',
+      title: 'La solicitud HIP-2026-00124 cambió de estado a Evaluación Crediticia',
+      category: 'servicios',
+      serviceName: 'Solicitudes',
+      status: 'success',
+      technicalDetails: 'Application stage transitioned from intake to underwriting',
+      ipAddress: 'Servidor interno',
+    },
   ]);
 
   const filteredEvents = events.filter((ev) => {
@@ -147,12 +164,32 @@ export const SuperAdminActivityPage: React.FC = () => {
     return matchesSearch && matchesCat && matchesClient;
   });
 
+  const exportCsv = () => {
+    const headers = 'Fecha,Hora,Cliente,Usuario,Evento,Servicio,Estado,Detalle\n';
+    const rows = filteredEvents
+      .map((e) => {
+        const d = new Date(e.timestamp);
+        const date = d.toLocaleDateString('es-UY');
+        const time = d.toLocaleTimeString('es-UY');
+        return `"${date}","${time}","${e.clientName}","${e.userDescription}","${e.title}","${e.serviceName || ''}","${e.status}","${e.technicalDetails || ''}"`;
+      })
+      .join('\n');
+    const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `hipotecaly_actividad_${Date.now()}.csv`);
+    link.click();
+    setShowExportMenu(false);
+  };
+
   const exportJson = () => {
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(filteredEvents, null, 2));
     const dl = document.createElement('a');
     dl.setAttribute('href', dataStr);
     dl.setAttribute('download', `hipotecaly_actividad_${Date.now()}.json`);
     dl.click();
+    setShowExportMenu(false);
   };
 
   return (
@@ -167,30 +204,49 @@ export const SuperAdminActivityPage: React.FC = () => {
                 HISTORIAL DEL SISTEMA
               </span>
               <span className="text-slate-500">•</span>
-              <span className="text-xs text-slate-400 font-mono">BITÁCORA EN TIEMPO REAL</span>
+              <span className="text-xs text-slate-400 font-mono">REGISTRO DE EVENTOS</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mt-1">
               Actividad
             </h1>
             <p className="text-xs sm:text-sm text-slate-400 mt-1">
-              Registro de eventos, operaciones de clientes, uso de servicios y auditoría de seguridad.
+              Historial de eventos, operaciones de clientes, uso de servicios y seguridad de HIPOTECALY.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="relative">
             <Button
               variant="outline"
               size="sm"
-              onClick={exportJson}
-              className="bg-[#09182C] border-[#1E3A5F] text-slate-200 hover:bg-[#152E4D] text-xs font-semibold"
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="bg-[#09182C] border-[#1E3A5F] text-slate-200 hover:bg-[#152E4D] text-xs font-semibold flex items-center space-x-1.5"
             >
-              <Download className="w-3.5 h-3.5 mr-1.5 text-emerald-400" />
-              Exportar registro JSON
+              <Download className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Exportar actividad</span>
+              <ChevronDown className="w-3 h-3 text-slate-400" />
             </Button>
+
+            {showExportMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-[#09182C] border border-[#152E4D] rounded-xl shadow-2xl py-1 z-30 text-xs text-left">
+                <button
+                  onClick={exportCsv}
+                  className="w-full text-left px-4 py-2 hover:bg-white/5 text-slate-200 flex items-center justify-between"
+                >
+                  <span>Descargar como planilla (.CSV)</span>
+                  <span className="text-[10px] font-bold text-emerald-400">Recomendado</span>
+                </button>
+                <button
+                  onClick={exportJson}
+                  className="w-full text-left px-4 py-2 hover:bg-white/5 text-slate-400 flex items-center justify-between"
+                >
+                  <span>Descargar técnico (.JSON)</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Selector de Vista: Feed Humano vs Auditoría Técnica */}
+        {/* Selector de Vista */}
         <div className="flex border-b border-[#152E4D] space-x-2">
           <button
             onClick={() => setActiveTab('feed')}
@@ -236,10 +292,10 @@ export const SuperAdminActivityPage: React.FC = () => {
               className="w-full py-2 px-3 bg-[#071322] border border-[#152E4D] rounded-lg text-slate-200 text-xs focus:border-emerald-500 focus:outline-none"
             >
               <option value="all">Todas las categorías</option>
-              <option value="servicios">Servicios (IA, KYC, Firma)</option>
+              <option value="servicios">Servicios (IA, KYC, Firma, Documentos)</option>
               <option value="clientes">Clientes y Organizaciones</option>
               <option value="seguridad">Seguridad y Permisos</option>
-              <option value="admin">Administración y QA</option>
+              <option value="admin">Administración y Acceso</option>
             </select>
           </div>
 
@@ -253,7 +309,7 @@ export const SuperAdminActivityPage: React.FC = () => {
               <option value="estudio-nova">Estudio Nova</option>
               <option value="orion-credito">ORION Crédito</option>
               <option value="estudio-notarial-este">Estudio Notarial del Este</option>
-              <option value="hipotecaly">Plataforma Central</option>
+              <option value="hipotecaly">HIPOTECALY Central</option>
             </select>
           </div>
         </div>
@@ -263,7 +319,7 @@ export const SuperAdminActivityPage: React.FC = () => {
           <div className="space-y-3">
             {filteredEvents.length === 0 ? (
               <div className="bg-[#09182C] border border-[#152E4D] rounded-2xl p-8 text-center text-slate-400">
-                No se encontraron eventos que coincidan con los filtros seleccionados.
+                <p className="font-semibold text-slate-300">Todavía no hay actividad registrada que coincida con los filtros seleccionados.</p>
               </div>
             ) : (
               filteredEvents.map((ev) => (
@@ -286,7 +342,7 @@ export const SuperAdminActivityPage: React.FC = () => {
                       <div className="flex items-center space-x-2">
                         <strong className="text-white text-xs sm:text-sm font-bold">{ev.title}</strong>
                         {ev.serviceName && (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                             {ev.serviceName}
                           </span>
                         )}
@@ -299,11 +355,21 @@ export const SuperAdminActivityPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="sm:text-right shrink-0 font-mono text-[11px] text-slate-400 pl-8 sm:pl-0">
-                    {new Date(ev.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    <span className="block text-[10px] text-slate-500">
-                      {new Date(ev.timestamp).toLocaleDateString('es-UY')}
-                    </span>
+                  <div className="flex items-center space-x-3 sm:text-right shrink-0 pl-8 sm:pl-0">
+                    <div className="text-[11px] text-slate-400">
+                      {new Date(ev.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      <span className="block text-[10px] text-slate-500">
+                        {new Date(ev.timestamp).toLocaleDateString('es-UY')}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => setSelectedEventModal(ev)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5"
+                      title="Ver detalles técnicos"
+                    >
+                      <Info className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               ))
@@ -318,11 +384,11 @@ export const SuperAdminActivityPage: React.FC = () => {
               <table className="w-full text-left text-xs">
                 <thead className="bg-[#071322] text-slate-400 font-mono border-b border-[#152E4D]">
                   <tr>
-                    <th className="py-3 px-4">Fecha / Hora</th>
+                    <th className="py-3 px-4">Fecha y hora</th>
                     <th className="py-3 px-4">Cliente</th>
                     <th className="py-3 px-4">Usuario</th>
                     <th className="py-3 px-4">Evento</th>
-                    <th className="py-3 px-4">Detalle Técnico</th>
+                    <th className="py-3 px-4">Detalle técnico</th>
                     <th className="py-3 px-4">IP</th>
                     <th className="py-3 px-4 text-right">Estado</th>
                   </tr>
@@ -360,6 +426,43 @@ export const SuperAdminActivityPage: React.FC = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Detalles Técnicos del Evento */}
+        {selectedEventModal && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#09182C] border border-[#152E4D] rounded-2xl max-w-lg w-full p-6 space-y-4 text-left shadow-2xl">
+              <div className="flex items-center justify-between border-b border-[#152E4D] pb-3">
+                <h3 className="font-bold text-base text-white">Detalles técnicos del evento</h3>
+                <button onClick={() => setSelectedEventModal(null)} className="text-slate-400 hover:text-white text-lg">×</button>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <strong className="text-white block">{selectedEventModal.title}</strong>
+                  <span className="text-slate-400">{selectedEventModal.clientName} • {selectedEventModal.userDescription}</span>
+                </div>
+
+                <div className="p-3 bg-[#071322] rounded-xl border border-[#152E4D] font-mono text-[11px] text-slate-300 space-y-1">
+                  <div><strong>ID Evento:</strong> {selectedEventModal.id}</div>
+                  <div><strong>Timestamp:</strong> {selectedEventModal.timestamp}</div>
+                  <div><strong>IP:</strong> {selectedEventModal.ipAddress || 'Servidor'}</div>
+                  <div><strong>Detalle:</strong> {selectedEventModal.technicalDetails}</div>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedEventModal(null)}
+                  className="bg-[#071322] border-[#152E4D] text-slate-300"
+                >
+                  Cerrar
+                </Button>
+              </div>
             </div>
           </div>
         )}
