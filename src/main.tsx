@@ -5,13 +5,13 @@ import './index.css';
 import { registerSW } from 'virtual:pwa-register';
 
 // Registro automático del Service Worker (PWA)
-registerSW({
+const updateSW = registerSW({
   immediate: true,
   onNeedRefresh() {
-    console.info('[HIPOTECALY PWA] Nueva versión disponible.');
+    updateSW(true);
   },
   onOfflineReady() {
-    console.info('[HIPOTECALY PWA] Aplicación lista para navegación en caché.');
+    console.info('[HIPOTECALY PWA] Aplicación lista.');
   },
 });
 
