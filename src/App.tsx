@@ -24,7 +24,8 @@ import { ApplicationDetailPage } from './pages/backoffice/ApplicationDetailPage'
 import { ClientsPage } from './pages/backoffice/ClientsPage';
 import { PropertiesPage } from './pages/backoffice/PropertiesPage';
 import { DocumentsPage } from './pages/backoffice/DocumentsPage';
-import { ValuationsPage, TasksPage, ReportsPage, SettingsPage } from './pages/backoffice/OtherBackofficePages';
+import { ValuationsPage, TasksPage, ReportsPage, AnalyticsPage, SettingsPage } from './pages/backoffice/OtherBackofficePages';
+import { AuditPage } from './pages/backoffice/AuditPage';
 import { LendersPage } from './pages/backoffice/LendersPage';
 import { LenderDetailPage } from './pages/backoffice/LenderDetailPage';
 import { LenderDashboardPage } from './pages/lender/LenderDashboardPage';
@@ -216,6 +217,14 @@ export const App: React.FC = () => {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/admin/leads"
+                element={
+                  <ProtectedRoute requireSuperAdmin>
+                    <LeadsManagementPage />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* Redirecciones de compatibilidad para Super Admin */}
               <Route path="/admin/ai" element={<Navigate to="/admin/servicios" replace />} />
@@ -383,6 +392,28 @@ export const App: React.FC = () => {
                     requireTenantMatch
                   >
                     <ReportsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/admin/analitica"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'super_admin']}
+                    requireTenantMatch
+                  >
+                    <AnalyticsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/admin/auditoria"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={['tenant_admin', 'tenant_owner', 'super_admin']}
+                    requireTenantMatch
+                  >
+                    <AuditPage />
                   </ProtectedRoute>
                 }
               />
@@ -609,6 +640,22 @@ export const App: React.FC = () => {
                 element={
                   <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'super_admin']}>
                     <ReportsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/app/analitica"
+                element={
+                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'super_admin']}>
+                    <AnalyticsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/app/auditoria"
+                element={
+                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'super_admin']}>
+                    <AuditPage />
                   </ProtectedRoute>
                 }
               />

@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import {
   Globe,
   User,
@@ -9,12 +9,17 @@ import {
   ArrowRight,
   Sparkles,
   Stamp,
+  RotateCw,
 } from 'lucide-react';
 import { useTenant } from '../../../contexts/TenantContext';
+import { useAuth } from '../../../contexts/AuthContext';
 
 export const EstudioNovaAccessHubPage: React.FC = () => {
   const { tenantSlug } = useParams<{ tenantSlug: string }>();
   const { tenant } = useTenant();
+  const { signIn } = useAuth();
+  const navigate = useNavigate();
+  const [navigatingId, setNavigatingId] = useState<string | null>(null);
   const slug = tenantSlug || 'estudio-nova';
   const brandName = tenant.branding?.public_name || tenant.name || 'Estudio Nova';
   const primaryColor = tenant.branding?.primary_color || '#173a5e';
@@ -34,6 +39,28 @@ export const EstudioNovaAccessHubPage: React.FC = () => {
       }
     };
   }, [brandName]);
+
+  const handleEnterPortal = async (card: any) => {
+    setNavigatingId(card.id);
+    try {
+      if (card.id === 'notary') {
+        await signIn('escribano', 'demo123');
+      } else if (card.id === 'client') {
+        await signIn('cliente', 'demo123');
+      } else if (card.id === 'backoffice') {
+        await signIn('operador', 'demo123');
+      } else if (card.id === 'investor') {
+        await signIn('prestamista', 'demo123');
+      } else if (card.id === 'superadmin') {
+        await signIn('admin', 'admin123');
+      }
+      navigate(card.path);
+    } catch {
+      navigate(card.path);
+    } finally {
+      setNavigatingId(null);
+    }
+  };
 
   const accessCards = [
     {
@@ -199,14 +226,25 @@ export const EstudioNovaAccessHubPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="p-4 bg-slate-50 border-t border-slate-100">
-                  <Link
-                    to={card.path}
-                    className="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-[#173a5e] hover:bg-[#102d49] text-white text-xs font-bold uppercase tracking-wider transition-all shadow-sm group-hover:shadow"
+                  <button
+                    type="button"
+                    disabled={navigatingId !== null}
+                    onClick={() => handleEnterPortal(card)}
+                    className="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-[#173a5e] hover:bg-[#102d49] text-white text-xs font-bold uppercase tracking-wider transition-all shadow-sm group-hover:shadow cursor-pointer"
                     style={{ backgroundColor: card.id === 'home' || card.id === 'backoffice' ? primaryColor : undefined }}
                   >
-                    <span>{card.ctaText}</span>
-                    <ArrowRight className="w-3.5 h-3.5 ml-2 transition-transform group-hover:translate-x-0.5" />
-                  </Link>
+                    {navigatingId === card.id ? (
+                      <span className="flex items-center space-x-1.5">
+                        <RotateCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Iniciando sesión...</span>
+                      </span>
+                    ) : (
+                      <span className="flex items-center space-x-1.5">
+                        <span>{card.ctaText}</span>
+                        <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                      </span>
+                    )}
+                  </button>
                   <div className="text-[11px] text-center text-slate-400 font-mono mt-2 truncate">
                     {card.path}
                   </div>

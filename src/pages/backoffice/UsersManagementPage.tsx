@@ -50,7 +50,9 @@ export const UsersManagementPage: React.FC = () => {
   const [loading] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'admin' | 'analyst' | 'notary' | 'viewer'>('analyst');
+  const [inviteRole, setInviteRole] = useState<
+    'admin' | 'analyst' | 'notary' | 'appraiser' | 'operations' | 'auditor' | 'viewer'
+  >('analyst');
   const [inviting, setInviting] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState(false);
 
@@ -69,7 +71,7 @@ export const UsersManagementPage: React.FC = () => {
     const res = await inviteOrganizationMember(
       tenant.id,
       inviteEmail,
-      inviteRole
+      inviteRole as any
     );
     setInviting(false);
     if (res.success) {
@@ -82,7 +84,7 @@ export const UsersManagementPage: React.FC = () => {
           user_id: crypto.randomUUID(),
           email: inviteEmail,
           full_name: 'Pendiente de aceptación',
-          role: inviteRole,
+          role: inviteRole as any,
           status: 'invited',
           created_at: new Date().toISOString(),
         },
@@ -103,6 +105,12 @@ export const UsersManagementPage: React.FC = () => {
         return <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">Analista de Crédito</span>;
       case 'notary':
         return <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">Escribano Notarial</span>;
+      case 'appraiser':
+        return <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">Tasador Oficial</span>;
+      case 'operations':
+        return <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-teal-100 text-teal-800">Operaciones</span>;
+      case 'auditor':
+        return <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800">Auditor / Compliance</span>;
       default:
         return <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700">Observador</span>;
     }
@@ -199,6 +207,62 @@ export const UsersManagementPage: React.FC = () => {
           )}
         </div>
 
+        {/* Matriz de Permisos RBAC */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div>
+              <h3 className="text-sm font-bold text-navy">Matriz de Permisos por Rol (RBAC)</h3>
+              <p className="text-[11px] text-slate-500">Privilegios y accesos asignados a cada perfil dentro de la organización.</p>
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+              Control Granular Activo
+            </span>
+          </div>
+          <div className="overflow-x-auto text-[11px]">
+            <table className="w-full text-left">
+              <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                <tr>
+                  <th className="py-2.5 px-3">Permiso / Capacidad</th>
+                  <th className="py-2.5 px-3 text-center">Admin</th>
+                  <th className="py-2.5 px-3 text-center">Analista</th>
+                  <th className="py-2.5 px-3 text-center">Escribano</th>
+                  <th className="py-2.5 px-3 text-center">Tasador</th>
+                  <th className="py-2.5 px-3 text-center">Operaciones</th>
+                  <th className="py-2.5 px-3 text-center">Auditor</th>
+                  <th className="py-2.5 px-3 text-center">Observador</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700 font-mono">
+                {[
+                  { name: 'Ver solicitudes y expedientes', roles: [true, true, true, true, true, true, true] },
+                  { name: 'Ver datos personales (PII / KYC)', roles: [true, true, true, false, true, true, false] },
+                  { name: 'Editar datos de expediente', roles: [true, true, false, false, true, false, false] },
+                  { name: 'Aprobar documentos y recaudos', roles: [true, true, true, false, false, false, false] },
+                  { name: 'Asignar / Aprobar tasaciones', roles: [true, true, false, true, false, false, false] },
+                  { name: 'Generar minutas y contratos', roles: [true, false, true, false, false, false, false] },
+                  { name: 'Revelar identidad a inversor', roles: [true, false, false, false, false, false, false] },
+                  { name: 'Modificar políticas White Label', roles: [true, false, false, false, false, false, false] },
+                  { name: 'Ver registro de auditoría', roles: [true, false, false, false, false, true, false] },
+                  { name: 'Gestionar usuarios y roles', roles: [true, false, false, false, false, false, false] },
+                ].map((row, idx) => (
+                  <tr key={idx} className="hover:bg-slate-50/60 font-sans">
+                    <td className="py-2.5 px-3 font-semibold text-slate-800">{row.name}</td>
+                    {row.roles.map((has, rIdx) => (
+                      <td key={rIdx} className="py-2.5 px-3 text-center">
+                        {has ? (
+                          <span className="inline-block text-emerald-600 font-bold">✓</span>
+                        ) : (
+                          <span className="inline-block text-slate-300 font-light">—</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
 
       {/* MODAL DE INVITACIÓN */}
@@ -240,10 +304,13 @@ export const UsersManagementPage: React.FC = () => {
                     onChange={(e) => setInviteRole(e.target.value as any)}
                     className="w-full h-10 px-3 border border-slate-border rounded-lg text-xs bg-white font-semibold text-navy"
                   >
-                    <option value="analyst">Analista de Crédito (Revisión y tasación)</option>
-                    <option value="notary">Escribano Notarial (Títulos y escrituras)</option>
-                    <option value="admin">Administrador (Control total del estudio)</option>
-                    <option value="viewer">Observador (Solo lectura)</option>
+                    <option value="admin">Administrador (Control total de la organización)</option>
+                    <option value="analyst">Analista de Crédito (Revisión de riesgo e ingresos)</option>
+                    <option value="notary">Escribano Notarial (Títulos, minutas y firmas)</option>
+                    <option value="appraiser">Tasador Oficial (Peritaje y valuaciones)</option>
+                    <option value="operations">Operaciones (Seguimiento y recaudos)</option>
+                    <option value="auditor">Auditor / Compliance (Solo auditoría y trazabilidad)</option>
+                    <option value="viewer">Observador (Solo lectura general)</option>
                   </select>
                 </div>
 

@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Monitor, Sparkles, User, Shield, Sliders, X } from 'lucide-react';
+import { Sparkles, User, Shield, Sliders, Stamp, X } from 'lucide-react';
 
 export const DemoSalesModeBar: React.FC = () => {
   const location = useLocation();
@@ -23,9 +23,9 @@ export const DemoSalesModeBar: React.FC = () => {
 
   const demoLinks = [
     { label: 'Hub Accesos', path: '/demo/estudio-nova/accesos', icon: Sparkles, desc: 'Hub de accesos demo' },
-    { label: 'Estudio Nova Home', path: '/demo/estudio-nova', icon: Monitor, desc: 'Home White Label' },
     { label: 'Portal Cliente', path: '/demo/estudio-nova/cliente', icon: User, desc: 'Portal del prestatario' },
     { label: 'Backoffice Nova', path: '/demo/estudio-nova/admin', icon: Shield, desc: 'Backoffice de operaciones' },
+    { label: 'Portal Escribano', path: '/demo/estudio-nova/notary', icon: Stamp, desc: 'Portal notarial y firma digital' },
     { label: 'Red Inversores', path: '/demo/estudio-nova/inversor', icon: Sparkles, desc: 'Módulo de fondeo e inversores' },
     { label: 'Super Admin', path: '/admin', icon: Sliders, desc: 'Consola global HIPOTECALY' },
   ];
