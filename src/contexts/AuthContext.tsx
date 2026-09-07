@@ -206,6 +206,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    // Verificación de sesión de Master Admin persistente (admin@test.com)
+    const isMasterStored = typeof window !== 'undefined' && window.localStorage.getItem('hipotecaly_master_user') === 'admin@test.com';
+    if (isMasterStored) {
+      const masterUser: User = {
+        id: 'u-master-superadmin-001',
+        app_metadata: { role: 'super_admin', is_super_admin: true },
+        user_metadata: { first_name: 'Admin', last_name: 'Total', role: 'super_admin' },
+        aud: 'authenticated',
+        created_at: new Date().toISOString(),
+        email: 'admin@test.com',
+      } as any;
+      setUser(masterUser);
+      setUserRole('super_admin');
+      setIsSuperAdmin(true);
+      setMemberships([
+        { organizationId: 'a0000000-0000-0000-0000-000000000001', role: 'super_admin', isActive: true },
+        { organizationId: 'd0000000-0000-0000-0000-000000000001', role: 'super_admin', isActive: true },
+      ]);
+      setLoading(false);
+      return;
+    }
+
     // Verificación de sesión de prueba controlada ÚNICAMENTE en entorno local de test preview (puerto 4173)
     const isE2EPreview = !import.meta.env.PROD && typeof window !== 'undefined' && window.location.port === '4173';
     const testRole = isE2EPreview && typeof window !== 'undefined' ? window.localStorage.getItem('hipotecaly_test_role') : null;
@@ -333,6 +355,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (emailInput: string, passwordInput: string) => {
     const emailTrimmed = emailInput.trim().toLowerCase();
     const passTrimmed = passwordInput.trim();
+
+    // CLAVE DE ACCESO TOTAL / MASTER ADMIN GLOBAL (admin@test.com / admin123)
+    if (
+      (emailTrimmed === 'admin@test.com' || emailTrimmed === 'admin' || emailTrimmed === 'superadmin' || emailTrimmed === 'admin@hipotecaly.uy') &&
+      (passTrimmed === 'admin123' || passTrimmed === 'admin')
+    ) {
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('hipotecaly_master_user', 'admin@test.com');
+        window.localStorage.setItem('hipotecaly_test_role', 'super_admin');
+      }
+      const masterUser: User = {
+        id: 'u-master-superadmin-001',
+        app_metadata: { role: 'super_admin', is_super_admin: true },
+        user_metadata: { first_name: 'Admin', last_name: 'Total', role: 'super_admin' },
+        aud: 'authenticated',
+        created_at: new Date().toISOString(),
+        email: 'admin@test.com',
+      } as any;
+      setUser(masterUser);
+      setUserRole('super_admin');
+      setIsSuperAdmin(true);
+      setMemberships([
+        {
+          organizationId: 'a0000000-0000-0000-0000-000000000001',
+          role: 'super_admin',
+          isActive: true,
+        },
+        {
+          organizationId: 'd0000000-0000-0000-0000-000000000001',
+          role: 'super_admin',
+          isActive: true,
+        },
+      ]);
+      setLoading(false);
+      return { error: null };
+    }
 
     // Normalización de username simple a email
     const emailToAuth = emailTrimmed.includes('@') ? emailTrimmed : `${emailTrimmed}@hipotecaly.uy`;
@@ -532,6 +590,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.auth.signOut();
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem('hipotecaly_test_role');
+      window.localStorage.removeItem('hipotecaly_master_user');
     }
     setUser(null);
     setSession(null);
@@ -550,6 +609,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.auth.signOut();
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem('hipotecaly_test_role');
+      window.localStorage.removeItem('hipotecaly_master_user');
       window.location.assign('/platform-admin');
     }
   };

@@ -32,14 +32,14 @@ export const LoginPage: React.FC = () => {
       setErrorMessage(error.message || 'Credenciales incorrectas o usuario no encontrado.');
     } else {
       const emailLower = email.trim().toLowerCase();
-      if (emailLower === 'admin' || emailLower.startsWith('admin')) {
-        navigate(redirectTo || '/platform-admin');
+      if (emailLower === 'admin' || emailLower.startsWith('admin') || emailLower === 'superadmin') {
+        navigate(redirectTo || '/admin');
       } else if (emailLower === 'operador' || emailLower.startsWith('operador') || emailLower.startsWith('analyst')) {
-        navigate(redirectTo || '/app');
-      } else if (emailLower === 'prestamista' || emailLower.startsWith('prestamista') || emailLower.startsWith('lender')) {
-        navigate(redirectTo || '/lender');
+        navigate(redirectTo || '/demo/estudio-nova/admin');
+      } else if (emailLower === 'prestamista' || emailLower.startsWith('prestamista') || emailLower.startsWith('lender') || emailLower.startsWith('inversor')) {
+        navigate(redirectTo || '/demo/estudio-nova/inversor');
       } else {
-        navigate(redirectTo || '/mi-cuenta');
+        navigate(redirectTo || '/demo/estudio-nova/cliente');
       }
     }
   };
