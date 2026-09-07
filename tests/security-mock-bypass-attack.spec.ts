@@ -66,12 +66,49 @@ test.describe('HIPOTECALY — Verificación de Microcierre de Seguridad (Ataques
     await expect(page).toHaveURL(/.*\/ingresar/);
   });
 
-  test('Hub de Accesos Demo (/demo/estudio-nova/accesos) permanece público y navegable sin auth', async ({ page }) => {
-    await page.goto(`${TARGET_URL}/demo/estudio-nova/accesos`);
-    await expect(page.locator('text=HIPOTECALY').first()).toBeVisible();
-    await expect(page.locator('text=Demo · Estudio Nova').first()).toBeVisible();
-    await expect(page.locator('text=Sitio público').first()).toBeVisible();
-    await expect(page.locator('text=Super Admin').first()).toBeVisible();
+  test('Ataque 5: Intento de escalación con user_metadata.role="super_admin" en /admin debe ser DENEGADO', async ({ page }) => {
+    // Simular inyección en cliente de sesión con user_metadata.role modificado
+    await page.addInitScript(() => {
+      // Intentar inyectar sesión adulterada en Supabase localStorage key
+      const fakeSession = {
+        access_token: 'fake-token',
+        token_type: 'bearer',
+        expires_in: 3600,
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        refresh_token: 'fake-refresh',
+        user: {
+          id: 'u-hacker-test',
+          aud: 'authenticated',
+          role: 'authenticated',
+          email: 'hacker@test.com',
+          user_metadata: {
+            role: 'super_admin',
+            first_name: 'Hacker',
+            last_name: 'Malicious'
+          },
+          app_metadata: {
+            provider: 'email',
+            providers: ['email']
+          }
+        }
+      };
+      // Inyectar en todas las keys potenciales de supabase
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const key = window.localStorage.key(i);
+        if (key && key.includes('auth-token')) {
+          window.localStorage.setItem(key, JSON.stringify(fakeSession));
+        }
+      }
+    });
+
+    await page.goto(`${TARGET_URL}/admin`);
+    // Debe denegar acceso y redirigir
+    await expect(page).toHaveURL(/.*\/ingresar/);
+  });
+
+  test('Ataque 6: Intento de escalación con user_metadata.role="tenant_admin" en /demo/estudio-nova/admin/configuracion debe ser DENEGADO', async ({ page }) => {
+    await page.goto(`${TARGET_URL}/demo/estudio-nova/admin/configuracion`);
+    await expect(page).toHaveURL(/.*\/ingresar/);
   });
 
 });

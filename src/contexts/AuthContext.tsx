@@ -82,10 +82,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    // 1. Metadata directa en usuario
-    const appRole = (currentUser.app_metadata?.role || currentUser.user_metadata?.role) as UserRole | undefined;
-    const isSuper = appRole === 'super_admin' || appRole === 'platform_admin';
-    const isQa = Boolean(currentUser.app_metadata?.is_qa_user || currentUser.user_metadata?.is_qa_user || adminQaService.isQaActive());
+    let isSuper = false;
+    let isQa = Boolean(currentUser.app_metadata?.is_qa_user || adminQaService.isQaActive());
+
+    // 1. Verificación autoritativa de Super Admin contra profiles (Base de Datos / Server-Side RLS)
+    try {
+      const { data: profileData, error: profileErr } = await supabase
+        .from('profiles')
+        .select('is_super_admin')
+        .eq('id', currentUser.id)
+        .maybeSingle();
+
+      if (!profileErr && profileData) {
+        isSuper = Boolean(profileData.is_super_admin);
+      }
+    } catch {
+      // Fallback
+    }
+
+    // Soporte seguro de app_metadata (escrito exclusivamente por backend / service_role)
+    if (!isSuper && (currentUser.app_metadata?.role === 'super_admin' || currentUser.app_metadata?.role === 'platform_admin')) {
+      isSuper = true;
+    }
+
     setIsSuperAdmin(isSuper);
     setIsQaSession(isQa);
 
@@ -102,7 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setQaSessionData(null);
     }
 
-    // 2. Consulta a organization_members
+    // 2. Consulta a organization_members (Fuente autoritativa para roles de tenant)
     try {
       const { data, error } = await supabase
         .from('organization_members')
@@ -123,18 +142,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUserRole('tenant_admin');
         } else if (mems.some((m) => m.role === 'analyst')) {
           setUserRole('analyst');
+        } else if (mems.some((m) => m.role === 'operator')) {
+          setUserRole('operator');
         } else if (mems.some((m) => m.role === 'notary')) {
           setUserRole('notary');
-        } else if (appRole) {
-          setUserRole(appRole);
+        } else if (mems.some((m) => m.role === 'lender')) {
+          setUserRole('lender');
+        } else if (currentUser.app_metadata?.role) {
+          setUserRole(currentUser.app_metadata.role as UserRole);
         } else {
           setUserRole('borrower');
         }
       } else {
-        setUserRole(appRole || 'borrower');
+        if (isSuper) {
+          setUserRole('super_admin');
+        } else if (currentUser.app_metadata?.role) {
+          setUserRole(currentUser.app_metadata.role as UserRole);
+        } else {
+          setUserRole('borrower');
+        }
       }
     } catch {
-      setUserRole(appRole || 'borrower');
+      setUserRole(isSuper ? 'super_admin' : 'borrower');
     }
   };
 

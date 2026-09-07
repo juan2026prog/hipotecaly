@@ -89,11 +89,25 @@ export async function verifySuperAdmin(req: any): Promise<SuperAdminAuthResult> 
       };
     }
 
-    // 3. Comprobar roles directos en metadata
+    // 3. Comprobar roles directos en app_metadata (exclusivo server-side)
     const appRole = user.app_metadata?.role;
-    const userRole = user.user_metadata?.role;
 
-    if (appRole === 'super_admin' || userRole === 'super_admin' || appRole === 'platform_admin') {
+    if (appRole === 'super_admin' || appRole === 'platform_admin') {
+      return {
+        authorized: true,
+        adminId: user.id,
+        userEmail: user.email,
+      };
+    }
+
+    // 4. Comprobar profiles.is_super_admin en base de datos
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('is_super_admin')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profile?.is_super_admin) {
       return {
         authorized: true,
         adminId: user.id,
