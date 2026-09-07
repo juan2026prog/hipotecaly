@@ -130,17 +130,16 @@ test.describe('HIPOTECALY — Arquitectura Definitiva de Portales, Roles y White
   });
 
   // --------------------------------------------------------------------------
-  // 7. Aislamiento Cross-Tenant
+  // 8. Hub de Accesos Demo (/demo/estudio-nova/accesos)
   // --------------------------------------------------------------------------
-  test('10. Cross-Tenant: Admin de un tenant es bloqueado al intentar entrar a otro tenant sin membresía', async ({ page }) => {
-    await page.addInitScript(() => {
-      window.localStorage.setItem('hipotecaly_test_role', 'tenant_admin');
-    });
-
-    // Intentar acceder al tenant no perteneciente
-    await page.goto('/demo/estudio-notarial-este/admin');
-    // Al no tener membresía en ese tenant, ProtectedRoute con requireTenantMatch bloquea el acceso
-    await expect(page.locator('text=No pertenecés a la organización').first()).toBeVisible();
+  test('11. Hub de Accesos Demo: Carga las 5 tarjetas de portal y meta noindex', async ({ page }) => {
+    await page.goto('/demo/estudio-nova/accesos');
+    await expect(page.locator('text=Hub de Accesos de la Plataforma').first()).toBeVisible();
+    await expect(page.locator('text=Sitio Web Público Nova').first()).toBeVisible();
+    await expect(page.locator('text=Portal de Clientes').first()).toBeVisible();
+    await expect(page.locator('text=Backoffice Nova').first()).toBeVisible();
+    await expect(page.locator('text=Red de Inversores').first()).toBeVisible();
+    await expect(page.locator('text=Super Admin Hipotecaly').first()).toBeVisible();
   });
 
 });

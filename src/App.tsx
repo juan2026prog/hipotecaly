@@ -38,6 +38,7 @@ import { LeadsManagementPage } from './pages/backoffice/LeadsManagementPage';
 
 // Tenant Demo ESTUDIO NOVA & Portales Tenant
 import { EstudioNovaPage } from './pages/demo/nova/EstudioNovaPage';
+import { EstudioNovaAccessHubPage } from './pages/demo/nova/EstudioNovaAccessHubPage';
 import { TenantSimulatorPage } from './pages/demo/TenantSimulatorPage';
 import { TenantWizardPage } from './pages/demo/TenantWizardPage';
 import { TenantInvestorDashboardPage } from './pages/demo/TenantInvestorDashboardPage';
@@ -184,6 +185,10 @@ export const App: React.FC = () => {
               <Route path="/demo/nova/legacy" element={<Navigate to="/demo/estudio-nova" replace />} />
               <Route path="/demo/nova/integrado" element={<Navigate to="/demo/estudio-nova" replace />} />
               <Route path="/demo/nova/full" element={<Navigate to="/demo/estudio-nova" replace />} />
+
+              {/* Tenant Hub de Demostración & Accesos */}
+              <Route path="/demo/estudio-nova/accesos" element={<EstudioNovaAccessHubPage />} />
+              <Route path="/demo/:tenantSlug/accesos" element={<EstudioNovaAccessHubPage />} />
 
               {/* Tenant Home Pública */}
               <Route path="/demo/estudio-nova" element={<EstudioNovaPage />} />

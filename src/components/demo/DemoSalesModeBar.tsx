@@ -22,11 +22,12 @@ export const DemoSalesModeBar: React.FC = () => {
   const currentPath = location.pathname;
 
   const demoLinks = [
-    { label: 'Estudio Nova (Demo)', path: '/demo/estudio-nova', icon: Sparkles, desc: 'Tenant demo consolidado' },
-    { label: 'Simulador', path: '/simulador', icon: Monitor, desc: 'Simulador paramétrico' },
-    { label: 'Portal Solicitante', path: '/mi-cuenta', icon: User, desc: 'Portal cliente' },
-    { label: 'Backoffice', path: '/app/solicitudes', icon: Shield, desc: 'Bandeja de operaciones' },
-    { label: 'Super Admin', path: '/admin/tenants', icon: Sliders, desc: 'Feature flags & reglas' },
+    { label: 'Hub Accesos', path: '/demo/estudio-nova/accesos', icon: Sparkles, desc: 'Hub de accesos demo' },
+    { label: 'Estudio Nova Home', path: '/demo/estudio-nova', icon: Monitor, desc: 'Home White Label' },
+    { label: 'Portal Cliente', path: '/demo/estudio-nova/cliente', icon: User, desc: 'Portal del prestatario' },
+    { label: 'Backoffice Nova', path: '/demo/estudio-nova/admin', icon: Shield, desc: 'Backoffice de operaciones' },
+    { label: 'Red Inversores', path: '/demo/estudio-nova/inversor', icon: Sparkles, desc: 'Módulo de fondeo e inversores' },
+    { label: 'Super Admin', path: '/admin', icon: Sliders, desc: 'Consola global HIPOTECALY' },
   ];
 
   if (minimized) {
