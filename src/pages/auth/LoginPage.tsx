@@ -127,7 +127,7 @@ export const LoginPage: React.FC = () => {
           <button
             type="button"
             disabled={loading}
-            onClick={() => handleDemoLogin('super_admin', '/platform-admin')}
+            onClick={() => handleDemoLogin('super_admin', '/admin')}
             className="p-2.5 rounded-xl border border-amber-300 bg-amber-50/70 hover:bg-amber-100/80 text-left transition-colors text-xs group"
           >
             <span className="font-bold text-amber-950 block group-hover:text-amber-700">👑 Super Admin</span>
@@ -137,30 +137,30 @@ export const LoginPage: React.FC = () => {
           <button
             type="button"
             disabled={loading}
-            onClick={() => handleDemoLogin('analyst', '/app')}
+            onClick={() => handleDemoLogin('analyst', '/demo/estudio-nova/admin')}
             className="p-2.5 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100/80 text-left transition-colors text-xs group"
           >
-            <span className="font-bold text-blue-950 block group-hover:text-blue-700">🏢 Backoffice (SaaS)</span>
+            <span className="font-bold text-blue-950 block group-hover:text-blue-700">🏢 Backoffice Nova</span>
             <span className="text-[10px] text-blue-800 font-mono block mt-0.5">operador / demo123</span>
           </button>
 
           <button
             type="button"
             disabled={loading}
-            onClick={() => handleDemoLogin('borrower', '/mi-cuenta')}
+            onClick={() => handleDemoLogin('borrower', '/demo/estudio-nova/cliente')}
             className="p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100/80 text-left transition-colors text-xs group"
           >
-            <span className="font-bold text-emerald-950 block group-hover:text-emerald-700">👤 Solicitante</span>
+            <span className="font-bold text-emerald-950 block group-hover:text-emerald-700">👤 Portal Cliente</span>
             <span className="text-[10px] text-emerald-800 font-mono block mt-0.5">cliente / demo123</span>
           </button>
 
           <button
             type="button"
             disabled={loading}
-            onClick={() => handleDemoLogin('lender', '/lender')}
+            onClick={() => handleDemoLogin('lender', '/demo/estudio-nova/inversor')}
             className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/70 hover:bg-purple-100/80 text-left transition-colors text-xs group"
           >
-            <span className="font-bold text-purple-950 block group-hover:text-purple-700">💼 Prestamista</span>
+            <span className="font-bold text-purple-950 block group-hover:text-purple-700">💼 Red Inversores</span>
             <span className="text-[10px] text-purple-800 font-mono block mt-0.5">prestamista / demo123</span>
           </button>
         </div>
