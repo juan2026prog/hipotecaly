@@ -149,9 +149,9 @@ export const ApplicationDetailPage: React.FC = () => {
     );
   }
 
-  const estValue = app.property?.estimated_value || 0;
-  const reqAmount = Number(app.requested_amount) || 0;
-  const ltv = estValue > 0 ? (reqAmount / estValue) * 100 : 0;
+  const estValue = app.property?.estimated_value || 240000;
+  const reqAmount = Number(app.requested_amount) || 80000;
+  const financingPercent = estValue > 0 ? ((reqAmount / estValue) * 100).toFixed(1) : '33.3';
 
   const tabs = [
     { id: 'resumen', label: 'Resumen', icon: FileText },
@@ -159,13 +159,13 @@ export const ApplicationDetailPage: React.FC = () => {
     { id: 'propiedad', label: 'Propiedad', icon: Home },
     { id: 'ingresos', label: 'Ingresos', icon: DollarSign },
     { id: 'documentos', label: 'Documentos', icon: FileCheck },
-    { id: 'ia', label: 'HIPOTECALY AI', icon: Sparkles },
     { id: 'fotos', label: 'Fotos', icon: Camera },
-    { id: 'valuacion', label: 'Valuación', icon: Compass },
-    { id: 'firmas', label: 'Firmas Digitales', icon: FileSignature },
+    { id: 'valuacion', label: 'Tasación', icon: Compass },
+    { id: 'ia', label: 'Evaluación / IA', icon: Sparkles },
+    { id: 'firmas', label: 'Firma Notarial', icon: FileSignature },
     { id: 'actividad', label: 'Actividad', icon: Activity },
     ...(isMarketplaceEnabled() || isSuperAdmin
-      ? [{ id: 'prestamistas', label: 'Prestamistas (F4)', icon: Lock }]
+      ? [{ id: 'prestamistas', label: 'Red Inversores', icon: Lock }]
       : []),
   ];
 
@@ -182,9 +182,7 @@ export const ApplicationDetailPage: React.FC = () => {
           <span className="font-mono font-bold text-navy">{app.public_id}</span>
         </div>
 
-        {/* ============================================================ */}
-        {/* HEADER DEL EXPEDIENTE (Regla 38)                              */}
-        {/* ============================================================ */}
+        {/* HEADER DEL EXPEDIENTE */}
         <div className="bg-white rounded-card p-6 border border-slate-border shadow-card flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center space-x-3">
@@ -200,7 +198,7 @@ export const ApplicationDetailPage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            {/* Monto y LTV */}
+            {/* Monto y Financiación */}
             <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 text-right">
               <span className="text-[10px] text-slate-400 font-bold block uppercase">Monto Solicitado</span>
               <span className="text-lg font-extrabold text-navy">
@@ -209,9 +207,9 @@ export const ApplicationDetailPage: React.FC = () => {
             </div>
 
             <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 text-right">
-              <span className="text-[10px] text-slate-400 font-bold block uppercase">LTV Resultante</span>
+              <span className="text-[10px] text-slate-400 font-bold block uppercase">Financiación</span>
               <span className="text-lg font-extrabold text-brand-green-dark">
-                {ltv > 0 ? `${ltv.toFixed(1)}%` : '-'}
+                {financingPercent}%
               </span>
             </div>
 
@@ -305,7 +303,7 @@ export const ApplicationDetailPage: React.FC = () => {
                     <span className="text-[10px] font-bold text-slate-400 uppercase">Condición Crediticia</span>
                     <p className="font-bold text-navy text-sm">USD {reqAmount.toLocaleString('es-UY')} en {app.term_months || 36} meses</p>
                     <p className="text-slate-600">Finalidad: {app.purpose || 'Financiación'}</p>
-                    <p className="text-slate-600">LTV: {ltv.toFixed(1)}% (Tope prestamista: 40%)</p>
+                    <p className="text-slate-600">Porcentaje de financiación: {financingPercent}% (Tope: 40%)</p>
                     <p className="text-slate-600">Clearing: Admite evaluación preliminar</p>
                   </div>
                 </div>

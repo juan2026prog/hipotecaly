@@ -1,582 +1,257 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Building2,
   Plus,
-  RefreshCw,
-  CheckCircle2,
-  Sliders,
-  ToggleLeft,
-  ToggleRight,
+  Search,
   ExternalLink,
-  Copy,
-  Download,
-  Upload,
-  ListChecks,
-  FileCode,
+  Sliders,
+  CheckCircle2,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
-import { BackofficeLayout } from '../../components/backoffice/BackofficeLayout';
+import { SuperAdminLayout } from '../../components/admin/SuperAdminLayout';
+import { SuperAdminTenantDetailModal } from '../../components/admin/SuperAdminTenantDetailModal';
 import { Button } from '../../components/ui/Button';
-import {
-  getTenantModules,
-  setTenantModuleEnabled,
-  TenantModuleKey,
-  DEFAULT_MODULES_MAP,
-} from '../../lib/tenantModulesService';
-import {
-  getTenantLendingRules,
-  updateTenantLendingRules,
-  TenantLendingRules,
-  DEFAULT_NOVA_LENDING_RULES,
-} from '../../lib/tenantRulesService';
-import { getAllRegisteredTenants } from '../../lib/tenantService';
-import {
-  exportTenantConfiguration,
-  importTenantConfiguration,
-  duplicateTenantConfiguration,
-  resetNovaDemoTenant,
-} from '../../lib/tenantOnboardingService';
-
-interface TenantItem {
-  id: string;
-  name: string;
-  slug: string;
-  plan: string;
-  status: 'active' | 'suspended';
-  domain: string;
-  isDemo: boolean;
-}
+import { getAllRegisteredTenants, Tenant } from '../../lib/tenantService';
+import { resetNovaDemoTenant } from '../../lib/tenantOnboardingService';
 
 export const SuperAdminTenantsPage: React.FC = () => {
-  const [tenants, setTenants] = useState<TenantItem[]>([]);
-  const [selectedTenantId, setSelectedTenantId] = useState<string>('d0000000-0000-0000-0000-000000000001');
-  const [modules, setModules] = useState<Record<TenantModuleKey, boolean>>(DEFAULT_MODULES_MAP);
-  const [rules, setRules] = useState<TenantLendingRules>(DEFAULT_NOVA_LENDING_RULES);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
+  const [planFilter, setPlanFilter] = useState<'all' | 'whitelabel' | 'core'>('all');
+  const [selectedTenantModal, setSelectedTenantModal] = useState<Tenant | null>(null);
 
-  // Estados de retroalimentación
-  const [savingRule, setSavingRule] = useState(false);
-  const [ruleSavedToast, setRuleSavedToast] = useState(false);
-  const [resetSuccess, setResetSuccess] = useState(false);
+  // Mensajes y Modales
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Modales de Gestión Avanzada
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [exportedJson, setExportedJson] = useState('');
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [importJsonText, setImportJsonText] = useState('');
-  const [showChecklistModal, setShowChecklistModal] = useState(false);
-
-  const loadTenants = () => {
+  const loadData = () => {
     const list = getAllRegisteredTenants();
-    const mapped: TenantItem[] = list.map((t) => ({
-      id: t.id,
-      name: t.name,
-      slug: t.slug,
-      plan: t.is_white_label ? 'Full White-Label' : 'Enterprise Core',
-      status: t.status === 'suspended' ? 'suspended' : 'active',
-      domain: t.custom_domain || `${t.slug}.hipotecaly.app`,
-      isDemo: Boolean(t.demo_mode),
-    }));
-    setTenants(mapped);
-    if (mapped.length > 0 && !mapped.some((t) => t.id === selectedTenantId)) {
-      setSelectedTenantId(mapped[0].id);
-    }
+    setTenants(list);
   };
 
   useEffect(() => {
-    loadTenants();
+    document.title = 'HIPOTECALY | Gestión de Tenants';
+    loadData();
   }, []);
 
-  useEffect(() => {
-    if (selectedTenantId) {
-      getTenantModules(selectedTenantId).then((m) => setModules(m));
-      getTenantLendingRules(selectedTenantId).then((r) => setRules(r));
-    }
-  }, [selectedTenantId]);
+  const filteredTenants = tenants.filter((t: Tenant) => {
+    const matchesSearch =
+      t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.slug.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (t.custom_domain && t.custom_domain.toLowerCase().includes(searchTerm.toLowerCase()));
 
-  const handleToggleModule = async (key: TenantModuleKey) => {
-    const nextVal = !modules[key];
-    setModules({ ...modules, [key]: nextVal });
-    await setTenantModuleEnabled(selectedTenantId, key, nextVal);
-  };
+    const matchesStatus = statusFilter === 'all' || (statusFilter === 'active' ? t.status === 'active' : t.status === 'suspended');
+    const matchesPlan =
+      planFilter === 'all' || (planFilter === 'whitelabel' ? t.is_white_label : !t.is_white_label);
 
-  const handleUpdatePercentage = async (newPercent: number) => {
-    setSavingRule(true);
-    try {
-      const updated = await updateTenantLendingRules(selectedTenantId, {
-        maxFinancedPercentage: newPercent,
-      });
-      setRules(updated);
-      setRuleSavedToast(true);
-      setTimeout(() => setRuleSavedToast(false), 3500);
-    } finally {
-      setSavingRule(false);
-    }
-  };
+    return matchesSearch && matchesStatus && matchesPlan;
+  });
 
-  const handleResetNovaDemo = async () => {
+  const handleResetNova = async () => {
     await resetNovaDemoTenant();
-    setRules({ ...DEFAULT_NOVA_LENDING_RULES, maxFinancedPercentage: 50 });
-    setResetSuccess(true);
-    setTimeout(() => setResetSuccess(false), 3500);
-  };
-
-  const handleExport = async () => {
-    const json = await exportTenantConfiguration(selectedTenantId);
-    setExportedJson(json);
-    setShowExportModal(true);
-  };
-
-  const handleImportSubmit = async () => {
-    const res = await importTenantConfiguration(selectedTenantId, importJsonText);
-    if (res.success) {
-      setShowImportModal(false);
-      setImportJsonText('');
-      const updatedRules = await getTenantLendingRules(selectedTenantId);
-      const updatedModules = await getTenantModules(selectedTenantId);
-      setRules(updatedRules);
-      setModules(updatedModules);
-      setToastMessage('Configuración importada exitosamente en caliente.');
-      setTimeout(() => setToastMessage(null), 3000);
-    } else {
-      alert(res.error || 'Error al importar configuración.');
-    }
-  };
-
-  const handleDuplicate = async () => {
-    const targetSlug = prompt('Ingresá el ID o Slug del tenant destino donde copiar esta configuración:');
-    if (!targetSlug) return;
-    const target = tenants.find((t) => t.slug === targetSlug.trim() || t.id === targetSlug.trim());
-    if (!target) {
-      alert('Tenant destino no encontrado.');
-      return;
-    }
-    await duplicateTenantConfiguration(selectedTenantId, target.id);
-    setToastMessage(`Configuración copiada exitosamente a ${target.name}.`);
+    setToastMessage('Tenant demo Estudio Nova restablecido a valores iniciales.');
     setTimeout(() => setToastMessage(null), 3000);
-  };
-
-  const selectedTenant = tenants.find((t) => t.id === selectedTenantId) || tenants[0] || {
-    id: 'd0000000-0000-0000-0000-000000000001',
-    name: 'NOVA Crédito Hipotecario',
-    slug: 'nova-demo',
-    plan: 'Full White-Label',
-    status: 'active',
-    domain: 'demo.novacredito.uy',
-    isDemo: true,
-  };
-
-  const moduleLabels: Record<TenantModuleKey, { title: string; desc: string }> = {
-    application_module_enabled: { title: 'Módulo de Solicitudes Digitales', desc: 'Recepción y validación de solicitudes online' },
-    simulator_enabled: { title: 'Simulador Crediticio', desc: 'Calculadora de montos, cuotas y porcentaje financiado' },
-    client_portal_enabled: { title: 'Portal del Solicitante', desc: 'Autogestión de legajo, ofertas y estado de expediente' },
-    staff_portal_enabled: { title: 'Panel del Estudio / Backoffice', desc: 'Bandeja de operaciones para analistas y escribanos' },
-    documents_enabled: { title: 'Gestión Documental y Checklist', desc: 'Carga, revisión, observación y aprobación de archivos' },
-    ai_enabled: { title: 'Copiloto de Análisis Asistido por IA', desc: 'Semáforo de tasación, documentación, ingresos y riesgo' },
-    valuations_enabled: { title: 'Módulo Técnico de Valuaciones', desc: 'Peritajes técnicos y cálculo de rangos de valor' },
-    signatures_enabled: { title: 'Coordinación y Firma Notarial', desc: 'Agenda notarial, citaciones y control de escrituración' },
-    servicing_enabled: { title: 'Seguimiento de Créditos Activos', desc: 'Pólizas, gravámenes y administración de cartera' },
-    payments_tracking_enabled: { title: 'Registro y Conciliación de Pagos', desc: 'Comprobantes de cuotas, intereses y amortizaciones' },
-    reminders_enabled: { title: 'Alertas y Recordatorios Automáticos', desc: 'Notificaciones de vencimiento y renovación de certificados' },
-    cancellations_enabled: { title: 'Gestión de Cancelación Anticipada', desc: 'Liquidación de saldo capital y levantamiento de hipoteca' },
-    notifications_enabled: { title: 'Mensajería y Notificaciones Multicanal', desc: 'Comunicación interna y avisos al prestatario' },
-    protected_contact_enabled: { title: 'Protección Anti-Bypass de Contacto', desc: 'Enmascaramiento de teléfonos y emails hasta aprobación' },
-    cost_breakdown_enabled: { title: 'Transparencia de Costos de Cierre', desc: 'Desglose visible de gastos notariales y neto a desembolsar' },
-    external_simulator_integration_enabled: { title: 'Integración con Simulador Externo', desc: 'Recepción sanitizada desde sitios web ya existentes' },
-    investor_portal_enabled: { title: 'Red Privada de Inversores', desc: 'Portal exclusivo para asignación privada de operaciones a inversores' },
+    loadData();
   };
 
   return (
-    <BackofficeLayout title="Super Admin — Clientes SaaS y Multi-Tenancy">
-      <div className="space-y-8 text-left max-w-7xl mx-auto">
-        
-        {/* Encabezado Super Admin */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+    <SuperAdminLayout title="Gestión de Tenants y Organizaciones">
+      <div className="space-y-8 max-w-7xl mx-auto text-left">
+        {/* Encabezado */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#152E4D] pb-5">
           <div>
             <div className="flex items-center space-x-2">
-              <span className="text-[11px] font-bold text-brand-green uppercase tracking-wider">
-                Super Administrador Transversal
+              <span className="text-[11px] font-mono font-bold text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                MULTI-TENANCY CORE
               </span>
+              <span className="text-slate-500">•</span>
+              <span className="text-xs text-slate-400 font-mono">AISLAMIENTO RLS</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-navy tracking-tight mt-1">
-              Gestión de Organizaciones y Módulos
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mt-1">
+              Organizaciones y Tenants B2B
             </h1>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Configurá marcas, feature flags y reglas crediticias en caliente sin modificar código ni redeployar.
+            <p className="text-xs sm:text-sm text-slate-400 mt-1">
+              Administración centralizada de clientes White Label, reglas financieras, branding y módulos en caliente.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
             <Button
               variant="outline"
-              size="md"
-              onClick={handleResetNovaDemo}
-              className="text-xs border-amber-300 text-amber-900 hover:bg-amber-50"
+              size="sm"
+              onClick={handleResetNova}
+              className="bg-[#09182C] border-[#1E3A5F] text-amber-300 hover:bg-[#152E4D] text-xs"
             >
-              <RefreshCw className="w-3.5 h-3.5 mr-1.5 text-amber-600" />
-              Reset Demo NOVA
+              <RefreshCw className="w-3.5 h-3.5 mr-1.5 text-amber-400" />
+              Reset Demo Nova
             </Button>
-
             <Link to="/admin/tenants/new">
               <Button
                 variant="primary"
-                size="md"
-                className="text-xs shadow-sm"
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm"
               >
                 <Plus className="w-4 h-4 mr-1.5" />
-                Nuevo Cliente White-Label
+                Nuevo Tenant
               </Button>
             </Link>
           </div>
         </div>
 
-        {/* Toasts de Retroalimentación */}
-        {ruleSavedToast && (
-          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs font-bold text-emerald-900 flex items-center space-x-2 animate-fadeIn">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>Regla actualizada en Supabase. El simulador reflejará el nuevo valor en vivo.</span>
-          </div>
-        )}
-
-        {resetSuccess && (
-          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs font-bold text-amber-900 flex items-center space-x-2 animate-fadeIn">
-            <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0" />
-            <span>Tenant demo NOVA restablecido a los valores oficiales de fábrica.</span>
-          </div>
-        )}
-
         {toastMessage && (
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs font-bold text-blue-900 flex items-center space-x-2 animate-fadeIn">
-            <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
+          <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs rounded-xl flex items-center space-x-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>{toastMessage}</span>
           </div>
         )}
 
-        {/* Acceso QA / Inspección Directa Link Banner */}
-        <div className="p-4 bg-gradient-to-r from-slate-900 to-navy rounded-xl border border-navy-border shadow-sm flex items-center justify-between text-white">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
-              <Sliders className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="font-bold text-xs sm:text-sm">Herramientas de QA e Inspección Directa</h3>
-              <p className="text-[11px] text-slate-300">Generá sesiones Supabase Auth temporales para auditar portales con 1-click.</p>
-            </div>
-          </div>
-          <Link to="/platform-admin" className="shrink-0">
-            <Button variant="primary" size="sm" className="text-xs bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold">
-              Abrir Acceso QA <ExternalLink className="w-3.5 h-3.5 ml-1" />
-            </Button>
-          </Link>
-        </div>
-
-        {/* Selector de Tenant Activo */}
-        <div className="bg-white rounded-card p-5 border border-slate-border shadow-card space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-            <h3 className="text-sm font-bold text-navy flex items-center">
-              <Building2 className="w-4 h-4 mr-2 text-brand-green" />
-              Clientes SaaS Registrados
-            </h3>
-            <span className="text-xs text-slate-400 font-mono">
-              Total: {tenants.length} organizaciones
-            </span>
+        {/* Filtros y Búsqueda */}
+        <div className="bg-[#09182C] p-4 rounded-xl border border-[#152E4D] grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Buscar tenant por nombre, slug o dominio..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 bg-[#071322] border border-[#152E4D] rounded-lg text-slate-200 text-xs focus:border-emerald-500 focus:outline-none"
+            />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {tenants.map((t) => {
-              const isSelected = selectedTenantId === t.id;
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setSelectedTenantId(t.id)}
-                  className={`p-4 rounded-xl text-left border transition-all ${
-                    isSelected
-                      ? 'bg-blue-50/70 border-[#0A3A60] ring-2 ring-[#0A3A60]/20 shadow-sm'
-                      : 'bg-slate-50/70 border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs sm:text-sm text-navy truncate">{t.name}</span>
-                    {t.isDemo && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-mono">
-                        DEMO
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-slate-500 mt-1 font-mono">{t.domain}</p>
-                  <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-200 text-[11px]">
-                    <span className="text-slate-600">{t.plan}</span>
-                    <span className="font-bold text-emerald-700">✓ {t.status}</span>
-                  </div>
-                </button>
-              );
-            })}
+          <div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+              className="w-full py-2 px-3 bg-[#071322] border border-[#152E4D] rounded-lg text-slate-200 text-xs focus:border-emerald-500 focus:outline-none"
+            >
+              <option value="all">Todos los Estados</option>
+              <option value="active">Activos</option>
+              <option value="suspended">Suspendidos</option>
+            </select>
           </div>
 
-          {/* Barra de Acciones Avanzadas del Tenant */}
-          <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-100 text-xs">
-            <button
-              onClick={handleExport}
-              className="inline-flex items-center px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 font-bold text-slate-700"
+          <div>
+            <select
+              value={planFilter}
+              onChange={(e) => setPlanFilter(e.target.value as any)}
+              className="w-full py-2 px-3 bg-[#071322] border border-[#152E4D] rounded-lg text-slate-200 text-xs focus:border-emerald-500 focus:outline-none"
             >
-              <Download className="w-3.5 h-3.5 mr-1 text-slate-500" /> Exportar Configuración (JSON)
-            </button>
-
-            <button
-              onClick={() => setShowImportModal(true)}
-              className="inline-flex items-center px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 font-bold text-slate-700"
-            >
-              <Upload className="w-3.5 h-3.5 mr-1 text-slate-500" /> Importar Configuración
-            </button>
-
-            <button
-              onClick={handleDuplicate}
-              className="inline-flex items-center px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 font-bold text-slate-700"
-            >
-              <Copy className="w-3.5 h-3.5 mr-1 text-slate-500" /> Duplicar a Otro Tenant
-            </button>
-
-            <button
-              onClick={() => setShowChecklistModal(true)}
-              className="inline-flex items-center px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 font-bold text-slate-700"
-            >
-              <ListChecks className="w-3.5 h-3.5 mr-1 text-slate-500" /> Checklist de Onboarding
-            </button>
-
-            <Link
-              to={selectedTenant.slug === 'nova-demo' ? '/demo/nova/full' : `/org/${selectedTenant.slug}`}
-              target="_blank"
-              className="inline-flex items-center px-3 py-1.5 rounded-lg bg-navy text-white hover:bg-slate-800 font-bold ml-auto"
-            >
-              <ExternalLink className="w-3.5 h-3.5 mr-1" /> Ver Portal en Vivo
-            </Link>
+              <option value="all">Todos los Planes</option>
+              <option value="whitelabel">Full White Label</option>
+              <option value="core">Core Enterprise</option>
+            </select>
           </div>
         </div>
 
-        {/* Panel de Configuración del Tenant Seleccionado */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
-          {/* 1. Módulos / Feature Flags (Columna Izquierda) */}
-          <div className="lg:col-span-7 space-y-6">
-            <div className="bg-white rounded-card p-6 border border-slate-border shadow-card space-y-5">
-              <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-                <div>
-                  <h3 className="text-base font-bold text-navy flex items-center">
-                    <Sliders className="w-5 h-5 mr-2 text-brand-green" />
-                    Módulos y Feature Flags de {selectedTenant.name}
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Activa o desactiva funcionalidades independientemente por organización.
-                  </p>
-                </div>
-              </div>
+        {/* Tabla Central de Tenants */}
+        <div className="bg-[#09182C] rounded-xl border border-[#152E4D] overflow-hidden shadow-sm">
+          <div className="p-4 border-b border-[#152E4D] flex items-center justify-between">
+            <span className="font-bold text-xs text-white">Tenants Registrados ({filteredTenants.length})</span>
+          </div>
 
-              <div className="space-y-3">
-                {(Object.keys(moduleLabels) as TenantModuleKey[]).map((key) => {
-                  const isEnabled = modules[key] ?? true;
-                  const info = moduleLabels[key];
-                  return (
-                    <div
-                      key={key}
-                      className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 flex items-center justify-between gap-3"
-                    >
-                      <div>
-                        <h4 className="text-xs font-bold text-navy">{info.title}</h4>
-                        <p className="text-[11px] text-slate-500 mt-0.5">{info.desc}</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-[#071322] text-slate-400 font-mono border-b border-[#152E4D]">
+                <tr>
+                  <th className="py-3 px-4 font-semibold">Tenant / Organización</th>
+                  <th className="py-3 px-4 font-semibold">Slug / Dominio</th>
+                  <th className="py-3 px-4 font-semibold">Tipo / Plan</th>
+                  <th className="py-3 px-4 font-semibold">Estado</th>
+                  <th className="py-3 px-4 font-semibold">Módulos Activos</th>
+                  <th className="py-3 px-4 font-semibold">Última Actividad</th>
+                  <th className="py-3 px-4 text-right font-semibold">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#152E4D]">
+                {filteredTenants.map((t: Tenant) => (
+                  <tr key={t.id} className="hover:bg-white/5 transition-colors">
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center space-x-3">
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-xs shrink-0"
+                          style={{ backgroundColor: t.branding?.primary_color || '#102d49' }}
+                        >
+                          {t.name.charAt(0)}
+                        </div>
+                        <div>
+                          <strong className="text-white block">{t.name}</strong>
+                          <span className="text-[11px] text-slate-400 font-mono">{t.id.slice(0, 18)}...</span>
+                        </div>
                       </div>
+                    </td>
 
-                      <button
-                        type="button"
-                        data-testid={`module-toggle-${key}`}
-                        onClick={() => handleToggleModule(key)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center space-x-1.5 shrink-0 ${
-                          isEnabled
-                            ? 'bg-emerald-600 text-white shadow-sm'
-                            : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
-                        }`}
-                      >
-                        {isEnabled ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
-                        <span>{isEnabled ? 'Activo' : 'Inactivo'}</span>
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+                    <td className="py-3.5 px-4 font-mono text-[11px] text-slate-300">
+                      <div>/demo/{t.slug}</div>
+                      <div className="text-[10px] text-slate-500">{t.custom_domain || 'Subdominio estándar'}</div>
+                    </td>
+
+                    <td className="py-3.5 px-4">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/15 text-blue-400 border border-blue-500/20">
+                        {t.is_white_label ? 'White Label' : 'Enterprise Core'}
+                      </span>
+                    </td>
+
+                    <td className="py-3.5 px-4">
+                      {t.status === 'active' ? (
+                        <span className="inline-flex items-center text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                          <CheckCircle2 className="w-3 h-3 mr-1" /> Activo
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center text-[11px] font-bold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">
+                          <AlertCircle className="w-3 h-3 mr-1" /> Suspendido
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="py-3.5 px-4">
+                      <div className="flex flex-wrap gap-1">
+                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-slate-800 text-slate-300 font-mono">DocFlow</span>
+                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-slate-800 text-slate-300 font-mono">Tasaciones</span>
+                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-slate-800 text-slate-300 font-mono">IA</span>
+                      </div>
+                    </td>
+
+                    <td className="py-3.5 px-4 text-slate-400 font-mono text-[11px]">
+                      Hace 5 min
+                    </td>
+
+                    <td className="py-3.5 px-4 text-right">
+                      <div className="flex items-center justify-end space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedTenantModal(t)}
+                          className="h-7 text-[10px] bg-[#09182C] border-[#1E3A5F] text-slate-200 hover:bg-[#152E4D]"
+                        >
+                          <Sliders className="w-3 h-3 mr-1 text-emerald-400" /> Detalle
+                        </Button>
+                        <a
+                          href={`/demo/${t.slug}/admin`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="h-7 px-2 py-1 rounded text-[10px] font-bold bg-[#152E4D] text-emerald-400 hover:bg-[#1E3A5F] flex items-center"
+                        >
+                          Backoffice <ExternalLink className="w-2.5 h-2.5 ml-1" />
+                        </a>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-
-          {/* 2. Reglas Crediticias y Límites (Columna Derecha) */}
-          <div className="lg:col-span-5 space-y-6">
-            
-            <div className="bg-white rounded-card p-6 border border-slate-border shadow-card space-y-4">
-              <div className="border-b border-slate-200 pb-3">
-                <span className="text-[11px] font-bold text-brand-green uppercase tracking-wider">
-                  Configuración Crediticia en Caliente
-                </span>
-                <h3 className="text-base font-bold text-navy mt-0.5">
-                  Porcentaje Financiado Máximo
-                </h3>
-                <p className="text-xs text-slate-500 mt-1">
-                  Afecta inmediatamente las validaciones del simulador sin redeployar.
-                </p>
-              </div>
-
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-slate-500 block font-medium">Tope Configurado Actual</span>
-                  <span className="text-3xl font-extrabold text-navy font-mono">
-                    {rules.maxFinancedPercentage}%
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-xs text-slate-500 block font-medium">Monto Máximo</span>
-                  <span className="text-sm font-bold text-slate-700 font-mono">
-                    USD {Number(rules.maxLoanAmount).toLocaleString()}
-                  </span>
-                </div>
-              </div>
-
-              {/* Botones de Cambio Rápido */}
-              <div className="space-y-2 pt-2">
-                <span className="text-xs font-bold text-slate-700 block">Modificar valor permitido:</span>
-                <div className="grid grid-cols-3 gap-2">
-                  {[40, 50, 60].map((val) => (
-                    <button
-                      key={val}
-                      type="button"
-                      disabled={savingRule}
-                      onClick={() => handleUpdatePercentage(val)}
-                      className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all ${
-                        rules.maxFinancedPercentage === val
-                          ? 'bg-navy text-white border-navy shadow-sm'
-                          : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
-                      }`}
-                    >
-                      {rules.maxFinancedPercentage === val ? `Fijar en ${val}% (Activo ✓)` : `Fijar en ${val}%`}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-          </div>
-
         </div>
 
-        {/* MODAL: EXPORTAR CONFIGURACIÓN */}
-        {showExportModal && (
-          <div className="fixed inset-0 z-50 bg-navy/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full p-6 border border-slate-200 space-y-4 text-left">
-              <div className="flex justify-between items-center border-b pb-3">
-                <h3 className="font-bold text-base text-navy flex items-center">
-                  <FileCode className="w-5 h-5 mr-2 text-brand-green" /> Exportar Configuración JSON
-                </h3>
-                <button onClick={() => setShowExportModal(false)} className="text-slate-400 font-bold">✕</button>
-              </div>
-              <p className="text-xs text-slate-500">
-                JSON seguro con Schema Versión 1. Excluye PII, usuarios, expedientes y secretos.
-              </p>
-              <textarea
-                readOnly
-                value={exportedJson}
-                rows={12}
-                className="w-full p-3 font-mono text-xs bg-slate-50 border border-slate-300 rounded-lg text-navy"
-              />
-              <div className="flex justify-end space-x-2 pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    navigator.clipboard.writeText(exportedJson);
-                    alert('JSON copiado al portapapeles.');
-                  }}
-                >
-                  <Copy className="w-3.5 h-3.5 mr-1" /> Copiar JSON
-                </Button>
-                <Button variant="primary" size="sm" onClick={() => setShowExportModal(false)}>
-                  Cerrar
-                </Button>
-              </div>
-            </div>
-          </div>
+        {/* Modal de Detalle de Tenant */}
+        {selectedTenantModal && (
+          <SuperAdminTenantDetailModal
+            tenant={selectedTenantModal}
+            onClose={() => setSelectedTenantModal(null)}
+            onUpdated={loadData}
+          />
         )}
-
-        {/* MODAL: IMPORTAR CONFIGURACIÓN */}
-        {showImportModal && (
-          <div className="fixed inset-0 z-50 bg-navy/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full p-6 border border-slate-200 space-y-4 text-left">
-              <div className="flex justify-between items-center border-b pb-3">
-                <h3 className="font-bold text-base text-navy flex items-center">
-                  <Upload className="w-5 h-5 mr-2 text-brand-green" /> Importar Configuración JSON
-                </h3>
-                <button onClick={() => setShowImportModal(false)} className="text-slate-400 font-bold">✕</button>
-              </div>
-              <p className="text-xs text-slate-500">
-                Pegá el JSON de configuración para {selectedTenant.name}. Se validará el schema antes de aplicar.
-              </p>
-              <textarea
-                value={importJsonText}
-                onChange={(e) => setImportJsonText(e.target.value)}
-                placeholder="Pegá aquí el JSON exportado..."
-                rows={10}
-                className="w-full p-3 font-mono text-xs bg-white border border-slate-300 rounded-lg text-navy focus:border-navy"
-              />
-              <div className="flex justify-end space-x-2 pt-2">
-                <Button variant="outline" size="sm" onClick={() => setShowImportModal(false)}>
-                  Cancelar
-                </Button>
-                <Button variant="primary" size="sm" onClick={handleImportSubmit}>
-                  Aplicar Configuración
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* MODAL: CHECKLIST DE ONBOARDING */}
-        {showChecklistModal && (
-          <div className="fixed inset-0 z-50 bg-navy/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 space-y-4 text-left">
-              <div className="flex justify-between items-center border-b pb-3">
-                <h3 className="font-bold text-base text-navy flex items-center">
-                  <ListChecks className="w-5 h-5 mr-2 text-brand-green" /> Checklist de Onboarding · {selectedTenant.name}
-                </h3>
-                <button onClick={() => setShowChecklistModal(false)} className="text-slate-400 font-bold">✕</button>
-              </div>
-
-              <div className="space-y-2 text-xs">
-                {[
-                  '1. Datos de Empresa y Razón Social',
-                  '2. Modalidad y Selección de Plantilla',
-                  '3. Identidad Visual y Colores de Marca',
-                  '4. Reglas Crediticias y Porcentaje Financiado',
-                  '5. Desglose Notarial y de Gastos de Cierre',
-                  '6. Reglas de Privacidad y Enmascaramiento',
-                  '7. Usuarios Internos y Roles Operativos',
-                  '8. Portal del Solicitante Habilitado',
-                  '9. Dominio / Subdominio Asignado',
-                  '10. Activación Productiva en Caliente',
-                ].map((step, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg border border-slate-100">
-                    <span className="font-medium text-slate-700">{step}</span>
-                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                      ✓ Completado
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <Button variant="primary" size="sm" onClick={() => setShowChecklistModal(false)}>
-                  Entendido
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
       </div>
-    </BackofficeLayout>
+    </SuperAdminLayout>
   );
 };

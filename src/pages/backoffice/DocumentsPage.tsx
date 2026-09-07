@@ -110,30 +110,51 @@ export const DocumentsPage: React.FC = () => {
             onClick={() => setActiveTab('documentos')}
             className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors ${
               activeTab === 'documentos'
-                ? 'border-brand-green text-brand-green'
+                ? 'border-[#102d49] text-[#102d49]'
                 : 'border-transparent text-slate-500 hover:text-navy'
             }`}
           >
             <FileText className="w-4 h-4" />
-            <span>Documentos Generados ({documents.length})</span>
+            <span>Document Hub ({documents.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('plantillas')}
             className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors ${
               activeTab === 'plantillas'
-                ? 'border-brand-green text-brand-green'
+                ? 'border-[#102d49] text-[#102d49]'
                 : 'border-transparent text-slate-500 hover:text-navy'
             }`}
           >
             <Layers className="w-4 h-4" />
-            <span>Plantillas Oficiales ({templates.length})</span>
+            <span>Plantillas DocFlow ({templates.length})</span>
           </button>
         </div>
 
-        {/* TAB 1: DOCUMENTOS GENERADOS */}
+        {/* TAB 1: DOCUMENT HUB */}
         {activeTab === 'documentos' && (
           <div className="space-y-4">
+            {/* 7 Subpestañas Documentales */}
+            <div className="flex space-x-1.5 overflow-x-auto pb-1 text-xs font-semibold">
+              {[
+                { id: 'todos', label: 'Todos' },
+                { id: 'pendientes', label: 'Pendientes' },
+                { id: 'recibidos', label: 'Recibidos' },
+                { id: 'en_revision', label: 'En revisión' },
+                { id: 'aprobados', label: 'Aprobados' },
+                { id: 'observados', label: 'Observados' },
+                { id: 'generados', label: 'Generados' },
+                { id: 'firmados', label: 'Firmados' },
+              ].map((sub) => (
+                <button
+                  key={sub.id}
+                  onClick={() => setSearchDoc(sub.id === 'todos' ? '' : sub.id)}
+                  className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold whitespace-nowrap transition"
+                >
+                  {sub.label}
+                </button>
+              ))}
+            </div>
             {/* Buscador */}
             <div className="bg-white rounded-card p-4 border border-slate-border shadow-card flex items-center justify-between gap-3">
               <div className="relative flex-1 max-w-md">

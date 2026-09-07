@@ -4,7 +4,7 @@
 // ==============================================================================
 
 import React, { useState, useEffect } from 'react';
-import { BackofficeLayout } from '../../components/backoffice/BackofficeLayout';
+import { SuperAdminLayout } from '../../components/admin/SuperAdminLayout';
 import {
   Sparkles,
   Layers,
@@ -236,7 +236,7 @@ export const AdminAiPage: React.FC = () => {
   };
 
   return (
-    <BackofficeLayout>
+    <SuperAdminLayout activeSection="ai">
       <div className="space-y-6 text-left max-w-7xl mx-auto">
         {/* Header Principal con Badge Global de Estado */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
@@ -795,6 +795,6 @@ export const AdminAiPage: React.FC = () => {
           </div>
         )}
       </div>
-    </BackofficeLayout>
+    </SuperAdminLayout>
   );
 };

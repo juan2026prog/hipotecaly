@@ -17,7 +17,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
-import { BackofficeLayout } from '../../components/backoffice/BackofficeLayout';
+import { SuperAdminLayout } from '../../components/admin/SuperAdminLayout';
 import {
   OFFICIAL_TEMPLATES,
   createTenantWithOnboarding,
@@ -232,7 +232,7 @@ export const TenantOnboardingWizardPage: React.FC = () => {
   ];
 
   return (
-    <BackofficeLayout>
+    <SuperAdminLayout activeSection="tenants">
       <div className="max-w-5xl mx-auto space-y-6 text-left pb-16">
         
         {/* Cabecera */}
@@ -1100,6 +1100,6 @@ export const TenantOnboardingWizardPage: React.FC = () => {
         </div>
 
       </div>
-    </BackofficeLayout>
+    </SuperAdminLayout>
   );
 };

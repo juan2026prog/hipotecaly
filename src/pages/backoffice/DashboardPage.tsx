@@ -1,188 +1,300 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { BackofficeLayout } from '../../components/backoffice/BackofficeLayout';
 import { getBackofficeMetrics, getApplicationsList } from '../../lib/backofficeService';
 import {
   FileText,
   Clock,
   CheckCircle2,
-  TrendingUp,
-  AlertCircle,
-  ArrowUpRight,
   ChevronRight,
   Plus,
+  Compass,
+  FileCheck,
+  ArrowRight,
+  ShieldAlert,
+  Layers,
   Sparkles,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
-import { aiService } from '../../lib/aiService';
-import { AiWalletState } from '../../lib/ai/types';
 import { useTenant } from '../../contexts/TenantContext';
 
 export const DashboardPage: React.FC = () => {
   const { tenant } = useTenant();
-  const [metrics, setMetrics] = useState<{
-    newRequests: number;
-    inAnalysis: number;
-    waitingDocs: number;
-    offerAvailable: number;
-    approved: number;
-    totalRequested: number;
-    isDemo: boolean;
-  }>({
-    newRequests: 0,
-    inAnalysis: 0,
-    waitingDocs: 0,
-    offerAvailable: 0,
-    approved: 0,
-    totalRequested: 0,
-    isDemo: false,
-  });
+  const location = useLocation();
+  const isTenantPath = location.pathname.startsWith('/demo/');
+  const baseRoute = isTenantPath ? `/demo/${tenant.slug || 'estudio-nova'}/admin` : '/app';
 
   const [recentApplications, setRecentApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [aiWallet, setAiWallet] = useState<AiWalletState | null>(null);
-  const [showRechargeModal, setShowRechargeModal] = useState(false);
+
+  // 6 KPIs Operativos del Backoffice
+  const [kpiCards, setKpiCards] = useState({
+    activeRequests: 8,
+    waitingDocs: 3,
+    inEvaluation: 2,
+    pendingValuation: 2,
+    pendingSignature: 1,
+    closingSoon: 1,
+  });
+
+  // Alertas de "Necesita Atención"
+  const [attentionItems] = useState([
+    {
+      id: 'att-1',
+      type: 'documentos',
+      title: 'Recibo de sueldo / Certificado contable faltante',
+      applicationId: 'HPT-2026-00124',
+      client: 'Ignacio Silva',
+      severity: 'high',
+      dueDate: 'Vence hoy',
+      link: `${baseRoute}/solicitudes/e0000000-0000-0000-0000-000000000001`,
+    },
+    {
+      id: 'att-2',
+      type: 'tasacion',
+      title: 'Tasación profesional pendiente de emisión',
+      applicationId: 'NOV-2026-00089',
+      client: 'María Eugenia Rossi',
+      severity: 'medium',
+      dueDate: 'En plazo (24hs)',
+      link: `${baseRoute}/tasaciones`,
+    },
+    {
+      id: 'att-3',
+      type: 'firma',
+      title: 'Minuta notarial lista para firma electrónica',
+      applicationId: 'NOV-2026-00094',
+      client: 'Carlos Benítez',
+      severity: 'high',
+      dueDate: 'Pendiente de firma',
+      link: `${baseRoute}/documentos`,
+    },
+  ]);
+
+  // 7 Etapas del Pipeline
+  const pipelineStages = [
+    { key: 'received', name: 'Solicitud recibida', count: 2, percent: '25%' },
+    { key: 'info_review', name: 'Información en revisión', count: 2, percent: '25%' },
+    { key: 'property_docs', name: 'Propiedad y docs', count: 1, percent: '12%' },
+    { key: 'evaluation', name: 'Evaluación', count: 1, percent: '12%' },
+    { key: 'conditions', name: 'Condiciones', count: 1, percent: '12%' },
+    { key: 'formalization', name: 'Formalización', count: 1, percent: '12%' },
+    { key: 'completed', name: 'Finalizada', count: 4, percent: 'Completadas' },
+  ];
 
   useEffect(() => {
     async function loadData() {
       setLoading(true);
       const isDemo = Boolean(tenant.demo_mode);
       const m = await getBackofficeMetrics({ organizationId: tenant.id, isDemoMode: isDemo });
-      setMetrics(m);
       const apps = await getApplicationsList({ organizationId: tenant.id, useDemoMode: isDemo });
       setRecentApplications(apps.slice(0, 6));
 
-      // Cargar billetera AI del tenant
-      try {
-        const w = await aiService.getWalletState(tenant.id);
-        setAiWallet(w);
-      } catch {
-        // Silencioso
+      if (m) {
+        setKpiCards({
+          activeRequests: apps.filter((a) => a.status !== 'completed' && a.status !== 'rejected').length || 8,
+          waitingDocs: apps.filter((a) => a.status === 'draft' || a.status === 'info_review').length || 3,
+          inEvaluation: apps.filter((a) => a.status === 'in_analysis' || a.status === 'submitted').length || 2,
+          pendingValuation: 2,
+          pendingSignature: apps.filter((a) => a.status === 'approved').length || 1,
+          closingSoon: 1,
+        });
       }
-
       setLoading(false);
     }
     loadData();
   }, [tenant.id, tenant.demo_mode]);
 
+  const brandName = tenant.branding?.public_name || tenant.name || 'Estudio Nova';
+
   return (
     <BackofficeLayout>
-      <div className="space-y-6 text-left max-w-7xl mx-auto">
+      <div className="space-y-7 text-left max-w-7xl mx-auto">
         
-        {/* 1. Header con CTA Operativo */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        {/* 1. Header con Branding y CTA */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div>
-            <span className="text-[10px] font-bold text-brand-green uppercase tracking-wider block">
-              OPERACIONES & CRÉDITO
-            </span>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-navy tracking-tight">
-              Panel Operativo
+            <div className="flex items-center space-x-2">
+              <span className="text-[10px] font-bold text-[#f4b43b] bg-[#102d49] px-2 py-0.5 rounded uppercase tracking-wider">
+                {brandName} BACKOFFICE
+              </span>
+              <span className="text-slate-400">•</span>
+              <span className="text-xs text-slate-500 font-medium">Gestión de Crédito Hipotecario</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[#102d49] tracking-tight mt-1">
+              Panel de Control Operativo
             </h1>
-            <p className="text-xs sm:text-sm text-slate-muted mt-0.5">
-              Control general de solicitudes, expedientes y garantías en tiempo real.
+            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+              Supervisión de expedientes, recaudos notariales, tasaciones y formalización de préstamos.
             </p>
           </div>
 
-          <Link to="/solicitar">
-            <Button variant="primary" size="md" className="shadow-sm font-bold">
-              <Plus className="w-4 h-4 mr-1.5" /> Nueva solicitud
-            </Button>
-          </Link>
+          <div className="flex items-center space-x-2.5">
+            <Link to="/solicitar">
+              <Button variant="primary" size="md" className="!bg-[#102d49] hover:!bg-[#173a5e] !text-white !font-bold text-xs shadow-sm">
+                <Plus className="w-4 h-4 mr-1.5" /> Nueva Solicitud
+              </Button>
+            </Link>
+          </div>
         </div>
 
-        {/* Demo Tag si aplica */}
-        {metrics.isDemo && (
-          <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>
-                <strong>Modo demostrativo activo:</strong> Mostrando dataset de pruebas separado de producción.
-              </span>
+        {/* 2. KPI Cards (6 Cards Obligatorias de Operación) */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs hover:border-slate-300 transition">
+            <div className="flex items-center justify-between text-slate-400 text-xs">
+              <span className="font-semibold">Solicitudes activas</span>
+              <FileText className="w-4 h-4 text-[#102d49]" />
             </div>
-            <span className="font-mono text-[10px] bg-amber-200/60 px-2 py-0.5 rounded font-bold">
-              DEMO
-            </span>
-          </div>
-        )}
-
-        {/* ============================================================ */}
-        {/* 2. STAT CARDS (KPIs Operativos)                              */}
-        {/* ============================================================ */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
-          <div className="bg-white p-4 rounded-card border border-slate-border shadow-xs">
-            <div className="flex items-center justify-between text-slate-muted text-xs">
-              <span>Nuevas</span>
-              <FileText className="w-4 h-4 text-brand-green" />
+            <div className="text-2xl font-black text-[#102d49] mt-2 font-serif">
+              {kpiCards.activeRequests}
             </div>
-            <div className="text-2xl font-extrabold text-navy mt-2">
-              {metrics.newRequests}
-            </div>
-            <span className="text-[10px] text-slate-400 mt-1 block">Por evaluar</span>
+            <span className="text-[10px] text-slate-400 mt-1 block">En cartera activa</span>
           </div>
 
-          <div className="bg-white p-4 rounded-card border border-slate-border shadow-xs">
-            <div className="flex items-center justify-between text-slate-muted text-xs">
-              <span>En análisis</span>
+          <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs hover:border-slate-300 transition">
+            <div className="flex items-center justify-between text-slate-400 text-xs">
+              <span className="font-semibold">Esperando docs</span>
               <Clock className="w-4 h-4 text-amber-500" />
             </div>
-            <div className="text-2xl font-extrabold text-navy mt-2">
-              {metrics.inAnalysis}
+            <div className="text-2xl font-black text-amber-700 mt-2 font-serif">
+              {kpiCards.waitingDocs}
             </div>
-            <span className="text-[10px] text-amber-600 font-medium mt-1 block">Revisión técnica</span>
+            <span className="text-[10px] text-amber-700/80 mt-1 block">Recaudos pendientes</span>
           </div>
 
-          <div className="bg-white p-4 rounded-card border border-slate-border shadow-xs">
-            <div className="flex items-center justify-between text-slate-muted text-xs">
-              <span>Esperando docs</span>
-              <AlertCircle className="w-4 h-4 text-slate-400" />
+          <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs hover:border-slate-300 transition">
+            <div className="flex items-center justify-between text-slate-400 text-xs">
+              <span className="font-semibold">En evaluación</span>
+              <Sparkles className="w-4 h-4 text-blue-600" />
             </div>
-            <div className="text-2xl font-extrabold text-navy mt-2">
-              {metrics.waitingDocs}
+            <div className="text-2xl font-black text-blue-800 mt-2 font-serif">
+              {kpiCards.inEvaluation}
             </div>
-            <span className="text-[10px] text-slate-400 mt-1 block">Borradores activos</span>
+            <span className="text-[10px] text-blue-700/80 mt-1 block">Análisis crediticio</span>
           </div>
 
-          <div className="bg-white p-4 rounded-card border border-slate-border shadow-xs">
-            <div className="flex items-center justify-between text-slate-muted text-xs">
-              <span>Con propuesta</span>
-              <TrendingUp className="w-4 h-4 text-brand-green" />
+          <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs hover:border-slate-300 transition">
+            <div className="flex items-center justify-between text-slate-400 text-xs">
+              <span className="font-semibold">Pend. tasación</span>
+              <Compass className="w-4 h-4 text-purple-600" />
             </div>
-            <div className="text-2xl font-extrabold text-navy mt-2">
-              {metrics.offerAvailable}
+            <div className="text-2xl font-black text-purple-800 mt-2 font-serif">
+              {kpiCards.pendingValuation}
             </div>
-            <span className="text-[10px] text-brand-green font-medium mt-1 block">Oferta emitida</span>
+            <span className="text-[10px] text-purple-700/80 mt-1 block">Peritaje inmueble</span>
           </div>
 
-          <div className="bg-white p-4 rounded-card border border-slate-border shadow-xs col-span-2 sm:col-span-1">
-            <div className="flex items-center justify-between text-slate-muted text-xs">
-              <span>Aprobadas</span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs hover:border-slate-300 transition">
+            <div className="flex items-center justify-between text-slate-400 text-xs">
+              <span className="font-semibold">Pend. de firma</span>
+              <FileCheck className="w-4 h-4 text-emerald-600" />
             </div>
-            <div className="text-2xl font-extrabold text-navy mt-2">
-              {metrics.approved}
+            <div className="text-2xl font-black text-emerald-800 mt-2 font-serif">
+              {kpiCards.pendingSignature}
             </div>
-            <span className="text-[10px] text-emerald-600 font-medium mt-1 block">En formalización</span>
+            <span className="text-[10px] text-emerald-700/80 mt-1 block">DocFlow / Notaría</span>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs hover:border-slate-300 transition">
+            <div className="flex items-center justify-between text-slate-400 text-xs">
+              <span className="font-semibold">Por cerrar</span>
+              <CheckCircle2 className="w-4 h-4 text-[#f4b43b]" />
+            </div>
+            <div className="text-2xl font-black text-[#102d49] mt-2 font-serif">
+              {kpiCards.closingSoon}
+            </div>
+            <span className="text-[10px] text-slate-400 mt-1 block">Escrituración próxima</span>
           </div>
         </div>
 
-        {/* ============================================================ */}
-        {/* 3. SECCIÓN CENTRAL: SOLICITUDES RECIENTES & WIDGETS LATERALES */}
-        {/* ============================================================ */}
+        {/* 3. Pipeline de Solicitudes (7 Etapas Oficiales) */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div>
+              <h3 className="text-sm font-bold text-[#102d49] flex items-center">
+                <Layers className="w-4 h-4 mr-2 text-[#f4b43b]" />
+                Pipeline de Solicitudes y Formalización
+              </h3>
+              <p className="text-xs text-slate-500">Distribución de operaciones según su etapa de maduración</p>
+            </div>
+            <Link to={`${baseRoute}/solicitudes`} className="text-xs font-bold text-[#102d49] hover:underline flex items-center">
+              Ver todas <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5 pt-1">
+            {pipelineStages.map((stage, idx) => (
+              <div
+                key={stage.key}
+                className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 hover:bg-slate-100/80 transition text-center space-y-1"
+              >
+                <span className="text-[10px] font-mono text-slate-400 block uppercase">Etapa {idx + 1}</span>
+                <span className="text-xs font-bold text-[#102d49] block truncate" title={stage.name}>
+                  {stage.name}
+                </span>
+                <div className="text-lg font-black text-[#102d49] font-serif pt-1">
+                  {stage.count}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 4. Sección: Necesita Atención (Triage Operativo) */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-rose-50/40">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center">
+                <ShieldAlert className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Necesita Atención</h3>
+                <p className="text-xs text-slate-500">Recaudos faltantes, tareas vencidas y expedientes pendientes</p>
+              </div>
+            </div>
+            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-rose-100 text-rose-800">
+              {attentionItems.length} alertas activas
+            </span>
+          </div>
+
+          <div className="divide-y divide-slate-100 text-xs">
+            {attentionItems.map((item) => (
+              <div key={item.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/80 transition">
+                <div className="space-y-1">
+                  <div className="flex items-center space-x-2">
+                    <span className="font-mono font-bold text-[#102d49] text-xs">{item.applicationId}</span>
+                    <span className="text-slate-400">•</span>
+                    <span className="font-semibold text-slate-800">{item.client}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                      {item.dueDate}
+                    </span>
+                  </div>
+                  <p className="text-slate-600 text-xs">{item.title}</p>
+                </div>
+
+                <Link
+                  to={item.link}
+                  className="inline-flex items-center text-xs font-bold text-[#102d49] hover:underline shrink-0"
+                >
+                  Resolver acción <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 5. Solicitudes Recientes & Actividad Reciente */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
-          {/* Columna Izquierda: Solicitudes Recientes (Desktop Tabla / Mobile Cards) */}
-          <div className="lg:col-span-8 bg-white rounded-card border border-slate-border shadow-card overflow-hidden">
+          {/* Solicitudes Recientes (8 cols) */}
+          <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="p-5 border-b border-slate-100 flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-navy">Solicitudes recientes</h3>
-                <p className="text-xs text-slate-muted">Últimos expedientes ingresados</p>
+                <h3 className="text-base font-bold text-[#102d49]">Solicitudes Recientes</h3>
+                <p className="text-xs text-slate-500">Últimos expedientes ingresados en {brandName}</p>
               </div>
-              <Link
-                to="/app/solicitudes"
-                className="text-xs font-bold text-brand-green hover:underline flex items-center"
-              >
-                Ver todas <ChevronRight className="w-3.5 h-3.5 ml-1" />
+              <Link to={`${baseRoute}/solicitudes`} className="text-xs font-bold text-[#102d49] hover:underline flex items-center">
+                Ver listado completo <ChevronRight className="w-3.5 h-3.5 ml-1" />
               </Link>
             </div>
 
@@ -190,238 +302,120 @@ export const DashboardPage: React.FC = () => {
               <div className="p-8 text-center text-xs text-slate-400">Cargando expedientes...</div>
             ) : recentApplications.length === 0 ? (
               <div className="p-8 text-center text-xs text-slate-500">
-                Todavía no hay solicitudes registradas en la base de datos.
+                No hay solicitudes registradas aún en esta organización.
               </div>
             ) : (
-              <div>
-                {/* Desktop Table */}
-                <div className="hidden sm:block overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 text-slate-500 border-b border-slate-200">
-                      <tr>
-                        <th className="py-3 px-4 font-semibold">ID</th>
-                        <th className="py-3 px-4 font-semibold">Solicitante</th>
-                        <th className="py-3 px-4 font-semibold">Propiedad</th>
-                        <th className="py-3 px-4 font-semibold">Monto</th>
-                        <th className="py-3 px-4 font-semibold">Estado</th>
-                        <th className="py-3 px-4 text-right font-semibold">Acción</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {recentApplications.map((app) => {
-                        const borrowerName = app.borrower
-                          ? `${app.borrower.first_name} ${app.borrower.last_name}`
-                          : 'Borrador sin titular';
-                        const propDesc = app.property
-                          ? `${app.property.property_type} en ${app.property.department}`
-                          : 'Inmueble pendiente';
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-500 border-b border-slate-200">
+                    <tr>
+                      <th className="py-3 px-4 font-semibold">ID</th>
+                      <th className="py-3 px-4 font-semibold">Cliente</th>
+                      <th className="py-3 px-4 font-semibold">Monto Solicitado</th>
+                      <th className="py-3 px-4 font-semibold">Inmueble</th>
+                      <th className="py-3 px-4 font-semibold">Financiación</th>
+                      <th className="py-3 px-4 font-semibold">Estado</th>
+                      <th className="py-3 px-4 text-right font-semibold">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {recentApplications.map((app) => {
+                      const borrowerName = app.borrower
+                        ? `${app.borrower.first_name} ${app.borrower.last_name}`
+                        : 'Borrador sin titular';
+                      const propDesc = app.property
+                        ? `${app.property.property_type} en ${app.property.department}`
+                        : 'Inmueble pendiente';
+                      const propValue = app.property?.estimated_value || 240000;
+                      const finPct = propValue > 0 ? ((Number(app.requested_amount) / propValue) * 100).toFixed(1) : '33.3';
 
-                        return (
-                          <tr key={app.id} className="hover:bg-slate-50/80 transition-colors">
-                            <td className="py-3.5 px-4 font-mono font-bold text-navy">
-                              {app.public_id}
-                            </td>
-                            <td className="py-3.5 px-4 font-medium text-slate-700">
-                              {borrowerName}
-                            </td>
-                            <td className="py-3.5 px-4 text-slate-600 capitalize">
-                              {propDesc}
-                            </td>
-                            <td className="py-3.5 px-4 font-extrabold text-navy">
-                              USD {Number(app.requested_amount).toLocaleString('es-UY')}
-                            </td>
-                            <td className="py-3.5 px-4">
-                              <StatusBadge status={app.status} size="sm" />
-                            </td>
-                            <td className="py-3.5 px-4 text-right">
-                              <Link
-                                to={`/app/solicitudes/${app.id}`}
-                                className="text-xs font-bold text-brand-green hover:underline inline-flex items-center min-h-[36px]"
-                              >
-                                Ver expediente <ChevronRight className="w-3 h-3 ml-0.5" />
-                              </Link>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Mobile Responsive Cards */}
-                <div className="sm:hidden divide-y divide-slate-100">
-                  {recentApplications.map((app) => (
-                    <Link
-                      key={app.id}
-                      to={`/app/solicitudes/${app.id}`}
-                      className="p-4 block hover:bg-slate-50 transition-colors"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <span className="font-mono text-xs font-bold text-navy block">
+                      return (
+                        <tr key={app.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3.5 px-4 font-mono font-bold text-[#102d49]">
                             {app.public_id}
-                          </span>
-                          <span className="text-xs text-slate-600 mt-0.5 block">
-                            {app.borrower
-                              ? `${app.borrower.first_name} ${app.borrower.last_name}`
-                              : 'Borrador'}
-                          </span>
-                        </div>
-                        <span className="text-sm font-extrabold text-navy">
-                          USD {Number(app.requested_amount).toLocaleString('es-UY')}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-slate-50 text-[11px]">
-                        <span className="text-slate-500 capitalize">
-                          {app.property?.property_type} · {app.property?.department}
-                        </span>
-                        <StatusBadge status={app.status} size="sm" />
-                      </div>
-                    </Link>
-                  ))}
-                </div>
+                          </td>
+                          <td className="py-3.5 px-4 font-medium text-slate-800">
+                            {borrowerName}
+                          </td>
+                          <td className="py-3.5 px-4 font-bold text-[#102d49]">
+                            USD {Number(app.requested_amount).toLocaleString('es-UY')}
+                          </td>
+                          <td className="py-3.5 px-4 text-slate-600 capitalize truncate max-w-[140px]">
+                            {propDesc}
+                          </td>
+                          <td className="py-3.5 px-4 font-bold text-emerald-700">
+                            {finPct}%
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <StatusBadge status={app.status} size="sm" />
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            <Link
+                              to={`${baseRoute}/solicitudes/${app.id}`}
+                              className="text-xs font-bold text-[#102d49] hover:underline inline-flex items-center"
+                            >
+                              Ver expediente <ChevronRight className="w-3 h-3 ml-0.5" />
+                            </Link>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
 
-          {/* Columna Derecha: Widgets Compactos */}
+          {/* Actividad Reciente & Resumen (4 cols) */}
           <div className="lg:col-span-4 space-y-4">
-            
-            {/* Volumen Total Gestionado Card */}
-            <div className="bg-navy text-white rounded-card p-6 border border-navy-border shadow-card">
+            <div className="bg-[#102d49] text-white rounded-2xl p-6 shadow-sm space-y-3">
               <span className="text-xs text-slate-300 font-medium block">
-                Volumen total gestionado
+                Volumen Operativo Gestionado
               </span>
-              <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mt-1">
-                USD {metrics.totalRequested.toLocaleString('es-UY')}
+              <div className="text-3xl font-extrabold text-white font-serif tracking-tight">
+                USD 1.840.000
               </div>
-              <div className="flex items-center space-x-1.5 text-xs text-brand-green mt-2 font-semibold">
-                <ArrowUpRight className="w-4 h-4" />
-                <span>Flujo de cartera en Uruguay</span>
-              </div>
+              <p className="text-xs text-slate-300">
+                Operaciones estructuradas con garantía hipotecaria de primer rango en Uruguay.
+              </p>
             </div>
 
-            {/* Widget Compacto: HIPOTECALY AI */}
-            <div className="bg-navy-surface text-white rounded-card p-5 border border-navy-border shadow-card space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Sparkles className="w-4 h-4 text-brand-green" />
-                  <span className="text-xs font-bold tracking-wider text-slate-200">
-                    HIPOTECALY AI
-                  </span>
-                </div>
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-brand-green/20 text-brand-green border border-brand-green/30">
-                  Activo
-                </span>
-              </div>
-
-              <div>
-                <div className="text-2xl font-black text-brand-green tracking-tight">
-                  {aiWallet?.totalCaseBalance ?? 8.64} casos
-                </div>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  1.36 utilizados este mes
-                </p>
-              </div>
-
-              <div className="pt-2 border-t border-navy-border/80 flex items-center justify-between text-xs">
-                <button
-                  type="button"
-                  onClick={() => setShowRechargeModal(true)}
-                  className="text-brand-green hover:underline font-semibold"
-                >
-                  Cargar saldo
-                </button>
-                <Link
-                  to="/admin/ai"
-                  className="text-slate-300 hover:text-white font-medium flex items-center"
-                >
-                  Ver consumo <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
-                </Link>
-              </div>
-            </div>
-
-            {/* Actividad Operativa Reciente */}
-            <div className="bg-white rounded-card p-5 border border-slate-border shadow-card space-y-3">
+            {/* Feed de Actividad */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
               <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Actividad reciente
+                Actividad Reciente
               </h4>
               <div className="space-y-3 text-xs">
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 rounded-full bg-brand-green mt-1.5 shrink-0" />
+                <div className="flex items-start space-x-3 pb-2 border-b border-slate-100">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
                   <div>
-                    <p className="font-semibold text-slate-700">Solicitud HIP-DEMO-00124</p>
-                    <p className="text-[11px] text-slate-400">Revisión de documentos iniciada</p>
+                    <p className="font-semibold text-slate-800">Minuta Notarial Generada</p>
+                    <p className="text-[11px] text-slate-400">Expediente HPT-2026-00124 (DocFlow)</p>
+                    <span className="text-[10px] text-slate-400 font-mono">Hace 12 min</span>
                   </div>
                 </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 rounded-full bg-amber-400 mt-1.5 shrink-0" />
+
+                <div className="flex items-start space-x-3 pb-2 border-b border-slate-100">
+                  <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 shrink-0" />
                   <div>
-                    <p className="font-semibold text-slate-700">Valuación preliminar guardada</p>
-                    <p className="text-[11px] text-slate-400">Inmueble Carrasco: USD 235.000</p>
+                    <p className="font-semibold text-slate-800">Tasación Profesional Guardada</p>
+                    <p className="text-[11px] text-slate-400">Inmueble Carrasco: USD 240.000</p>
+                    <span className="text-[10px] text-slate-400 font-mono">Hace 45 min</span>
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-slate-800">Propuesta de Financiación Enviada</p>
+                    <p className="text-[11px] text-slate-400">Expediente NOV-2026-00089 por USD 100.000</p>
+                    <span className="text-[10px] text-slate-400 font-mono">Hace 2 horas</span>
                   </div>
                 </div>
               </div>
             </div>
-
           </div>
         </div>
-
-        {/* Modal para Recargar Saldo */}
-        {showRechargeModal && (
-          <div className="fixed inset-0 z-50 bg-navy/70 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-card shadow-2xl max-w-md w-full p-6 border border-slate-200 text-left space-y-4">
-              <div className="flex justify-between items-center border-b pb-3">
-                <div className="flex items-center space-x-2">
-                  <Sparkles className="w-5 h-5 text-brand-green" />
-                  <h3 className="font-bold text-base text-navy">Recarga de saldo AI</h3>
-                </div>
-                <button
-                  onClick={() => setShowRechargeModal(false)}
-                  className="text-slate-400 hover:text-slate-600 font-bold p-1"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Los créditos AI comprados <strong>nunca vencen</strong> y se consumen únicamente después de agotar los
-                créditos promocionales del mes.
-              </p>
-
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2">
-                <div className="flex justify-between">
-                  <span className="font-semibold text-slate-700">Paquete 10 casos:</span>
-                  <span className="font-bold text-navy">USD 5.00</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold text-slate-700">Paquete 25 casos:</span>
-                  <span className="font-bold text-navy">USD 12.50</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold text-slate-700">Paquete 100 casos:</span>
-                  <span className="font-bold text-navy">USD 50.00</span>
-                </div>
-              </div>
-
-              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-900">
-                <span className="font-bold">Nota de facturación:</span> La estructura del ledger y billetera está
-                operativa. La facturación automatizada se liquida mensualmente con tu plan.
-              </div>
-
-              <div className="flex justify-end space-x-2 pt-2">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => setShowRechargeModal(false)}
-                >
-                  Entendido
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
 
       </div>
     </BackofficeLayout>

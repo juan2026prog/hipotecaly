@@ -54,16 +54,18 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
       ],
     },
     {
-      title: 'CONFIGURACIÓN',
+      title: 'CONFIGURACIÓN & IA',
       items: [
         { name: 'Copiloto IA & Vault', href: '/admin/ai', icon: Cpu },
+        { name: 'Integraciones & Conectores', href: '/admin?tab=integrations', icon: KeyRound },
       ],
     },
     {
-      title: 'OPERACIÓN & QA',
+      title: 'OPERACIÓN, QA & AUDITORÍA',
       items: [
         { name: 'Acceso QA & Sesiones', href: '/admin?tab=qa', icon: ShieldCheck },
-        { name: 'Integraciones & KYC', href: '/admin?tab=integrations', icon: KeyRound },
+        { name: 'Registro de Auditoría', href: '/admin?tab=audit', icon: Activity },
+        { name: 'Seguridad & RLS', href: '/admin?tab=security', icon: Layers },
       ],
     },
     {
