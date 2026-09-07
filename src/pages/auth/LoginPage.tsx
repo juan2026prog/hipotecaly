@@ -111,60 +111,62 @@ export const LoginPage: React.FC = () => {
         </div>
       </form>
 
-      {/* Panel de Acceso Rápido de Demostración y QA */}
-      <div className="mt-6 pt-5 border-t border-slate-200 space-y-3 text-left">
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 flex items-center">
-            <ShieldCheck className="w-3.5 h-3.5 mr-1 text-amber-500" />
-            Acceso Rápido de Prueba (Demo)
-          </span>
-          <span className="text-[10px] text-brand-green font-mono font-bold bg-emerald-50 px-1.5 py-0.5 rounded">
-            1-Click
-          </span>
+      {/* Panel de Acceso Rápido de Demostración y QA (Solo entorno local/desarrollo) */}
+      {!import.meta.env.PROD && (
+        <div className="mt-6 pt-5 border-t border-slate-200 space-y-3 text-left">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 flex items-center">
+              <ShieldCheck className="w-3.5 h-3.5 mr-1 text-amber-500" />
+              Acceso Rápido de Prueba (Demo Local)
+            </span>
+            <span className="text-[10px] text-brand-green font-mono font-bold bg-emerald-50 px-1.5 py-0.5 rounded">
+              Local Only
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => handleDemoLogin('super_admin', '/admin')}
+              className="p-2.5 rounded-xl border border-amber-300 bg-amber-50/70 hover:bg-amber-100/80 text-left transition-colors text-xs group"
+            >
+              <span className="font-bold text-amber-950 block group-hover:text-amber-700">👑 Super Admin</span>
+              <span className="text-[10px] text-amber-800 font-mono block mt-0.5">admin / admin123</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => handleDemoLogin('analyst', '/demo/estudio-nova/admin')}
+              className="p-2.5 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100/80 text-left transition-colors text-xs group"
+            >
+              <span className="font-bold text-blue-950 block group-hover:text-blue-700">🏢 Backoffice Nova</span>
+              <span className="text-[10px] text-blue-800 font-mono block mt-0.5">operador / demo123</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => handleDemoLogin('borrower', '/demo/estudio-nova/cliente')}
+              className="p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100/80 text-left transition-colors text-xs group"
+            >
+              <span className="font-bold text-emerald-950 block group-hover:text-emerald-700">👤 Portal Cliente</span>
+              <span className="text-[10px] text-emerald-800 font-mono block mt-0.5">cliente / demo123</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => handleDemoLogin('lender', '/demo/estudio-nova/inversor')}
+              className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/70 hover:bg-purple-100/80 text-left transition-colors text-xs group"
+            >
+              <span className="font-bold text-purple-950 block group-hover:text-purple-700">💼 Red Inversores</span>
+              <span className="text-[10px] text-purple-800 font-mono block mt-0.5">prestamista / demo123</span>
+            </button>
+          </div>
         </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            disabled={loading}
-            onClick={() => handleDemoLogin('super_admin', '/admin')}
-            className="p-2.5 rounded-xl border border-amber-300 bg-amber-50/70 hover:bg-amber-100/80 text-left transition-colors text-xs group"
-          >
-            <span className="font-bold text-amber-950 block group-hover:text-amber-700">👑 Super Admin</span>
-            <span className="text-[10px] text-amber-800 font-mono block mt-0.5">admin / admin123</span>
-          </button>
-
-          <button
-            type="button"
-            disabled={loading}
-            onClick={() => handleDemoLogin('analyst', '/demo/estudio-nova/admin')}
-            className="p-2.5 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100/80 text-left transition-colors text-xs group"
-          >
-            <span className="font-bold text-blue-950 block group-hover:text-blue-700">🏢 Backoffice Nova</span>
-            <span className="text-[10px] text-blue-800 font-mono block mt-0.5">operador / demo123</span>
-          </button>
-
-          <button
-            type="button"
-            disabled={loading}
-            onClick={() => handleDemoLogin('borrower', '/demo/estudio-nova/cliente')}
-            className="p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100/80 text-left transition-colors text-xs group"
-          >
-            <span className="font-bold text-emerald-950 block group-hover:text-emerald-700">👤 Portal Cliente</span>
-            <span className="text-[10px] text-emerald-800 font-mono block mt-0.5">cliente / demo123</span>
-          </button>
-
-          <button
-            type="button"
-            disabled={loading}
-            onClick={() => handleDemoLogin('lender', '/demo/estudio-nova/inversor')}
-            className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/70 hover:bg-purple-100/80 text-left transition-colors text-xs group"
-          >
-            <span className="font-bold text-purple-950 block group-hover:text-purple-700">💼 Red Inversores</span>
-            <span className="text-[10px] text-purple-800 font-mono block mt-0.5">prestamista / demo123</span>
-          </button>
-        </div>
-      </div>
+      )}
 
       <div className="mt-6 pt-5 border-t border-slate-100 text-center text-xs text-slate-muted space-y-2">
         <p>
