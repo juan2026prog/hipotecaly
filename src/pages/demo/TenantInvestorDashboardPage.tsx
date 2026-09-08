@@ -482,6 +482,7 @@ export const TenantInvestorDashboardPage: React.FC = () => {
   });
 
   // Modales
+  const [selectedOppForDetail, setSelectedOppForDetail] = useState<PrivateOpportunity | null>(null);
   const [selectedOppForProposal, setSelectedOppForProposal] = useState<PrivateOpportunity | null>(null);
   const [proposalForm, setProposalForm] = useState({
     amount: 100000,
@@ -978,13 +979,10 @@ export const TenantInvestorDashboardPage: React.FC = () => {
               </span>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-4">
               {opportunities.map((opp) => {
                 const matchResult = evaluateCriteriaMatch(opp);
                 const isSoloIntereses = opp.modality === 'solo_intereses';
-                const interestOnly = calculateInterestOnlyReturns(opp.requested_amount, opp.suggested_rate, opp.term_months);
-                const amortizing = calculateAmortizingReturns(opp.requested_amount, opp.suggested_rate, opp.term_months);
-                const analysis = privateAnalysis[opp.id] || { interest: 'alto', notes: '' };
 
                 return (
                   <div
@@ -992,9 +990,9 @@ export const TenantInvestorDashboardPage: React.FC = () => {
                     className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden hover:border-slate-300 transition-all"
                   >
                     {/* Header de la tarjeta */}
-                    <div className="bg-slate-50/80 border-b border-slate-200/80 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="bg-slate-50/80 border-b border-slate-200/80 px-5 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs">
+                        <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
                           {opp.public_id.split('-')[1] || 'NOV'}
                         </div>
                         <div>
@@ -1003,8 +1001,8 @@ export const TenantInvestorDashboardPage: React.FC = () => {
                             <span className="text-xs text-slate-400">•</span>
                             <span className="text-xs font-bold text-slate-800">{opp.property_type}</span>
                             <span className="text-xs text-slate-400">•</span>
-                            <span className="text-xs font-bold text-slate-900 flex items-center text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                              <MapPin className="w-3 h-3 mr-1 text-amber-600" />
+                            <span className="text-xs font-semibold text-slate-700 flex items-center bg-white px-2 py-0.5 rounded border border-slate-200">
+                              <MapPin className="w-3 h-3 mr-1 text-slate-500" />
                               {opp.zone}
                             </span>
                           </div>
@@ -1017,235 +1015,89 @@ export const TenantInvestorDashboardPage: React.FC = () => {
                         </div>
                       </div>
 
+                      {/* Píldora de Match Compacta */}
                       <div className="flex items-center space-x-2">
-                        <Button
-                          size="sm"
-                          className="text-xs font-semibold shadow-sm"
-                          style={{ backgroundColor: primaryColor }}
-                          onClick={() => handleOpenProposal(opp)}
-                        >
-                          <Send className="w-3.5 h-3.5 mr-1.5" />
-                          Presentar propuesta
-                        </Button>
+                        <div className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center space-x-1.5 border ${
+                          matchResult.isPerfect
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                            : 'bg-amber-50 text-amber-900 border-amber-200'
+                        }`}>
+                          <ShieldCheck className={`w-3.5 h-3.5 ${matchResult.isPerfect ? 'text-emerald-600' : 'text-amber-600'}`} />
+                          <span>{matchResult.passedCount}/{matchResult.total} criterios compatibles</span>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Cuerpo: Datos Estructurados del Préstamo */}
-                    <div className="p-6 space-y-6">
-                      
-                      {/* Grid de Datos Principales */}
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 bg-slate-50/80 p-4 rounded-xl border border-slate-200">
+                    {/* Cuerpo: Datos Esenciales del Inmueble y Préstamo (Nivel 1) */}
+                    <div className="p-5 sm:p-6 space-y-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 bg-slate-50/70 p-4 rounded-xl border border-slate-200/80">
                         <div>
-                          <span className="text-[11px] font-medium text-slate-500 block">Ubicación</span>
-                          <span className="text-xs font-bold text-slate-900 block mt-0.5">{opp.zone}</span>
-                        </div>
-                        <div>
-                          <span className="text-[11px] font-medium text-slate-500 block">Tipo de Inmueble</span>
+                          <span className="text-[11px] font-medium text-slate-500 block">Tipo Inmueble</span>
                           <span className="text-xs font-bold text-slate-900 block mt-0.5">{opp.property_type}</span>
                         </div>
                         <div>
-                          <span className="text-[11px] font-medium text-slate-500 block">Valor de Tasación</span>
-                          <span className="text-sm font-bold text-slate-900 font-mono block mt-0.5">
-                            USD {opp.preliminary_valuation.toLocaleString('es-UY')}
-                          </span>
+                          <span className="text-[11px] font-medium text-slate-500 block">Ubicación</span>
+                          <span className="text-xs font-bold text-slate-900 block mt-0.5 truncate" title={opp.zone}>{opp.zone}</span>
                         </div>
                         <div>
                           <span className="text-[11px] font-medium text-slate-500 block">Préstamo Solicitado</span>
-                          <span className="text-base font-extrabold text-slate-900 font-mono block">
+                          <span className="text-sm font-extrabold text-slate-900 font-mono block mt-0.5">
                             USD {opp.requested_amount.toLocaleString('es-UY')}
                           </span>
                         </div>
-                        <div className="bg-emerald-50/90 -m-1 p-3 rounded-lg border border-emerald-200">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-900 block">
-                            Porcentaje de Financiación
+                        <div>
+                          <span className="text-[11px] font-medium text-slate-500 block">Tasación Inmueble</span>
+                          <span className="text-xs font-bold text-slate-800 font-mono block mt-0.5">
+                            USD {opp.preliminary_valuation.toLocaleString('es-UY')}
                           </span>
-                          <span className="text-base font-extrabold text-emerald-800 font-mono block mt-0.5">
+                        </div>
+                        <div className="bg-emerald-50/80 -m-1 p-3 rounded-lg border border-emerald-200">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-900 block">
+                            Financiación
+                          </span>
+                          <span className="text-sm font-extrabold text-emerald-800 font-mono block mt-0.5">
                             {opp.financing_ratio}%
                           </span>
-                          <span className="text-[9px] text-emerald-700 block">Resguardo &gt; 65% valor</span>
+                          <span className="text-[9px] text-emerald-700 block">Resguardo &gt; 65%</span>
                         </div>
                         <div>
-                          <span className="text-[11px] font-medium text-slate-500 block">Plazo</span>
+                          <span className="text-[11px] font-medium text-slate-500 block">Plazo / Modalidad</span>
                           <span className="text-xs font-bold text-slate-900 block mt-0.5">
-                            {opp.term_months} meses
+                            {opp.term_months}m · {isSoloIntereses ? 'Solo Int.' : 'Cap.+Int.'}
                           </span>
                         </div>
                       </div>
 
-                      {/* Modalidad y Desglose Financiero de Ganancia */}
-                      <div className="bg-amber-50/40 rounded-xl p-4 sm:p-5 border border-amber-200/70 space-y-3">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/50 pb-2">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-xs font-bold text-slate-800">Modalidad de pago registrada en expediente:</span>
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                              {opp.modality_label}
-                            </span>
-                          </div>
-                          <span className="text-xs font-semibold text-emerald-800">
-                            Tasa indicativa: <strong>{opp.suggested_rate}% anual en USD</strong>
+                      {/* Modalidad de Pago Fija (Solo Lectura) & Barra de Acciones */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-100">
+                        <div className="flex items-center space-x-2 text-xs">
+                          <span className="text-slate-500">Modalidad registrada:</span>
+                          <span className="bg-amber-100/80 text-amber-900 font-bold px-2 py-0.5 rounded text-[11px] border border-amber-300/80">
+                            🔒 {opp.modality_label}
+                          </span>
+                          <span className="text-slate-400">·</span>
+                          <span className="text-emerald-700 font-semibold">
+                            Tasa indicativa: {opp.suggested_rate}% anual
                           </span>
                         </div>
 
-                        {/* CASO A: SOLO INTERESES */}
-                        {isSoloIntereses ? (
-                          <div className="space-y-3">
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
-                              <div className="bg-white p-3 rounded-lg border border-amber-200/80">
-                                <span className="text-[11px] text-slate-500 block">Cobro estimado de intereses</span>
-                                <span className="text-base font-extrabold text-emerald-700 font-mono">
-                                  USD {interestOnly.monthlyInterest.toLocaleString('es-UY')} / mes
-                                </span>
-                              </div>
-                              <div className="bg-white p-3 rounded-lg border border-amber-200/80">
-                                <span className="text-[11px] text-slate-500 block">Intereses por año</span>
-                                <span className="text-base font-bold text-slate-900 font-mono">
-                                  USD {interestOnly.yearlyInterest.toLocaleString('es-UY')}
-                                </span>
-                              </div>
-                              <div className="bg-white p-3 rounded-lg border border-amber-200/80">
-                                <span className="text-[11px] text-slate-500 block">Intereses en {opp.term_months} meses</span>
-                                <span className="text-base font-extrabold text-emerald-700 font-mono">
-                                  USD {interestOnly.totalInterest.toLocaleString('es-UY')}
-                                </span>
-                              </div>
-                              <div className="bg-white p-3 rounded-lg border border-slate-200">
-                                <span className="text-[11px] text-slate-500 block">Capital recuperado al vencimiento</span>
-                                <span className="text-base font-bold text-slate-900 font-mono">
-                                  USD {interestOnly.capitalAtMaturity.toLocaleString('es-UY')}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="text-[11px] text-slate-600 bg-white/70 p-2.5 rounded-lg border border-amber-200/60 flex items-center space-x-2">
-                              <Info className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                              <span>
-                                <strong>Cómo cobrás:</strong> Durante el préstamo cobrás intereses periódicos mensuales. El capital prestado de USD {opp.requested_amount.toLocaleString('es-UY')} se devuelve íntegro al vencimiento del plazo.
-                              </span>
-                            </div>
-                          </div>
-                        ) : (
-                          /* CASO B: CAPITAL + INTERESES */
-                          <div className="space-y-3">
-                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-left">
-                              <div className="bg-white p-3 rounded-lg border border-amber-200/80">
-                                <span className="text-[11px] text-slate-500 block">Cuota mensual estimada</span>
-                                <span className="text-base font-extrabold text-emerald-700 font-mono">
-                                  USD {amortizing.monthlyPayment.toLocaleString('es-UY')}
-                                </span>
-                              </div>
-                              <div className="bg-white p-3 rounded-lg border border-amber-200/80">
-                                <span className="text-[11px] text-slate-500 block">Capital incluido (mes 1)</span>
-                                <span className="text-sm font-bold text-slate-800 font-mono">
-                                  USD {amortizing.firstMonthCapital.toLocaleString('es-UY')}
-                                </span>
-                              </div>
-                              <div className="bg-white p-3 rounded-lg border border-amber-200/80">
-                                <span className="text-[11px] text-slate-500 block">Interés incluido (mes 1)</span>
-                                <span className="text-sm font-bold text-emerald-700 font-mono">
-                                  USD {amortizing.firstMonthInterest.toLocaleString('es-UY')}
-                                </span>
-                              </div>
-                              <div className="bg-white p-3 rounded-lg border border-amber-200/80">
-                                <span className="text-[11px] text-slate-500 block">Intereses totales estimados</span>
-                                <span className="text-base font-extrabold text-emerald-700 font-mono">
-                                  USD {amortizing.totalInterest.toLocaleString('es-UY')}
-                                </span>
-                              </div>
-                              <div className="bg-white p-3 rounded-lg border border-slate-200">
-                                <span className="text-[11px] text-slate-500 block">Capital total a recuperar</span>
-                                <span className="text-sm font-bold text-slate-900 font-mono">
-                                  USD {amortizing.totalCapital.toLocaleString('es-UY')}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="text-[11px] text-slate-600 bg-white/70 p-2.5 rounded-lg border border-amber-200/60 flex items-center space-x-2">
-                              <Info className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                              <span>
-                                <strong>Cómo cobrás:</strong> Cada cuota mensual amortiza parte del capital y abona los intereses devengados del mes. El saldo de capital disminuye progresivamente.
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Match de Criterios & Notas Privadas */}
-                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 pt-1 border-t border-slate-100">
-                        {/* Compatibilidad con tus criterios */}
-                        <div className="lg:col-span-5 bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-slate-900 flex items-center">
-                              <ShieldCheck className="w-4 h-4 text-emerald-600 mr-1.5" />
-                              Coincide con {matchResult.passedCount} de {matchResult.total} criterios
-                            </span>
-                            {matchResult.isPerfect ? (
-                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
-                                Compatibilidad Alta
-                              </span>
-                            ) : (
-                              <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
-                                Revisión Parcial
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="space-y-1 text-xs">
-                            {matchResult.checks.map((c, i) => (
-                              <div key={i} className="flex items-center justify-between text-[11px]">
-                                <span className="text-slate-600">{c.label}:</span>
-                                <span className={`font-semibold flex items-center ${c.passed ? 'text-emerald-700' : 'text-amber-700'}`}>
-                                  {c.passed ? (
-                                    <Check className="w-3 h-3 mr-1 text-emerald-600" />
-                                  ) : (
-                                    <AlertTriangle className="w-3 h-3 mr-1 text-amber-600" />
-                                  )}
-                                  {c.reason}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Mi Análisis y Notas Privadas */}
-                        <div className="lg:col-span-7 bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-slate-900 flex items-center">
-                              <Edit3 className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
-                              Mis Notas Privadas (Solo vos las ves)
-                            </span>
-                            <div className="flex items-center space-x-1">
-                              {(['alto', 'medio', 'bajo', 'descartar'] as const).map((lvl) => (
-                                <button
-                                  key={lvl}
-                                  onClick={() => {
-                                    setPrivateAnalysis(prev => ({
-                                      ...prev,
-                                      [opp.id]: { ...(prev[opp.id] || { notes: '' }), interest: lvl },
-                                    }));
-                                  }}
-                                  className={`px-2 py-0.5 rounded text-[10px] font-bold capitalize transition-all ${
-                                    analysis.interest === lvl
-                                      ? lvl === 'alto' ? 'bg-emerald-600 text-white' : lvl === 'medio' ? 'bg-blue-600 text-white' : lvl === 'bajo' ? 'bg-amber-500 text-white' : 'bg-rose-600 text-white'
-                                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-                                  }`}
-                                >
-                                  {lvl}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          <textarea
-                            rows={2}
-                            value={analysis.notes}
-                            onChange={(e) => {
-                              const txt = e.target.value;
-                              setPrivateAnalysis(prev => ({
-                                ...prev,
-                                [opp.id]: { ...(prev[opp.id] || { interest: 'alto' }), notes: txt },
-                              }));
-                            }}
-                            placeholder="Anotaciones privadas sobre la garantía, dudas notariales o estructuración..."
-                            className="w-full text-xs bg-white rounded-lg border border-slate-200 p-2 text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-400 placeholder:text-slate-400"
-                          />
+                        {/* 2 Botones de Acción: Ver Operación & Presentar Propuesta */}
+                        <div className="flex items-center space-x-2 shrink-0">
+                          <button
+                            onClick={() => setSelectedOppForDetail(opp)}
+                            className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors border border-slate-200 min-h-[38px]"
+                          >
+                            Ver operación
+                          </button>
+                          <Button
+                            size="sm"
+                            className="text-xs font-semibold shadow-sm min-h-[38px]"
+                            style={{ backgroundColor: primaryColor }}
+                            onClick={() => handleOpenProposal(opp)}
+                          >
+                            <Send className="w-3.5 h-3.5 mr-1.5" />
+                            Presentar propuesta
+                          </Button>
                         </div>
                       </div>
 
@@ -1503,6 +1355,285 @@ export const TenantInvestorDashboardPage: React.FC = () => {
         )}
 
       </div>
+
+      {/* =================================================================== */}
+      {/* MODAL: VER OPERACIÓN (DETALLE Y ANÁLISIS DE LA OPORTUNIDAD)        */}
+      {/* =================================================================== */}
+      {selectedOppForDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 max-h-[92vh] overflow-y-auto space-y-5 text-left">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                  {selectedOppForDetail.public_id.split('-')[1] || 'NOV'}
+                </div>
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900">{selectedOppForDetail.public_id}</h3>
+                    <span className="text-xs text-slate-400">•</span>
+                    <span className="text-xs font-semibold text-slate-700">{selectedOppForDetail.property_type}</span>
+                  </div>
+                  <span className="text-[11px] text-slate-500 flex items-center">
+                    <MapPin className="w-3 h-3 mr-1 text-slate-400" />
+                    {selectedOppForDetail.zone}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setSelectedOppForDetail(null)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* 1. Datos del Inmueble y Garantía */}
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
+                <span className="text-xs font-bold text-slate-900 flex items-center">
+                  <Building className="w-4 h-4 mr-1.5 text-slate-600" />
+                  Garantía Inmobiliaria
+                </span>
+                <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded">
+                  Financiación: {selectedOppForDetail.financing_ratio}%
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div>
+                  <span className="text-slate-500 text-[11px] block">Tipo de inmueble:</span>
+                  <strong className="text-slate-800">{selectedOppForDetail.property_type}</strong>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[11px] block">Ubicación:</span>
+                  <strong className="text-slate-800">{selectedOppForDetail.zone}</strong>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[11px] block">Tasación preliminar:</span>
+                  <strong className="text-slate-900 font-mono">USD {selectedOppForDetail.preliminary_valuation.toLocaleString('es-UY')}</strong>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[11px] block">Préstamo solicitado:</span>
+                  <strong className="text-slate-900 font-mono">USD {selectedOppForDetail.requested_amount.toLocaleString('es-UY')}</strong>
+                </div>
+              </div>
+              <div className="text-[11px] text-slate-600 bg-white p-2.5 rounded-lg border border-slate-200 space-y-1">
+                <div><strong>Estado de la garantía:</strong> {selectedOppForDetail.guarantee_status}</div>
+                <div><strong>Verificación de ingresos:</strong> {selectedOppForDetail.applicant_income_status}</div>
+              </div>
+            </div>
+
+            {/* 2. Modalidad y Desglose Financiero Proyectado */}
+            <div className="bg-amber-50/50 rounded-xl p-4 sm:p-5 border border-amber-200/80 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200 pb-2">
+                <div className="flex items-center space-x-2 text-xs">
+                  <span className="font-bold text-slate-800">Modalidad registrada:</span>
+                  <span className="bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded text-[11px] border border-amber-300">
+                    🔒 {selectedOppForDetail.modality_label}
+                  </span>
+                </div>
+                <span className="text-xs font-semibold text-emerald-800">
+                  Tasa indicativa: <strong>{selectedOppForDetail.suggested_rate}% anual en USD</strong>
+                </span>
+              </div>
+
+              {selectedOppForDetail.modality === 'solo_intereses' ? (
+                (() => {
+                  const ret = calculateInterestOnlyReturns(selectedOppForDetail.requested_amount, selectedOppForDetail.suggested_rate, selectedOppForDetail.term_months);
+                  return (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
+                        <div className="bg-white p-3 rounded-lg border border-amber-200/80">
+                          <span className="text-[11px] text-slate-500 block">Cobro estimado de intereses</span>
+                          <span className="text-sm sm:text-base font-extrabold text-emerald-700 font-mono block mt-0.5">
+                            USD {ret.monthlyInterest.toLocaleString('es-UY')} / mes
+                          </span>
+                        </div>
+                        <div className="bg-white p-3 rounded-lg border border-amber-200/80">
+                          <span className="text-[11px] text-slate-500 block">Intereses por año</span>
+                          <span className="text-sm sm:text-base font-bold text-slate-900 font-mono block mt-0.5">
+                            USD {ret.yearlyInterest.toLocaleString('es-UY')}
+                          </span>
+                        </div>
+                        <div className="bg-white p-3 rounded-lg border border-amber-200/80">
+                          <span className="text-[11px] text-slate-500 block">Intereses en {selectedOppForDetail.term_months} meses</span>
+                          <span className="text-sm sm:text-base font-extrabold text-emerald-700 font-mono block mt-0.5">
+                            USD {ret.totalInterest.toLocaleString('es-UY')}
+                          </span>
+                        </div>
+                        <div className="bg-white p-3 rounded-lg border border-slate-200">
+                          <span className="text-[11px] text-slate-500 block">Capital al vencimiento</span>
+                          <span className="text-sm sm:text-base font-bold text-slate-900 font-mono block mt-0.5">
+                            USD {ret.capitalAtMaturity.toLocaleString('es-UY')}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-[11px] text-slate-600 bg-white p-2.5 rounded-lg border border-amber-200/60 flex items-center space-x-2">
+                        <Info className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                        <span>
+                          <strong>Estructura:</strong> Cobrás intereses mensuales. El capital prestado de USD {selectedOppForDetail.requested_amount.toLocaleString('es-UY')} se cancela íntegro al final del plazo ({selectedOppForDetail.term_months} meses).
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : (
+                (() => {
+                  const ret = calculateAmortizingReturns(selectedOppForDetail.requested_amount, selectedOppForDetail.suggested_rate, selectedOppForDetail.term_months);
+                  return (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
+                        <div className="bg-white p-3 rounded-lg border border-amber-200/80">
+                          <span className="text-[11px] text-slate-500 block">Cuota mensual estimada</span>
+                          <span className="text-sm sm:text-base font-extrabold text-emerald-700 font-mono block mt-0.5">
+                            USD {ret.monthlyPayment.toLocaleString('es-UY')}
+                          </span>
+                        </div>
+                        <div className="bg-white p-3 rounded-lg border border-amber-200/80">
+                          <span className="text-[11px] text-slate-500 block">Interés mensual (mes 1)</span>
+                          <span className="text-sm sm:text-base font-bold text-emerald-700 font-mono block mt-0.5">
+                            USD {ret.firstMonthInterest.toLocaleString('es-UY')}
+                          </span>
+                        </div>
+                        <div className="bg-white p-3 rounded-lg border border-amber-200/80">
+                          <span className="text-[11px] text-slate-500 block">Intereses totales estimados</span>
+                          <span className="text-sm sm:text-base font-extrabold text-emerald-700 font-mono block mt-0.5">
+                            USD {ret.totalInterest.toLocaleString('es-UY')}
+                          </span>
+                        </div>
+                        <div className="bg-white p-3 rounded-lg border border-slate-200">
+                          <span className="text-[11px] text-slate-500 block">Capital total amortizado</span>
+                          <span className="text-sm sm:text-base font-bold text-slate-900 font-mono block mt-0.5">
+                            USD {ret.totalCapital.toLocaleString('es-UY')}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-[11px] text-slate-600 bg-white p-2.5 rounded-lg border border-amber-200/60 flex items-center space-x-2">
+                        <Info className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                        <span>
+                          <strong>Estructura:</strong> Cada cuota mensual amortiza capital e intereses. El saldo deudor disminuye con cada vencimiento.
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()
+              )}
+            </div>
+
+            {/* 3. Compatibilidad con Criterios de Inversión */}
+            {(() => {
+              const match = evaluateCriteriaMatch(selectedOppForDetail);
+              return (
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2.5">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
+                    <span className="text-xs font-bold text-slate-900 flex items-center">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600 mr-1.5" />
+                      Compatibilidad con tus Criterios ({match.passedCount} de {match.total})
+                    </span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                      match.isPerfect ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                    }`}>
+                      {match.isPerfect ? 'Cumple 100% tus criterios' : 'Revisión parcial'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    {match.checks.map((c, i) => (
+                      <div key={i} className="flex items-center justify-between p-2 rounded bg-white border border-slate-100">
+                        <span className="text-slate-600 text-[11px]">{c.label}:</span>
+                        <span className={`font-semibold text-[11px] flex items-center ${c.passed ? 'text-emerald-700' : 'text-amber-700'}`}>
+                          {c.passed ? (
+                            <Check className="w-3 h-3 mr-1 text-emerald-600" />
+                          ) : (
+                            <AlertTriangle className="w-3 h-3 mr-1 text-amber-600" />
+                          )}
+                          {c.reason}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* 4. Mis Notas Privadas */}
+            {(() => {
+              const analysis = privateAnalysis[selectedOppForDetail.id] || { interest: 'alto', notes: '' };
+              return (
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-900 flex items-center">
+                      <Edit3 className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
+                      Mis Notas Privadas (Solo visibles por vos)
+                    </span>
+                    <div className="flex items-center space-x-1">
+                      {(['alto', 'medio', 'bajo', 'descartar'] as const).map((lvl) => (
+                        <button
+                          key={lvl}
+                          type="button"
+                          onClick={() => {
+                            setPrivateAnalysis(prev => ({
+                              ...prev,
+                              [selectedOppForDetail.id]: { ...(prev[selectedOppForDetail.id] || { notes: '' }), interest: lvl },
+                            }));
+                          }}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold capitalize transition-all ${
+                            analysis.interest === lvl
+                              ? lvl === 'alto' ? 'bg-emerald-600 text-white' : lvl === 'medio' ? 'bg-blue-600 text-white' : lvl === 'bajo' ? 'bg-amber-500 text-white' : 'bg-rose-600 text-white'
+                              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {lvl}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={analysis.notes}
+                    onChange={(e) => {
+                      const txt = e.target.value;
+                      setPrivateAnalysis(prev => ({
+                        ...prev,
+                        [selectedOppForDetail.id]: { ...(prev[selectedOppForDetail.id] || { interest: 'alto' }), notes: txt },
+                      }));
+                    }}
+                    placeholder="Anotaciones privadas sobre la tasación, dudas notariales o estructuración..."
+                    className="w-full text-xs bg-white rounded-lg border border-slate-200 p-2 text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-400 placeholder:text-slate-400"
+                  />
+                </div>
+              );
+            })()}
+
+            {/* Footer con Acciones */}
+            <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-100">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedOppForDetail(null)}
+              >
+                Cerrar
+              </Button>
+              <Button
+                size="sm"
+                className="font-semibold shadow-sm"
+                style={{ backgroundColor: primaryColor }}
+                onClick={() => {
+                  const opp = selectedOppForDetail;
+                  setSelectedOppForDetail(null);
+                  handleOpenProposal(opp);
+                }}
+              >
+                <Send className="w-3.5 h-3.5 mr-1.5" />
+                Presentar propuesta
+              </Button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* =================================================================== */}
       {/* MODAL: PRESENTAR PROPUESTA (MODALIDAD SOLO LECTURA)                 */}
