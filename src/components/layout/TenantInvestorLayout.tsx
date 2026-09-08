@@ -3,7 +3,7 @@
 // Red Privada de Inversores exclusiva por Tenant
 // ==============================================================================
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -13,13 +13,19 @@ import {
   Shield,
   LogOut,
   Lock,
+  User,
+  Sliders,
+  CheckCircle2,
+  ChevronDown,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
+import { TenantInvestorProfileModal } from '../investor/TenantInvestorProfileModal';
 
 interface TenantInvestorLayoutProps {
   children: React.ReactNode;
   title?: string;
+  onOpenProfileTab?: (tab: 'datos' | 'verificacion' | 'fondos' | 'criterios' | 'documentos' | 'firma' | 'cuenta' | 'notificaciones') => void;
 }
 
 export const TenantInvestorLayout: React.FC<TenantInvestorLayoutProps> = ({
@@ -28,6 +34,10 @@ export const TenantInvestorLayout: React.FC<TenantInvestorLayoutProps> = ({
   const location = useLocation();
   const { signOut, user } = useAuth();
   const { tenant } = useTenant();
+
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [profileTab, setProfileTab] = useState<'datos' | 'verificacion' | 'fondos' | 'criterios' | 'documentos' | 'firma' | 'cuenta' | 'notificaciones'>('datos');
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const brandName = tenant.branding?.public_name || tenant.name || 'Estudio Nova';
   const primaryColor = tenant.branding?.primary_color || '#173a5e';
@@ -49,6 +59,12 @@ export const TenantInvestorLayout: React.FC<TenantInvestorLayoutProps> = ({
       return location.pathname.startsWith(path) || location.pathname.endsWith('/ofertas');
     }
     return location.pathname.startsWith(path);
+  };
+
+  const openProfile = (tab: 'datos' | 'verificacion' | 'fondos' | 'criterios' | 'documentos' | 'firma' | 'cuenta' | 'notificaciones' = 'datos') => {
+    setProfileTab(tab);
+    setIsProfileModalOpen(true);
+    setIsUserMenuOpen(false);
   };
 
   return (
@@ -84,7 +100,7 @@ export const TenantInvestorLayout: React.FC<TenantInvestorLayoutProps> = ({
             </Link>
           </div>
 
-          {/* Navegación Desktop */}
+          {/* Navegación Desktop (EXACTAMENTE LAS 4 SECCIONES PRINCIPALES) */}
           <nav className="hidden md:flex items-center space-x-1.5">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -106,29 +122,98 @@ export const TenantInvestorLayout: React.FC<TenantInvestorLayoutProps> = ({
             })}
           </nav>
 
-          {/* Perfil del Inversor */}
-          <div className="flex items-center space-x-3">
-            <div className="hidden sm:block text-right text-xs">
-              <span className="font-bold text-white block">
-                {user?.email?.split('@')[0] || 'Inversor Autorizado'}
-              </span>
-              <span
-                className="text-[10px] font-medium"
-                style={{ color: accentColor }}
-              >
-                Inversor verificado
-              </span>
-            </div>
+          {/* Avatar / Nombre del usuario → Acceso a Mi Perfil */}
+          <div className="relative flex items-center space-x-2">
             <button
-              onClick={() => (signOut ? signOut() : window.location.assign(`/demo/${tenant.slug}`))}
-              className="p-2.5 rounded-lg text-slate-300 hover:text-rose-300 hover:bg-white/10 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
-              title="Cerrar sesión"
+              onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+              className="flex items-center space-x-2.5 p-1.5 sm:px-3 sm:py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 transition-all text-left min-h-[44px]"
+              title="Mi perfil y cuenta"
             >
-              <LogOut className="w-4 h-4" />
+              <div className="w-8 h-8 rounded-lg bg-amber-400 text-slate-900 font-bold flex items-center justify-center text-xs shadow-sm shrink-0">
+                <User className="w-4 h-4" />
+              </div>
+              <div className="hidden sm:block leading-tight pr-1">
+                <span className="font-bold text-white text-xs block">
+                  {user?.email?.split('@')[0] || 'Inversor Autorizado'}
+                </span>
+                <span
+                  className="text-[10px] font-semibold flex items-center"
+                  style={{ color: accentColor }}
+                >
+                  <CheckCircle2 className="w-2.5 h-2.5 mr-1" />
+                  Mi perfil verificado
+                </span>
+              </div>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-300 hidden sm:block" />
             </button>
+
+            {/* Dropdown Menu de Usuario */}
+            {isUserMenuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setIsUserMenuOpen(false)}
+                />
+                <div className="absolute right-0 top-12 mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-slate-200 py-2 z-50 text-slate-800 text-xs animate-fadeIn text-left">
+                  <div className="px-4 py-2 border-b border-slate-100">
+                    <p className="font-bold text-slate-900 truncate">
+                      {user?.email || 'inversor@estudionova.uy'}
+                    </p>
+                    <span className="text-[10px] text-emerald-700 font-semibold flex items-center mt-0.5">
+                      ✓ Identidad y fondos validados
+                    </span>
+                  </div>
+
+                  <div className="py-1">
+                    <button
+                      onClick={() => openProfile('datos')}
+                      className="w-full px-4 py-2.5 text-left font-semibold text-slate-700 hover:bg-slate-50 flex items-center space-x-2 transition-colors"
+                    >
+                      <User className="w-4 h-4 text-slate-500" />
+                      <span>Mi perfil</span>
+                    </button>
+
+                    <button
+                      onClick={() => openProfile('criterios')}
+                      className="w-full px-4 py-2.5 text-left font-semibold text-slate-700 hover:bg-slate-50 flex items-center space-x-2 transition-colors"
+                    >
+                      <Sliders className="w-4 h-4 text-slate-500" />
+                      <span>Mis criterios de inversión</span>
+                    </button>
+
+                    <button
+                      onClick={() => openProfile('documentos')}
+                      className="w-full px-4 py-2.5 text-left font-semibold text-slate-700 hover:bg-slate-50 flex items-center space-x-2 transition-colors"
+                    >
+                      <FileCheck className="w-4 h-4 text-slate-500" />
+                      <span>Mis documentos y KYC</span>
+                    </button>
+                  </div>
+
+                  <div className="border-t border-slate-100 pt-1">
+                    <button
+                      onClick={() => (signOut ? signOut() : window.location.assign(`/demo/${tenant.slug}`))}
+                      className="w-full px-4 py-2 text-left font-semibold text-rose-600 hover:bg-rose-50 flex items-center space-x-2 transition-colors"
+                    >
+                      <LogOut className="w-3.5 h-3.5 text-rose-500" />
+                      <span>Cerrar sesión</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </header>
+
+      {/* Modal Integral de Mi Perfil del Inversor */}
+      <TenantInvestorProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        primaryColor={primaryColor}
+        brandName={brandName}
+        initialTab={profileTab}
+      />
 
       {/* Banner de Aislamiento Privado */}
       <div className="bg-[#0e253e] border-b border-[#173a5e] px-4 py-2 text-[11px] text-slate-300 flex items-center justify-center space-x-2 text-center">

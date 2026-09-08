@@ -32,6 +32,11 @@ import { useTenant } from '../../contexts/TenantContext';
 import { getTenantModules } from '../../lib/tenantModulesService';
 import { Button } from '../../components/ui/Button';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import {
+  TenantInvestorProfileModal,
+  InvestorProfileData,
+  INITIAL_INVESTOR_PROFILE,
+} from '../../components/investor/TenantInvestorProfileModal';
 
 // -----------------------------------------------------------------------------
 // Tipos de Datos del Dominio
@@ -447,20 +452,30 @@ export const TenantInvestorDashboardPage: React.FC = () => {
   const [loans, setLoans] = useState<ActiveLoan[]>(INITIAL_LOANS);
   const [proposals, setProposals] = useState<ProposalItem[]>(INITIAL_PROPOSALS);
 
-  // Criterios de Inversión
-  const [isCriteriaModalOpen, setIsCriteriaModalOpen] = useState(false);
-  const [investorCriteria, setInvestorCriteria] = useState<InvestorCriteria>({
-    availableCapital: 80000,
-    minLoanAmount: 25000,
-    maxLoanAmount: 180000,
-    minRate: 11.0,
-    maxFinancingRatio: 40.0,
-    minTermMonths: 12,
-    maxTermMonths: 60,
-    acceptedPropertyTypes: ['Apartamento', 'Casa Residencial', 'Casa', 'Local Comercial', 'Campo', 'Terreno'],
-    acceptedDepartments: ['Montevideo', 'Canelones', 'Maldonado'],
-    acceptedModalities: ['solo_intereses', 'capital_e_intereses'],
-  });
+  // Perfil del Inversor y Criterios Centralizados
+  const [profileData, setProfileData] = useState<InvestorProfileData>(INITIAL_INVESTOR_PROFILE);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [profileModalTab, setProfileModalTab] = useState<
+    'datos' | 'verificacion' | 'fondos' | 'criterios' | 'documentos' | 'firma' | 'cuenta' | 'notificaciones'
+  >('criterios');
+
+  const investorCriteria: InvestorCriteria = useMemo(() => ({
+    availableCapital: profileData.availableCapital,
+    minLoanAmount: profileData.minLoanAmount,
+    maxLoanAmount: profileData.maxLoanAmount,
+    minRate: profileData.minRate,
+    maxFinancingRatio: profileData.maxFinancingRatio,
+    minTermMonths: profileData.minTermMonths,
+    maxTermMonths: profileData.maxTermMonths,
+    acceptedPropertyTypes: profileData.acceptedPropertyTypes,
+    acceptedDepartments: profileData.acceptedDepartments,
+    acceptedModalities: profileData.acceptedModalities,
+  }), [profileData]);
+
+  const handleOpenProfileTab = (tab: 'datos' | 'verificacion' | 'fondos' | 'criterios' | 'documentos' | 'firma' | 'cuenta' | 'notificaciones') => {
+    setProfileModalTab(tab);
+    setIsProfileModalOpen(true);
+  };
 
   // Notas Privadas e Interés por Oportunidad
   const [privateAnalysis, setPrivateAnalysis] = useState<Record<string, {
@@ -758,7 +773,7 @@ export const TenantInvestorDashboardPage: React.FC = () => {
 
           <div className="flex items-center space-x-2.5 shrink-0">
             <button
-              onClick={() => setIsCriteriaModalOpen(true)}
+              onClick={() => handleOpenProfileTab('criterios')}
               className="flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors border border-slate-200 min-h-[40px]"
             >
               <Sliders className="w-3.5 h-3.5 text-slate-600" />
@@ -810,7 +825,7 @@ export const TenantInvestorDashboardPage: React.FC = () => {
                 <div className="text-[11px] text-slate-500 flex items-center justify-between">
                   <span>Listo para colocar</span>
                   <button
-                    onClick={() => setIsCriteriaModalOpen(true)}
+                    onClick={() => handleOpenProfileTab('fondos')}
                     className="text-amber-700 font-semibold hover:underline"
                   >
                     Ajustar
@@ -978,6 +993,25 @@ export const TenantInvestorDashboardPage: React.FC = () => {
                 {opportunities.length} disponibles
               </span>
             </div>
+
+            {/* Banner si el inversor pausó temporalmente la recepción */}
+            {!profileData.isReceivingOpportunities && (
+              <div className="bg-slate-100 border border-slate-300 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-700">
+                <div className="flex items-center space-x-2.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0" />
+                  <span>
+                    <strong>Recepción de oportunidades pausada:</strong> Temporalmente no estás recibiendo nuevas operaciones. Tus criterios guardados y préstamos activos se mantienen intactos.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setProfileData({ ...profileData, isReceivingOpportunities: true })}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors shrink-0 shadow-sm"
+                >
+                  Volver a recibir oportunidades
+                </button>
+              </div>
+            )}
 
             <div className="space-y-4">
               {opportunities.map((opp) => {
@@ -2178,209 +2212,17 @@ export const TenantInvestorDashboardPage: React.FC = () => {
       )}
 
       {/* =================================================================== */}
-      {/* MODAL: MIS CRITERIOS DE INVERSIÓN                                   */}
+      {/* MODAL: MI PERFIL DEL INVERSOR Y CRITERIOS INTEGRALES                */}
       {/* =================================================================== */}
-      {isCriteriaModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[92vh] overflow-y-auto text-left">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center space-x-2">
-                <Sliders className="w-5 h-5 text-slate-700" />
-                <h3 className="text-base font-bold text-slate-900">Mis Criterios de Inversión</h3>
-              </div>
-              <button
-                onClick={() => setIsCriteriaModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4 text-xs">
-              
-              {/* Capital Disponible */}
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">
-                  Capital Disponible para Prestar (USD)
-                </label>
-                <input
-                  type="number"
-                  value={investorCriteria.availableCapital}
-                  onChange={(e) => setInvestorCriteria({ ...investorCriteria, availableCapital: Number(e.target.value) })}
-                  className="w-full font-mono bg-white border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-400"
-                />
-              </div>
-
-              {/* Rango de Monto por Préstamo */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Monto Mínimo por Préstamo (USD)
-                  </label>
-                  <input
-                    type="number"
-                    value={investorCriteria.minLoanAmount}
-                    onChange={(e) => setInvestorCriteria({ ...investorCriteria, minLoanAmount: Number(e.target.value) })}
-                    className="w-full font-mono bg-white border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-400"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Monto Máximo por Préstamo (USD)
-                  </label>
-                  <input
-                    type="number"
-                    value={investorCriteria.maxLoanAmount}
-                    onChange={(e) => setInvestorCriteria({ ...investorCriteria, maxLoanAmount: Number(e.target.value) })}
-                    className="w-full font-mono bg-white border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-400"
-                  />
-                </div>
-              </div>
-
-              {/* Tasa Mínima y Porcentaje Máximo de Financiación */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Tasa Mínima Deseada (% anual)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={investorCriteria.minRate}
-                    onChange={(e) => setInvestorCriteria({ ...investorCriteria, minRate: Number(e.target.value) })}
-                    className="w-full font-mono bg-white border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-400"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Porcentaje Máx. Financiación (%)
-                  </label>
-                  <input
-                    type="number"
-                    value={investorCriteria.maxFinancingRatio}
-                    onChange={(e) => setInvestorCriteria({ ...investorCriteria, maxFinancingRatio: Number(e.target.value) })}
-                    className="w-full font-mono bg-white border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-400"
-                  />
-                </div>
-              </div>
-
-              {/* Tipos de Inmueble Aceptados */}
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1.5">
-                  Tipos de Inmueble Aceptados
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {['Apartamento', 'Casa Residencial', 'Local Comercial', 'Campo', 'Terreno'].map((type) => {
-                    const selected = investorCriteria.acceptedPropertyTypes.includes(type);
-                    return (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => {
-                          const next = selected
-                            ? investorCriteria.acceptedPropertyTypes.filter(t => t !== type)
-                            : [...investorCriteria.acceptedPropertyTypes, type];
-                          setInvestorCriteria({ ...investorCriteria, acceptedPropertyTypes: next });
-                        }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                          selected
-                            ? 'bg-slate-900 text-white'
-                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
-                      >
-                        {selected ? '✓ ' : ''}{type}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Zonas Aceptadas */}
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1.5">
-                  Departamentos / Zonas Aceptadas
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {['Montevideo', 'Canelones', 'Maldonado', 'Colonia', 'San José'].map((dept) => {
-                    const selected = investorCriteria.acceptedDepartments.includes(dept);
-                    return (
-                      <button
-                        key={dept}
-                        type="button"
-                        onClick={() => {
-                          const next = selected
-                            ? investorCriteria.acceptedDepartments.filter(d => d !== dept)
-                            : [...investorCriteria.acceptedDepartments, dept];
-                          setInvestorCriteria({ ...investorCriteria, acceptedDepartments: next });
-                        }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                          selected
-                            ? 'bg-amber-600 text-white'
-                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
-                      >
-                        {selected ? '✓ ' : ''}{dept}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Modalidades de Pago Aceptadas */}
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1.5">
-                  Modalidades de Pago Aceptadas
-                </label>
-                <div className="space-y-2">
-                  {[
-                    { id: 'solo_intereses', label: 'Solo intereses + devolución del capital al vencimiento' },
-                    { id: 'capital_e_intereses', label: 'Capital + intereses (cuotas amortizantes)' },
-                  ].map((mod) => {
-                    const checked = investorCriteria.acceptedModalities.includes(mod.id as PaymentModalityType);
-                    return (
-                      <label key={mod.id} className="flex items-center space-x-2 text-slate-700 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => {
-                            const next = checked
-                              ? investorCriteria.acceptedModalities.filter(m => m !== mod.id)
-                              : [...investorCriteria.acceptedModalities, mod.id as PaymentModalityType];
-                            setInvestorCriteria({ ...investorCriteria, acceptedModalities: next });
-                          }}
-                          className="rounded text-amber-600 focus:ring-amber-500"
-                        />
-                        <span className="text-xs">{mod.label}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-
-            </div>
-
-            <div className="flex items-center justify-end space-x-2.5 pt-3 border-t border-slate-100">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsCriteriaModalOpen(false)}
-              >
-                Cerrar
-              </Button>
-              <Button
-                size="sm"
-                style={{ backgroundColor: primaryColor }}
-                onClick={() => {
-                  alert('Criterios de inversión actualizados correctamente.');
-                  setIsCriteriaModalOpen(false);
-                }}
-              >
-                Guardar Criterios
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <TenantInvestorProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        primaryColor={primaryColor}
+        brandName={brandName}
+        initialTab={profileModalTab}
+        profileData={profileData}
+        onProfileUpdated={(updated) => setProfileData(updated)}
+      />
 
     </TenantInvestorLayout>
   );
