@@ -24,6 +24,7 @@ import {
   clientSimulationService,
 } from '../../lib/clientSimulationService';
 import { useTenant } from '../../contexts/TenantContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface MySimulationsSectionProps {
   simulations: SavedSimulation[];
@@ -38,6 +39,7 @@ export const MySimulationsSection: React.FC<MySimulationsSectionProps> = ({
 }) => {
   const navigate = useNavigate();
   const { tenant } = useTenant();
+  const { user } = useAuth();
 
   const [selectedSim, setSelectedSim] = useState<SavedSimulation | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -50,8 +52,8 @@ export const MySimulationsSection: React.FC<MySimulationsSectionProps> = ({
 
   const isNova = tenant.slug.includes('nova');
 
-  const handleDelete = (simId: string) => {
-    clientSimulationService.deleteSimulation(simId);
+  const handleDelete = async (simId: string) => {
+    await clientSimulationService.deleteSimulation(simId, user?.id);
     setDeleteConfirmId(null);
     showToast('Simulación eliminada.');
     onRefresh();

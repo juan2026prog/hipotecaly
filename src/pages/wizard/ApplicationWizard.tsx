@@ -290,7 +290,7 @@ export const ApplicationWizard: React.FC = () => {
 
     if (targetAppId) {
       if (linkedSimulationId) {
-        clientSimulationService.linkSimulationToApplication(linkedSimulationId, publicId, user?.id);
+        await clientSimulationService.linkSimulationToApplication(linkedSimulationId, targetAppId, publicId, user?.id);
       }
       const { success, error } = await submitFinalApplication(targetAppId);
       if (success) {
@@ -303,7 +303,7 @@ export const ApplicationWizard: React.FC = () => {
       }
     } else {
       if (linkedSimulationId) {
-        clientSimulationService.linkSimulationToApplication(linkedSimulationId, publicId, user?.id);
+        await clientSimulationService.linkSimulationToApplication(linkedSimulationId, publicId, publicId, user?.id);
       }
       navigate('/mi-cuenta', { state: { justSubmitted: true, publicId, pendingSync: true } });
     }

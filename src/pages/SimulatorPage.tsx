@@ -92,7 +92,7 @@ export const SimulatorPage: React.FC = () => {
 
   const estimatedMonthlyPayment = Math.round((requestedAmount * 0.11) / 12);
 
-  const handleSaveSimulation = () => {
+  const handleSaveSimulation = async () => {
     const simData = {
       requestedAmount,
       currency: 'USD',
@@ -111,12 +111,12 @@ export const SimulatorPage: React.FC = () => {
     };
 
     if (user?.id) {
-      // Usuario autenticado: guardar de inmediato
-      clientSimulationService.saveSimulation(simData, user.id);
+      // Usuario autenticado: guardar de inmediato en Supabase
+      await clientSimulationService.saveSimulation(simData, user.id, tenant.id);
       setSavedSuccessToast(true);
     } else {
       // Usuario NO autenticado: guardar pendiente y abrir diálogo/flujo de login
-      clientSimulationService.setPendingSimulation(simData);
+      clientSimulationService.savePendingSimulation(simData);
       setAuthModalOpen(true);
     }
   };

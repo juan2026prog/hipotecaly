@@ -66,7 +66,7 @@ export const TenantSimulatorPage: React.FC = () => {
     );
   }
 
-  const handleSaveSimulation = (e?: React.MouseEvent) => {
+  const handleSaveSimulation = async (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
     const simData = {
       requestedAmount: loanAmount,
@@ -84,10 +84,10 @@ export const TenantSimulatorPage: React.FC = () => {
     };
 
     if (user?.id) {
-      clientSimulationService.saveSimulation(simData, user.id);
+      await clientSimulationService.saveSimulation(simData, user.id, tenant.id);
       setSavedSuccessToast(true);
     } else {
-      clientSimulationService.setPendingSimulation(simData);
+      clientSimulationService.savePendingSimulation(simData);
       setAuthModalOpen(true);
     }
   };

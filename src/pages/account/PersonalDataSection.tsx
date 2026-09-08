@@ -1,7 +1,7 @@
 // ==============================================================================
-// HIPOTECALY: Sección 1 - Datos Personales
+// HIPOTECALY: Sección 1 - Datos Personales (100% Real & Productivo)
 // Concentra exclusivamente información de la persona, contacto, laboral, ingresos,
-// estado de verificación de identidad KYC y documentación personal reutilizable.
+// estado de verificación de identidad KYC y documentación personal reutilizable en Supabase.
 // ==============================================================================
 
 import React, { useState } from 'react';
@@ -21,6 +21,8 @@ import {
   AlertTriangle,
   Edit2,
   X,
+  Lock,
+  ExternalLink,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -31,6 +33,8 @@ import {
   clientPortalService,
 } from '../../lib/clientPortalService';
 import { KycStartModal } from '../../components/identity/KycStartModal';
+import { useAuth } from '../../contexts/AuthContext';
+import { useTenant } from '../../contexts/TenantContext';
 
 interface PersonalDataSectionProps {
   data: ClientPersonalData;
@@ -41,27 +45,35 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
   data,
   onRefresh,
 }) => {
+  const { user, borrower } = useAuth();
+  const { tenant } = useTenant();
+
   // Modal de edición de datos personales
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     firstName: data.firstName,
     lastName: data.lastName,
+    idType: data.idType || 'CI',
     idNumber: data.idNumber,
+    email: data.email,
     phone: data.phone,
     address: data.address,
     city: data.city,
     department: data.department,
     occupation: data.occupation,
+    company: data.company || '',
     incomeType: data.incomeType,
     monthlyIncome: data.monthlyIncome,
   });
   const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
   // Modal de subida de documento personal
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<PersonalDocumentItem | null>(null);
   const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Modal KYC
   const [kycModalOpen, setKycModalOpen] = useState(false);
@@ -74,10 +86,18 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
   const handleSavePersonalData = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    await clientPortalService.updatePersonalData(formData);
+    setEditError(null);
+
+    const { error } = await clientPortalService.updatePersonalData(user, borrower, formData);
     setSaving(false);
+
+    if (error) {
+      setEditError(error.message);
+      return;
+    }
+
     setEditModalOpen(false);
-    showToast('Datos personales actualizados correctamente.');
+    showToast('Datos personales actualizados correctamente en tu perfil.');
     onRefresh();
   };
 
@@ -85,12 +105,39 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
     if (!e.target.files || e.target.files.length === 0 || !selectedDoc) return;
     const file = e.target.files[0];
     setUploadingDoc(true);
+    setUploadError(null);
 
-    await clientPortalService.uploadPersonalDocument(selectedDoc.id, file.name);
+    const { error } = await clientPortalService.uploadPersonalDocument(
+      user?.id || 'guest',
+      tenant?.id || 'a0000000-0000-0000-0000-000000000001',
+      file,
+      selectedDoc.type,
+      selectedDoc.name
+    );
+
     setUploadingDoc(false);
+
+    if (error) {
+      setUploadError(error.message);
+      return;
+    }
+
     setUploadModalOpen(false);
-    showToast(`Documento "${selectedDoc.name}" cargado y enviado a revisión.`);
+    showToast(`Documento "${selectedDoc.name}" cargado y enviado a validación.`);
     onRefresh();
+  };
+
+  const handleOpenDoc = async (doc: PersonalDocumentItem) => {
+    if (doc.filePath) {
+      const url = await clientPortalService.getDocumentSignedUrl(doc.filePath);
+      if (url) {
+        window.open(url, '_blank');
+        return;
+      }
+    }
+    if (doc.fileUrl) {
+      window.open(doc.fileUrl, '_blank');
+    }
   };
 
   const getDocStatusBadge = (status: PersonalDocumentItem['status']) => {
@@ -103,6 +150,7 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
           </span>
         );
       case 'in_review':
+      case 'received':
         return (
           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200">
             <Clock className="w-3.5 h-3.5 mr-1 text-blue-600" />
@@ -121,11 +169,14 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
         return (
           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-300">
             <Clock className="w-3.5 h-3.5 mr-1 text-slate-500" />
-            Pendiente
+            No cargado
           </span>
         );
     }
   };
+
+  const isKycVerified = data.kycStatus === 'verified';
+  const fullName = `${data.firstName} ${data.lastName}`.trim();
 
   return (
     <div className="space-y-6">
@@ -133,10 +184,10 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
       {successToast && (
         <div className="p-4 bg-emerald-900 text-white rounded-2xl shadow-lg border border-emerald-500 flex items-center justify-between text-xs font-bold animate-in fade-in">
           <div className="flex items-center space-x-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-300 shrink-0" />
             <span>{successToast}</span>
           </div>
-          <button onClick={() => setSuccessToast(null)} className="text-emerald-200">✕</button>
+          <button onClick={() => setSuccessToast(null)} className="text-emerald-200 hover:text-white ml-2">✕</button>
         </div>
       )}
 
@@ -161,15 +212,19 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
             setFormData({
               firstName: data.firstName,
               lastName: data.lastName,
+              idType: data.idType || 'CI',
               idNumber: data.idNumber,
+              email: data.email,
               phone: data.phone,
               address: data.address,
               city: data.city,
               department: data.department,
               occupation: data.occupation,
+              company: data.company || '',
               incomeType: data.incomeType,
               monthlyIncome: data.monthlyIncome,
             });
+            setEditError(null);
             setEditModalOpen(true);
           }}
           className="self-start sm:self-auto text-xs font-bold flex items-center border-slate-300 hover:bg-slate-50"
@@ -191,9 +246,13 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
               <User className="w-4 h-4 mr-2 text-[#102d49]" />
               Identidad y Contacto
             </h3>
-            <span className="text-[11px] font-mono text-slate-400">
-              {data.idType}: {data.idNumber}
-            </span>
+            {data.idNumber ? (
+              <span className="text-[11px] font-mono text-slate-400">
+                {data.idType}: {data.idNumber}
+              </span>
+            ) : (
+              <span className="text-[11px] italic text-slate-400">Sin documento registrado</span>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
@@ -202,16 +261,21 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
                 Nombre y Apellido
               </span>
               <strong className="text-slate-900 text-sm font-bold block">
-                {data.firstName} {data.lastName}
+                {fullName || <span className="text-slate-400 italic font-normal">No informado</span>}
               </strong>
             </div>
 
             <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
-              <span className="text-[10px] font-bold uppercase text-slate-400 block">
-                Cédula / Documento
+              <span className="text-[10px] font-bold uppercase text-slate-400 block flex items-center justify-between">
+                <span>Cédula / Documento</span>
+                {isKycVerified && (
+                  <span title="Verificado por KYC">
+                    <Lock className="w-3 h-3 text-emerald-600" />
+                  </span>
+                )}
               </span>
               <strong className="text-slate-900 text-sm font-bold font-mono block">
-                {data.idNumber}
+                {data.idNumber || <span className="text-slate-400 italic font-normal">No informado</span>}
               </strong>
             </div>
 
@@ -220,7 +284,7 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
                 <Mail className="w-3 h-3 mr-1 text-slate-400" /> Correo Electrónico
               </span>
               <strong className="text-slate-900 font-semibold block truncate">
-                {data.email}
+                {data.email || <span className="text-slate-400 italic font-normal">No informado</span>}
               </strong>
             </div>
 
@@ -229,7 +293,7 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
                 <Phone className="w-3 h-3 mr-1 text-slate-400" /> Teléfono Celular
               </span>
               <strong className="text-slate-900 font-semibold block">
-                {data.phone}
+                {data.phone || <span className="text-slate-400 italic font-normal">No informado</span>}
               </strong>
             </div>
 
@@ -238,7 +302,11 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
                 <MapPin className="w-3 h-3 mr-1 text-slate-400" /> Domicilio Declarado
               </span>
               <strong className="text-slate-900 font-semibold block">
-                {data.address} · {data.city}, {data.department}
+                {data.address ? (
+                  `${data.address}${data.city ? ` · ${data.city}` : ''}${data.department ? `, ${data.department}` : ''}`
+                ) : (
+                  <span className="text-slate-400 italic font-normal">No informado</span>
+                )}
               </strong>
             </div>
           </div>
@@ -256,6 +324,10 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
                   Verificado
                 </span>
+              ) : data.kycStatus === 'in_review' ? (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                  En revisión
+                </span>
               ) : (
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200">
                   Pendiente
@@ -267,12 +339,14 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
               <h4 className="text-base font-serif font-bold text-slate-900">
                 {data.kycStatus === 'verified'
                   ? 'Identidad Oficial Validada'
+                  : data.kycStatus === 'in_review'
+                  ? 'Verificación en Proceso'
                   : 'Verificación Biométrica Requerida'}
               </h4>
               <p className="text-xs text-slate-500 leading-relaxed">
                 {data.kycStatus === 'verified'
-                  ? 'Tu identidad y prueba de vida fueron cotejadas conforme a los estándares de seguridad de Uruguay.'
-                  : 'Para formalizar solicitudes y firmar digitalmente, completá la validación facial desde tu teléfono.'}
+                  ? `Identidad y prueba de vida cotejadas conforme a estándares oficiales.${data.kycVerifiedAt ? ` Validada el ${new Date(data.kycVerifiedAt).toLocaleDateString('es-UY', { day: 'numeric', month: 'short', year: 'numeric' })}.` : ''}`
+                  : 'Para formalizar solicitudes y firmar contratos digitalmente, completá la validación de documento y biometría facial.'}
               </p>
             </div>
           </div>
@@ -281,7 +355,7 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
             {data.kycStatus === 'verified' ? (
               <div className="flex items-center text-xs font-semibold text-emerald-700 bg-emerald-50/70 p-3 rounded-2xl border border-emerald-200/60">
                 <CheckCircle2 className="w-4 h-4 mr-2 shrink-0" />
-                <span>Biometría y documento activos</span>
+                <span>Biometría y documento validados</span>
               </div>
             ) : (
               <Button
@@ -319,7 +393,7 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
               Tipo de Actividad
             </span>
             <strong className="text-slate-900 text-sm font-bold capitalize block">
-              {data.incomeType.replace('_', ' ')}
+              {data.incomeType ? data.incomeType.replace('_', ' ') : <span className="text-slate-400 italic font-normal">No informado</span>}
             </strong>
           </div>
 
@@ -328,7 +402,7 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
               Ocupación / Cargo
             </span>
             <strong className="text-slate-900 text-sm font-semibold block">
-              {data.occupation}
+              {data.occupation || <span className="text-slate-400 italic font-normal">No informado</span>}
             </strong>
           </div>
 
@@ -337,7 +411,11 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
               <DollarSign className="w-3 h-3 mr-1 text-slate-400" /> Ingreso Mensual Declarado
             </span>
             <strong className="text-slate-900 text-sm font-bold font-mono block">
-              $ {data.monthlyIncome.toLocaleString('es-UY')} UYU
+              {data.monthlyIncome > 0 ? (
+                `$ ${data.monthlyIncome.toLocaleString('es-UY')} UYU`
+              ) : (
+                <span className="text-slate-400 italic font-normal">No informado</span>
+              )}
             </strong>
           </div>
         </div>
@@ -354,7 +432,7 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
               Documentación personal
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Documentos de identidad y domicilio reutilizables entre todas tus solicitudes
+              Documentos de identidad y domicilio reutilizables automáticamente en todas tus solicitudes
             </p>
           </div>
         </div>
@@ -374,9 +452,17 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
                   {doc.description}
                 </p>
                 {doc.fileName && (
-                  <span className="text-[10px] font-mono text-slate-400 pl-6 block">
-                    Archivo: {doc.fileName} · Actualizado el {doc.updatedAt}
-                  </span>
+                  <div className="pl-6 flex items-center space-x-2 text-[10px] text-slate-400 font-mono">
+                    <span>Archivo: {doc.fileName}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDoc(doc)}
+                      className="text-brand-green hover:underline flex items-center space-x-0.5"
+                    >
+                      <span>Ver archivo</span>
+                      <ExternalLink className="w-2.5 h-2.5" />
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -388,6 +474,7 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
                   size="sm"
                   onClick={() => {
                     setSelectedDoc(doc);
+                    setUploadError(null);
                     setUploadModalOpen(true);
                   }}
                   className="text-xs font-bold text-[#102d49] hover:bg-slate-50 !rounded-xl"
@@ -413,7 +500,7 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
                   Editar Datos Personales
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Actualizá tu información de contacto y actividad.
+                  Actualizá tu información de contacto y actividad económica.
                 </p>
               </div>
               <button
@@ -423,6 +510,13 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {editError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 flex items-start space-x-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <span>{editError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleSavePersonalData} className="space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3">
@@ -441,12 +535,21 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <Input
-                  label="Cédula / Documento"
-                  value={formData.idNumber}
-                  onChange={(e) => setFormData({ ...formData, idNumber: e.target.value })}
-                  required
-                />
+                <div>
+                  <Input
+                    label="Cédula / Documento"
+                    value={formData.idNumber}
+                    disabled={isKycVerified}
+                    onChange={(e) => setFormData({ ...formData, idNumber: e.target.value })}
+                    required
+                  />
+                  {isKycVerified && (
+                    <span className="text-[10px] text-slate-400 flex items-center mt-1">
+                      <Lock className="w-2.5 h-2.5 mr-1 text-emerald-600" /> Identidad verificada (bloqueado)
+                    </span>
+                  )}
+                </div>
+
                 <Input
                   label="Teléfono Celular"
                   value={formData.phone}
@@ -482,11 +585,18 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
                   Información Laboral e Ingresos
                 </span>
 
-                <Input
-                  label="Ocupación / Cargo / Profesión"
-                  value={formData.occupation}
-                  onChange={(e) => setFormData({ ...formData, occupation: e.target.value })}
-                />
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    label="Ocupación / Cargo"
+                    value={formData.occupation}
+                    onChange={(e) => setFormData({ ...formData, occupation: e.target.value })}
+                  />
+                  <Input
+                    label="Empresa / Empleador"
+                    value={formData.company}
+                    onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                  />
+                </div>
 
                 <CurrencyInput
                   label="Ingreso Mensual Líquido (UYU)"
@@ -543,17 +653,24 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
               </button>
             </div>
 
+            {uploadError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 flex items-start space-x-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <span>{uploadError}</span>
+              </div>
+            )}
+
             <div className="space-y-4">
               <label className="border-2 border-dashed border-slate-300 hover:border-[#102d49] rounded-2xl p-6 text-center cursor-pointer transition block bg-slate-50/50 hover:bg-slate-50">
                 <input
                   type="file"
-                  accept="application/pdf,image/jpeg,image/png"
+                  accept="application/pdf,image/jpeg,image/png,image/webp"
                   onChange={handleFileChange}
                   className="hidden"
                 />
                 <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
                 <span className="text-xs font-bold text-slate-700 block">
-                  {uploadingDoc ? 'Cargando archivo...' : 'Seleccionar archivo o sacar foto'}
+                  {uploadingDoc ? 'Cargando archivo en Storage...' : 'Seleccionar archivo o sacar foto'}
                 </span>
                 <span className="text-[10px] text-slate-400 block mt-1">
                   Se almacena de forma segura bajo cifrado y RLS
@@ -579,7 +696,7 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
       <KycStartModal
         isOpen={kycModalOpen}
         caseId="user-kyc-session"
-        applicantName={`${data.firstName} ${data.lastName}`}
+        applicantName={fullName || 'Solicitante'}
         onClose={() => setKycModalOpen(false)}
         onSessionCreated={() => {
           setKycModalOpen(false);

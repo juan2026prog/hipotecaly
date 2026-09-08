@@ -1,6 +1,7 @@
 // ==============================================================================
-// HIPOTECALY: Ficha de la Solicitud (3 Pestañas Claras)
+// HIPOTECALY: Ficha de la Solicitud (3 Pestañas Claras - 100% Real & Productivo)
 // Pestañas: 1. Resumen · 2. Documentos · 3. Seguimiento
+// Integra DOCFLOW real, Storage privado, observaciones de backoffice y firma electrónica con hash
 // ==============================================================================
 
 import React, { useState } from 'react';
@@ -15,6 +16,8 @@ import {
   PenTool,
   Sparkles,
   X,
+  ExternalLink,
+  ShieldCheck,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import {
@@ -23,6 +26,7 @@ import {
   clientPortalService,
 } from '../../lib/clientPortalService';
 import { MockSigningModal } from '../../components/signature/MockSigningModal';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface ApplicationDetailViewProps {
   application: ClientApplicationDetail;
@@ -35,12 +39,14 @@ export const ApplicationDetailView: React.FC<ApplicationDetailViewProps> = ({
   onBack,
   onRefresh,
 }) => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'resumen' | 'documentos' | 'seguimiento'>('resumen');
 
   // Modal para Cargar Documento
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [targetDoc, setTargetDoc] = useState<ApplicationDocumentItem | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
   // Modal para Firma Electrónica
@@ -56,53 +62,94 @@ export const ApplicationDetailView: React.FC<ApplicationDetailViewProps> = ({
     if (!e.target.files || e.target.files.length === 0 || !targetDoc) return;
     const file = e.target.files[0];
     setUploading(true);
+    setUploadError(null);
 
-    await clientPortalService.uploadApplicationDocument(
-      application.publicId,
-      targetDoc.id,
-      file.name
+    const { error } = await clientPortalService.uploadApplicationDocument(
+      application.id,
+      file,
+      targetDoc.documentType
     );
 
     setUploading(false);
+
+    if (error) {
+      setUploadError(error.message);
+      return;
+    }
+
     setUploadModalOpen(false);
-    showToast(`Documento "${targetDoc.name}" cargado correctamente.`);
+    showToast(`Documento "${targetDoc.name}" subido a Storage y puesto en revisión.`);
     onRefresh();
   };
 
-  const handleNextActionUpload = () => {
-    if (application.nextAction?.docId) {
+  const handleOpenDoc = async (doc: ApplicationDocumentItem) => {
+    if (doc.filePath) {
+      const url = await clientPortalService.getDocumentSignedUrl(doc.filePath);
+      if (url) {
+        window.open(url, '_blank');
+        return;
+      }
+    }
+    if (doc.fileUrl) {
+      window.open(doc.fileUrl, '_blank');
+    }
+  };
+
+  const handleNextActionClick = () => {
+    if (!application.nextAction) return;
+
+    if (application.nextAction.actionType === 'sign') {
+      const doc = application.documents.find((d) => d.id === application.nextAction?.docId) || application.documents.find((d) => d.status === 'ready_to_sign');
+      if (doc) {
+        setDocToSign(doc);
+        setSignModalOpen(true);
+        return;
+      }
+    }
+
+    if (application.nextAction.docId) {
       const match = application.documents.find((d) => d.id === application.nextAction?.docId);
       if (match) {
         setTargetDoc(match);
+        setUploadError(null);
         setUploadModalOpen(true);
         return;
       }
     }
-    // Fallback al primer doc pendiente
-    const pendingDoc = application.documents.find((d) => d.status === 'pending') || application.documents[1];
-    setTargetDoc(pendingDoc);
-    setUploadModalOpen(true);
+
+    // Fallback al primer doc pendiente o que requiere corrección
+    const pendingDoc = application.documents.find((d) => d.status === 'requires_correction' || d.status === 'pending') || application.documents[0];
+    if (pendingDoc) {
+      setTargetDoc(pendingDoc);
+      setUploadError(null);
+      setUploadModalOpen(true);
+    }
   };
 
-  // 7 Etapas del Expediente
+  // 6 Etapas Principales del Expediente Hipotecario
   const stages = [
-    { num: 1, label: 'Solicitud recibida' },
-    { num: 2, label: 'Documentación' },
-    { num: 3, label: 'Evaluación' },
-    { num: 4, label: 'Condiciones' },
-    { num: 5, label: 'Formalización' },
-    { num: 6, label: 'Firma' },
-    { num: 7, label: 'Finalizada' },
+    { num: 1, label: 'Solicitud enviada' },
+    { num: 2, label: 'Validación documental' },
+    { num: 3, label: 'Estudio financiero' },
+    { num: 4, label: 'Ofertas bancarias' },
+    { num: 5, label: 'Formalización & Firma' },
+    { num: 6, label: 'Operación finalizada' },
   ];
 
   const getDocStatusBadge = (status: ApplicationDocumentItem['status']) => {
     switch (status) {
-      case 'approved':
       case 'signed':
         return (
           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+            <ShieldCheck className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+            Firmado ✓
+          </span>
+        );
+      case 'approved':
+        return (
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
             <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-emerald-600" />
-            {status === 'signed' ? 'Firmado' : 'Aprobado'}
+            Aprobado
           </span>
         );
       case 'received':
@@ -150,10 +197,10 @@ export const ApplicationDetailView: React.FC<ApplicationDetailViewProps> = ({
       {successToast && (
         <div className="p-4 bg-emerald-900 text-white rounded-2xl shadow-lg border border-emerald-500 flex items-center justify-between text-xs font-bold animate-in fade-in">
           <div className="flex items-center space-x-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-300 shrink-0" />
             <span>{successToast}</span>
           </div>
-          <button onClick={() => setSuccessToast(null)} className="text-emerald-200">✕</button>
+          <button onClick={() => setSuccessToast(null)} className="text-emerald-200 hover:text-white ml-2">✕</button>
         </div>
       )}
 
@@ -218,14 +265,14 @@ export const ApplicationDetailView: React.FC<ApplicationDetailViewProps> = ({
       {activeTab === 'resumen' && (
         <div className="space-y-6 animate-in fade-in">
           
-          {/* Bloque Superior de Datos Esenciales */}
+          {/* Bloque Superior de Datos Esenciales (Snapshot Inmutable) */}
           <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-xs space-y-5">
             <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                Condiciones de la Operación
+                Condiciones de la Operación (Snapshot del Expediente)
               </span>
-              <span className="text-xs text-slate-400">
-                Expediente {application.publicId}
+              <span className="text-xs text-slate-400 font-mono">
+                {application.publicId}
               </span>
             </div>
 
@@ -244,7 +291,7 @@ export const ApplicationDetailView: React.FC<ApplicationDetailViewProps> = ({
                   Plazo
                 </span>
                 <strong className="text-slate-900 text-sm font-semibold block">
-                  {application.termMonths} meses ({application.termMonths / 12} años)
+                  {application.termMonths} meses ({Math.round(application.termMonths / 12)} años)
                 </strong>
               </div>
 
@@ -262,22 +309,24 @@ export const ApplicationDetailView: React.FC<ApplicationDetailViewProps> = ({
                   Valor Estimado del Inmueble
                 </span>
                 <strong className="text-slate-900 text-sm font-bold font-mono block">
-                  USD {application.estimatedValue.toLocaleString('es-UY')}
+                  {application.estimatedValue > 0
+                    ? `USD ${application.estimatedValue.toLocaleString('es-UY')}`
+                    : 'En tasación'}
                 </strong>
               </div>
 
               <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
                 <span className="text-[10px] text-slate-400 uppercase font-bold block">
-                  Porcentaje de Financiación
+                  Porcentaje de Financiación (LTV)
                 </span>
                 <strong className="text-slate-900 text-sm font-bold block">
-                  {application.ltvPercentage.toFixed(1)}% del valor
+                  {application.ltvPercentage > 0 ? `${application.ltvPercentage.toFixed(1)}% del valor` : 'En cálculo'}
                 </strong>
               </div>
 
               <div className="sm:col-span-2 lg:col-span-3 p-3.5 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
                 <span className="text-[10px] text-slate-400 uppercase font-bold block">
-                  Tipo de Pago de la Operación
+                  Modalidad de Pago
                 </span>
                 <strong className="text-slate-900 text-xs font-semibold block">
                   {application.repaymentModeLabel}
@@ -297,11 +346,11 @@ export const ApplicationDetailView: React.FC<ApplicationDetailViewProps> = ({
 
             <div className="space-y-1.5">
               <h3 className="text-xl sm:text-2xl font-serif font-bold text-white tracking-tight">
-                {application.nextAction?.title || 'Tu solicitud está siendo evaluada'}
+                {application.nextAction?.title || 'Tu solicitud se encuentra en análisis'}
               </h3>
               <p className="text-xs sm:text-sm text-slate-200 max-w-2xl leading-relaxed">
                 {application.nextAction?.description ||
-                  'Estamos analizando los títulos de propiedad y la documentación del expediente. No necesitás hacer nada por ahora.'}
+                  'Estamos evaluando la documentación del expediente. No es necesario que realices ninguna acción en este momento.'}
               </p>
             </div>
 
@@ -310,10 +359,14 @@ export const ApplicationDetailView: React.FC<ApplicationDetailViewProps> = ({
                 <Button
                   variant="primary"
                   size="md"
-                  onClick={handleNextActionUpload}
+                  onClick={handleNextActionClick}
                   className="!bg-[#f4b43b] hover:!bg-[#e0a230] !text-[#102d49] !font-bold text-xs !rounded-xl shadow-sm"
                 >
-                  <Upload className="w-4 h-4 mr-2" />
+                  {application.nextAction.actionType === 'sign' ? (
+                    <PenTool className="w-4 h-4 mr-2" />
+                  ) : (
+                    <Upload className="w-4 h-4 mr-2" />
+                  )}
                   {application.nextAction.buttonLabel}
                 </Button>
 
@@ -343,7 +396,7 @@ export const ApplicationDetailView: React.FC<ApplicationDetailViewProps> = ({
                 Documentos del Expediente
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Recaudos exigidos específicamente para la estructuración y formalización de esta solicitud
+                Recaudos exigidos y contratos legales emitidos por DOCFLOW para esta operación
               </p>
             </div>
             <span className="text-xs font-mono text-slate-400">
@@ -351,82 +404,113 @@ export const ApplicationDetailView: React.FC<ApplicationDetailViewProps> = ({
             </span>
           </div>
 
-          <div className="divide-y divide-slate-100 text-xs">
-            {application.documents.map((doc) => (
-              <div
-                key={doc.id}
-                className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center space-x-2">
-                    <FileText className="w-4 h-4 text-[#102d49] shrink-0" />
-                    <span className="font-bold text-slate-900 text-xs">{doc.name}</span>
-                    {doc.isRequired && (
-                      <span className="text-[10px] text-amber-800 font-semibold bg-amber-50 px-1.5 py-0.2 rounded">
-                        Requerido
+          {application.documents.length === 0 ? (
+            <div className="p-8 text-center text-slate-400 text-xs">
+              No hay documentos pendientes de presentación en este momento.
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 text-xs">
+              {application.documents.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center space-x-2">
+                      <FileText className="w-4 h-4 text-[#102d49] shrink-0" />
+                      <span className="font-bold text-slate-900 text-xs">{doc.name}</span>
+                      {doc.isRequired && (
+                        <span className="text-[10px] text-amber-800 font-semibold bg-amber-50 px-1.5 py-0.2 rounded">
+                          Requerido
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-slate-500 text-[11px] pl-6 leading-relaxed">
+                      {doc.description}
+                    </p>
+
+                    {/* Observación de corrección de backoffice */}
+                    {doc.status === 'requires_correction' && doc.observation && (
+                      <div className="ml-6 p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-start space-x-2">
+                        <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
+                        <span><strong>Observación:</strong> {doc.observation}</span>
+                      </div>
+                    )}
+
+                    {doc.fileName && (
+                      <div className="pl-6 flex items-center space-x-2 text-[10px] text-slate-400 font-mono">
+                        <span>Archivo: {doc.fileName}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDoc(doc)}
+                          className="text-brand-green hover:underline flex items-center space-x-0.5"
+                        >
+                          <span>Ver</span>
+                          <ExternalLink className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                    )}
+
+                    {doc.fileHash && (
+                      <span className="text-[9px] font-mono text-slate-400 pl-6 block">
+                        Hash SHA-256: {doc.fileHash.substring(0, 16)}...
                       </span>
                     )}
                   </div>
-                  <p className="text-slate-500 text-[11px] pl-6 leading-relaxed">
-                    {doc.description}
-                  </p>
-                  {doc.fileName && (
-                    <span className="text-[10px] font-mono text-slate-400 pl-6 block">
-                      Archivo: {doc.fileName} · Actualizado el {doc.updatedAt}
-                    </span>
-                  )}
+
+                  <div className="flex items-center space-x-2.5 pl-6 sm:pl-0 shrink-0">
+                    {getDocStatusBadge(doc.status)}
+
+                    {doc.canSign && doc.status === 'ready_to_sign' && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => {
+                          setDocToSign(doc);
+                          setSignModalOpen(true);
+                        }}
+                        className="text-xs font-bold !bg-purple-700 hover:!bg-purple-800 text-white !rounded-xl shadow-xs"
+                      >
+                        <PenTool className="w-3.5 h-3.5 mr-1" />
+                        Firmar ahora
+                      </Button>
+                    )}
+
+                    {(doc.status === 'pending' || doc.status === 'requires_correction') && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => {
+                          setTargetDoc(doc);
+                          setUploadError(null);
+                          setUploadModalOpen(true);
+                        }}
+                        className="text-xs font-bold !bg-[#102d49] text-white !rounded-xl shadow-xs"
+                      >
+                        <Upload className="w-3.5 h-3.5 mr-1" />
+                        {doc.status === 'requires_correction' ? 'Reemplazar' : 'Subir'}
+                      </Button>
+                    )}
+
+                    {(doc.status === 'received' || doc.status === 'in_review') && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setTargetDoc(doc);
+                          setUploadError(null);
+                          setUploadModalOpen(true);
+                        }}
+                        className="text-xs font-semibold text-slate-600 hover:bg-slate-50 !rounded-xl"
+                      >
+                        Actualizar
+                      </Button>
+                    )}
+                  </div>
                 </div>
-
-                <div className="flex items-center space-x-2.5 pl-6 sm:pl-0 shrink-0">
-                  {getDocStatusBadge(doc.status)}
-
-                  {doc.canSign && doc.status === 'ready_to_sign' && (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => {
-                        setDocToSign(doc);
-                        setSignModalOpen(true);
-                      }}
-                      className="text-xs font-bold !bg-purple-700 hover:!bg-purple-800 text-white !rounded-xl shadow-xs"
-                    >
-                      <PenTool className="w-3.5 h-3.5 mr-1" />
-                      Firmar ahora
-                    </Button>
-                  )}
-
-                  {(doc.status === 'pending' || doc.status === 'requires_correction') && (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => {
-                        setTargetDoc(doc);
-                        setUploadModalOpen(true);
-                      }}
-                      className="text-xs font-bold !bg-[#102d49] text-white !rounded-xl shadow-xs"
-                    >
-                      <Upload className="w-3.5 h-3.5 mr-1" />
-                      Subir
-                    </Button>
-                  )}
-
-                  {(doc.status === 'received' || doc.status === 'in_review' || doc.status === 'approved') && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setTargetDoc(doc);
-                        setUploadModalOpen(true);
-                      }}
-                      className="text-xs font-semibold text-slate-600 hover:bg-slate-50 !rounded-xl"
-                    >
-                      Reemplazar
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -444,7 +528,7 @@ export const ApplicationDetailView: React.FC<ApplicationDetailViewProps> = ({
                   Etapa del Trámite
                 </span>
                 <h3 className="text-lg font-serif font-bold text-slate-900 mt-0.5">
-                  {application.currentStageName} (Etapa {application.currentStageIndex} de 7)
+                  {application.currentStageName} (Fase {application.currentStageIndex} de 6)
                 </h3>
               </div>
               <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-50 text-blue-900 border border-blue-200">
@@ -456,8 +540,8 @@ export const ApplicationDetailView: React.FC<ApplicationDetailViewProps> = ({
               {application.currentStageDescription}
             </p>
 
-            {/* Stepper de 7 Etapas */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 pt-2">
+            {/* Stepper de 6 Fases */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-2">
               {stages.map((st) => {
                 const isCompleted = st.num < application.currentStageIndex;
                 const isCurrent = st.num === application.currentStageIndex;
@@ -492,10 +576,10 @@ export const ApplicationDetailView: React.FC<ApplicationDetailViewProps> = ({
             </div>
           </div>
 
-          {/* Historial Cronológico de Novedades */}
+          {/* Historial Cronológico de Novedades Reales */}
           <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-xs space-y-5">
             <h4 className="text-sm font-bold uppercase tracking-wider text-slate-700 border-b border-slate-100 pb-3">
-              Historial de Novedades
+              Historial de Novedades del Expediente
             </h4>
 
             <div className="relative pl-6 space-y-6 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
@@ -542,20 +626,27 @@ export const ApplicationDetailView: React.FC<ApplicationDetailViewProps> = ({
               </button>
             </div>
 
+            {uploadError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 flex items-start space-x-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <span>{uploadError}</span>
+              </div>
+            )}
+
             <div className="space-y-4">
               <label className="border-2 border-dashed border-slate-300 hover:border-[#102d49] rounded-2xl p-6 text-center cursor-pointer transition block bg-slate-50/50 hover:bg-slate-50">
                 <input
                   type="file"
-                  accept="application/pdf,image/jpeg,image/png"
+                  accept="application/pdf,image/jpeg,image/png,image/webp"
                   onChange={handleFileUpload}
                   className="hidden"
                 />
                 <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
                 <span className="text-xs font-bold text-slate-700 block">
-                  {uploading ? 'Cargando archivo...' : 'Seleccionar archivo o sacar foto'}
+                  {uploading ? 'Cargando archivo en Storage...' : 'Seleccionar archivo o sacar foto'}
                 </span>
                 <span className="text-[10px] text-slate-400 block mt-1">
-                  Se sincroniza automáticamente con el expediente
+                  Se almacena en el bucket privado del expediente
                 </span>
               </label>
 
@@ -581,9 +672,15 @@ export const ApplicationDetailView: React.FC<ApplicationDetailViewProps> = ({
           processId={docToSign.id}
           documentTitle={docToSign.name}
           onClose={() => setSignModalOpen(false)}
-          onSigned={() => {
+          onSigned={async () => {
+            await clientPortalService.signApplicationDocument(
+              application.id,
+              docToSign.id,
+              user?.id || 'guest',
+              user?.email || 'Solicitante'
+            );
             setSignModalOpen(false);
-            showToast('Documento firmado con validez jurídica.');
+            showToast('Documento firmado con validez jurídica y evidencia registrada.');
             onRefresh();
           }}
         />

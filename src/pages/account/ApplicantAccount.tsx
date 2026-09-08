@@ -43,19 +43,19 @@ export const ApplicantAccount: React.FC = () => {
   const loadData = useCallback(async () => {
     // 1. Consolidar cualquier simulación pendiente que venga del flujo pre-autenticación
     if (user?.id) {
-      clientSimulationService.consolidatePendingSimulation(user.id);
+      await clientSimulationService.consolidatePendingSimulation(user.id, tenant.id);
     }
 
-    // 2. Cargar simulaciones guardadas
-    const loadedSims = clientSimulationService.getSavedSimulations(user?.id);
+    // 2. Cargar simulaciones guardadas reales
+    const loadedSims = await clientSimulationService.getSavedSimulations(user?.id, tenant.id);
     setSimulations(loadedSims);
 
-    // 3. Cargar datos personales
+    // 3. Cargar datos personales reales
     const pData = await clientPortalService.getPersonalData(user, borrower);
     setPersonalData(pData);
 
-    // 4. Cargar solicitudes
-    const apps = await clientPortalService.getApplications(tenant.id);
+    // 4. Cargar solicitudes reales
+    const apps = await clientPortalService.getApplications(tenant.id, user?.id);
     setApplications(apps);
 
     setLoading(false);
