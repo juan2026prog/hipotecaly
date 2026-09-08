@@ -1284,7 +1284,7 @@ export const ApplicationDetailPage: React.FC = () => {
                       </span>
                     </div>
                     <p className="text-xs text-slate-300">
-                      Evidencia criptográfica y sellado de tiempo ISO 8601 disponibles para este expediente.
+                      Evidencia y huella criptográfica conforme a la Ley N° 18.600 disponibles para este expediente.
                     </p>
                   </div>
                   <button
@@ -1685,8 +1685,12 @@ export const ApplicationDetailPage: React.FC = () => {
                 </span>
               </div>
               <div className="flex justify-between pt-1">
-                <span className="text-slate-400">Sellado de Tiempo:</span>
-                <span className="text-slate-200">{new Date().toISOString()}</span>
+                <span className="text-slate-400">Fecha/Hora de Captura:</span>
+                <span className="text-slate-200">{new Date().toISOString()} (ISO 8601)</span>
+              </div>
+              <div className="flex justify-between pt-1 border-t border-slate-800">
+                <span className="text-slate-400">Sello de Tiempo (TSA):</span>
+                <span className="text-amber-300 font-bold">SIMULACIÓN / NO VALIDADO POR TSA</span>
               </div>
             </div>
 
@@ -1697,9 +1701,9 @@ export const ApplicationDetailPage: React.FC = () => {
                 <p className="text-[10px] text-slate-500">Caja Notarial 48.291</p>
               </div>
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="text-slate-400 font-medium block text-[10px]">Prestador / Certificador</span>
-                <strong className="text-navy">Prestador Acreditado Ley 18.600</strong>
-                <p className="text-[10px] text-amber-700 font-semibold">Simulación de Entorno Operativo</p>
+                <span className="text-slate-400 font-medium block text-[10px]">Prestador / Certificado</span>
+                <strong className="text-navy">DEMO (Prestador de Pruebas)</strong>
+                <p className="text-[10px] text-amber-700 font-semibold">Certificado: SIMULADO (Entorno Demo)</p>
               </div>
             </div>
 
