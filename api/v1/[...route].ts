@@ -328,6 +328,20 @@ export async function webhooksHandler(req: any, res: any) {
 // ROUTER PRINCIPAL DE API V1
 // ------------------------------------------------------------------------------
 export default async function handler(req: any, res: any) {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+
+  // Aplicar Rate Limiting (120 req / min para API v1)
+  try {
+    const { ServerRateLimiter } = await import('../../server/security/rateLimiter.js');
+    const allowed = ServerRateLimiter.applyRateLimit(req, res, {
+      windowMs: 60000,
+      maxRequests: 120,
+    }, 'apikey');
+    if (!allowed) return;
+  } catch {
+    // Continuar si falla rate limiter
+  }
+
   const routeParam = req.query?.route;
   const subpath = Array.isArray(routeParam)
     ? routeParam.join('/')

@@ -206,8 +206,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // Verificación de sesión de Master Admin persistente (admin@test.com)
-    const isMasterStored = typeof window !== 'undefined' && window.localStorage.getItem('hipotecaly_master_user') === 'admin@test.com';
+    // Verificación de sesión de Master Admin persistente (ÚNICAMENTE en desarrollo o preview local)
+    const isMasterStored = !import.meta.env.PROD && typeof window !== 'undefined' && window.localStorage.getItem('hipotecaly_master_user') === 'admin@test.com';
     if (isMasterStored) {
       const masterUser: User = {
         id: 'u-master-superadmin-001',
@@ -356,8 +356,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const emailTrimmed = emailInput.trim().toLowerCase();
     const passTrimmed = passwordInput.trim();
 
-    // CLAVE DE ACCESO TOTAL / MASTER ADMIN GLOBAL (admin@test.com / admin123)
+    // CLAVE DE ACCESO TOTAL / MASTER ADMIN GLOBAL (ÚNICAMENTE en desarrollo o preview local)
     if (
+      !import.meta.env.PROD &&
       (emailTrimmed === 'admin@test.com' || emailTrimmed === 'admin' || emailTrimmed === 'superadmin' || emailTrimmed === 'admin@hipotecaly.uy') &&
       (passTrimmed === 'admin123' || passTrimmed === 'admin')
     ) {

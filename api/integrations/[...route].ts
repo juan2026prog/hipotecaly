@@ -10,6 +10,18 @@ import { verifySuperAdmin } from '../../server/auth/superAdminGuard.js';
 export default async function handler(req: any, res: any) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 
+  // Aplicar Rate Limiting (60 req / min)
+  try {
+    const { ServerRateLimiter } = await import('../../server/security/rateLimiter.js');
+    const allowed = ServerRateLimiter.applyRateLimit(req, res, {
+      windowMs: 60000,
+      maxRequests: 60,
+    });
+    if (!allowed) return;
+  } catch {
+    // Continuar si falla rate limiter
+  }
+
   const routeParam = req.query?.route;
   const subpath = Array.isArray(routeParam)
     ? routeParam.join('/')

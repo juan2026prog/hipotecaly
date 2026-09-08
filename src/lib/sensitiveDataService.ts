@@ -45,6 +45,62 @@ export function maskEmail(email?: string): string {
   return `${maskedUser}@${domain}`;
 }
 
+/**
+ * Enmascara una Cédula de Identidad de Uruguay (ej: 1.234.567-8 -> 1.234.***-* o 48901234 -> 4.890.***-*)
+ */
+export function maskCedula(ci?: string): string {
+  if (!ci) return '•.•••.•••-•';
+  const digits = ci.replace(/\D/g, '');
+  if (digits.length < 6) return '•.•••.•••-•';
+  if (digits.length === 8) {
+    const formatted = `${digits[0]}.${digits.slice(1, 4)}.${digits.slice(4, 7)}-${digits[7]}`;
+    return `${formatted.slice(0, 6)}***-*`;
+  }
+  return `${digits.slice(0, 3)}***-*`;
+}
+
+/**
+ * Enmascara una cuenta bancaria o tarjeta (ej: 123456783812 -> **** 3812)
+ */
+export function maskBankAccount(account?: string): string {
+  if (!account) return '**** ****';
+  const clean = account.replace(/\s+/g, '');
+  if (clean.length < 4) return '**** ****';
+  const last4 = clean.slice(-4);
+  return `**** ${last4}`;
+}
+
+/**
+ * Enmascara un RUT / Número de Identificación Tributaria (ej: 211234560012 -> 21.***.***.0012)
+ */
+export function maskTaxId(taxId?: string): string {
+  if (!taxId) return '21.***.***.****';
+  const digits = taxId.replace(/\D/g, '');
+  if (digits.length < 8) return '21.***.***.****';
+  const prefix = digits.slice(0, 2);
+  const suffix = digits.slice(-4);
+  return `${prefix}.***.***.${suffix}`;
+}
+
+/**
+ * Enmascara un nombre completo (ej: Juan Pérez -> J*** P***)
+ */
+export function maskName(fullName?: string): string {
+  if (!fullName) return 'U***';
+  const parts = fullName.trim().split(/\s+/);
+  return parts
+    .map((p) => (p.length > 1 ? `${p[0]}***` : p))
+    .join(' ');
+}
+
+/**
+ * Enmascara una dirección física eliminando número de puerta y apartamento
+ */
+export function maskAddress(address?: string): string {
+  if (!address) return 'Ubicación Reservada';
+  return address.replace(/\b\d{2,5}\b/g, '[Altura Reservada]').replace(/\b(apto|apartamento|unidad)\s*([A-Za-z0-9]+)/gi, '[Unidad Reservada]');
+}
+
 const STATUS_PROGRESSION: Record<string, number> = {
   draft: 1,
   submitted: 2,

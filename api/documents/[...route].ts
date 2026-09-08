@@ -8,6 +8,18 @@ import { supabaseAdmin } from '../../server/supabase.js';
 export default async function handler(req: any, res: any) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 
+  // Aplicar Rate Limiting (60 req / min)
+  try {
+    const { ServerRateLimiter } = await import('../../server/security/rateLimiter.js');
+    const allowed = ServerRateLimiter.applyRateLimit(req, res, {
+      windowMs: 60000,
+      maxRequests: 60,
+    });
+    if (!allowed) return;
+  } catch {
+    // Continuar si falla rate limiter
+  }
+
   const url = req.url || '';
   const parts = url.split('?')[0].split('/').filter(Boolean);
   // /api/documents/:subpath...

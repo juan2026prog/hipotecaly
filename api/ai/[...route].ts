@@ -161,6 +161,20 @@ async function correctionsHandler(req: any, res: any) {
 // ROUTER PRINCIPAL DE /api/ai/*
 // ------------------------------------------------------------------------------
 export default async function handler(req: any, res: any) {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+
+  // Aplicar Rate Limiting (30 requests por minuto para endpoints de IA)
+  try {
+    const { ServerRateLimiter } = await import('../../server/security/rateLimiter.js');
+    const allowed = ServerRateLimiter.applyRateLimit(req, res, {
+      windowMs: 60000,
+      maxRequests: 30,
+    });
+    if (!allowed) return;
+  } catch {
+    // Continuar si falla rate limiter
+  }
+
   const routeParam = req.query?.route;
   const subpath = Array.isArray(routeParam)
     ? routeParam.join('/')

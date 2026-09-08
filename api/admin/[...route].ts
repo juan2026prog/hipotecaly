@@ -850,10 +850,70 @@ async function adminQaValidateSessionHandler(req: any, res: any) {
 }
 
 // ------------------------------------------------------------------------------
+// SECURITY: /api/admin/security/metrics & /api/admin/security/events
+// ------------------------------------------------------------------------------
+async function adminSecurityMetricsHandler(req: any, res: any) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed. Use GET.' });
+  }
+
+  const auth = await verifySuperAdmin(req);
+  if (!auth.authorized) {
+    return res.status(auth.status || 401).json({ error: auth.error });
+  }
+
+  try {
+    const { SecurityEventService } = await import('../../server/security/securityEventService.js');
+    const metrics = await SecurityEventService.getSecurityDashboardMetrics();
+    return res.status(200).json(metrics);
+  } catch (error: any) {
+    return res.status(500).json({
+      error: 'Error al recuperar métricas de seguridad',
+      message: error?.message || 'Error interno',
+    });
+  }
+}
+
+async function adminSecurityEventsHandler(req: any, res: any) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed. Use GET.' });
+  }
+
+  const auth = await verifySuperAdmin(req);
+  if (!auth.authorized) {
+    return res.status(auth.status || 401).json({ error: auth.error });
+  }
+
+  try {
+    const { SecurityEventService } = await import('../../server/security/securityEventService.js');
+    const limit = parseInt(req.query?.limit || '50', 10);
+    const events = await SecurityEventService.getRecentSecurityEvents(limit);
+    return res.status(200).json({ events });
+  } catch (error: any) {
+    return res.status(500).json({
+      error: 'Error al consultar eventos de seguridad',
+      message: error?.message || 'Error interno',
+    });
+  }
+}
+
+// ------------------------------------------------------------------------------
 // ROUTER PRINCIPAL DE /api/admin/*
 // ------------------------------------------------------------------------------
 export default async function handler(req: any, res: any) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+
+  // Aplicar Rate Limiting (60 requests por minuto por IP para endpoints de administración)
+  try {
+    const { ServerRateLimiter } = await import('../../server/security/rateLimiter.js');
+    const allowed = ServerRateLimiter.applyRateLimit(req, res, {
+      windowMs: 60000,
+      maxRequests: 60,
+    });
+    if (!allowed) return;
+  } catch {
+    // Continuar si falla rate limiter
+  }
 
   const routeParam = req.query?.route;
   const subpath = Array.isArray(routeParam)
@@ -880,6 +940,10 @@ export default async function handler(req: any, res: any) {
   if (normalizedPath === 'qa/toggle-feature') return adminQaToggleFeatureHandler(req, res);
   if (normalizedPath === 'qa/validate-session') return adminQaValidateSessionHandler(req, res);
 
+  // Security Subroutes (Cero Costo SaaS, Métricas Reales)
+  if (normalizedPath === 'security/metrics') return adminSecurityMetricsHandler(req, res);
+  if (normalizedPath === 'security/events') return adminSecurityEventsHandler(req, res);
+
   return res.status(404).json({
     error: 'Not Found',
     message: `Endpoint '/api/admin/${normalizedPath}' no encontrado.`,
@@ -895,6 +959,8 @@ export default async function handler(req: any, res: any) {
       'POST /api/admin/qa/revoke',
       'POST /api/admin/qa/toggle-feature',
       'POST /api/admin/qa/validate-session',
+      'GET /api/admin/security/metrics',
+      'GET /api/admin/security/events',
     ],
   });
 }

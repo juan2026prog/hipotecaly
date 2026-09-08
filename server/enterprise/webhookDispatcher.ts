@@ -72,7 +72,7 @@ export class EnterpriseWebhookDispatcher {
           parseInt(hostname.split('.')[1], 10) >= 16 &&
           parseInt(hostname.split('.')[1], 10) <= 31);
 
-      if (isProd && isPrivateOrLoopback) {
+      if (isPrivateOrLoopback) {
         return { valid: false, reason: 'La URL apunta a un rango de red privada o loopback no autorizado (SSRF Protection).' };
       }
 

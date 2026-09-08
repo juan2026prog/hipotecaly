@@ -133,10 +133,20 @@ export async function verifySuperAdmin(req: any): Promise<SuperAdminAuthResult> 
     }
 
     // 5. Usuario es un admin de inquilino o usuario regular: Bloquear con 403
+    await import('../security/securityEventService.js').then(({ SecurityEventService }) => {
+      SecurityEventService.logSecurityEvent({
+        eventType: 'SECURITY_ACCESS_DENIED',
+        severity: 'HIGH',
+        userId: user.id,
+        metadata: { reason: 'Intento de acceso a consola Super Admin sin rol super_admin' },
+        req,
+      });
+    }).catch(() => {});
+
     return {
       authorized: false,
       status: 403,
-      error: 'Acceso denegado: Se requiere rol SUPER_ADMIN. Los administradores de estudio no tienen permisos para modificar la configuración de OpenAI.',
+      error: 'Acceso denegado: Se requiere rol SUPER_ADMIN.',
     };
   } catch (err: any) {
     return {
