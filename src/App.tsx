@@ -513,6 +513,22 @@ export const App: React.FC = () => {
                 }
               />
               <Route
+                path="/demo/:tenantSlug/inversor/prestamos"
+                element={
+                  <ProtectedRoute allowedRoles={['lender', 'super_admin']} requireTenantMatch>
+                    <TenantInvestorDashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/inversor/propuestas"
+                element={
+                  <ProtectedRoute allowedRoles={['lender', 'super_admin']} requireTenantMatch>
+                    <TenantInvestorDashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/demo/:tenantSlug/inversor/ofertas"
                 element={
                   <ProtectedRoute allowedRoles={['lender', 'super_admin']} requireTenantMatch>
@@ -527,6 +543,28 @@ export const App: React.FC = () => {
                     <TenantInvestorDashboardPage />
                   </ProtectedRoute>
                 }
+              />
+
+              {/* Rutas Directas /inversor */}
+              <Route
+                path="/inversor"
+                element={<Navigate to="/demo/estudio-nova/inversor" replace />}
+              />
+              <Route
+                path="/inversor/oportunidades"
+                element={<Navigate to="/demo/estudio-nova/inversor/oportunidades" replace />}
+              />
+              <Route
+                path="/inversor/prestamos"
+                element={<Navigate to="/demo/estudio-nova/inversor/prestamos" replace />}
+              />
+              <Route
+                path="/inversor/propuestas"
+                element={<Navigate to="/demo/estudio-nova/inversor/propuestas" replace />}
+              />
+              <Route
+                path="/inversor/ofertas"
+                element={<Navigate to="/demo/estudio-nova/inversor/propuestas" replace />}
               />
 
               {/* ========================================================== */}
