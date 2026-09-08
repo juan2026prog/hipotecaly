@@ -3,10 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home,
   FileText,
-  CheckSquare,
-  FileCheck,
   FileSignature,
-  Calendar,
   UserCheck,
   LogOut,
   Menu,
@@ -41,12 +38,9 @@ export const NotaryLayout: React.FC<{ children: React.ReactNode; title?: string 
 
   const navItems: NotaryNavItem[] = [
     { name: 'Inicio', href: basePath, icon: Home },
-    { name: 'Mis Expedientes', href: `${basePath}/expedientes`, icon: FileText },
-    { name: 'Mis Tareas', href: `${basePath}/tareas`, icon: CheckSquare, badge: 3 },
-    { name: 'Documentos', href: `${basePath}/documentos`, icon: FileCheck },
-    { name: 'Firmas Digitales', href: `${basePath}/firmas`, icon: FileSignature, badge: 2 },
-    { name: 'Calendario', href: `${basePath}/calendario`, icon: Calendar },
-    { name: 'Mi Perfil Profesional', href: `${basePath}/perfil`, icon: UserCheck },
+    { name: 'Expedientes', href: `${basePath}/expedientes`, icon: FileText },
+    { name: 'Firmas pendientes', href: `${basePath}/firmas`, icon: FileSignature, badge: 2 },
+    { name: 'Perfil profesional', href: `${basePath}/perfil`, icon: UserCheck },
   ];
 
   const isItemActive = (href: string) => {
