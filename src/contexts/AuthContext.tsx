@@ -8,7 +8,6 @@ import { supabase } from '../lib/supabase';
 import { Borrower } from '../lib/types';
 import { resolveTenant } from '../lib/tenantService';
 import { adminQaService } from '../lib/adminQaService';
-import { platformModeService } from '../lib/platformModeService';
 
 export type UserRole =
   | 'super_admin'
@@ -48,7 +47,13 @@ interface AuthContextType {
   loading: boolean;
   isQaSession: boolean;
   qaSessionData: QaSessionState | null;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string) => Promise<{
+    error: Error | null;
+    user?: User | null;
+    role?: UserRole | null;
+    isSuperAdmin?: boolean;
+    memberships?: UserMembership[];
+  }>;
   signUp: (
     email: string,
     password: string,
@@ -75,14 +80,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [qaSessionData, setQaSessionData] = useState<QaSessionState | null>(null);
 
   // Determinar roles y membresías a partir del usuario actual
-  const resolveRoles = async (currentUser: User | null) => {
+  const resolveRoles = async (currentUser: User | null): Promise<{
+    resolvedRole: UserRole | null;
+    resolvedIsSuper: boolean;
+    resolvedMemberships: UserMembership[];
+  }> => {
     if (!currentUser) {
       setUserRole(null);
       setIsSuperAdmin(false);
       setMemberships([]);
       setIsQaSession(false);
       setQaSessionData(null);
-      return;
+      return { resolvedRole: null, resolvedIsSuper: false, resolvedMemberships: [] };
     }
 
     let isSuper = false;
@@ -104,7 +113,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // Soporte seguro de app_metadata (escrito exclusivamente por backend / service_role)
-    if (!isSuper && (currentUser.app_metadata?.role === 'super_admin' || currentUser.app_metadata?.role === 'platform_admin')) {
+    if (!isSuper && (currentUser.app_metadata?.role === 'super_admin' || currentUser.app_metadata?.role === 'platform_admin' || currentUser.app_metadata?.is_super_admin)) {
       isSuper = true;
     }
 
@@ -124,6 +133,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setQaSessionData(null);
     }
 
+    let resolvedMems: UserMembership[] = [];
+    let resolvedRole: UserRole = 'borrower';
+
     // 2. Consulta a organization_members (Fuente autoritativa para roles de tenant)
     try {
       const { data, error } = await supabase
@@ -131,43 +143,70 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .select('organization_id, role, is_active')
         .eq('user_id', currentUser.id);
 
-      if (!error && data) {
-        const mems: UserMembership[] = data.map((d) => ({
+      if (!error && data && data.length > 0) {
+        resolvedMems = data.map((d) => ({
           organizationId: d.organization_id,
           role: d.role as UserRole,
           isActive: Boolean(d.is_active),
         }));
-        setMemberships(mems);
+        setMemberships(resolvedMems);
 
         if (isSuper) {
-          setUserRole('super_admin');
-        } else if (mems.some((m) => m.role === 'tenant_admin' || (m.role as string) === 'tenant_owner')) {
-          setUserRole('tenant_admin');
-        } else if (mems.some((m) => m.role === 'analyst')) {
-          setUserRole('analyst');
-        } else if (mems.some((m) => m.role === 'operator')) {
-          setUserRole('operator');
-        } else if (mems.some((m) => m.role === 'notary')) {
-          setUserRole('notary');
-        } else if (mems.some((m) => m.role === 'lender')) {
-          setUserRole('lender');
+          resolvedRole = 'super_admin';
+        } else if (resolvedMems.some((m) => m.role === 'tenant_admin' || (m.role as string) === 'tenant_owner')) {
+          resolvedRole = 'tenant_admin';
+        } else if (resolvedMems.some((m) => m.role === 'analyst')) {
+          resolvedRole = 'analyst';
+        } else if (resolvedMems.some((m) => m.role === 'operator')) {
+          resolvedRole = 'operator';
+        } else if (resolvedMems.some((m) => m.role === 'notary')) {
+          resolvedRole = 'notary';
+        } else if (resolvedMems.some((m) => m.role === 'lender')) {
+          resolvedRole = 'lender';
         } else if (currentUser.app_metadata?.role) {
-          setUserRole(currentUser.app_metadata.role as UserRole);
+          resolvedRole = currentUser.app_metadata.role as UserRole;
         } else {
-          setUserRole('borrower');
+          resolvedRole = 'borrower';
         }
       } else {
+        setMemberships([]);
         if (isSuper) {
-          setUserRole('super_admin');
+          resolvedRole = 'super_admin';
         } else if (currentUser.app_metadata?.role) {
-          setUserRole(currentUser.app_metadata.role as UserRole);
+          resolvedRole = currentUser.app_metadata.role as UserRole;
         } else {
-          setUserRole('borrower');
+          // Check if user is registered in lenders table
+          try {
+            const { data: lenderData } = await supabase
+              .from('lenders')
+              .select('id, organization_id')
+              .eq('user_id', currentUser.id)
+              .maybeSingle();
+
+            if (lenderData) {
+              resolvedRole = 'lender';
+              if (lenderData.organization_id) {
+                resolvedMems = [{ organizationId: lenderData.organization_id, role: 'lender', isActive: true }];
+                setMemberships(resolvedMems);
+              }
+            } else {
+              resolvedRole = 'borrower';
+            }
+          } catch {
+            resolvedRole = 'borrower';
+          }
         }
       }
     } catch {
-      setUserRole(isSuper ? 'super_admin' : 'borrower');
+      resolvedRole = isSuper ? 'super_admin' : 'borrower';
     }
+
+    setUserRole(resolvedRole);
+    return {
+      resolvedRole,
+      resolvedIsSuper: isSuper,
+      resolvedMemberships: resolvedMems,
+    };
   };
 
   // Carga o sincroniza el perfil del solicitante (borrower)
@@ -301,8 +340,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           await resolveRoles(currentUser);
           await fetchBorrowerProfile(currentUser);
         } else if (isE2EPreview) {
-          // En entorno de ejecución de tests Playwright (preview 4173), si no se especificó un rol,
-          // inicializar sesión con privilegios super_admin para compatibilidad con suites de test de backoffice y admin
           const defaultTestUser: User = {
             id: 'a1111111-1111-1111-1111-111111111111',
             app_metadata: { role: 'super_admin' },
@@ -355,140 +392,81 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const signIn = async (emailInput: string, passwordInput: string) => {
+  const signIn = async (emailInput: string, passwordInput: string): Promise<{
+    error: Error | null;
+    user?: User | null;
+    role?: UserRole | null;
+    isSuperAdmin?: boolean;
+    memberships?: UserMembership[];
+  }> => {
+    console.log('[AUTH] signIn started');
     const emailTrimmed = emailInput.trim().toLowerCase();
     const passTrimmed = passwordInput.trim();
 
-    // 1. SUPER ADMIN REAL: juanmacastillo2008@gmail.com
-    if (emailTrimmed === 'juanmacastillo2008@gmail.com') {
-      try {
-        const { data, error } = await supabase.auth.signInWithPassword({ email: emailTrimmed, password: passTrimmed });
-        if (!error && data.user) {
-          setIsSuperAdmin(true);
-          setUserRole('super_admin');
-          return { error: null };
-        }
-      } catch {
-        // Continuar con fallback para dev local
-      }
+    // Normalización de username simple a email si no tiene arroba
+    const emailToAuth = emailTrimmed.includes('@') ? emailTrimmed : `${emailTrimmed}@hipotecaly.uy`;
 
-      if (!import.meta.env.PROD) {
-        // En entorno local de desarrollo / test preview
-        const superAdminUser: User = {
+    // 1. Intentar autenticación real en Supabase Auth
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email: emailToAuth, password: passTrimmed });
+      if (!error && data.user) {
+        console.log('[AUTH] signIn success');
+        console.log('[AUTH] session available');
+        console.log('[AUTH] user loaded');
+        setUser(data.user);
+        setSession(data.session);
+
+        const { resolvedRole, resolvedIsSuper, resolvedMemberships } = await resolveRoles(data.user);
+        console.log('[AUTH] profile loaded');
+        console.log('[AUTH] membership loaded');
+        console.log('[AUTH] role resolved:', resolvedRole);
+
+        await fetchBorrowerProfile(data.user);
+        setLoading(false);
+
+        return {
+          error: null,
+          user: data.user,
+          role: resolvedRole,
+          isSuperAdmin: resolvedIsSuper,
+          memberships: resolvedMemberships,
+        };
+      }
+    } catch {
+      // Continuar con fallback de prueba en desarrollo
+    }
+
+    // 2. Fallback de usuarios de demostración ÚNICAMENTE en desarrollo local
+    if (!import.meta.env.PROD) {
+      if (
+        (emailTrimmed === 'superadmin' || emailTrimmed === 'admin@hipotecaly.uy' || emailTrimmed === 'admin') &&
+        (passTrimmed === 'admin123' || passTrimmed === 'admin')
+      ) {
+        const mockUser: User = {
           id: 'f0000000-0000-0000-0000-000000000001',
           app_metadata: { role: 'super_admin', is_super_admin: true },
-          user_metadata: { first_name: 'Juan Manuel', last_name: 'Castillo', role: 'super_admin' },
+          user_metadata: { first_name: 'Super', last_name: 'Admin', role: 'super_admin' },
           aud: 'authenticated',
           created_at: new Date().toISOString(),
           email: 'juanmacastillo2008@gmail.com',
         } as any;
-        setUser(superAdminUser);
-        setUserRole('super_admin');
-        setIsSuperAdmin(true);
-        setIsQaSession(false);
-        setMemberships([
-          { organizationId: 'a0000000-0000-0000-0000-000000000001', role: 'super_admin', isActive: true },
-          { organizationId: 'd0000000-0000-0000-0000-000000000001', role: 'super_admin', isActive: true },
-        ]);
-        setLoading(false);
-        return { error: null };
-      }
-    }
-
-    // 2. USUARIO UNIVERSAL DE PRUEBAS: admin@estudionova.uy (y admin@test.com / admin)
-    const isTestUserAttempt =
-      emailTrimmed === 'admin@estudionova.uy' ||
-      emailTrimmed === 'admin@test.com' ||
-      emailTrimmed === 'admin';
-
-    if (isTestUserAttempt) {
-      const mode = platformModeService.getCachedMode();
-      // BLOQUEO OBLIGATORIO EN PRODUCCIÓN (401 Unauthorized)
-      if (mode === 'production' || import.meta.env.PROD) {
-        return {
-          error: new Error('401 Unauthorized: El acceso universal de prueba está desactivado en Modo Producción.'),
-        };
-      }
-
-      if (passTrimmed === 'admin123' || passTrimmed === 'admin') {
-        console.log('[TEST_UNIVERSAL_SESSION] Sesión universal de pruebas iniciada con admin@estudionova.uy (Modo Prueba activo)');
-        const testUniversalUser: User = {
-          id: 'd1111111-1111-1111-1111-111111111111',
-          app_metadata: { role: 'test_universal', is_super_admin: false, is_test_universal: true },
-          user_metadata: { first_name: 'Usuario', last_name: 'Pruebas Estudio Nova', role: 'test_universal', is_test_universal: true },
-          aud: 'authenticated',
-          created_at: new Date().toISOString(),
-          email: 'admin@estudionova.uy',
-        } as any;
-
-        setUser(testUniversalUser);
-        setUserRole('test_universal');
-        setIsSuperAdmin(false); // NUNCA SUPER ADMIN
-        setIsQaSession(true);
-        setMemberships([
-          { organizationId: 'd0000000-0000-0000-0000-000000000001', role: 'tenant_owner', isActive: true },
-          { organizationId: 'd0000000-0000-0000-0000-000000000001', role: 'tenant_admin', isActive: true },
-          { organizationId: 'd0000000-0000-0000-0000-000000000001', role: 'analyst', isActive: true },
-          { organizationId: 'd0000000-0000-0000-0000-000000000001', role: 'notary', isActive: true },
-          { organizationId: 'd0000000-0000-0000-0000-000000000001', role: 'lender', isActive: true },
-          { organizationId: 'd0000000-0000-0000-0000-000000000001', role: 'borrower', isActive: true },
-        ]);
-        setLoading(false);
-        return { error: null };
-      }
-    }
-
-    // Normalización de username simple a email
-    const emailToAuth = emailTrimmed.includes('@') ? emailTrimmed : `${emailTrimmed}@hipotecaly.uy`;
-
-    // 3. Intentar autenticación real en Supabase
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email: emailToAuth, password: passTrimmed });
-      if (!error && data.user) {
-        return { error: null };
-      }
-    } catch {
-      // Continuar con fallback de credenciales de prueba
-    }
-
-    // 4. Soporte para credenciales de demostración directas ÚNICAMENTE en desarrollo/test preview
-    if (!import.meta.env.PROD) {
-      if (
-        (emailTrimmed === 'superadmin' || emailTrimmed === 'admin@hipotecaly.uy') &&
-        (passTrimmed === 'admin123' || passTrimmed === 'admin')
-      ) {
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem('hipotecaly_test_role', 'super_admin');
-        }
-        const mockUser: User = {
-          id: 'a1111111-1111-1111-1111-111111111111',
-          app_metadata: { role: 'super_admin' },
-          user_metadata: { first_name: 'Super', last_name: 'Admin', role: 'super_admin' },
-          aud: 'authenticated',
-          created_at: new Date().toISOString(),
-          email: 'admin@hipotecaly.uy',
-        } as any;
         setUser(mockUser);
         setUserRole('super_admin');
         setIsSuperAdmin(true);
-        setMemberships([
-          {
-            organizationId: 'a0000000-0000-0000-0000-000000000001',
-            role: 'super_admin',
-            isActive: true,
-          },
-        ]);
+        const mems: UserMembership[] = [
+          { organizationId: 'a0000000-0000-0000-0000-000000000001', role: 'super_admin', isActive: true },
+        ];
+        setMemberships(mems);
         setLoading(false);
-        return { error: null };
+        console.log('[AUTH] signIn success (dev mock)');
+        console.log('[AUTH] role resolved: super_admin');
+        return { error: null, user: mockUser, role: 'super_admin', isSuperAdmin: true, memberships: mems };
       }
 
       if (
         (emailTrimmed === 'operador' || emailTrimmed === 'operador@hipotecaly.uy' || emailTrimmed === 'analyst') &&
         (passTrimmed === 'demo123' || passTrimmed === 'admin123' || passTrimmed === 'operador')
       ) {
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem('hipotecaly_test_role', 'analyst');
-        }
         const mockUser: User = {
           id: 'u-test-analyst',
           app_metadata: { role: 'analyst' },
@@ -500,26 +478,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(mockUser);
         setUserRole('analyst');
         setIsSuperAdmin(false);
-        setMemberships([
-          {
-            organizationId: 'a0000000-0000-0000-0000-000000000001',
-            role: 'analyst',
-            isActive: true,
-          },
-        ]);
+        const mems: UserMembership[] = [
+          { organizationId: 'd0000000-0000-0000-0000-000000000001', role: 'analyst', isActive: true },
+        ];
+        setMemberships(mems);
         setLoading(false);
-        return { error: null };
+        return { error: null, user: mockUser, role: 'analyst', isSuperAdmin: false, memberships: mems };
       }
 
       if (
         (emailTrimmed === 'cliente' || emailTrimmed === 'cliente@hipotecaly.uy' || emailTrimmed === 'borrower') &&
         (passTrimmed === 'demo123' || passTrimmed === 'admin123' || passTrimmed === 'cliente')
       ) {
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem('hipotecaly_test_role', 'borrower');
-        }
         const mockUser: User = {
-          id: 'u-test-borrower',
+          id: 'b2222222-2222-2222-2222-222222222222',
           app_metadata: { role: 'borrower' },
           user_metadata: { first_name: 'Juan', last_name: 'Solicitante', role: 'borrower' },
           aud: 'authenticated',
@@ -531,18 +503,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsSuperAdmin(false);
         setMemberships([]);
         setLoading(false);
-        return { error: null };
+        return { error: null, user: mockUser, role: 'borrower', isSuperAdmin: false, memberships: [] };
       }
 
       if (
         (emailTrimmed === 'prestamista' || emailTrimmed === 'prestamista@hipotecaly.uy' || emailTrimmed === 'lender') &&
         (passTrimmed === 'demo123' || passTrimmed === 'admin123' || passTrimmed === 'prestamista')
       ) {
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem('hipotecaly_test_role', 'lender');
-        }
         const mockUser: User = {
-          id: 'u-test-lender',
+          id: 'c1111111-1111-1111-1111-111111111111',
           app_metadata: { role: 'lender' },
           user_metadata: { first_name: 'Capital', last_name: 'Prestamista', role: 'lender' },
           aud: 'authenticated',
@@ -552,20 +521,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(mockUser);
         setUserRole('lender');
         setIsSuperAdmin(false);
-        setMemberships([]);
+        const mems: UserMembership[] = [
+          { organizationId: 'd0000000-0000-0000-0000-000000000001', role: 'lender', isActive: true },
+        ];
+        setMemberships(mems);
         setLoading(false);
-        return { error: null };
+        return { error: null, user: mockUser, role: 'lender', isSuperAdmin: false, memberships: mems };
       }
 
       if (
         (emailTrimmed === 'escribano' || emailTrimmed === 'escribano@hipotecaly.uy' || emailTrimmed === 'notary' || emailTrimmed === 'escribana') &&
         (passTrimmed === 'demo123' || passTrimmed === 'admin123' || passTrimmed === 'escribano' || passTrimmed === 'escribana')
       ) {
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem('hipotecaly_test_role', 'notary');
-        }
         const mockUser: User = {
-          id: 'u-test-notary',
+          id: 'e1111111-1111-1111-1111-111111111111',
           app_metadata: { role: 'notary' },
           user_metadata: { first_name: 'María', last_name: 'Pérez Morales', role: 'notary' },
           aud: 'authenticated',
@@ -575,20 +544,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(mockUser);
         setUserRole('notary');
         setIsSuperAdmin(false);
-        setMemberships([
-          {
-            organizationId: 'a0000000-0000-0000-0000-000000000001',
-            role: 'notary',
-            isActive: true,
-          },
-          {
-            organizationId: 'd0000000-0000-0000-0000-000000000001',
-            role: 'notary',
-            isActive: true,
-          },
-        ]);
+        const mems: UserMembership[] = [
+          { organizationId: 'd0000000-0000-0000-0000-000000000001', role: 'notary', isActive: true },
+        ];
+        setMemberships(mems);
         setLoading(false);
-        return { error: null };
+        return { error: null, user: mockUser, role: 'notary', isSuperAdmin: false, memberships: mems };
       }
     }
 

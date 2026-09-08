@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Checkbox } from '../../components/ui/Checkbox';
 import { useAuth } from '../../contexts/AuthContext';
+import { getAllRegisteredTenants } from '../../lib/tenantService';
 import { ArrowRight, AlertCircle, ShieldCheck } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
@@ -28,48 +29,57 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
     setErrorMessage(null);
 
-    const { error } = await signIn(email, password);
+    const { error, role, isSuperAdmin: isSuper, memberships: userMems } = await signIn(email, password);
     setLoading(false);
 
     if (error) {
       setErrorMessage(error.message || 'Credenciales incorrectas o usuario no encontrado.');
     } else {
-      const emailLower = email.trim().toLowerCase();
-      if (emailLower === 'admin' || emailLower.startsWith('admin') || emailLower === 'superadmin') {
-        navigate(redirectTo || '/admin');
-      } else if (emailLower === 'operador' || emailLower.startsWith('operador') || emailLower.startsWith('analyst')) {
-        navigate(redirectTo || '/demo/estudio-nova/admin');
-      } else if (emailLower === 'prestamista' || emailLower.startsWith('prestamista') || emailLower.startsWith('lender') || emailLower.startsWith('inversor')) {
-        navigate(redirectTo || '/demo/estudio-nova/inversor');
-      } else if (emailLower === 'escribano' || emailLower.startsWith('escriban') || emailLower.startsWith('notary')) {
-        navigate(redirectTo || '/notary');
-      } else {
-        const clientTarget = tenantParam
-          ? `/demo/${tenantParam}/cliente`
-          : '/demo/estudio-nova/cliente';
-        
-        if (isFromSaveSimulation) {
-          navigate(`${clientTarget}?tab=simulaciones&saved=true`);
-        } else {
-          navigate(redirectTo || clientTarget);
+      let targetTenantSlug = tenantParam || 'estudio-nova';
+      if (userMems && userMems.length > 0) {
+        const activeMem = userMems.find((m) => m.isActive && m.organizationId !== 'a0000000-0000-0000-0000-000000000001') || userMems[0];
+        if (activeMem) {
+          const allTenants = getAllRegisteredTenants();
+          const match = allTenants.find((t) => t.id === activeMem.organizationId);
+          if (match) targetTenantSlug = match.slug;
         }
       }
+
+      let destination = '';
+      if (redirectTo) {
+        destination = redirectTo;
+      } else if (isSuper || role === 'super_admin' || role === 'platform_admin') {
+        destination = '/admin';
+      } else if (role === 'tenant_admin' || role === 'tenant_owner' || role === 'analyst' || role === 'operator') {
+        destination = `/demo/${targetTenantSlug}/admin`;
+      } else if (role === 'notary') {
+        destination = '/notary';
+      } else if (role === 'lender') {
+        destination = `/demo/${targetTenantSlug}/inversor`;
+      } else {
+        const clientTarget = `/demo/${targetTenantSlug}/cliente`;
+        destination = isFromSaveSimulation ? `${clientTarget}?tab=simulaciones&saved=true` : clientTarget;
+      }
+
+      console.log('[AUTH] redirect ->', destination);
+      navigate(destination);
     }
   };
 
-  const handleDemoLogin = async (role: 'super_admin' | 'analyst' | 'borrower' | 'lender' | 'notary', targetPath: string) => {
+  const handleDemoLogin = async (roleType: 'super_admin' | 'analyst' | 'borrower' | 'lender' | 'notary', targetPath: string) => {
     const credentials = {
-      super_admin: { u: 'admin', p: 'admin123' },
-      analyst: { u: 'operador', p: 'demo123' },
-      borrower: { u: 'cliente', p: 'demo123' },
-      lender: { u: 'prestamista', p: 'demo123' },
-      notary: { u: 'escribano', p: 'demo123' },
-    }[role];
+      super_admin: { u: 'admin@hipotecaly.uy', p: 'admin123' },
+      analyst: { u: 'operador@hipotecaly.uy', p: 'demo123' },
+      borrower: { u: 'cliente@hipotecaly.uy', p: 'demo123' },
+      lender: { u: 'prestamista@hipotecaly.uy', p: 'demo123' },
+      notary: { u: 'escribano@hipotecaly.uy', p: 'demo123' },
+    }[roleType];
     setLoading(true);
     setErrorMessage(null);
     const { error } = await signIn(credentials.u, credentials.p);
     setLoading(false);
     if (!error) {
+      console.log('[AUTH] demo redirect ->', targetPath);
       navigate(targetPath);
     } else {
       setErrorMessage(error.message);
