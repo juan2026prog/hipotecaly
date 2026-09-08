@@ -1027,6 +1027,19 @@ async function adminTestUserHandler(req: any, res: any) {
         .update(updates)
         .eq('id', 'global');
 
+      if (new_password && typeof new_password === 'string' && new_password.length >= 6) {
+        try {
+          const targetEmail = updates.test_user_email || email || 'admin@estudionova.uy';
+          const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
+          const targetUser = usersData?.users?.find((u: any) => u.email?.toLowerCase() === targetEmail.toLowerCase());
+          if (targetUser) {
+            await supabaseAdmin.auth.admin.updateUserById(targetUser.id, { password: new_password });
+          }
+        } catch (pwdErr) {
+          console.error('Error updating test user password in auth:', pwdErr);
+        }
+      }
+
       await import('../../server/security/securityEventService.js').then(({ SecurityEventService }) => {
         if (email) {
           SecurityEventService.logSecurityEvent({

@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase';
 import { Borrower } from '../lib/types';
 import { resolveTenant } from '../lib/tenantService';
 import { adminQaService } from '../lib/adminQaService';
+import { platformModeService } from '../lib/platformModeService';
 
 export type UserRole =
   | 'super_admin'
@@ -410,6 +411,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email: emailToAuth, password: passTrimmed });
       if (!error && data.user) {
+        // Validación de Modo Producción para Usuario Universal de Prueba
+        const isTestUser = platformModeService.isUniversalTestUser(data.user.email || emailToAuth);
+        if (isTestUser) {
+          const settings = await platformModeService.getSettings();
+          if (settings.platform_mode === 'production' || !settings.test_user_enabled) {
+            await supabase.auth.signOut();
+            setUser(null);
+            setSession(null);
+            setLoading(false);
+            console.warn('[AUTH] Universal test user blocked: platform_mode is production');
+            return {
+              error: new Error('Acceso no autorizado: El usuario universal de prueba está deshabilitado en modo Producción.'),
+            };
+          }
+        }
+
         console.log('[AUTH] signIn success');
         console.log('[AUTH] session available');
         console.log('[AUTH] user loaded');

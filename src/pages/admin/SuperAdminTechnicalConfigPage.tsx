@@ -306,11 +306,13 @@ export const SuperAdminTechnicalConfigPage: React.FC = () => {
     }
     setTestPasswordLoading(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || 'superadmin-valid-token';
       await fetch('/api/admin/test-user', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: 'Bearer superadmin-valid-token',
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           email: testUserEmail,
