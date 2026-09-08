@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   FileText,
@@ -18,11 +18,17 @@ import {
   BarChart2,
   ShieldCheck,
   AlertTriangle,
+  Plus,
+  Search,
+  ChevronDown,
+  Clock,
+  Home,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
 import { TenantBrand } from '../common/TenantBrand';
 import { getTenantModules, DEFAULT_MODULES_MAP } from '../../lib/tenantModulesService';
+import { getApplicationsList } from '../../lib/backofficeService';
 
 interface NavItem {
   name: string;
@@ -37,44 +43,86 @@ interface NavGroup {
 
 export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: string }> = ({ children }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { signOut, user, isSuperAdmin, hasRole } = useAuth();
   const { tenant } = useTenant();
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [modules, setModules] = useState(DEFAULT_MODULES_MAP);
 
-  React.useEffect(() => {
+  // Global "+ Crear" state
+  const [showCreateMenu, setShowCreateMenu] = useState(false);
+  const createMenuRef = useRef<HTMLDivElement>(null);
+
+  // Universal Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [allApps, setAllApps] = useState<any[]>([]);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
     if (tenant.id) {
       getTenantModules(tenant.id).then((m) => setModules(m));
+      getApplicationsList({ organizationId: tenant.id, useDemoMode: Boolean(tenant.demo_mode) }).then((apps) => {
+        setAllApps(apps);
+      });
     }
-  }, [tenant.id]);
+  }, [tenant.id, tenant.demo_mode]);
+
+  // Handle click outside create menu and search dropdown
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (createMenuRef.current && !createMenuRef.current.contains(e.target as Node)) {
+        setShowCreateMenu(false);
+      }
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setIsSearchFocused(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Keyboard shortcut Ctrl+K for search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        const input = document.getElementById('universal-search-input');
+        if (input) input.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const isTenantPath = location.pathname.startsWith('/demo/');
   const baseRoute = isTenantPath ? `/demo/${tenant.slug}/admin` : '/app';
   const canManageSettings = isSuperAdmin || hasRole(['tenant_admin', 'tenant_owner'], tenant.id);
 
+  // 4 Grupos Simplificados según requerimiento UX
   const navigationGroups: NavGroup[] = [
     {
-      title: 'OPERACIONES',
+      title: 'TRABAJO',
       items: [
-        { name: 'Dashboard', href: baseRoute, icon: LayoutDashboard },
-        { name: 'Solicitudes y Expedientes', href: `${baseRoute}/solicitudes`, icon: FileText },
-        { name: 'Clientes', href: `${baseRoute}/clientes`, icon: Users },
-        { name: 'Propiedades', href: `${baseRoute}/propiedades`, icon: Building2 },
-      ],
-    },
-    {
-      title: 'ANÁLISIS',
-      items: [
-        { name: 'Valuaciones', href: `${baseRoute}/tasaciones`, icon: Compass },
-        { name: 'Documentos', href: `${baseRoute}/documentos`, icon: FileCheck },
-        ...(modules.investor_portal_enabled || isSuperAdmin
-          ? [{ name: 'Red de Inversores', href: `${baseRoute}/prestamistas`, icon: UserCheck }]
-          : []),
+        { name: 'Inicio', href: baseRoute, icon: LayoutDashboard },
+        { name: 'Expedientes', href: `${baseRoute}/solicitudes`, icon: FileText },
         { name: 'Tareas', href: `${baseRoute}/tareas`, icon: CheckSquare },
       ],
     },
     {
-      title: 'INTELIGENCIA',
+      title: 'INFORMACIÓN',
+      items: [
+        { name: 'Clientes', href: `${baseRoute}/clientes`, icon: Users },
+        { name: 'Garantías', href: `${baseRoute}/propiedades`, icon: Building2 },
+        { name: 'Documentos', href: `${baseRoute}/documentos`, icon: FileCheck },
+        { name: 'Tasaciones', href: `${baseRoute}/tasaciones`, icon: Compass },
+        ...(modules.investor_portal_enabled || isSuperAdmin
+          ? [{ name: 'Inversores', href: `${baseRoute}/prestamistas`, icon: UserCheck }]
+          : []),
+      ],
+    },
+    {
+      title: 'CONTROL',
       items: [
         { name: 'Analítica', href: `${baseRoute}/analitica`, icon: BarChart2 },
         ...(canManageSettings ? [{ name: 'Auditoría', href: `${baseRoute}/auditoria`, icon: ShieldCheck }] : []),
@@ -83,8 +131,8 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
     {
       title: 'ADMINISTRACIÓN',
       items: [
-        ...(canManageSettings ? [{ name: 'White-Label & Marca', href: `${baseRoute}/whitelabel`, icon: Palette }] : []),
-        ...(canManageSettings ? [{ name: 'Usuarios', href: `${baseRoute}/usuarios`, icon: Users }] : []),
+        ...(canManageSettings ? [{ name: 'Marca y Portal', href: `${baseRoute}/whitelabel`, icon: Palette }] : []),
+        ...(canManageSettings ? [{ name: 'Equipo', href: `${baseRoute}/usuarios`, icon: Users }] : []),
         ...(canManageSettings ? [{ name: 'Organización', href: `${baseRoute}/organizacion`, icon: Building2 }] : []),
         ...(canManageSettings ? [{ name: 'Configuración', href: `${baseRoute}/configuracion`, icon: Settings }] : []),
       ],
@@ -213,8 +261,10 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         
         {/* Top Header */}
-        <header className="h-16 md:h-20 bg-white border-b border-slate-border px-4 sm:px-6 flex items-center justify-between z-20">
-          <div className="flex items-center space-x-3">
+        <header className="h-16 md:h-20 bg-white border-b border-slate-border px-4 sm:px-6 flex items-center justify-between z-20 gap-4">
+          
+          {/* Left: Mobile trigger & Universal Search */}
+          <div className="flex items-center space-x-3 flex-1 max-w-xl">
             {/* Mobile menu trigger */}
             <button
               onClick={() => setMobileDrawerOpen(true)}
@@ -224,28 +274,204 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
               <Menu className="w-6 h-6" />
             </button>
 
-            <div className="flex items-center space-x-2 text-xs text-slate-500">
-              <span className="font-bold text-navy">Backoffice</span>
-              <span>/</span>
-              <span className="capitalize font-medium">
-                {location.pathname.split('/')[2]?.replace('-', ' ') || 'Dashboard'}
-              </span>
+            {/* Universal Search Bar */}
+            <div ref={searchContainerRef} className="relative flex-1">
+              <div className="relative flex items-center">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+                <input
+                  id="universal-search-input"
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  placeholder="Buscar expediente, cliente, cédula, padrón... (Ctrl+K)"
+                  className="w-full h-10 pl-9 pr-8 bg-slate-50 border border-slate-200 rounded-xl text-xs text-navy placeholder:text-slate-400 focus:bg-white focus:border-[#102d49] focus:ring-2 focus:ring-[#102d49]/10 transition-all font-medium"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 text-slate-400 hover:text-navy p-1"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Live Universal Search Dropdown */}
+              {isSearchFocused && (
+                <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-slate-200 py-3 z-50 max-h-96 overflow-y-auto animate-in fade-in">
+                  {searchQuery ? (
+                    (() => {
+                      const q = searchQuery.toLowerCase();
+                      const matchedApps = allApps.filter((a) => {
+                        const borrower = `${a.borrower?.first_name || ''} ${a.borrower?.last_name || ''} ${a.borrower?.document_id || ''} ${a.borrower?.email || ''}`.toLowerCase();
+                        const prop = `${a.property?.cadastral_number || ''} ${a.property?.department || ''} ${a.property?.property_type || ''}`.toLowerCase();
+                        const id = (a.public_id || '').toLowerCase();
+                        return borrower.includes(q) || prop.includes(q) || id.includes(q);
+                      });
+
+                      if (matchedApps.length === 0) {
+                        return (
+                          <div className="px-4 py-6 text-center text-xs text-slate-400">
+                            No se encontraron resultados para "{searchQuery}"
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-3 text-xs text-left">
+                          <div className="px-4 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                            Resultados coincidentes ({matchedApps.length})
+                          </div>
+                          <div className="divide-y divide-slate-100">
+                            {matchedApps.slice(0, 6).map((app) => (
+                              <div
+                                key={app.id}
+                                onClick={() => {
+                                  setIsSearchFocused(false);
+                                  setSearchQuery('');
+                                  navigate(`${baseRoute}/solicitudes/${app.id}`);
+                                }}
+                                className="px-4 py-2.5 hover:bg-slate-50 cursor-pointer flex items-center justify-between group transition-colors"
+                              >
+                                <div className="space-y-0.5">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="font-mono font-bold text-[#102d49]">{app.public_id}</span>
+                                    <span className="text-slate-300">•</span>
+                                    <span className="font-semibold text-slate-800">
+                                      {app.borrower ? `${app.borrower.first_name} ${app.borrower.last_name}` : 'Sin titular'}
+                                    </span>
+                                  </div>
+                                  <div className="text-[11px] text-slate-400 flex items-center space-x-2">
+                                    {app.property && (
+                                      <span>Padrón: {app.property.cadastral_number || 'A definir'} ({app.property.department})</span>
+                                    )}
+                                    {app.borrower?.document_id && (
+                                      <span>· CI: {app.borrower.document_id}</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <span className="text-[11px] font-bold text-brand-green opacity-0 group-hover:opacity-100 transition-opacity">
+                                  Abrir →
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    <div className="space-y-3 text-xs text-left">
+                      <div className="px-4 pb-1 flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        <span>Recientes & Frecuentes</span>
+                        <span className="text-[10px] font-mono text-slate-400 font-normal">Ctrl+K</span>
+                      </div>
+                      <div className="divide-y divide-slate-100">
+                        {allApps.slice(0, 4).map((app) => (
+                          <div
+                            key={app.id}
+                            onClick={() => {
+                              setIsSearchFocused(false);
+                              navigate(`${baseRoute}/solicitudes/${app.id}`);
+                            }}
+                            className="px-4 py-2 hover:bg-slate-50 cursor-pointer flex items-center justify-between group transition-colors"
+                          >
+                            <div className="flex items-center space-x-2.5">
+                              <Clock className="w-3.5 h-3.5 text-slate-400" />
+                              <span className="font-mono font-bold text-[#102d49]">{app.public_id}</span>
+                              <span className="text-slate-600 font-medium">
+                                {app.borrower ? `${app.borrower.first_name} ${app.borrower.last_name}` : 'Expediente'}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-slate-400">Ver ficha</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
+          {/* Right: + Crear Button & Status & Link */}
+          <div className="flex items-center space-x-3">
+            
+            {/* Botón Global "+ Crear" */}
+            <div ref={createMenuRef} className="relative">
+              <button
+                onClick={() => setShowCreateMenu(!showCreateMenu)}
+                className="h-10 px-3.5 rounded-xl bg-[#102d49] hover:bg-[#173a5e] text-white text-xs font-bold shadow-xs flex items-center space-x-1.5 transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Crear</span>
+                <ChevronDown className="w-3 h-3 text-slate-300" />
+              </button>
+
+              {/* Dropdown Options */}
+              {showCreateMenu && (
+                <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 text-left animate-in fade-in">
+                  <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-1.5 mb-1">
+                    Acciones Rápidas
+                  </div>
+                  <Link
+                    to="/solicitar"
+                    onClick={() => setShowCreateMenu(false)}
+                    className="flex items-center space-x-2.5 px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-navy font-semibold transition-colors"
+                  >
+                    <FileText className="w-4 h-4 text-brand-green" />
+                    <span>Nuevo Expediente</span>
+                  </Link>
+                  <Link
+                    to={`${baseRoute}/clientes`}
+                    onClick={() => setShowCreateMenu(false)}
+                    className="flex items-center space-x-2.5 px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-navy font-semibold transition-colors"
+                  >
+                    <Users className="w-4 h-4 text-blue-600" />
+                    <span>Nuevo Cliente</span>
+                  </Link>
+                  <Link
+                    to={`${baseRoute}/propiedades`}
+                    onClick={() => setShowCreateMenu(false)}
+                    className="flex items-center space-x-2.5 px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-navy font-semibold transition-colors"
+                  >
+                    <Home className="w-4 h-4 text-purple-600" />
+                    <span>Nueva Garantía</span>
+                  </Link>
+                  <Link
+                    to={`${baseRoute}/tareas`}
+                    onClick={() => setShowCreateMenu(false)}
+                    className="flex items-center space-x-2.5 px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-navy font-semibold transition-colors"
+                  >
+                    <CheckSquare className="w-4 h-4 text-amber-600" />
+                    <span>Nueva Tarea</span>
+                  </Link>
+                  <Link
+                    to={`${baseRoute}/documentos`}
+                    onClick={() => setShowCreateMenu(false)}
+                    className="flex items-center space-x-2.5 px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-navy font-semibold transition-colors border-t border-slate-100 mt-1 pt-2"
+                  >
+                    <FileCheck className="w-4 h-4 text-emerald-600" />
+                    <span>Nueva Plantilla Documental</span>
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* Portal Link */}
             <Link
               to="/"
               target="_blank"
-              className="hidden sm:inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-500 hover:text-brand-green transition-colors py-2 px-3 rounded-lg hover:bg-slate-50 min-h-[44px]"
+              className="hidden sm:inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-500 hover:text-brand-green transition-colors py-2 px-3 rounded-lg hover:bg-slate-50 min-h-[40px]"
             >
-              <span>Ver Portal de Clientes</span>
+              <span>Ver Portal</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </Link>
 
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-brand-green-dark border border-brand-green/20">
+            {/* Operational Status */}
+            <span className="hidden md:inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-brand-green-dark border border-brand-green/20">
               <span className="w-1.5 h-1.5 rounded-full bg-brand-green mr-1.5 animate-pulse" />
-              Todos los servicios operativos
+              Operativo
             </span>
           </div>
         </header>

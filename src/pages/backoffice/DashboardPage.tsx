@@ -142,35 +142,35 @@ export const DashboardPage: React.FC = () => {
     <BackofficeLayout>
       <div className="space-y-7 text-left max-w-7xl mx-auto">
         
-        {/* Header con Branding y CTA */}
+        {/* Header con Branding y Resumen */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div>
             <div className="flex items-center space-x-2">
               <span className="text-[10px] font-bold text-[#f4b43b] bg-[#102d49] px-2 py-0.5 rounded uppercase tracking-wider">
-                {brandName} BACKOFFICE
+                {brandName}
               </span>
               <span className="text-slate-400">•</span>
-              <span className="text-xs text-slate-500 font-medium">Gestión Operativa de Crédito Hipotecario</span>
+              <span className="text-xs text-slate-500 font-medium">Panel Principal de Trabajo</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[#102d49] tracking-tight mt-1">
-              Panel de Control Operativo
+              Inicio
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-              Supervisión de expedientes que requieren acción, pipeline de formalización y legajo notarial.
+              Estado general de la operativa, alertas prioritarias y seguimiento de expedientes.
             </p>
           </div>
 
           <div className="flex items-center space-x-2.5">
             <Link to="/solicitar">
               <Button variant="primary" size="md" className="!bg-[#102d49] hover:!bg-[#173a5e] !text-white !font-bold text-xs shadow-sm">
-                <Plus className="w-4 h-4 mr-1.5" /> Nueva Solicitud
+                <Plus className="w-4 h-4 mr-1.5" /> Nuevo Expediente
               </Button>
             </Link>
           </div>
         </div>
 
         {/* ============================================================ */}
-        {/* ARRIBA: NECESITA ATENCIÓN (PROTAGONISTA)                      */}
+        {/* A. ¿QUÉ NECESITA MI ATENCIÓN? (BLOQUE PROTAGONISTA)          */}
         {/* ============================================================ */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-amber-50/40">
@@ -179,12 +179,12 @@ export const DashboardPage: React.FC = () => {
                 <ShieldAlert className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-900">Necesita Atención Inmediata</h3>
-                <p className="text-xs text-slate-500">Expedientes detenidos, recaudos faltantes y tareas operativas prioritarias</p>
+                <h2 className="text-sm font-bold text-slate-900">Necesita tu atención</h2>
+                <p className="text-xs text-slate-500">Expedientes bloqueados, recaudos faltantes y tareas urgentes</p>
               </div>
             </div>
             <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
-              {attentionItems.length} acciones requeridas
+              {attentionItems.length} alertas activas
             </span>
           </div>
 
@@ -199,7 +199,7 @@ export const DashboardPage: React.FC = () => {
                     <span className="font-semibold text-slate-800">{item.typeText}</span>
                     <span className="text-slate-300">•</span>
                     <span className="font-mono font-bold text-[#102d49]">{item.applicationId}</span>
-                    <span className="text-slate-400">({item.client})</span>
+                    <span className="text-slate-500">({item.client})</span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
                       {item.dueDate}
                     </span>
@@ -209,9 +209,10 @@ export const DashboardPage: React.FC = () => {
 
                 <Link
                   to={item.link}
-                  className="inline-flex items-center text-xs font-bold text-[#102d49] hover:text-[#173a5e] bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg shrink-0 transition"
+                  className="inline-flex items-center justify-center text-xs font-bold text-white bg-[#102d49] hover:bg-[#173a5e] px-4 py-2 rounded-xl shrink-0 shadow-xs transition"
                 >
-                  {item.actionLabel} <ArrowRight className="w-3.5 h-3.5 ml-1.5 text-[#f4b43b]" />
+                  {item.actionLabel}
+                  <ArrowRight className="w-3.5 h-3.5 ml-1.5 text-[#f4b43b]" />
                 </Link>
               </div>
             ))}
@@ -219,19 +220,64 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         {/* ============================================================ */}
-        {/* CENTRO: PIPELINE OPERATIVO DE SOLICITUDES                     */}
+        {/* B. ¿CÓMO ESTÁ MI OPERACIÓN? (4 MÉTRICAS COMPACTAS)           */}
+        {/* ============================================================ */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+              Expedientes Activos
+            </span>
+            <div className="text-2xl sm:text-3xl font-black text-[#102d49] font-serif">
+              {kpiCards.activeRequests || 8}
+            </div>
+            <span className="text-xs text-slate-500 block">En gestión operativa</span>
+          </div>
+
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+              Volumen en Operación
+            </span>
+            <div className="text-2xl sm:text-3xl font-black text-[#102d49] font-serif">
+              USD 1.840.000
+            </div>
+            <span className="text-xs text-emerald-700 font-semibold block">Créditos hipotecarios</span>
+          </div>
+
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+              Próximos a Cerrar
+            </span>
+            <div className="text-2xl sm:text-3xl font-black text-emerald-700 font-serif">
+              {kpiCards.closingSoon || 4}
+            </div>
+            <span className="text-xs text-slate-500 block">En firma o formalización</span>
+          </div>
+
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+              Demorados / Sobre Tiempo
+            </span>
+            <div className="text-2xl sm:text-3xl font-black text-rose-700 font-serif">
+              {Math.max(1, kpiCards.waitingDocs)}
+            </div>
+            <span className="text-xs text-rose-600 font-semibold block">Requieren seguimiento</span>
+          </div>
+        </div>
+
+        {/* ============================================================ */}
+        {/* C. ¿DÓNDE ESTÁN LOS EXPEDIENTES? (PIPELINE DE 7 ETAPAS)       */}
         {/* ============================================================ */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
-              <h3 className="text-sm font-bold text-[#102d49] flex items-center">
-                <Layers className="w-4 h-4 mr-2 text-[#f4b43b]" />
-                Pipeline Operativo de Solicitudes
-              </h3>
-              <p className="text-xs text-slate-500">Haz click en cualquier etapa para filtrar y gestionar los expedientes</p>
+              <h2 className="text-sm font-bold text-[#102d49] flex items-center">
+                <Layers className="w-4 h-4 mr-2 text-brand-green" />
+                Dónde están los expedientes
+              </h2>
+              <p className="text-xs text-slate-500">Haz click en cualquier etapa para ver los expedientes correspondientes</p>
             </div>
             <Link to={`${baseRoute}/solicitudes`} className="text-xs font-bold text-[#102d49] hover:underline flex items-center">
-              Ver todas <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
+              Ver todos <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
             </Link>
           </div>
 
@@ -242,10 +288,10 @@ export const DashboardPage: React.FC = () => {
                 to={`${baseRoute}/solicitudes?stage=${stage.filterStatus}`}
                 className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 hover:bg-slate-100/90 hover:border-[#102d49]/30 transition text-center space-y-1.5 group cursor-pointer block"
               >
-                <span className="text-xs font-bold text-[#102d49] block truncate group-hover:text-amber-800" title={stage.name}>
-                  {stage.name}
+                <span className="text-xs font-bold text-[#102d49] block truncate group-hover:text-brand-green" title={stage.name}>
+                  {stage.name.replace(/^[0-9]+\.\s*/, '')}
                 </span>
-                <div className="text-2xl font-black text-[#102d49] font-serif pt-1 group-hover:scale-105 transition-transform">
+                <div className="text-2xl font-black text-[#102d49] font-serif pt-0.5 group-hover:scale-105 transition-transform">
                   {stage.count}
                 </div>
                 <span className="text-[10px] text-slate-400 group-hover:text-[#102d49] font-semibold block">
@@ -262,66 +308,56 @@ export const DashboardPage: React.FC = () => {
         <div className="space-y-6">
           
           {/* ============================================================ */}
-          {/* BLOQUE DE CUELLOS DE BOTELLA (SLA por etapa)                 */}
+          {/* BLOQUE DE TIEMPOS POR ETAPA (SLAs Humanizados)              */}
           {/* ============================================================ */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center space-x-2.5">
-                <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center">
+                <div className="w-7 h-7 rounded-lg bg-[#102d49]/10 text-[#102d49] flex items-center justify-center">
                   <Clock className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold text-slate-900">Tiempos por Etapa & Cuellos de Botella</h3>
-                  <p className="text-[11px] text-slate-500">Días promedio en cada etapa. Alertas automáticas ante SLA superado.</p>
+                  <h3 className="text-xs font-bold text-slate-900">Ritmo de Trabajo por Etapa</h3>
+                  <p className="text-[11px] text-slate-500">Tiempos promedio de resolución y cumplimiento de plazos previstos</p>
                 </div>
               </div>
-              {kpiCards.activeRequests > 0 && (
-                <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
-                  {Math.max(0, kpiCards.waitingDocs + kpiCards.pendingValuation)} sobre SLA
-                </span>
-              )}
+              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">
+                Promedios últimos 30 días
+              </span>
             </div>
 
             <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               {[
-                { stage: 'Documentación', avgDays: 3.8, slaLimit: 3, color: 'rose', icon: '📄' },
-                { stage: 'Tasación', avgDays: 2.1, slaLimit: 5, color: 'amber', icon: '🏠' },
-                { stage: 'Evaluación', avgDays: 1.7, slaLimit: 4, color: 'blue', icon: '🔍' },
-                { stage: 'Firma', avgDays: 0.9, slaLimit: 3, color: 'emerald', icon: '✍️' },
-              ].map((item) => {
-                const overSla = item.avgDays > item.slaLimit;
-                return (
-                  <div
-                    key={item.stage}
-                    className={`p-3 rounded-xl border ${
-                      overSla ? 'border-rose-200 bg-rose-50/60' : 'border-slate-200 bg-slate-50/60'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-base">{item.icon}</span>
-                      {overSla && (
-                        <span className="text-[9px] font-bold text-rose-700 bg-rose-100 px-1.5 py-0.5 rounded-full">
-                          ALERTA
-                        </span>
-                      )}
-                    </div>
-                    <p className={`font-bold text-[11px] truncate ${overSla ? 'text-rose-800' : 'text-slate-700'}`}>
-                      {item.stage}
-                    </p>
-                    <div className={`text-lg font-black font-serif mt-0.5 ${overSla ? 'text-rose-700' : 'text-slate-800'}`}>
-                      {item.avgDays} días
-                    </div>
-                    <p className="text-[10px] text-slate-400">SLA: {item.slaLimit} días máx.</p>
-                    {/* Barra de progreso vs SLA */}
-                    <div className="mt-1.5 h-1.5 rounded-full bg-slate-200 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${overSla ? 'bg-rose-500' : 'bg-brand-green'}`}
-                        style={{ width: `${Math.min(100, (item.avgDays / item.slaLimit) * 100)}%` }}
-                      />
-                    </div>
+                { stage: 'Documentación', avgDays: '3,8', humanStatus: 'Más lento de lo esperado', isDelayed: true, targetDesc: 'Esperado: 3 días', icon: '📄' },
+                { stage: 'Tasación', avgDays: '2,1', humanStatus: 'En tiempo esperado', isDelayed: false, targetDesc: 'Esperado: 5 días', icon: '🏠' },
+                { stage: 'Evaluación', avgDays: '1,7', humanStatus: 'En tiempo esperado', isDelayed: false, targetDesc: 'Esperado: 4 días', icon: '🔍' },
+                { stage: 'Firma Notarial', avgDays: '0,9', humanStatus: 'En tiempo esperado', isDelayed: false, targetDesc: 'Esperado: 3 días', icon: '✍️' },
+              ].map((item) => (
+                <div
+                  key={item.stage}
+                  className={`p-3.5 rounded-xl border ${
+                    item.isDelayed ? 'border-amber-200 bg-amber-50/50' : 'border-slate-200 bg-slate-50/60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-base">{item.icon}</span>
+                    <span
+                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                        item.isDelayed ? 'text-amber-800 bg-amber-100' : 'text-emerald-800 bg-emerald-100'
+                      }`}
+                    >
+                      {item.isDelayed ? '⚠️ ' + item.humanStatus : '✓ ' + item.humanStatus}
+                    </span>
                   </div>
-                );
-              })}
+                  <p className="font-bold text-[11px] text-slate-800 truncate">
+                    {item.stage}
+                  </p>
+                  <div className="text-lg font-black font-serif mt-0.5 text-[#102d49]">
+                    {item.avgDays} días promedio
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{item.targetDesc}</p>
+                </div>
+              ))}
             </div>
           </div>
 

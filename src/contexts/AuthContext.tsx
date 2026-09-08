@@ -362,7 +362,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       (emailTrimmed === 'admin@test.com' || emailTrimmed === 'admin' || emailTrimmed === 'superadmin' || emailTrimmed === 'admin@hipotecaly.uy') &&
       (passTrimmed === 'admin123' || passTrimmed === 'admin')
     ) {
-      console.log('[QA_ADMIN_SESSION] Sesión temporal QA iniciada con credenciales admin/admin123 (Ambiente DEV/QA activo)');
+      console.log('[QA_ADMIN_SESSION] Sesión temporal QA iniciada con credenciales admin@test.com / admin123 (Ambiente DEV/QA activo)');
       if (typeof window !== 'undefined') {
         window.localStorage.setItem('hipotecaly_master_user', 'admin@test.com');
         window.localStorage.setItem('hipotecaly_test_role', 'super_admin');
@@ -373,7 +373,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user_metadata: { first_name: 'Admin', last_name: 'QA Total', role: 'super_admin' },
         aud: 'authenticated',
         created_at: new Date().toISOString(),
-        email: 'admin@hipotecaly.test',
+        email: 'admin@test.com',
       } as any;
       setUser(masterUser);
       setUserRole('super_admin');

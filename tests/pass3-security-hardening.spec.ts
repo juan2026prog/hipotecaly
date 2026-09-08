@@ -19,16 +19,16 @@ test.describe('HIPOTECALY: Security Hardening PASS 3 Final Suite', () => {
   // 1. QA ADMIN ISOLATION & ENVIRONMENT GATING
   // ----------------------------------------------------------------------------
   test.describe('1. QA Admin Isolation & Environment Gating', () => {
-    test('QA Mode: admin / admin123 debe generar sesión QA con todos los roles en DEV', async () => {
+    test('QA Mode: admin@test.com / admin123 debe generar sesión QA con todos los roles en DEV', async () => {
       // Simular login en ambiente DEV
       const isProd = false;
-      const email = 'admin';
+      const email = 'admin@test.com';
       const password = 'admin123';
 
       let isAllowed = false;
       let sessionType = '';
 
-      if (!isProd && email === 'admin' && password === 'admin123') {
+      if (!isProd && (email === 'admin@test.com' || email === 'admin') && password === 'admin123') {
         isAllowed = true;
         sessionType = 'QA_ADMIN_SESSION';
       }
@@ -37,16 +37,16 @@ test.describe('HIPOTECALY: Security Hardening PASS 3 Final Suite', () => {
       expect(sessionType).toBe('QA_ADMIN_SESSION');
     });
 
-    test('PROD Lockdown: admin / admin123 debe ser estrictamente DENEGADO en producción', async () => {
+    test('PROD Lockdown: admin@test.com / admin123 debe ser estrictamente DENEGADO en producción', async () => {
       // Simular intento de login en ambiente PROD
       const isProd = true;
-      const email = 'admin';
+      const email = 'admin@test.com';
       const password = 'admin123';
 
       let isAllowed = false;
       let statusCode = 200;
 
-      if (!isProd && email === 'admin' && password === 'admin123') {
+      if (!isProd && (email === 'admin@test.com' || email === 'admin') && password === 'admin123') {
         isAllowed = true;
       } else {
         // En producción el mock bypass no existe

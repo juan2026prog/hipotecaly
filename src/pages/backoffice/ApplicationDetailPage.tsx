@@ -11,18 +11,16 @@ import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import {
   ArrowLeft,
+  ArrowRight,
   FileText,
   User,
   Home,
-  DollarSign,
   Compass,
-  Activity,
   CheckSquare,
   Clock,
   CheckCircle2,
   FileCheck,
   Plus,
-  Lock,
   Sparkles,
   Printer,
   FileSignature,
@@ -31,16 +29,13 @@ import {
   Share2,
   Fingerprint,
   UserCheck,
-  Users,
   ShieldAlert,
 } from 'lucide-react';
 import { ApplicationMatchingTab } from '../../components/backoffice/ApplicationMatchingTab';
 import { HipotecalyAiTab } from '../../components/ai/HipotecalyAiTab';
-import { maskPhone, maskEmail } from '../../lib/sensitiveDataService';
 import { DocumentHub } from '../../components/docflow/DocumentHub';
 import { DocumentGenerationModal } from '../../components/docflow/DocumentGenerationModal';
 import { KycVerificationCard } from '../../components/identity/KycVerificationCard';
-import { SignatureProcessCard } from '../../components/signature/SignatureProcessCard';
 import { isMarketplaceEnabled } from '../../config/features';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -278,24 +273,31 @@ export const ApplicationDetailPage: React.FC = () => {
   const currentStageIndex = Math.max(0, stages.findIndex(s => s.match.includes(app.status)));
 
 
+  // 6 Tabs Consolidados según especificación UX
   const tabs = [
-    { id: 'resumen', label: 'Ficha 360° & Resumen', icon: FileText },
+    { id: 'resumen', label: 'Resumen', icon: FileText },
     { id: 'solicitante', label: 'Solicitante', icon: User },
-    { id: 'propiedad', label: 'Propiedad', icon: Home },
-    { id: 'ingresos', label: 'Ingresos & Capacidad', icon: DollarSign },
-    { id: 'personas', label: 'Personas & Cotitulares', icon: Users },
-    { id: 'documentos', label: 'DocFlow & Legajo', icon: FileCheck },
-    { id: 'valuacion', label: 'Tasación', icon: Compass },
-    { id: 'riesgo', label: 'Análisis de Riesgo', icon: ShieldAlert },
-    { id: 'oferta', label: 'Oferta & Condiciones', icon: DollarSign },
-    { id: 'ia', label: 'Evaluación IA', icon: Sparkles },
-    { id: 'firmas', label: 'Firma Notarial', icon: FileSignature },
-    { id: 'comunicaciones', label: 'Comunicaciones', icon: MessageSquare },
-    { id: 'actividad', label: 'Timeline de Actividad', icon: Activity },
-    ...(isMarketplaceEnabled() || isSuperAdmin
-      ? [{ id: 'prestamistas', label: 'Red Inversores', icon: Lock }]
-      : []),
+    { id: 'garantia', label: 'Garantía', icon: Home },
+    { id: 'analisis', label: 'Análisis', icon: ShieldAlert },
+    { id: 'documentos', label: 'Documentación', icon: FileCheck },
+    { id: 'seguimiento', label: 'Seguimiento', icon: Clock },
   ];
+
+  // Sub-tabs internas para navegación fluida
+  const [solicitanteSubTab, setSolicitanteSubTab] = useState<'perfil' | 'ingresos' | 'cotitulares' | 'kyc'>('perfil');
+  const [analisisSubTab, setAnalisisSubTab] = useState<'riesgo' | 'ia' | 'oferta' | 'inversores'>('riesgo');
+  const [seguimientoSubTab, setSeguimientoSubTab] = useState<'tareas' | 'comunicaciones' | 'actividad'>('tareas');
+
+  // Próxima Acción Dinámica calculada
+  const [currentNextAction, setCurrentNextAction] = useState(() => {
+    if (app.status === 'submitted' || app.status === 'draft') return { title: 'Revisar documentación inicial del solicitante', responsible: 'Mesa de Crédito', due: 'Hoy', btnLabel: 'Revisar legajo', nextStep: 'info_review' };
+    if (app.status === 'info_review') return { title: 'Solicitar certificado de ingresos y DGI', responsible: 'Valeria Rivas', due: 'Hoy', btnLabel: 'Solicitar ahora', nextStep: 'property_analysis' };
+    if (app.status === 'property_analysis') return { title: 'Asignar perito tasador para inspección', responsible: 'Coordinador de Garantías', due: 'En 24hs', btnLabel: 'Asignar tasador', nextStep: 'evaluation' };
+    if (app.status === 'evaluation' || app.status === 'in_analysis') return { title: 'Revisar informe de riesgo y dictamen crediticio', responsible: 'Comité de Crédito', due: 'En 48hs', btnLabel: 'Revisar dictamen', nextStep: 'offer_available' };
+    if (app.status === 'offer_available') return { title: 'Generar Carta de Condiciones y Oferta', responsible: 'Oficial de Crédito', due: 'Hoy', btnLabel: 'Generar oferta', nextStep: 'formalization' };
+    if (app.status === 'formalization') return { title: 'Generar Minuta y coordinar firma notarial', responsible: 'Esc. María Pérez Morales', due: 'Esta semana', btnLabel: 'Coordinar firma', nextStep: 'approved' };
+    return { title: 'Coordinar desembolso y custodia de títulos', responsible: 'Operaciones', due: 'Próximamente', btnLabel: 'Ver expediente', nextStep: 'completed' };
+  });
 
   return (
     <BackofficeLayout>
@@ -312,16 +314,18 @@ export const ApplicationDetailPage: React.FC = () => {
           </div>
         )}
 
-        {/* Top Breadcrumb & Return */}
+        {/* Top Breadcrumb Humanizado */}
         <div className="flex items-center justify-between text-xs text-slate-500">
           <div className="flex items-center space-x-2">
             <Link to={`${baseRoute}/solicitudes`} className="hover:text-[#102d49] font-semibold flex items-center">
-              <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Solicitudes
+              <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Expedientes
             </Link>
             <span>/</span>
             <span className="font-mono font-bold text-[#102d49]">{app.public_id}</span>
+            <span>/</span>
+            <span className="capitalize font-medium text-slate-700">{tabs.find(t => t.id === activeTab)?.label}</span>
           </div>
-          <span className="text-[11px] font-mono text-slate-400">Responsable: Mesa de Crédito</span>
+          <span className="text-[11px] font-mono text-slate-400">Responsable: {currentNextAction.responsible}</span>
         </div>
 
         {/* Barra de etapas del proceso */}
@@ -640,7 +644,7 @@ export const ApplicationDetailPage: React.FC = () => {
         </div>
 
         {/* ============================================================ */}
-        {/* TABS DE NAVEGACIÓN DETALLADA                                 */}
+        {/* TABS DE NAVEGACIÓN DETALLADA (6 MACRO-ÁREAS)                */}
         {/* ============================================================ */}
         <div className="border-b border-slate-200 overflow-x-auto scrollbar-none flex space-x-1">
           {tabs.map((t) => {
@@ -649,9 +653,9 @@ export const ApplicationDetailPage: React.FC = () => {
               <button
                 key={t.id}
                 onClick={() => setActiveTab(t.id)}
-                className={`flex items-center space-x-2 px-4 py-3 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors ${
+                className={`flex items-center space-x-2 px-5 py-3.5 text-xs font-semibold whitespace-nowrap border-b-2 transition-all ${
                   isActive
-                    ? 'border-[#102d49] text-[#102d49] font-bold'
+                    ? 'border-[#102d49] text-[#102d49] font-bold bg-white'
                     : 'border-transparent text-slate-500 hover:text-navy hover:border-slate-300'
                 }`}
               >
@@ -663,147 +667,296 @@ export const ApplicationDetailPage: React.FC = () => {
         </div>
 
         {/* ============================================================ */}
-        {/* CONTENIDO PRINCIPAL + SIDEBAR TAREAS/TIMELINE                */}
+        {/* CONTENIDO PRINCIPAL + SIDEBAR                                */}
         {/* ============================================================ */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
           {/* Main Tab Panel (8 cols) */}
-          <div className="lg:col-span-8 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+          <div className="lg:col-span-8 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
             
-            {/* TAB: RESUMEN / FICHA 360° */}
+            {/* ======================================================== */}
+            {/* TAB 1: RESUMEN                                           */}
+            {/* ======================================================== */}
             {activeTab === 'resumen' && (
               <div className="space-y-6">
-                <div>
-                  <h3 className="text-base font-bold text-[#102d49]">Ficha Ejecutiva 360° del Expediente</h3>
-                  <p className="text-xs text-slate-500">Resumen integral estructurado de la operación hipotecaria.</p>
+                
+                {/* TARJETA CENTRAL: PRÓXIMA ACCIÓN */}
+                <div className="bg-[#102d49] text-white rounded-2xl p-6 shadow-md relative overflow-hidden space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3">
+                    <div className="flex items-center space-x-2">
+                      <span className="w-2 h-2 rounded-full bg-[#f4b43b] animate-ping" />
+                      <span className="text-[11px] font-bold text-[#f4b43b] uppercase tracking-wider">
+                        Próxima Acción
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-3 text-xs text-slate-300">
+                      <span>Responsable: <strong>{currentNextAction.responsible}</strong></span>
+                      <span>•</span>
+                      <span className="text-[#f4b43b] font-bold">Vence: {currentNextAction.due}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <h3 className="text-base sm:text-lg font-bold text-white">
+                        {currentNextAction.title}
+                      </h3>
+                      <p className="text-xs text-slate-300 leading-relaxed max-w-xl">
+                        Ejecutar esta acción avanza el expediente en el flujo de formalización y genera automáticamente el siguiente paso operativo.
+                      </p>
+                    </div>
+
+                    <Button
+                      variant="primary"
+                      size="md"
+                      onClick={() => {
+                        triggerCommandAction(
+                          `Acción Ejecutada: ${currentNextAction.title}`,
+                          `El expediente avanzó en su flujo operativo.`
+                        );
+                        // Recalcular siguiente acción
+                        if (currentNextAction.nextStep === 'info_review') {
+                          setCurrentNextAction({ title: 'Solicitar certificado de ingresos y DGI', responsible: 'Valeria Rivas', due: 'Hoy', btnLabel: 'Solicitar ahora', nextStep: 'property_analysis' });
+                        } else if (currentNextAction.nextStep === 'property_analysis') {
+                          setCurrentNextAction({ title: 'Asignar perito tasador para inspección', responsible: 'Coordinador de Garantías', due: 'En 24hs', btnLabel: 'Asignar tasador', nextStep: 'evaluation' });
+                        } else if (currentNextAction.nextStep === 'evaluation') {
+                          setCurrentNextAction({ title: 'Revisar informe de riesgo y dictamen', responsible: 'Comité de Crédito', due: 'En 48hs', btnLabel: 'Revisar dictamen', nextStep: 'offer_available' });
+                        } else {
+                          setCurrentNextAction({ title: 'Generar Minuta y coordinar firma notarial', responsible: 'Esc. María Pérez Morales', due: 'Esta semana', btnLabel: 'Coordinar firma', nextStep: 'approved' });
+                        }
+                      }}
+                      className="!bg-[#f4b43b] hover:!bg-[#e5a832] !text-[#102d49] !font-black text-xs px-5 py-3 rounded-xl shadow-lg shrink-0 flex items-center justify-center transition-all"
+                    >
+                      <span>{currentNextAction.btnLabel}</span>
+                      <ArrowRight className="w-4 h-4 ml-1.5" />
+                    </Button>
+                  </div>
                 </div>
 
+                {/* DIFERENCIACIÓN: ESTADO / ALERTA / PRÓXIMA ACCIÓN */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                    <span className="text-[10px] text-slate-400 font-bold block uppercase">Estado Operativo</span>
+                    <p className="font-bold text-[#102d49] text-sm capitalize">{String(app.status).replace(/_/g, ' ')}</p>
+                    <span className="text-[11px] text-slate-500">Etapa {currentStageIndex + 1} de 7</span>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200 space-y-1">
+                    <span className="text-[10px] text-amber-800 font-bold block uppercase">Alerta Activa</span>
+                    <p className="font-bold text-amber-900 text-sm">Falta Recibo de Sueldo</p>
+                    <span className="text-[11px] text-amber-700">Documentación de ingresos pendiente</span>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200 space-y-1">
+                    <span className="text-[10px] text-emerald-800 font-bold block uppercase">Próximo Hito</span>
+                    <p className="font-bold text-emerald-900 text-sm">Tasación Inmobiliaria</p>
+                    <span className="text-[11px] text-emerald-700">Peritaje de valor de mercado</span>
+                  </div>
+                </div>
+
+                {/* DOCUMENTOS SUGERIDOS PARA ESTA ETAPA */}
+                <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-[#102d49] flex items-center">
+                        <Sparkles className="w-3.5 h-3.5 mr-1.5 text-brand-green" /> Documentos Sugeridos para esta Etapa
+                      </h4>
+                      <p className="text-[11px] text-slate-500">Documentos preconfigurados que pueden autollenerarse con un clic.</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setDocGenTplId('tpl-seed-1');
+                        setShowDocGen(true);
+                      }}
+                      className="text-xs font-bold text-[#102d49]"
+                    >
+                      <Plus className="w-3.5 h-3.5 mr-1" /> Generar Documento
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                    {[
+                      { title: 'Solicitud Oficial', status: 'ready', icon: '✓' },
+                      { title: 'Autorización de Datos', status: 'ready', icon: '✓' },
+                      { title: 'Carta de Condiciones', status: 'suggested', icon: '○' },
+                      { title: 'Minuta Notarial', status: 'suggested', icon: '○' },
+                      { title: 'Contrato de Mutuo', status: 'pending', icon: '○' },
+                    ].map((doc) => (
+                      <div
+                        key={doc.title}
+                        onClick={() => {
+                          setDocGenTplId('tpl-seed-1');
+                          setShowDocGen(true);
+                        }}
+                        className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-100 hover:border-[#102d49]/30 cursor-pointer flex items-center justify-between transition-colors"
+                      >
+                        <span className="font-semibold text-slate-700">{doc.title}</span>
+                        <span className={`font-mono font-bold text-xs ${doc.status === 'ready' ? 'text-emerald-600' : 'text-slate-400'}`}>
+                          {doc.icon}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Resumen Ficha Rápida */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
                     <span className="text-[10px] font-bold text-slate-400 uppercase">Garantía Inmobiliaria</span>
                     <p className="font-bold text-[#102d49] text-sm capitalize">{app.property?.property_type || 'Inmueble'}</p>
                     <p className="text-slate-600">Ubicación: {app.property?.neighborhood || 'Centro'}, {app.property?.department || 'Montevideo'}</p>
-                    <p className="text-slate-600">Valor mercado estimado: USD {estValue.toLocaleString('es-UY')}</p>
-                    <p className="text-slate-600">Padrón catastral: {app.property?.cadastral_number || '34.892 (Registrado)'}</p>
+                    <p className="text-slate-600">Valor tasación: USD {estValue.toLocaleString('es-UY')}</p>
+                    <p className="text-slate-600">Padrón: {app.property?.cadastral_number || '34.892 (Registrado)'}</p>
                   </div>
 
                   <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
                     <span className="text-[10px] font-bold text-slate-400 uppercase">Condiciones Financieras</span>
                     <p className="font-bold text-[#102d49] text-sm">USD {reqAmount.toLocaleString('es-UY')} en {app.term_months || 36} meses</p>
                     <p className="text-slate-600">Destino: {app.purpose || 'Consolidación / Inversión'}</p>
-                    <p className="text-slate-600">Porcentaje de financiación: {financingPercent}% (Margen seguro)</p>
+                    <p className="text-slate-600">Porcentaje de financiación: {financingPercent}%</p>
                     <p className="text-slate-600">Modalidad: Intereses mensuales y capital al vencimiento</p>
                   </div>
                 </div>
 
-                {/* DocFlow Card Resumen */}
-                <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 shrink-0">
-                      <FileCheck className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase block">Legajo Digital DOCFLOW</span>
-                      <p className="font-bold text-[#102d49] text-sm">Autollenado & Versionado Certificado Activo</p>
-                      <p className="text-[11px] text-slate-500">Documentos oficiales autocompletados desde los datos validados del expediente.</p>
-                    </div>
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setActiveTab('documentos')}
-                    className="text-xs font-bold text-[#102d49] border-slate-300 hover:bg-slate-50"
-                  >
-                    <FileText className="w-3.5 h-3.5 mr-1" /> Ver Documentos
-                  </Button>
-                </div>
-
-                {/* Tarjeta Universal de Verificación de Identidad (KYC) */}
+                {/* Tarjeta Universal KYC */}
                 <KycVerificationCard
                   caseId={app.id || id || 'e0000000-0000-0000-0000-000000000001'}
                   applicantName={borrowerFullName}
                   applicantCi={app.borrower?.document_number || '4.892.114-2'}
                 />
-
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
-                  🛡️ <strong>Protección Anti-Bypass Activa:</strong> La identidad directa y datos de contacto se mantienen enmascarados ante prestamistas e inversores hasta la formalización de la propuesta.
-                </div>
               </div>
             )}
 
-            {/* TAB: SOLICITANTE */}
+            {/* ======================================================== */}
+            {/* TAB 2: SOLICITANTE (Consolida perfil, ingresos, cotit.) */}
+            {/* ======================================================== */}
             {activeTab === 'solicitante' && (
               <div className="space-y-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-base font-bold text-[#102d49]">Datos del Solicitante</h3>
-                    <p className="text-xs text-slate-500">Titular del crédito hipotecario</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setDocGenTplId('tpl-seed-6');
-                        setShowDocGen(true);
-                      }}
-                      className="text-xs font-semibold"
+                {/* Subtabs internas */}
+                <div className="flex space-x-2 border-b border-slate-100 pb-2">
+                  {[
+                    { id: 'perfil', label: 'Titular Principal' },
+                    { id: 'ingresos', label: 'Ingresos & Capacidad' },
+                    { id: 'cotitulares', label: 'Personas & Cotitulares' },
+                    { id: 'kyc', label: 'Identidad & KYC' },
+                  ].map((sub) => (
+                    <button
+                      key={sub.id}
+                      onClick={() => setSolicitanteSubTab(sub.id as any)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        solicitanteSubTab === sub.id
+                          ? 'bg-[#102d49] text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
                     >
-                      <Sparkles className="w-3.5 h-3.5 mr-1 text-[#102d49]" /> Ficha Solicitante
-                    </Button>
-                  </div>
+                      {sub.label}
+                    </button>
+                  ))}
                 </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                  <div>
-                    <label className="text-slate-400 font-medium">Nombre completo</label>
-                    <p className="font-bold text-[#102d49] text-sm">{borrowerFullName}</p>
+
+                {solicitanteSubTab === 'perfil' && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <label className="text-slate-400 font-medium">Nombre completo</label>
+                        <p className="font-bold text-[#102d49] text-sm">{borrowerFullName}</p>
+                      </div>
+                      <div>
+                        <label className="text-slate-400 font-medium">Cédula de Identidad (CI)</label>
+                        <p className="font-bold text-[#102d49] text-sm">{app.borrower?.id_number || '4.892.114-2'}</p>
+                      </div>
+                      <div>
+                        <label className="text-slate-400 font-medium">Email</label>
+                        <p className="font-bold text-[#102d49] text-sm font-mono">
+                          {app.borrower?.email || 'ignacio@ejemplo.com'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-slate-400 font-medium">Teléfono Celular</label>
+                        <p className="font-bold text-[#102d49] text-sm font-mono">
+                          {app.borrower?.phone || '+598 99 123 456'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-slate-400 font-medium">Estado Civil</label>
+                        <p className="font-bold text-slate-800 text-sm">Casado/a</p>
+                      </div>
+                      <div>
+                        <label className="text-slate-400 font-medium">Domicilio</label>
+                        <p className="font-bold text-slate-800 text-sm">Benito Blanco 1245 Apto 402, Montevideo</p>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-slate-400 font-medium">Documento de Identidad (CI)</label>
-                    <p className="font-bold text-[#102d49] text-sm">{app.borrower?.id_number || '4.892.114-2'}</p>
+                )}
+
+                {solicitanteSubTab === 'ingresos' && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                      <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                        <span className="text-slate-400 font-medium block">Ingreso Mensual Declarado</span>
+                        <p className="font-bold text-[#102d49] text-lg mt-1">
+                          UYU {(app.income?.monthly_amount || 95000).toLocaleString('es-UY')}
+                        </p>
+                        <p className="text-[11px] text-slate-500 mt-1 capitalize">
+                          Tipo: {app.income?.income_type || 'Dependiente'}
+                        </p>
+                      </div>
+                      <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                        <span className="text-slate-400 font-medium block">Relación Cuota / Ingreso</span>
+                        <p className="font-bold text-emerald-800 text-lg mt-1">
+                          24.8% <span className="text-xs font-normal text-slate-500">(Saludable &lt; 35%)</span>
+                        </p>
+                        <p className="text-[11px] text-slate-500 mt-1">Margen holgado de repago.</p>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-slate-400 font-medium">Email</label>
-                    <p className="font-bold text-[#102d49] text-sm font-mono">
-                      {app.status === 'approved' || app.status === 'formalization'
-                        ? (app.borrower?.email || 'titular@demo.uy')
-                        : maskEmail(app.borrower?.email || 'ignacio@ejemplo.com')}
-                    </p>
+                )}
+
+                {solicitanteSubTab === 'cotitulares' && (
+                  <div className="space-y-3 text-xs">
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-[#102d49]">{borrowerFullName}</p>
+                        <span className="text-slate-500">{app.borrower?.email}</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full">
+                        TITULAR PRINCIPAL
+                      </span>
+                    </div>
+                    <div className="p-4 rounded-xl border border-slate-200 border-dashed text-center">
+                      <p className="text-slate-400">No hay cotitulares ni garantes registrados.</p>
+                      <button className="mt-1 text-xs font-bold text-[#102d49] hover:text-brand-green">
+                        + Agregar cotitular o garante
+                      </button>
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-slate-400 font-medium">Teléfono Celular</label>
-                    <p className="font-bold text-[#102d49] text-sm font-mono">
-                      {app.status === 'approved' || app.status === 'formalization'
-                        ? (app.borrower?.phone || '+598 99 123 456')
-                        : maskPhone(app.borrower?.phone || '099123456')}
-                    </p>
-                  </div>
-                </div>
+                )}
+
+                {solicitanteSubTab === 'kyc' && (
+                  <KycVerificationCard
+                    caseId={app.id || id || 'e0000000-0000-0000-0000-000000000001'}
+                    applicantName={borrowerFullName}
+                    applicantCi={app.borrower?.document_number || '4.892.114-2'}
+                  />
+                )}
               </div>
             )}
 
-            {/* TAB: PROPIEDAD */}
-            {activeTab === 'propiedad' && (
-              <div className="space-y-5">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-bold text-[#102d49]">Detalles de la Propiedad en Garantía</h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setDocGenTplId('tpl-seed-7');
-                      setShowDocGen(true);
-                    }}
-                    className="text-xs font-semibold"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 mr-1 text-[#102d49]" /> Generar Ficha Inmueble
-                  </Button>
+            {/* ======================================================== */}
+            {/* TAB 3: GARANTÍA (Inmueble + Tasación + Estado Legal)     */}
+            {/* ======================================================== */}
+            {activeTab === 'garantia' && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-base font-bold text-[#102d49]">Ficha de Garantía Hipotecaria</h3>
+                  <p className="text-xs text-slate-500">Inmueble gravado en garantía de primer rango.</p>
                 </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                   <div>
-                    <label className="text-slate-400 font-medium">Tipo</label>
+                    <label className="text-slate-400 font-medium">Tipo de inmueble</label>
                     <p className="font-bold text-[#102d49] text-sm capitalize">{app.property?.property_type || 'Apartamento'}</p>
                   </div>
                   <div>
@@ -811,390 +964,281 @@ export const ApplicationDetailPage: React.FC = () => {
                     <p className="font-bold text-[#102d49] text-sm">{app.property?.surface_m2 || 85} m²</p>
                   </div>
                   <div>
-                    <label className="text-slate-400 font-medium">Dormitorios</label>
-                    <p className="font-bold text-[#102d49] text-sm">{app.property?.bedrooms || 2}</p>
+                    <label className="text-slate-400 font-medium">Padrón Catastral</label>
+                    <p className="font-bold text-[#102d49] text-sm font-mono">{app.property?.cadastral_number || '34.892'}</p>
                   </div>
                   <div>
                     <label className="text-slate-400 font-medium">Departamento</label>
                     <p className="font-bold text-[#102d49] text-sm">{app.property?.department || 'Montevideo'}</p>
                   </div>
                   <div>
-                    <label className="text-slate-400 font-medium">Zona / Barrio</label>
+                    <label className="text-slate-400 font-medium">Barrio / Zona</label>
                     <p className="font-bold text-[#102d49] text-sm">{app.property?.neighborhood || 'Pocitos'}</p>
                   </div>
                   <div>
                     <label className="text-slate-400 font-medium">Situación Jurídica</label>
-                    <p className="font-bold text-[#102d49] text-sm">Libre de Gravámenes</p>
+                    <p className="font-bold text-emerald-700 text-sm">Libre de Gravámenes ✓</p>
                   </div>
                 </div>
-              </div>
-            )}
 
-            {/* TAB: INGRESOS */}
-            {activeTab === 'ingresos' && (
-              <div className="space-y-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-base font-bold text-[#102d49]">Capacidad Financiera e Ingresos</h3>
-                    <p className="text-xs text-slate-500">Evaluación de solvencia y repago de cuota.</p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setDocGenTplId('tpl-seed-4');
-                      setShowDocGen(true);
-                    }}
-                    className="text-xs font-semibold"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 mr-1 text-[#102d49]" /> Declaración Jurada
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                    <span className="text-slate-400 font-medium block">Ingreso Mensual Declarado</span>
-                    <p className="font-bold text-[#102d49] text-lg mt-1">
-                      UYU {(app.income?.monthly_amount || 95000).toLocaleString('es-UY')}
-                    </p>
-                    <p className="text-[11px] text-slate-500 mt-1 capitalize">
-                      Tipo de actividad: {app.income?.income_type || 'Dependiente'}
-                    </p>
-                  </div>
-
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                    <span className="text-slate-400 font-medium block">Relación Cuota / Ingreso</span>
-                    <p className="font-bold text-emerald-800 text-lg mt-1">
-                      24.8% <span className="text-xs font-normal text-slate-500">(Saludable &lt; 35%)</span>
-                    </p>
-                    <p className="text-[11px] text-slate-500 mt-1">Margen holgado de repago de cuota.</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB: PERSONAS */}
-            {activeTab === 'personas' && (
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-                <h3 className="text-base font-bold text-[#102d49] flex items-center gap-2">
-                  <Users className="w-5 h-5 text-brand-green" /> Personas Vinculadas al Expediente
-                </h3>
-                {/* Titular principal */}
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Titular Principal</span>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-bold text-[#102d49] text-sm">{borrowerFullName}</p>
-                      <p className="text-xs text-slate-500">{app.borrower?.email}</p>
+                {/* Formulario de Tasación */}
+                <div className="pt-4 border-t border-slate-100">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#102d49] mb-3">
+                    Tasación & Valuación Oficial
+                  </h4>
+                  <form onSubmit={handleSaveValuation} className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Valor Preliminar (USD)</label>
+                        <input
+                          type="number"
+                          value={preliminaryValue}
+                          onChange={(e) => setPreliminaryValue(Number(e.target.value))}
+                          className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-bold text-[#102d49]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Rango Mínimo (USD)</label>
+                        <input
+                          type="number"
+                          value={valMin}
+                          onChange={(e) => setValMin(Number(e.target.value))}
+                          className="w-full p-2.5 rounded-xl border border-slate-300 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Rango Máximo (USD)</label>
+                        <input
+                          type="number"
+                          value={valMax}
+                          onChange={(e) => setValMax(Number(e.target.value))}
+                          className="w-full p-2.5 rounded-xl border border-slate-300 text-xs"
+                        />
+                      </div>
                     </div>
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-1 rounded-full">TITULAR</span>
-                  </div>
-                </div>
-                {/* Cotitulares */}
-                <div className="p-4 rounded-xl border border-slate-200 border-dashed text-center">
-                  <p className="text-xs text-slate-400">No hay cotitulares ni garantes registrados.</p>
-                  <button className="mt-2 text-xs font-bold text-[#102d49] hover:text-brand-green">+ Agregar cotitular o garante</button>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Metodología</label>
+                        <select
+                          value={valMethodology}
+                          onChange={(e) => setValMethodology(e.target.value)}
+                          className="w-full p-2.5 rounded-xl border border-slate-300 text-xs"
+                        >
+                          <option value="comparables_de_mercado">Comparables de mercado</option>
+                          <option value="costo_reposicion">Costo de reposición</option>
+                          <option value="rentabilidad_comercial">Rentabilidad comercial</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Confianza</label>
+                        <select
+                          value={valConfidence}
+                          onChange={(e) => setValConfidence(e.target.value)}
+                          className="w-full p-2.5 rounded-xl border border-slate-300 text-xs"
+                        >
+                          <option value="alta">Alta (peritaje presencial)</option>
+                          <option value="media">Media (datos declarados)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Button type="submit" variant="primary" size="sm" disabled={savingVal} className="!bg-[#102d49] text-white">
+                        {savingVal ? 'Guardando...' : 'Guardar Tasación'}
+                      </Button>
+                      {valSavedToast && (
+                        <span className="text-xs font-bold text-emerald-700">✓ Tasación guardada con éxito</span>
+                      )}
+                    </div>
+                  </form>
                 </div>
               </div>
             )}
 
-            {/* TAB: DOCUMENTOS (DOCFLOW) */}
-            {activeTab === 'documentos' && (
-              <DocumentHub
-                caseId={app.id || id || 'e0000000-0000-0000-0000-000000000001'}
-                appData={app}
-                onGoToSection={(sec) => setActiveTab(sec)}
-              />
-            )}
-
-            {/* TAB: RIESGO */}
-            {activeTab === 'riesgo' && (
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-                <h3 className="text-base font-bold text-[#102d49] flex items-center gap-2">
-                  <ShieldAlert className="w-5 h-5 text-amber-500" /> Análisis de Riesgo
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                    <span className="text-[10px] text-slate-400 font-bold block uppercase">% Financiación</span>
-                    <div className="text-2xl font-black text-[#102d49] font-serif">{financingPercent}%</div>
-                    <span className="text-[11px] text-slate-500">Sobre valor tasado</span>
-                  </div>
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                    <span className="text-[10px] text-slate-400 font-bold block uppercase">Monto Solicitado</span>
-                    <div className="text-2xl font-black text-[#102d49] font-serif">USD {Number(reqAmount).toLocaleString('es-UY')}</div>
-                    <span className="text-[11px] text-slate-500">Crédito hipotecario</span>
-                  </div>
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                    <span className="text-[10px] text-slate-400 font-bold block uppercase">Valor Garantía</span>
-                    <div className="text-2xl font-black text-[#102d49] font-serif">USD {Number(estValue).toLocaleString('es-UY')}</div>
-                    <span className="text-[11px] text-slate-500">Valor tasado del inmueble</span>
-                  </div>
+            {/* ======================================================== */}
+            {/* TAB 4: ANÁLISIS (Riesgo, IA, Oferta, Inversores)         */}
+            {/* ======================================================== */}
+            {activeTab === 'analisis' && (
+              <div className="space-y-5">
+                {/* Subtabs internas */}
+                <div className="flex space-x-2 border-b border-slate-100 pb-2">
+                  {[
+                    { id: 'riesgo', label: 'Análisis de Riesgo' },
+                    { id: 'ia', label: 'Evaluación IA' },
+                    { id: 'oferta', label: 'Oferta & Condiciones' },
+                    ...(isMarketplaceEnabled() || isSuperAdmin ? [{ id: 'inversores', label: 'Red de Inversores' }] : []),
+                  ].map((sub) => (
+                    <button
+                      key={sub.id}
+                      onClick={() => setAnalisisSubTab(sub.id as any)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        analisisSubTab === sub.id
+                          ? 'bg-[#102d49] text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {sub.label}
+                    </button>
+                  ))}
                 </div>
-                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs">
-                  <p className="font-bold text-amber-800 mb-1">Evaluación de Riesgo</p>
-                  <p className="text-amber-700">El análisis de riesgo detallado está disponible en el tab <strong>Evaluación IA</strong>. Este módulo muestra el resumen ejecutivo de las métricas clave para la decisión crediticia.</p>
-                </div>
-              </div>
-            )}
 
-            {/* TAB: OFERTA */}
-            {activeTab === 'oferta' && (
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-                <h3 className="text-base font-bold text-[#102d49] flex items-center gap-2">
-                  <DollarSign className="w-5 h-5 text-brand-green" /> Oferta & Condiciones de Financiación
-                </h3>
-                {app.status === 'offer_available' || app.status === 'formalization' || app.status === 'approved' ? (
-                  <div className="space-y-3">
-                    <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs space-y-2">
-                      <span className="font-bold text-emerald-800 block">Oferta disponible para el solicitante</span>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div><span className="text-[10px] text-slate-400 block">Monto aprobado</span><span className="font-bold text-[#102d49]">USD {Number(reqAmount).toLocaleString('es-UY')}</span></div>
-                        <div><span className="text-[10px] text-slate-400 block">% Financiación</span><span className="font-bold text-[#102d49]">{financingPercent}%</span></div>
+                {analisisSubTab === 'riesgo' && (
+                  <div className="space-y-4 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                        <span className="text-[10px] text-slate-400 font-bold block uppercase">% Financiación</span>
+                        <div className="text-2xl font-black text-[#102d49] font-serif">{financingPercent}%</div>
+                        <span className="text-slate-500">Sobre tasación</span>
+                      </div>
+                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                        <span className="text-[10px] text-slate-400 font-bold block uppercase">Monto Solicitado</span>
+                        <div className="text-2xl font-black text-[#102d49] font-serif">USD {Number(reqAmount).toLocaleString('es-UY')}</div>
+                        <span className="text-slate-500">Crédito hipotecario</span>
+                      </div>
+                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                        <span className="text-[10px] text-slate-400 font-bold block uppercase">Valor Garantía</span>
+                        <div className="text-2xl font-black text-[#102d49] font-serif">USD {Number(estValue).toLocaleString('es-UY')}</div>
+                        <span className="text-slate-500">Valor tasado</span>
                       </div>
                     </div>
                   </div>
-                ) : (
-                  <div className="p-8 text-center space-y-2">
-                    <DollarSign className="w-10 h-10 text-slate-300 mx-auto" />
-                    <p className="text-sm text-slate-500 font-semibold">Oferta no generada aún</p>
-                    <p className="text-xs text-slate-400">La oferta se generará una vez completada la evaluación de riesgo y tasación del inmueble.</p>
+                )}
+
+                {analisisSubTab === 'ia' && (
+                  <HipotecalyAiTab app={app} onRefresh={() => load(true)} />
+                )}
+
+                {analisisSubTab === 'oferta' && (
+                  <div className="space-y-4 text-xs">
+                    <div className="p-5 rounded-xl bg-emerald-50 border border-emerald-200 space-y-3">
+                      <h4 className="font-bold text-emerald-900 text-sm">Condiciones Financieras Aprobadas</h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div><span className="text-slate-500 block text-[10px]">Monto</span><strong className="text-navy text-sm">USD {Number(reqAmount).toLocaleString('es-UY')}</strong></div>
+                        <div><span className="text-slate-500 block text-[10px]">Tasa de interés</span><strong className="text-navy text-sm">11.5% Anual</strong></div>
+                        <div><span className="text-slate-500 block text-[10px]">Plazo</span><strong className="text-navy text-sm">{app.term_months || 36} meses</strong></div>
+                        <div><span className="text-slate-500 block text-[10px]">Cuota estimada</span><strong className="text-emerald-700 text-sm">USD 766 / mes</strong></div>
+                      </div>
+                    </div>
                   </div>
                 )}
-              </div>
-            )}
 
-            {/* TAB: IA */}
-            {activeTab === 'ia' && (
-              <div className="space-y-6">
-                <HipotecalyAiTab app={app} onRefresh={() => load(true)} />
-              </div>
-            )}
-
-            {/* TAB: TASACIÓN */}
-            {activeTab === 'valuacion' && (
-              <form onSubmit={handleSaveValuation} className="space-y-5">
-                <div>
-                  <h3 className="text-base font-bold text-[#102d49]">Valuación Preliminar y Peritaje del Inmueble</h3>
-                  <p className="text-xs text-slate-500">Estimación técnica para calcular el porcentaje de financiación real.</p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Valor preliminar (USD)
-                    </label>
-                    <input
-                      type="number"
-                      value={preliminaryValue}
-                      onChange={(e) => setPreliminaryValue(Number(e.target.value))}
-                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-bold text-[#102d49]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Rango Mínimo (USD)
-                    </label>
-                    <input
-                      type="number"
-                      value={valMin}
-                      onChange={(e) => setValMin(Number(e.target.value))}
-                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Rango Máximo (USD)
-                    </label>
-                    <input
-                      type="number"
-                      value={valMax}
-                      onChange={(e) => setValMax(Number(e.target.value))}
-                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Nivel de Confianza
-                    </label>
-                    <select
-                      value={valConfidence}
-                      onChange={(e) => setValConfidence(e.target.value)}
-                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs"
-                    >
-                      <option value="alta">Alta (comparables directos de mercado)</option>
-                      <option value="media">Media (datos declarados)</option>
-                      <option value="baja">Baja (a tasar físicamente)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Metodología Empleada
-                    </label>
-                    <select
-                      value={valMethodology}
-                      onChange={(e) => setValMethodology(e.target.value)}
-                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs"
-                    >
-                      <option value="comparables_de_mercado">Comparables de mercado</option>
-                      <option value="costo_reposicion">Costo de reposición</option>
-                      <option value="rentabilidad_comercial">Rentabilidad comercial</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Notas y Observaciones del Perito
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={valNotes}
-                    onChange={(e) => setValNotes(e.target.value)}
-                    placeholder="Detalles sobre el estado del inmueble, ubicación o metraje..."
-                    className="w-full p-3 rounded-xl border border-slate-300 text-xs"
+                {analisisSubTab === 'inversores' && (
+                  <ApplicationMatchingTab
+                    applicationId={app.id}
+                    publicId={app.public_id}
+                    department={app.property?.department || 'Montevideo'}
+                    propertyType={app.property?.property_type || 'casa'}
+                    requestedAmount={app.requested_amount}
+                    currency={app.currency || 'USD'}
+                    estimatedValue={app.property?.estimated_value || 0}
                   />
-                </div>
-
-                <Button type="submit" variant="primary" size="md" disabled={savingVal} className="!bg-[#102d49] text-white">
-                  {savingVal ? 'Guardando...' : 'Guardar Valuación'}
-                </Button>
-
-                {valSavedToast && (
-                  <span className="text-xs font-bold text-emerald-700 ml-3">
-                    ✓ Valuación registrada con éxito
-                  </span>
                 )}
-              </form>
+              </div>
             )}
 
-            {/* TAB: FIRMAS NOTARIALES */}
-            {activeTab === 'firmas' && (
+            {/* ======================================================== */}
+            {/* TAB 5: DOCUMENTACIÓN (DocFlow + Firma Notarial)          */}
+            {/* ======================================================== */}
+            {activeTab === 'documentos' && (
               <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-base font-bold text-[#102d49]">Firma Electrónica Avanzada (Firma.gub.uy / Notarial)</h3>
-                    <p className="text-xs text-slate-500">Orquestación de firma electrónica avanzada bajo Ley N° 18.600.</p>
-                  </div>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => triggerCommandAction('Firma Notarial Iniciada', 'Proceso de firma electrónica avanzada remitido a los comparecientes.')}
-                    className="text-xs font-bold !bg-[#102d49] text-white"
-                  >
-                    <FileSignature className="w-3.5 h-3.5 mr-1.5" />
-                    Enviar a Firma Notarial
-                  </Button>
-                </div>
-
-                <SignatureProcessCard
-                  process={{
-                    id: 'sig-proc-current-01',
-                    provider_process_id: 'AGESIC-2026-00491',
-                    provider: 'firma_gub',
-                    mode: 'mock',
-                    status: 'signed',
-                    created_at: app.created_at,
-                    completed_at: new Date().toISOString(),
-                    documents: [
-                      {
-                        title: 'Solicitud de Crédito Hipotecario Definitiva',
-                        sha256_original: 'd41d8cd98f00b204e9800998ecf8427e9f1d8cd98f00b204e9800998ecf8427e',
-                        sha256_signed: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-                      },
-                    ],
-                    signers: [
-                      {
-                        name: borrowerFullName,
-                        email: app.borrower?.email || 'titular@demo.uy',
-                        role: 'applicant',
-                        status: 'signed',
-                        signedAt: new Date().toISOString(),
-                      },
-                    ],
-                  }}
-                  onRefresh={() => load(true)}
+                <DocumentHub
+                  caseId={app.id || id || 'e0000000-0000-0000-0000-000000000001'}
+                  appData={app}
+                  onGoToSection={(sec) => setActiveTab(sec as any)}
                 />
               </div>
             )}
 
-            {/* TAB: COMUNICACIONES */}
-            {activeTab === 'comunicaciones' && (
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-bold text-[#102d49] flex items-center gap-2">
-                    <MessageSquare className="w-5 h-5 text-brand-green" /> Historial de Comunicaciones
-                  </h3>
-                  <button className="text-xs font-bold text-[#102d49] hover:text-brand-green border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition">+ Enviar mensaje</button>
-                </div>
-                <div className="space-y-3 text-xs">
+            {/* ======================================================== */}
+            {/* TAB 6: SEGUIMIENTO (Tareas + Comunicaciones + Timeline)  */}
+            {/* ======================================================== */}
+            {activeTab === 'seguimiento' && (
+              <div className="space-y-5">
+                {/* Subtabs internas */}
+                <div className="flex space-x-2 border-b border-slate-100 pb-2">
                   {[
-                    { canal: 'Email', msg: 'Solicitud recibida correctamente. Nos pondremos en contacto.', fecha: 'Hoy 10:15', estado: 'Entregado', template: 'solicitud_recibida' },
-                    { canal: 'Email', msg: 'Documentación pendiente: Recibo de sueldo y certificado DGI.', fecha: 'Ayer 14:30', estado: 'Entregado', template: 'doc_faltante' },
-                    { canal: 'Email', msg: 'Su cédula de identidad fue verificada exitosamente.', fecha: '03/09/2026', estado: 'Entregado', template: 'kyc_aprobado' },
-                  ].map((com, i) => (
-                    <div key={i} className="p-3 rounded-xl border border-slate-200 bg-slate-50/60 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">{com.canal}</span>
-                          <span className="text-[10px] font-mono text-slate-400">{com.template}</span>
-                        </div>
-                        <div className="flex items-center space-x-2 text-[10px]">
-                          <span className="text-slate-400">{com.fecha}</span>
-                          <span className="font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full">{com.estado}</span>
-                        </div>
-                      </div>
-                      <p className="text-slate-600">{com.msg}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* TAB: TIMELINE DE ACTIVIDAD (UNIFICADO) */}
-            {activeTab === 'actividad' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-bold text-[#102d49]">Timeline de Actividad del Expediente</h3>
-                  <span className="text-xs font-mono text-slate-400">{timelineEvents.length} eventos registrados</span>
-                </div>
-
-                <div className="space-y-3 text-xs">
-                  {timelineEvents.map((event) => (
-                    <div
-                      key={event.id}
-                      className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-slate-300 transition space-y-1"
+                    { id: 'tareas', label: 'Tareas Operativas' },
+                    { id: 'comunicaciones', label: 'Comunicaciones' },
+                    { id: 'actividad', label: 'Historial de Actividad' },
+                  ].map((sub) => (
+                    <button
+                      key={sub.id}
+                      onClick={() => setSeguimientoSubTab(sub.id as any)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        seguimientoSubTab === sub.id
+                          ? 'bg-[#102d49] text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <span className="font-bold text-slate-900">{event.title}</span>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-200 text-slate-700">
-                            {event.category}
-                          </span>
-                        </div>
-                        <span className="text-[11px] font-mono text-slate-400">{event.time}</span>
-                      </div>
-                      <p className="text-slate-600">{event.desc}</p>
-                      <span className="text-[10px] text-slate-400 block pt-1 font-mono">Actor: {event.actor}</span>
-                    </div>
+                      {sub.label}
+                    </button>
                   ))}
                 </div>
-              </div>
-            )}
 
-            {/* TAB: RED DE INVERSORES */}
-            {activeTab === 'prestamistas' && (
-              <ApplicationMatchingTab
-                applicationId={app.id}
-                publicId={app.public_id}
-                department={app.property?.department || 'Montevideo'}
-                propertyType={app.property?.property_type || 'casa'}
-                requestedAmount={app.requested_amount}
-                currency={app.currency || 'USD'}
-                estimatedValue={app.property?.estimated_value || 0}
-              />
+                {seguimientoSubTab === 'tareas' && (
+                  <div className="space-y-4 text-xs">
+                    <form onSubmit={handleAddTask} className="flex space-x-2">
+                      <input
+                        type="text"
+                        placeholder="Nueva tarea para este expediente..."
+                        value={newTaskTitle}
+                        onChange={(e) => setNewTaskTitle(e.target.value)}
+                        className="flex-1 px-3 py-2 rounded-xl border border-slate-300 text-xs"
+                      />
+                      <Button type="submit" variant="primary" size="sm" disabled={addingTask} className="!bg-[#102d49] text-white">
+                        <Plus className="w-4 h-4 mr-1" /> Agregar Tarea
+                      </Button>
+                    </form>
+
+                    <div className="space-y-2">
+                      {(app.tasks || []).map((t: any) => (
+                        <div key={t.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                          <div className="flex items-center space-x-2.5">
+                            <CheckCircle2 className={`w-4 h-4 ${t.status === 'completed' ? 'text-emerald-600' : 'text-slate-300'}`} />
+                            <span className={`font-semibold ${t.status === 'completed' ? 'line-through text-slate-400' : 'text-slate-800'}`}>
+                              {t.title}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-bold text-slate-400">Pendiente</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {seguimientoSubTab === 'comunicaciones' && (
+                  <div className="space-y-3 text-xs">
+                    {[
+                      { canal: 'Email', msg: 'Solicitud recibida correctamente.', fecha: 'Hoy 10:15', estado: 'Entregado' },
+                      { canal: 'Email', msg: 'Documentación pendiente: Recibo de sueldo.', fecha: 'Ayer 14:30', estado: 'Entregado' },
+                      { canal: 'Email', msg: 'Cédula de identidad verificada exitosamente.', fecha: '03/09/2026', estado: 'Entregado' },
+                    ].map((com, i) => (
+                      <div key={i} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">{com.canal}</span>
+                          <span className="text-slate-400 text-[10px]">{com.fecha}</span>
+                        </div>
+                        <p className="text-slate-700">{com.msg}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {seguimientoSubTab === 'actividad' && (
+                  <div className="space-y-3 text-xs">
+                    {timelineEvents.map((event) => (
+                      <div key={event.id} className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-900">{event.title}</span>
+                          <span className="text-[10px] font-mono text-slate-400">{event.time}</span>
+                        </div>
+                        <p className="text-slate-600">{event.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
 
           </div>
