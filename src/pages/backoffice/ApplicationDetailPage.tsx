@@ -6,6 +6,7 @@ import {
   updateApplicationStatus,
   savePropertyValuation,
   createApplicationTask,
+  DEMO_APPLICATIONS,
 } from '../../lib/backofficeService';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
@@ -38,9 +39,11 @@ import { DocumentGenerationModal } from '../../components/docflow/DocumentGenera
 import { KycVerificationCard } from '../../components/identity/KycVerificationCard';
 import { isMarketplaceEnabled } from '../../config/features';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTenant } from '../../contexts/TenantContext';
 
 export const ApplicationDetailPage: React.FC = () => {
   const { isSuperAdmin } = useAuth();
+  const { tenant } = useTenant();
 
   const location = useLocation();
   const isTenantPath = location.pathname.startsWith('/demo/');
@@ -58,6 +61,10 @@ export const ApplicationDetailPage: React.FC = () => {
   const [showAssignNotaryModal, setShowAssignNotaryModal] = useState(false);
   const [selectedNotaryUser, setSelectedNotaryUser] = useState('u-test-notary');
   const [assignedNotaryName, setAssignedNotaryName] = useState('Esc. María Pérez Morales');
+  const [solicitanteSubTab, setSolicitanteSubTab] = useState<'perfil' | 'ingresos' | 'cotitulares' | 'kyc'>('perfil');
+  const [analisisSubTab, setAnalisisSubTab] = useState<'riesgo' | 'ia' | 'oferta' | 'inversores'>('riesgo');
+  const [seguimientoSubTab, setSeguimientoSubTab] = useState<'tareas' | 'comunicaciones' | 'actividad'>('tareas');
+  const [nextActionOverride, setNextActionOverride] = useState<any>(null);
 
   // Estados para valuación preliminar
   const [preliminaryValue, setPreliminaryValue] = useState<number>(0);
@@ -125,7 +132,11 @@ export const ApplicationDetailPage: React.FC = () => {
   const load = async (silent = false) => {
     if (!id) return;
     if (!silent) setLoading(true);
-    const data = await getApplicationDetail(id);
+    const isDemo = Boolean(tenant.demo_mode) || location.search.includes('demo=true');
+    let data = await getApplicationDetail(id, { isDemoMode: isDemo, organizationId: tenant.id });
+    if (!data && (isDemo || id.startsWith('e0000000') || id.startsWith('HIP-') || id.startsWith('demo-'))) {
+      data = DEMO_APPLICATIONS.find((a) => a.id === id || a.public_id === id) || DEMO_APPLICATIONS[0];
+    }
     setApp(data);
     if (data?.valuation) {
       setPreliminaryValue(data.valuation.preliminary_value || 0);
@@ -142,7 +153,7 @@ export const ApplicationDetailPage: React.FC = () => {
 
   useEffect(() => {
     load();
-  }, [id]);
+  }, [id, tenant.id, tenant.demo_mode]);
 
   const handleStatusChange = async (newStatus: string) => {
     if (!app) return;
@@ -283,21 +294,14 @@ export const ApplicationDetailPage: React.FC = () => {
     { id: 'seguimiento', label: 'Seguimiento', icon: Clock },
   ];
 
-  // Sub-tabs internas para navegación fluida
-  const [solicitanteSubTab, setSolicitanteSubTab] = useState<'perfil' | 'ingresos' | 'cotitulares' | 'kyc'>('perfil');
-  const [analisisSubTab, setAnalisisSubTab] = useState<'riesgo' | 'ia' | 'oferta' | 'inversores'>('riesgo');
-  const [seguimientoSubTab, setSeguimientoSubTab] = useState<'tareas' | 'comunicaciones' | 'actividad'>('tareas');
-
   // Próxima Acción Dinámica calculada
-  const [currentNextAction, setCurrentNextAction] = useState(() => {
-    if (app.status === 'submitted' || app.status === 'draft') return { title: 'Revisar documentación inicial del solicitante', responsible: 'Mesa de Crédito', due: 'Hoy', btnLabel: 'Revisar legajo', nextStep: 'info_review' };
-    if (app.status === 'info_review') return { title: 'Solicitar certificado de ingresos y DGI', responsible: 'Valeria Rivas', due: 'Hoy', btnLabel: 'Solicitar ahora', nextStep: 'property_analysis' };
-    if (app.status === 'property_analysis') return { title: 'Asignar perito tasador para inspección', responsible: 'Coordinador de Garantías', due: 'En 24hs', btnLabel: 'Asignar tasador', nextStep: 'evaluation' };
-    if (app.status === 'evaluation' || app.status === 'in_analysis') return { title: 'Revisar informe de riesgo y dictamen crediticio', responsible: 'Comité de Crédito', due: 'En 48hs', btnLabel: 'Revisar dictamen', nextStep: 'offer_available' };
-    if (app.status === 'offer_available') return { title: 'Generar Carta de Condiciones y Oferta', responsible: 'Oficial de Crédito', due: 'Hoy', btnLabel: 'Generar oferta', nextStep: 'formalization' };
-    if (app.status === 'formalization') return { title: 'Generar Minuta y coordinar firma notarial', responsible: 'Esc. María Pérez Morales', due: 'Esta semana', btnLabel: 'Coordinar firma', nextStep: 'approved' };
-    return { title: 'Coordinar desembolso y custodia de títulos', responsible: 'Operaciones', due: 'Próximamente', btnLabel: 'Ver expediente', nextStep: 'completed' };
-  });
+  const currentNextAction = nextActionOverride || {
+    title: !app ? 'Cargando expediente...' : app.status === 'submitted' || app.status === 'draft' ? 'Revisar documentación inicial del solicitante' : app.status === 'info_review' ? 'Solicitar certificado de ingresos y DGI' : app.status === 'property_analysis' ? 'Asignar perito tasador para inspección' : app.status === 'evaluation' || app.status === 'in_analysis' ? 'Revisar informe de riesgo y dictamen crediticio' : app.status === 'offer_available' ? 'Generar Carta de Condiciones y Oferta' : app.status === 'formalization' ? 'Generar Minuta y coordinar firma notarial' : 'Coordinar desembolso y custodia de títulos',
+    responsible: !app ? 'Operador' : app.status === 'submitted' ? 'Mesa de Crédito' : app.status === 'info_review' ? 'Valeria Rivas' : app.status === 'property_analysis' ? 'Coordinador de Garantías' : app.status === 'formalization' ? 'Esc. María Pérez Morales' : 'Mesa de Crédito',
+    due: 'Hoy',
+    btnLabel: 'Ver expediente',
+    nextStep: 'info_review',
+  };
 
   return (
     <BackofficeLayout>
@@ -716,13 +720,13 @@ export const ApplicationDetailPage: React.FC = () => {
                         );
                         // Recalcular siguiente acción
                         if (currentNextAction.nextStep === 'info_review') {
-                          setCurrentNextAction({ title: 'Solicitar certificado de ingresos y DGI', responsible: 'Valeria Rivas', due: 'Hoy', btnLabel: 'Solicitar ahora', nextStep: 'property_analysis' });
+                          setNextActionOverride({ title: 'Solicitar certificado de ingresos y DGI', responsible: 'Valeria Rivas', due: 'Hoy', btnLabel: 'Solicitar ahora', nextStep: 'property_analysis' });
                         } else if (currentNextAction.nextStep === 'property_analysis') {
-                          setCurrentNextAction({ title: 'Asignar perito tasador para inspección', responsible: 'Coordinador de Garantías', due: 'En 24hs', btnLabel: 'Asignar tasador', nextStep: 'evaluation' });
+                          setNextActionOverride({ title: 'Asignar perito tasador para inspección', responsible: 'Coordinador de Garantías', due: 'En 24hs', btnLabel: 'Asignar tasador', nextStep: 'evaluation' });
                         } else if (currentNextAction.nextStep === 'evaluation') {
-                          setCurrentNextAction({ title: 'Revisar informe de riesgo y dictamen', responsible: 'Comité de Crédito', due: 'En 48hs', btnLabel: 'Revisar dictamen', nextStep: 'offer_available' });
+                          setNextActionOverride({ title: 'Revisar informe de riesgo y dictamen', responsible: 'Comité de Crédito', due: 'En 48hs', btnLabel: 'Revisar dictamen', nextStep: 'offer_available' });
                         } else {
-                          setCurrentNextAction({ title: 'Generar Minuta y coordinar firma notarial', responsible: 'Esc. María Pérez Morales', due: 'Esta semana', btnLabel: 'Coordinar firma', nextStep: 'approved' });
+                          setNextActionOverride({ title: 'Generar Minuta y coordinar firma notarial', responsible: 'Esc. María Pérez Morales', due: 'Esta semana', btnLabel: 'Coordinar firma', nextStep: 'approved' });
                         }
                       }}
                       className="!bg-[#f4b43b] hover:!bg-[#e5a832] !text-[#102d49] !font-black text-xs px-5 py-3 rounded-xl shadow-lg shrink-0 flex items-center justify-center transition-all"

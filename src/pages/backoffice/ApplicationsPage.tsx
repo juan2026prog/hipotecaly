@@ -17,6 +17,19 @@ import { Select } from '../../components/ui/Select';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useTenant } from '../../contexts/TenantContext';
 
+type QuickViewType =
+  | 'all'
+  | 'my_apps'
+  | 'requires_action'
+  | 'no_activity'
+  | 'waiting_client'
+  | 'pending_docs'
+  | 'ready_eval'
+  | 'pending_sign'
+  | 'finished';
+
+type SortByType = 'created_desc' | 'created_asc' | 'amount_desc' | 'amount_asc' | 'ltv_desc';
+
 export const ApplicationsPage: React.FC = () => {
   const { tenant } = useTenant();
   const location = useLocation();
@@ -32,6 +45,8 @@ export const ApplicationsPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState(stageParam || 'all');
   const [deptFilter, setDeptFilter] = useState('all');
   const [propTypeFilter, setPropTypeFilter] = useState('all');
+  const [quickView, setQuickView] = useState<QuickViewType>('all');
+  const [sortBy, setSortBy] = useState<SortByType>('created_desc');
 
   useEffect(() => {
     if (stageParam) {
@@ -56,35 +71,85 @@ export const ApplicationsPage: React.FC = () => {
     fetchApps();
   }, [tenant.id, tenant.demo_mode, statusFilter, deptFilter, search]);
 
-  const filteredApps = applications.filter((app) => {
-    if (propTypeFilter === 'all') return true;
-    return app.property?.property_type?.toLowerCase() === propTypeFilter.toLowerCase();
-  });
-
   const getNextActionInfo = (app: any) => {
     switch (app.status) {
       case 'draft':
         return { action: 'Esperando cliente', alert: 'Borrador incompleto', color: 'text-slate-600 bg-slate-100', responsible: 'Solicitante' };
       case 'submitted':
-        return { action: 'Revisar documento', alert: 'Doc recién subido', color: 'text-amber-800 bg-amber-50', responsible: 'Mesa de Crédito' };
+        return { action: 'Revisar solicitud', alert: 'Recién ingresada', color: 'text-amber-800 bg-amber-50', responsible: 'Mesa de Entrada' };
       case 'info_review':
-        return { action: 'Revisar evaluación', alert: 'Recaudos en revisión', color: 'text-blue-800 bg-blue-50', responsible: 'Analista de Riesgo' };
+        return { action: 'Revisar documentación', alert: 'Recaudos en revisión', color: 'text-blue-800 bg-blue-50', responsible: 'Analista Documental' };
       case 'property_analysis':
         return { action: 'Asignar tasador', alert: 'Peritaje pendiente', color: 'text-purple-800 bg-purple-50', responsible: 'Perito Tasador' };
       case 'evaluation':
-        return { action: 'Revisar evaluación', alert: 'Score IA disponible', color: 'text-indigo-800 bg-indigo-50', responsible: 'Oficial de Crédito' };
+        return { action: 'Evaluar riesgo', alert: 'Comité de Crédito', color: 'text-indigo-800 bg-indigo-50', responsible: 'Oficial de Riesgo' };
       case 'offer_available':
-        return { action: 'Preparar condiciones', alert: 'Propuesta lista', color: 'text-teal-800 bg-teal-50', responsible: 'Oficial de Crédito' };
+        return { action: 'Aceptar propuesta', alert: 'Propuesta emitida', color: 'text-teal-800 bg-teal-50', responsible: 'Oficial de Crédito' };
       case 'formalization':
-        return { action: 'Enviar a firma', alert: 'Minuta redactada', color: 'text-emerald-800 bg-emerald-50', responsible: 'Escribanía Notarial' };
+        return { action: 'Coordinar firma', alert: 'Minuta redactada', color: 'text-emerald-800 bg-emerald-50', responsible: 'Escribanía Notarial' };
       case 'approved':
-        return { action: 'Coordinar desembolso', alert: 'Escritura completada', color: 'text-emerald-800 bg-emerald-100', responsible: 'Administración' };
+        return { action: 'Desembolsar fondos', alert: 'Escritura inscripta', color: 'text-emerald-800 bg-emerald-100', responsible: 'Administración' };
       case 'rejected':
         return { action: 'Archivar expediente', alert: 'No elegible', color: 'text-rose-800 bg-rose-50', responsible: 'Mesa de Crédito' };
       default:
         return { action: 'Revisar expediente', alert: 'En proceso', color: 'text-slate-700 bg-slate-100', responsible: 'Operador' };
     }
   };
+
+  // Filter based on Quick Views
+  const filteredApps = applications
+    .filter((app) => {
+      if (propTypeFilter !== 'all' && app.property?.property_type?.toLowerCase() !== propTypeFilter.toLowerCase()) {
+        return false;
+      }
+      switch (quickView) {
+        case 'my_apps':
+          return true; // En demo muestra todos los asignados
+        case 'requires_action':
+          return app.status === 'submitted' || app.status === 'info_review' || app.status === 'property_analysis';
+        case 'no_activity':
+          return app.status === 'draft';
+        case 'waiting_client':
+          return app.status === 'draft' || app.status === 'offer_available';
+        case 'pending_docs':
+          return app.status === 'info_review';
+        case 'ready_eval':
+          return app.status === 'property_analysis' || app.status === 'evaluation';
+        case 'pending_sign':
+          return app.status === 'formalization';
+        case 'finished':
+          return app.status === 'approved' || app.status === 'rejected';
+        case 'all':
+        default:
+          return true;
+      }
+    })
+    .sort((a, b) => {
+      const amountA = Number(a.requested_amount) || 0;
+      const amountB = Number(b.requested_amount) || 0;
+      const ltvA = (amountA / (a.property?.estimated_value || 1)) * 100;
+      const ltvB = (amountB / (b.property?.estimated_value || 1)) * 100;
+      const dateA = new Date(a.created_at || Date.now()).getTime();
+      const dateB = new Date(b.created_at || Date.now()).getTime();
+
+      if (sortBy === 'amount_desc') return amountB - amountA;
+      if (sortBy === 'amount_asc') return amountA - amountB;
+      if (sortBy === 'ltv_desc') return ltvB - ltvA;
+      if (sortBy === 'created_asc') return dateA - dateB;
+      return dateB - dateA;
+    });
+
+  const quickViewsList: Array<{ id: QuickViewType; label: string; count: number }> = [
+    { id: 'all', label: 'Todas', count: applications.length },
+    { id: 'my_apps', label: 'Mis expedientes', count: applications.length },
+    { id: 'requires_action', label: 'Requieren acción', count: applications.filter((a) => a.status === 'submitted' || a.status === 'info_review' || a.status === 'property_analysis').length },
+    { id: 'pending_docs', label: 'Documentación pendiente', count: applications.filter((a) => a.status === 'info_review').length },
+    { id: 'ready_eval', label: 'Listas para evaluación', count: applications.filter((a) => a.status === 'property_analysis' || a.status === 'evaluation').length },
+    { id: 'pending_sign', label: 'Firma pendiente', count: applications.filter((a) => a.status === 'formalization').length },
+    { id: 'waiting_client', label: 'Esperando cliente', count: applications.filter((a) => a.status === 'draft' || a.status === 'offer_available').length },
+    { id: 'no_activity', label: 'Sin actividad', count: applications.filter((a) => a.status === 'draft').length },
+    { id: 'finished', label: 'Finalizadas', count: applications.filter((a) => a.status === 'approved' || a.status === 'rejected').length },
+  ];
 
   return (
     <BackofficeLayout>
@@ -110,7 +175,31 @@ export const ApplicationsPage: React.FC = () => {
           </Link>
         </div>
 
-        {/* Filtros */}
+        {/* Barra de Vistas Funcionales Rápidas */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+          {quickViewsList.map((qv) => (
+            <button
+              key={qv.id}
+              onClick={() => setQuickView(qv.id)}
+              className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all border ${
+                quickView === qv.id
+                  ? 'bg-[#102d49] text-white border-[#102d49] shadow-xs'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              {qv.label}
+              <span
+                className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                  quickView === qv.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                }`}
+              >
+                {qv.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Filtros y Orden */}
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col md:flex-row gap-3 items-center">
           <div className="w-full md:flex-1">
             <SearchInput
@@ -122,6 +211,21 @@ export const ApplicationsPage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full md:w-auto text-xs">
+            {/* Ordenamiento */}
+            <div className="w-full sm:w-48">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortByType)}
+                className="w-full h-9 px-3 rounded-lg border border-slate-300 text-xs font-semibold text-[#102d49] bg-white focus:ring-2 focus:ring-[#102d49]"
+              >
+                <option value="created_desc">Fecha: Más reciente</option>
+                <option value="created_asc">Fecha: Más antigua</option>
+                <option value="amount_desc">Monto: Mayor a menor</option>
+                <option value="amount_asc">Monto: Menor a mayor</option>
+                <option value="ltv_desc">LTV: Mayor porcentaje</option>
+              </select>
+            </div>
+
             <div className="w-full sm:w-44">
               <Select
                 value={statusFilter}
@@ -149,7 +253,7 @@ export const ApplicationsPage: React.FC = () => {
               />
             </div>
 
-            <div className="w-full sm:w-44">
+            <div className="w-full sm:w-40">
               <Select
                 value={deptFilter}
                 onChange={(e) => setDeptFilter(e.target.value)}
@@ -161,22 +265,21 @@ export const ApplicationsPage: React.FC = () => {
                   { value: 'Colonia', label: 'Colonia' },
                   { value: 'San José', label: 'San José' },
                   { value: 'Rocha', label: 'Rocha' },
-                  { value: 'Otros', label: 'Otros departamentos' },
+                  { value: 'Otros', label: 'Otros depts' },
                 ]}
               />
             </div>
 
-            <div className="w-full sm:w-44">
+            <div className="w-full sm:w-36">
               <Select
                 value={propTypeFilter}
                 onChange={(e) => setPropTypeFilter(e.target.value)}
                 options={[
-                  { value: 'all', label: 'Tipo de garantía' },
+                  { value: 'all', label: 'Todos tipos' },
                   { value: 'casa', label: 'Casa' },
                   { value: 'apartamento', label: 'Apartamento' },
-                  { value: 'terreno', label: 'Terreno / Solar' },
-                  { value: 'comercial', label: 'Local Comercial' },
-                  { value: 'campo', label: 'Campo / Fracción' },
+                  { value: 'local_comercial', label: 'Local' },
+                  { value: 'terreno', label: 'Terreno' },
                 ]}
               />
             </div>
