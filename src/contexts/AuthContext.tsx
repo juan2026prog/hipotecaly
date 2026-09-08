@@ -356,27 +356,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const emailTrimmed = emailInput.trim().toLowerCase();
     const passTrimmed = passwordInput.trim();
 
-    // CLAVE DE ACCESO TOTAL / MASTER ADMIN GLOBAL (ÚNICAMENTE en desarrollo o preview local)
+    // CLAVE DE ACCESO TOTAL QA / MASTER ADMIN GLOBAL (ÚNICAMENTE en desarrollo o preview local)
     if (
       !import.meta.env.PROD &&
       (emailTrimmed === 'admin@test.com' || emailTrimmed === 'admin' || emailTrimmed === 'superadmin' || emailTrimmed === 'admin@hipotecaly.uy') &&
       (passTrimmed === 'admin123' || passTrimmed === 'admin')
     ) {
+      console.log('[QA_ADMIN_SESSION] Sesión temporal QA iniciada con credenciales admin/admin123 (Ambiente DEV/QA activo)');
       if (typeof window !== 'undefined') {
         window.localStorage.setItem('hipotecaly_master_user', 'admin@test.com');
         window.localStorage.setItem('hipotecaly_test_role', 'super_admin');
       }
       const masterUser: User = {
         id: 'u-master-superadmin-001',
-        app_metadata: { role: 'super_admin', is_super_admin: true },
-        user_metadata: { first_name: 'Admin', last_name: 'Total', role: 'super_admin' },
+        app_metadata: { role: 'super_admin', is_super_admin: true, is_qa_admin: true },
+        user_metadata: { first_name: 'Admin', last_name: 'QA Total', role: 'super_admin' },
         aud: 'authenticated',
         created_at: new Date().toISOString(),
-        email: 'admin@test.com',
+        email: 'admin@hipotecaly.test',
       } as any;
       setUser(masterUser);
       setUserRole('super_admin');
       setIsSuperAdmin(true);
+      setIsQaSession(true);
       setMemberships([
         {
           organizationId: 'a0000000-0000-0000-0000-000000000001',
