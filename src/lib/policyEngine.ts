@@ -382,11 +382,11 @@ export function simulatePolicyEvaluation(
     },
     {
       id: 'r-6',
-      name: 'Antecedentes y Clearing de Informes',
+      name: 'Historial en Clearing de Informes & Central de Riesgos BCU',
       category: 'scoring',
-      description: 'Sin antecedentes negativos activos en la central de riesgos del BCU.',
-      status: input.hasCleanClearing !== false ? 'pass' : 'fail',
-      detail: 'Consulta BCU / Clearing conforme',
+      description: 'Evaluación de antecedentes crediticios. Hipotecaly admite solicitantes en Clearing (no es causal de rechazo automático ni bloqueo; se pondera en el análisis de riesgo).',
+      status: input.hasCleanClearing !== false ? 'pass' : 'warn',
+      detail: input.hasCleanClearing !== false ? 'Sin antecedentes reportados' : 'Con antecedentes (Admitido para análisis de riesgo)',
     },
   ];
 

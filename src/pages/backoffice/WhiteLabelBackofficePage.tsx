@@ -1643,7 +1643,7 @@ export const WhiteLabelBackofficePage: React.FC = () => {
                     onChange={(e) => setSimHasCleanClearing(e.target.checked)}
                     className="rounded text-brand-green"
                   />
-                  <span className="text-[11px] font-semibold text-slate-700">Clearing BCU limpio</span>
+                  <span className="text-[11px] font-semibold text-slate-700">Sin antecedentes en Clearing de Informes / BCU</span>
                 </label>
                 <button
                   type="button"

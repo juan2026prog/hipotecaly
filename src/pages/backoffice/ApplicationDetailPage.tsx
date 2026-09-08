@@ -1230,7 +1230,7 @@ export const ApplicationDetailPage: React.FC = () => {
                         </div>
                         <div className="flex items-center space-x-2 text-emerald-800">
                           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                          <span>Consulta Clearing / BCU sin antecedentes</span>
+                          <span>Consulta Clearing de Informes & Central de Riesgos BCU</span>
                         </div>
                       </div>
                     </div>
@@ -1650,19 +1650,27 @@ export const ApplicationDetailPage: React.FC = () => {
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center space-x-2">
                 <ShieldCheck className="w-5 h-5 text-emerald-600" />
-                <h3 className="text-sm font-bold text-slate-900">Evidencia de Firma Digital Avanzada</h3>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Evidencia de Firma Digital Avanzada</h3>
+                  <span className="text-[10px] font-bold text-slate-500">Ley Nº 18.600 · República Oriental del Uruguay</span>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowSignatureEvidenceModal(false)}
-                className="text-slate-400 hover:text-slate-600 font-bold"
-              >
-                Cerrar
-              </button>
+              <div className="flex items-center space-x-2">
+                <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200">
+                  SIMULACIÓN / EVIDENCIA DEMO
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowSignatureEvidenceModal(false)}
+                  className="text-slate-400 hover:text-slate-600 font-bold"
+                >
+                  Cerrar
+                </button>
+              </div>
             </div>
 
             <p className="text-slate-600 leading-relaxed">
-              Prueba técnica y jurídica de otorgamiento de firma conforme a la Ley N° 18.600 y normativa notarial de la República Oriental del Uruguay.
+              Prueba técnica y jurídica de otorgamiento de firma electrónica avanzada conforme a la Ley N° 18.600.
             </p>
 
             <div className="p-3.5 rounded-xl bg-slate-900 text-white space-y-2 font-mono text-[11px]">
@@ -1689,16 +1697,16 @@ export const ApplicationDetailPage: React.FC = () => {
                 <p className="text-[10px] text-slate-500">Caja Notarial 48.291</p>
               </div>
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="text-slate-400 font-medium block text-[10px]">Autoridad Certificadora</span>
-                <strong className="text-navy">AGESIC / UCE Uruguay</strong>
-                <p className="text-[10px] text-emerald-700 font-bold">Certificado Válido ✓</p>
+                <span className="text-slate-400 font-medium block text-[10px]">Prestador / Certificador</span>
+                <strong className="text-navy">Prestador Acreditado Ley 18.600</strong>
+                <p className="text-[10px] text-amber-700 font-semibold">Simulación de Entorno Operativo</p>
               </div>
             </div>
 
             <div className="p-3 rounded-xl bg-emerald-50 text-emerald-900 border border-emerald-200 flex items-center space-x-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span className="font-semibold text-[11px]">
-                Integridad garantizada. El documento no ha sufrido alteraciones posteriores a su firma.
+                Integridad garantizada. Estructura de evidencia conforme a estándares criptográficos de firma avanzada.
               </span>
             </div>
 
