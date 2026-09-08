@@ -4,7 +4,7 @@
 // ==============================================================================
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Target,
   Building,
@@ -33,7 +33,6 @@ import { getTenantModules } from '../../lib/tenantModulesService';
 import { Button } from '../../components/ui/Button';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import {
-  TenantInvestorProfileModal,
   InvestorProfileData,
   INITIAL_INVESTOR_PROFILE,
 } from '../../components/investor/TenantInvestorProfileModal';
@@ -429,6 +428,7 @@ function calculateAmortizingReturns(principal: number, rateAnnualPct: number, te
 export const TenantInvestorDashboardPage: React.FC = () => {
   const { tenant } = useTenant();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const brandName = tenant.branding?.public_name || tenant.name || 'Estudio Nova';
   const primaryColor = tenant.branding?.primary_color || '#173a5e';
@@ -453,11 +453,17 @@ export const TenantInvestorDashboardPage: React.FC = () => {
   const [proposals, setProposals] = useState<ProposalItem[]>(INITIAL_PROPOSALS);
 
   // Perfil del Inversor y Criterios Centralizados
-  const [profileData, setProfileData] = useState<InvestorProfileData>(INITIAL_INVESTOR_PROFILE);
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [profileModalTab, setProfileModalTab] = useState<
-    'datos' | 'verificacion' | 'fondos' | 'criterios' | 'documentos' | 'firma' | 'cuenta' | 'notificaciones'
-  >('criterios');
+  const [profileData, setProfileData] = useState<InvestorProfileData>(() => {
+    const saved = localStorage.getItem(`hipotecaly_investor_profile_${tenant.slug || 'default'}`);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return INITIAL_INVESTOR_PROFILE;
+      }
+    }
+    return INITIAL_INVESTOR_PROFILE;
+  });
 
   const investorCriteria: InvestorCriteria = useMemo(() => ({
     availableCapital: profileData.availableCapital,
@@ -473,8 +479,7 @@ export const TenantInvestorDashboardPage: React.FC = () => {
   }), [profileData]);
 
   const handleOpenProfileTab = (tab: 'datos' | 'verificacion' | 'fondos' | 'criterios' | 'documentos' | 'firma' | 'cuenta' | 'notificaciones') => {
-    setProfileModalTab(tab);
-    setIsProfileModalOpen(true);
+    navigate(`${basePath}/perfil?tab=${tab}`);
   };
 
   // Notas Privadas e Interés por Oportunidad
@@ -2210,19 +2215,6 @@ export const TenantInvestorDashboardPage: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* =================================================================== */}
-      {/* MODAL: MI PERFIL DEL INVERSOR Y CRITERIOS INTEGRALES                */}
-      {/* =================================================================== */}
-      <TenantInvestorProfileModal
-        isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
-        primaryColor={primaryColor}
-        brandName={brandName}
-        initialTab={profileModalTab}
-        profileData={profileData}
-        onProfileUpdated={(updated) => setProfileData(updated)}
-      />
 
     </TenantInvestorLayout>
   );

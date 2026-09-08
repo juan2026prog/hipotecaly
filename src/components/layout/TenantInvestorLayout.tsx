@@ -4,7 +4,7 @@
 // ==============================================================================
 
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Target,
@@ -20,23 +20,20 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
-import { TenantInvestorProfileModal } from '../investor/TenantInvestorProfileModal';
 
 interface TenantInvestorLayoutProps {
   children: React.ReactNode;
   title?: string;
-  onOpenProfileTab?: (tab: 'datos' | 'verificacion' | 'fondos' | 'criterios' | 'documentos' | 'firma' | 'cuenta' | 'notificaciones') => void;
 }
 
 export const TenantInvestorLayout: React.FC<TenantInvestorLayoutProps> = ({
   children,
 }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { signOut, user } = useAuth();
   const { tenant } = useTenant();
 
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [profileTab, setProfileTab] = useState<'datos' | 'verificacion' | 'fondos' | 'criterios' | 'documentos' | 'firma' | 'cuenta' | 'notificaciones'>('datos');
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const brandName = tenant.branding?.public_name || tenant.name || 'Estudio Nova';
@@ -62,9 +59,8 @@ export const TenantInvestorLayout: React.FC<TenantInvestorLayoutProps> = ({
   };
 
   const openProfile = (tab: 'datos' | 'verificacion' | 'fondos' | 'criterios' | 'documentos' | 'firma' | 'cuenta' | 'notificaciones' = 'datos') => {
-    setProfileTab(tab);
-    setIsProfileModalOpen(true);
     setIsUserMenuOpen(false);
+    navigate(`${basePath}/perfil?tab=${tab}`);
   };
 
   return (
@@ -206,14 +202,6 @@ export const TenantInvestorLayout: React.FC<TenantInvestorLayoutProps> = ({
         </div>
       </header>
 
-      {/* Modal Integral de Mi Perfil del Inversor */}
-      <TenantInvestorProfileModal
-        isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
-        primaryColor={primaryColor}
-        brandName={brandName}
-        initialTab={profileTab}
-      />
 
       {/* Banner de Aislamiento Privado */}
       <div className="bg-[#0e253e] border-b border-[#173a5e] px-4 py-2 text-[11px] text-slate-300 flex items-center justify-center space-x-2 text-center">

@@ -43,6 +43,7 @@ import { EstudioNovaAccessHubPage } from './pages/demo/nova/EstudioNovaAccessHub
 import { TenantSimulatorPage } from './pages/demo/TenantSimulatorPage';
 import { TenantWizardPage } from './pages/demo/TenantWizardPage';
 import { TenantInvestorDashboardPage } from './pages/demo/TenantInvestorDashboardPage';
+import { TenantInvestorProfilePage } from './pages/demo/TenantInvestorProfilePage';
 
 // Portal Notarial & Escribanos (/notary)
 import { NotaryDashboardPage } from './pages/notary/NotaryDashboardPage';
@@ -544,11 +545,23 @@ export const App: React.FC = () => {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/demo/:tenantSlug/inversor/perfil"
+                element={
+                  <ProtectedRoute allowedRoles={['lender', 'super_admin']} requireTenantMatch>
+                    <TenantInvestorProfilePage />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* Rutas Directas /inversor */}
               <Route
                 path="/inversor"
                 element={<Navigate to="/demo/estudio-nova/inversor" replace />}
+              />
+              <Route
+                path="/inversor/perfil"
+                element={<Navigate to="/demo/estudio-nova/inversor/perfil" replace />}
               />
               <Route
                 path="/inversor/oportunidades"

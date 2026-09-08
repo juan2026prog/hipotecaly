@@ -23,13 +23,26 @@ export type ApplicationStatus =
 export type NotaryStatus =
   | 'not_assigned'
   | 'assigned'
-  | 'documents_pending'
   | 'under_review'
   | 'observed'
+  | 'review_approved'
+  | 'originals_required'
+  | 'originals_received'
+  | 'signature_to_coordinate'
+  | 'signature_scheduled'
+  | 'signed'
+  | 'registration_preparation'
+  | 'registration_submitted'
+  | 'in_registration'
+  | 'registration_observed'
+  | 'registration_remedied'
+  | 'registered'
+  | 'closed'
+  // Compatibilidad legacy
+  | 'documents_pending'
   | 'documentation_complete'
   | 'drafting'
   | 'ready_to_sign'
-  | 'signed'
   | 'completed';
 
 export function getNotaryStatusLabel(status: NotaryStatus | string): string {
@@ -38,20 +51,44 @@ export function getNotaryStatusLabel(status: NotaryStatus | string): string {
       return 'No asignado';
     case 'assigned':
       return 'Asignado';
-    case 'documents_pending':
-      return 'Esperando documentación';
     case 'under_review':
-      return 'En estudio';
+      return 'En revisión notarial';
     case 'observed':
       return 'Observado';
+    case 'review_approved':
+      return 'Revisión notarial aprobada';
+    case 'originals_required':
+      return 'Originales requeridos';
+    case 'originals_received':
+      return 'Originales recibidos y cotejados';
+    case 'signature_to_coordinate':
+      return 'Firma por coordinar';
+    case 'signature_scheduled':
+      return 'Firma agendada';
+    case 'signed':
+      return 'Firmada';
+    case 'registration_preparation':
+      return 'Preparación registral';
+    case 'registration_submitted':
+      return 'Presentada ante DGR';
+    case 'in_registration':
+      return 'En trámite registral';
+    case 'registration_observed':
+      return 'Observada por Registro';
+    case 'registration_remedied':
+      return 'Subsanada';
+    case 'registered':
+      return 'Inscripta definitivamente';
+    case 'closed':
+      return 'Cerrada / Finalizada';
+    case 'documents_pending':
+      return 'Esperando documentación';
     case 'documentation_complete':
       return 'Documentación completa';
     case 'drafting':
       return 'Preparando escritura';
     case 'ready_to_sign':
-      return 'Listo para firma';
-    case 'signed':
-      return 'Firmado';
+      return 'Revisión notarial aprobada';
     case 'completed':
       return 'Finalizado';
     default:

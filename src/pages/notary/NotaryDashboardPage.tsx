@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { NotaryLayout } from '../../components/notary/NotaryLayout';
 import { notaryService } from '../../lib/notaryService';
@@ -82,7 +82,7 @@ export const NotaryDashboardPage: React.FC = () => {
             className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs border border-slate-700 transition-all flex items-center space-x-1.5"
           >
             <FileSignature className="w-3.5 h-3.5 text-teal-400" />
-            <span>Firmas Pendientes</span>
+            <span>Firmas</span>
           </Link>
         </div>
       </div>

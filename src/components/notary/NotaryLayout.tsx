@@ -39,7 +39,7 @@ export const NotaryLayout: React.FC<{ children: React.ReactNode; title?: string 
   const navItems: NotaryNavItem[] = [
     { name: 'Inicio', href: basePath, icon: Home },
     { name: 'Expedientes', href: `${basePath}/expedientes`, icon: FileText },
-    { name: 'Firmas pendientes', href: `${basePath}/firmas`, icon: FileSignature, badge: 2 },
+    { name: 'Firmas', href: `${basePath}/firmas`, icon: FileSignature, badge: 2 },
     { name: 'Perfil profesional', href: `${basePath}/perfil`, icon: UserCheck },
   ];
 
