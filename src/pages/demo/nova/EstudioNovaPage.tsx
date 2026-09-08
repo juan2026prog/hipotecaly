@@ -121,6 +121,13 @@ export const EstudioNovaPage: React.FC = () => {
               Lun a Vie 09:00 – 18:00 hs
             </span>
             <Link
+              to="/demo/estudio-nova/inversor"
+              className="flex items-center text-[#f4b43b] hover:text-white font-semibold transition-colors"
+            >
+              <Building className="w-3.5 h-3.5 mr-1 text-[#f4b43b]" />
+              Red de Inversores
+            </Link>
+            <Link
               to="/demo/estudio-nova/cliente"
               className="flex items-center text-slate-200 hover:text-[#f4b43b] font-medium transition-colors"
             >
@@ -248,17 +255,24 @@ export const EstudioNovaPage: React.FC = () => {
               >
                 CONTACTO
               </a>
+              <Link
+                to="/demo/estudio-nova/inversor"
+                onClick={() => setMobileNavOpen(false)}
+                className="py-2 px-3 rounded-lg text-[#f4b43b] bg-[#102d49] hover:bg-[#173a5e] font-bold"
+              >
+                RED DE INVERSORES
+              </Link>
             </nav>
             <div className="pt-3 border-t border-[#dfe5ea] flex flex-col gap-2">
-              <a
-                href="#simulador"
+              <Link
+                to="/demo/estudio-nova/simulador"
                 onClick={() => setMobileNavOpen(false)}
                 className="w-full text-center bg-[#f5f7f9] text-[#173a5e] py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider"
               >
                 SIMULAR AHORA
-              </a>
+              </Link>
               <Link
-                to="/solicitar?source=estudio_nova"
+                to="/demo/estudio-nova/solicitar"
                 onClick={() => setMobileNavOpen(false)}
                 className="w-full text-center bg-[#173a5e] text-white py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider"
               >
@@ -814,6 +828,14 @@ export const EstudioNovaPage: React.FC = () => {
               </p>
             </div>
 
+          </div>
+
+          <div className="text-center pt-2">
+            <Link to="/demo/estudio-nova/inversor">
+              <Button size="lg" className="bg-[#f4b43b] hover:bg-[#e5a62e] text-[#102d49] font-bold shadow-lg text-xs sm:text-sm px-8 min-h-[48px]">
+                Acceder al Panel Inversor de Estudio Nova <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </Link>
           </div>
 
           <div className="p-4 sm:p-5 rounded-xl bg-white/5 border border-white/10 text-center max-w-3xl mx-auto text-xs text-slate-300 leading-relaxed">
