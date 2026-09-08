@@ -28,13 +28,14 @@ export const NotaryApplicationsPage: React.FC = () => {
 
   const filterTabs: Array<{ id: string; label: string }> = [
     { id: 'all', label: 'Todos' },
-    { id: 'under_review', label: 'En estudio' },
+    { id: 'under_review', label: 'En revisión notarial' },
     { id: 'observed', label: 'Observados' },
-    { id: 'documents_pending', label: 'Esperando documentación' },
-    { id: 'drafting', label: 'Preparando escritura' },
-    { id: 'ready_to_sign', label: 'Listos para firma' },
-    { id: 'signed', label: 'Firmados' },
-    { id: 'completed', label: 'Finalizados' },
+    { id: 'review_approved', label: 'Revisión aprobada' },
+    { id: 'signature_to_coordinate', label: 'Firmas por coordinar' },
+    { id: 'signature_scheduled', label: 'Firmas agendadas' },
+    { id: 'signed', label: 'Firmadas' },
+    { id: 'in_registration', label: 'En trámite DGR' },
+    { id: 'registered', label: 'Inscriptos' },
   ];
 
   const loadApplications = async () => {

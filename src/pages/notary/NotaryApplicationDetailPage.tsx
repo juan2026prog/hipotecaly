@@ -23,6 +23,9 @@ import {
   Lock,
   Check,
   Award,
+  Calendar,
+  Layers,
+  FileCheck,
 } from 'lucide-react';
 import { getNotaryStatusLabel, NotaryStatus, NotaryObservation } from '../../lib/types';
 import {
@@ -30,6 +33,7 @@ import {
   DynamicNotaryRequirement,
   CaseNotarialContext,
 } from '../../lib/notarialRequirementsEngine';
+import { googleCalendarService, CalendarEventSchedule, getAvailableCalendarSlots } from '../../lib/calendar/googleCalendarService';
 import { DocumentGenerationModal } from '../../components/docflow/DocumentGenerationModal';
 import { AdvancedSignatureModal } from '../../components/signature/AdvancedSignatureModal';
 import { SignatureEvidenceModal } from '../../components/signature/SignatureEvidenceModal';
@@ -76,9 +80,35 @@ export const NotaryApplicationDetailPage: React.FC = () => {
   const [registrationStatus, setRegistrationStatus] = useState<'presentado' | 'en_tramite' | 'inscripto'>('en_tramite');
   const [savedRegistration, setSavedRegistration] = useState(false);
 
-  // KYC Escribano Review State
-  const [kycNotaryConfirmed, setKycNotaryConfirmed] = useState(false);
+  // Estado de confirmación profesional por bloque
+  const [confirmedBlocks, setConfirmedBlocks] = useState<Record<string, { confirmed: boolean; by: string; at: string }>>({
+    partes: { confirmed: true, by: 'Esc. María Pérez Morales', at: '07/09/2026 · 11:20' },
+    titularidad: { confirmed: true, by: 'Esc. María Pérez Morales', at: '07/09/2026 · 11:25' },
+    catastro: { confirmed: true, by: 'Esc. María Pérez Morales', at: '07/09/2026 · 11:40' },
+    registros: { confirmed: true, by: 'Esc. María Pérez Morales', at: '07/09/2026 · 11:45' },
+  });
+
+  // Modal de Evidencia IA
   const [evidenceModalAiData, setEvidenceModalAiData] = useState<{ title: string; text: string; sources: string[] } | null>(null);
+
+  // Modal de Fundamento Notarial
+  const [legalBasisModalData, setLegalBasisModalData] = useState<{ title: string; basis: string; description: string } | null>(null);
+
+  // Gestión de Originales
+  const [requiresOriginals, setRequiresOriginals] = useState<boolean | null>(true);
+  const [selectedOriginalDocs, setSelectedOriginalDocs] = useState<string[]>([
+    'Escritura pública de compraventa antecedente matriz 2014',
+    'Testimonio de Capitulaciones Matrimoniales inscripto',
+  ]);
+  const [showOriginalsModal, setShowOriginalsModal] = useState(false);
+  const [newOriginalDocInput, setNewOriginalDocInput] = useState('');
+
+  // Coordinación con Google Calendar
+  const [showScheduleSignModal, setShowScheduleSignModal] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState('2026-09-15');
+  const [scheduleTime, setScheduleTime] = useState('15:30');
+  const [scheduleLocation, setScheduleLocation] = useState('Estudio Fernández & Asociados (Rincón 487 Piso 3)');
+  const [scheduledEvent, setScheduledEvent] = useState<CalendarEventSchedule | null>(null);
 
   const loadData = async () => {
     if (!id) return;
@@ -102,6 +132,9 @@ export const NotaryApplicationDetailPage: React.FC = () => {
 
       const obs = await notaryService.getNotaryObservations(appData.id);
       setObservations(obs);
+
+      const ev = googleCalendarService.getEventByApplication(appData.id);
+      setScheduledEvent(ev);
     } catch {
       // Fallback
     } finally {
@@ -113,19 +146,70 @@ export const NotaryApplicationDetailPage: React.FC = () => {
     loadData();
   }, [id, user?.id]);
 
-  const handleStatusChange = async (newStatus: NotaryStatus) => {
+  const handleToggleBlockConfirm = (blockKey: string) => {
+    const current = confirmedBlocks[blockKey];
+    if (current?.confirmed) {
+      const updated = { ...confirmedBlocks };
+      delete updated[blockKey];
+      setConfirmedBlocks(updated);
+    } else {
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('es-UY') + ' · ' + now.toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' });
+      setConfirmedBlocks({
+        ...confirmedBlocks,
+        [blockKey]: {
+          confirmed: true,
+          by: 'Esc. María Pérez Morales',
+          at: dateStr,
+        },
+      });
+    }
+  };
+
+  const handleApproveNotaryReview = async () => {
     if (!app) return;
-    
-    // Regla de bloqueo: No permitir pasar a ready_to_sign si hay observaciones bloqueantes
-    const hasBlockingObs = observations.some((o) => o.status === 'open' && o.severity_level === 'bloqueante');
-    if (newStatus === 'ready_to_sign' && hasBlockingObs) {
-      alert('BLOQUEO JURÍDICO: No es posible pasar a "Listo para firma" mientras existan observaciones bloqueantes sin subsanar.');
+    const hasBlocking = observations.some((o) => o.status === 'open' && o.severity_level === 'bloqueante');
+    if (hasBlocking) {
+      alert('BLOQUEO JURÍDICO: Debe subsanar las observaciones bloqueantes antes de aprobar la revisión notarial.');
       return;
     }
 
-    setApp({ ...app, notary_status: newStatus });
-    await notaryService.updateNotaryStatus(app.id, app.organization_id, newStatus);
-    setStatusToast(`Estado notarial actualizado a: ${getNotaryStatusLabel(newStatus)}`);
+    const nextStatus: NotaryStatus = requiresOriginals ? 'originals_required' : 'signature_to_coordinate';
+    setApp({ ...app, notary_status: nextStatus });
+    await notaryService.updateNotaryStatus(app.id, app.organization_id, nextStatus);
+    setStatusToast('🟢 Revisión Notarial Aprobada conforme');
+    setTimeout(() => setStatusToast(null), 3500);
+  };
+
+  const handleConfirmScheduleSignature = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!app) return;
+
+    const newEv = await googleCalendarService.scheduleEvent({
+      applicationId: app.id,
+      applicationPublicId: app.public_id,
+      type: 'firma_escritura',
+      title: `Firma Matriz Hipotecaria — ${app.borrower?.first_name} ${app.borrower?.last_name}`,
+      date: scheduleDate,
+      time: scheduleTime,
+      durationMinutes: 45,
+      location: scheduleLocation,
+      locationType: 'estudio',
+      participants: [
+        { name: `${app.borrower?.first_name} ${app.borrower?.last_name}`, role: 'Deudor', email: app.borrower?.email || 'cliente@ejemplo.com' },
+        { name: 'Esc. María Pérez Morales', role: 'Escribano', email: 'maria.perez@notarios.org.uy' },
+        { name: 'Mateo Silva (Nova Capital)', role: 'Acreedor', email: 'mateo.silva@novacapital.uy' },
+      ],
+      reminders: { hours24: true, hours2: true },
+      googleMeetLink: 'https://meet.google.com/hpt-notary-sign',
+      createdBy: 'Esc. María Pérez Morales',
+    });
+
+    setScheduledEvent(newEv);
+    setApp({ ...app, notary_status: 'signature_scheduled' });
+    await notaryService.updateNotaryStatus(app.id, app.organization_id, 'signature_scheduled');
+    setShowScheduleSignModal(false);
+    setStatusToast('📅 Firma Agendada y sincronizada con Google Calendar');
     setTimeout(() => setStatusToast(null), 3500);
   };
 
@@ -190,7 +274,7 @@ export const NotaryApplicationDetailPage: React.FC = () => {
     ? '🔴 Bloqueado (Observaciones críticas)'
     : openObsCount > 0
     ? '🟡 Requiere revisión notarial'
-    : '🟢 Apto jurídicamente para escriturar';
+    : '🟢 Revisión notarial aprobada';
 
   return (
     <NotaryLayout title={`Expediente ${app.public_id}`}>
@@ -202,7 +286,7 @@ export const NotaryApplicationDetailPage: React.FC = () => {
         </div>
       )}
 
-      {/* Barra Superior con Botón Volver y Selector de Estado */}
+      {/* Barra Superior con Botón Volver y Badge del Workflow */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <Link
@@ -213,24 +297,12 @@ export const NotaryApplicationDetailPage: React.FC = () => {
             <span>Volver a Mis Expedientes</span>
           </Link>
 
-          {/* Selector de Estado Notarial */}
-          <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm">
-            <span className="text-xs font-bold text-slate-500">Estado Notarial:</span>
-            <select
-              value={app.notary_status || 'under_review'}
-              onChange={(e) => handleStatusChange(e.target.value as NotaryStatus)}
-              className="bg-teal-50 text-teal-900 font-extrabold text-xs px-2.5 py-1 rounded-lg border border-teal-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
-            >
-              <option value="not_assigned">No asignado</option>
-              <option value="assigned">Asignado</option>
-              <option value="documents_pending">Esperando documentación</option>
-              <option value="under_review">En estudio</option>
-              <option value="observed">Observado</option>
-              <option value="ready_to_sign">Listo para firma</option>
-              <option value="signed">Firmado</option>
-              <option value="in_registration">En trámite de registro</option>
-              <option value="registered">Inscripto / Finalizado</option>
-            </select>
+          {/* Indicador de Workflow (Reemplaza al selector manual libre) */}
+          <div className="flex items-center space-x-2 bg-white px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-sm">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Etapa:</span>
+            <span className="font-extrabold text-xs text-teal-900 bg-teal-50 px-2.5 py-0.5 rounded-lg border border-teal-200">
+              {getNotaryStatusLabel(app.notary_status || 'under_review')}
+            </span>
           </div>
         </div>
 
@@ -261,13 +333,6 @@ export const NotaryApplicationDetailPage: React.FC = () => {
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Agregar Observación</span>
-              </button>
-              <button
-                onClick={() => setShowDocGen(true)}
-                className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-teal-600 text-white hover:bg-teal-700 text-xs font-bold transition-all shadow-md shadow-teal-500/20"
-              >
-                <FileSignature className="w-3.5 h-3.5" />
-                <span>Generar Borrador Matriz</span>
               </button>
             </div>
           </div>
@@ -383,22 +448,28 @@ export const NotaryApplicationDetailPage: React.FC = () => {
                 </div>
                 <div className="space-y-1">
                   <div className="text-[11px] font-bold text-teal-300 uppercase tracking-wider">
-                    Próxima acción inmediata recomendada
+                    Próxima acción inmediata
                   </div>
                   <div className="text-sm font-bold text-white">
                     {hasBlockingObs
-                      ? 'Subsanar la observación bloqueante antes de habilitar firma.'
+                      ? 'Subsanar la observación bloqueante en el estudio de títulos.'
                       : openObsCount > 0
-                      ? 'Revisar certificado de gravámenes y validar las observaciones no bloqueantes.'
-                      : 'Validar confirmación de identidad KYC y proceder a generar el Borrador Matriz v4.'}
+                      ? 'Revisar certificados de gravámenes y capitulaciones matrimoniales.'
+                      : scheduledEvent
+                      ? `Firma agendada para el ${scheduledEvent.date} a las ${scheduledEvent.time} hs.`
+                      : 'Revisión notarial aprobada. Proceder a coordinar la firma con Google Calendar.'}
                   </div>
                 </div>
               </div>
               <button
-                onClick={() => setActiveTab(hasBlockingObs || openObsCount > 0 ? 'revision' : 'escritura_firma')}
+                onClick={() => {
+                  if (hasBlockingObs || openObsCount > 0) setActiveTab('revision');
+                  else if (!scheduledEvent) setShowScheduleSignModal(true);
+                  else setActiveTab('escritura_firma');
+                }}
                 className="px-4 py-2 bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-black rounded-xl transition-colors shadow-lg shadow-teal-500/20 shrink-0 self-start sm:self-center"
               >
-                Proceder ahora &rarr;
+                {scheduledEvent ? 'Ver firma agendada →' : openObsCount > 0 ? 'Revisar observaciones →' : 'Coordinar firma →'}
               </button>
             </div>
 
@@ -408,11 +479,11 @@ export const NotaryApplicationDetailPage: React.FC = () => {
                 <div className="flex items-center space-x-2">
                   <Sparkles className="w-4 h-4 text-teal-600" />
                   <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                    Diagnóstico Previo Automatizado (IA Notarial)
+                    HIPOTECALY analizó el expediente
                   </h3>
                 </div>
                 <span className="text-[11px] font-bold text-slate-500">
-                  47 Controles Notariales Ejecutados
+                  47 verificaciones ejecutadas
                 </span>
               </div>
 
@@ -420,21 +491,21 @@ export const NotaryApplicationDetailPage: React.FC = () => {
                 <div className="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl flex items-center space-x-3">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
                   <div>
-                    <div className="text-sm font-black text-emerald-950">43 Controles</div>
-                    <div className="text-xs text-emerald-700 font-medium">Conformes sin observaciones</div>
+                    <div className="text-sm font-black text-emerald-950">✓ 43 Conformes</div>
+                    <div className="text-xs text-emerald-700 font-medium">Sin inconsistencias detectadas</div>
                   </div>
                 </div>
                 <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-xl flex items-center space-x-3">
                   <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
                   <div>
-                    <div className="text-sm font-black text-amber-950">3 Requieren Revisión</div>
+                    <div className="text-sm font-black text-amber-950">⚠ 3 Requieren Revisión</div>
                     <div className="text-xs text-amber-700 font-medium">Verificados por el escribano</div>
                   </div>
                 </div>
                 <div className="bg-blue-50 border border-blue-200 p-3.5 rounded-xl flex items-center space-x-3">
                   <Clock className="w-5 h-5 text-blue-600 shrink-0" />
                   <div>
-                    <div className="text-sm font-black text-blue-950">1 Pendiente</div>
+                    <div className="text-sm font-black text-blue-950">✕ 1 Pendiente</div>
                     <div className="text-xs text-blue-700 font-medium">Actualización DGI certificado</div>
                   </div>
                 </div>
@@ -457,8 +528,8 @@ export const NotaryApplicationDetailPage: React.FC = () => {
               <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-5 text-xs">
                 <div className="space-y-1">
                   <span className="text-slate-400 font-bold uppercase text-[10px]">Acreedor Hipotecario</span>
-                  <div className="font-bold text-slate-900 text-sm">Fondo Hipotecario Río de la Plata SAS</div>
-                  <div className="text-slate-500 text-[11px]">RUT: 21.890.345.0019</div>
+                  <div className="font-bold text-slate-900 text-sm">Fondo Inversor Privado Nova Capital</div>
+                  <div className="text-slate-500 text-[11px]">RUT: 21.908.411.0012</div>
                 </div>
                 <div className="space-y-1">
                   <span className="text-slate-400 font-bold uppercase text-[10px]">Tasa Efectiva Anual (TEA)</span>
@@ -478,130 +549,230 @@ export const NotaryApplicationDetailPage: React.FC = () => {
         {/* PESTAÑA 2: REVISIÓN JURÍDICA */}
         {activeTab === 'revision' && (
           <div className="space-y-6">
+            {/* Banner de Aprobación Global de Revisión */}
+            <div className="bg-white p-5 rounded-2xl border border-teal-500/40 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center space-x-2">
+                  <ShieldCheck className="w-4 h-4 text-teal-600" />
+                  <span>Estado General de Revisión Jurídica</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Confirma cada bloque tras revisar las evidencias previas procesadas por HIPOTECALY.
+                </p>
+              </div>
+
+              <button
+                onClick={handleApproveNotaryReview}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center space-x-1.5 shrink-0"
+              >
+                <Check className="w-4 h-4" />
+                <span>Aprobar Revisión Notarial</span>
+              </button>
+            </div>
+
+            {/* 7 Bloques Homogéneos de Revisión */}
+
             {/* Bloque 1: Partes y Representación */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center space-x-2">
-                  <CheckCircle2 className="w-4 h-4 text-teal-600" />
-                  <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                    1. Identificación de las Partes y Capacidad
-                  </h3>
+                <div className="space-y-0.5">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-teal-600" />
+                    <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                      1. Identificación de las Partes y Capacidad
+                    </h3>
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    🟢 IA: Sin inconsistencias aparentes · Fuentes analizadas: 2
+                  </div>
                 </div>
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                  Capacidad Plena
-                </span>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() =>
+                      setEvidenceModalAiData({
+                        title: 'Evidencia: Identificación y Representación',
+                        text: 'Cotejo automatizado realizado entre CI digital del deudor y testimonio de personería y facultades del representante de Nova Capital.',
+                        sources: ['C.I. 4.218.930-5 (DNIC)', 'Poder de Representación Nova Capital'],
+                      })
+                    }
+                    className="text-xs text-teal-700 hover:text-teal-900 font-bold"
+                  >
+                    Ver evidencia
+                  </button>
+                  <button
+                    onClick={() => handleToggleBlockConfirm('partes')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      confirmedBlocks.partes?.confirmed
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {confirmedBlocks.partes?.confirmed ? `✓ Confirmado (${confirmedBlocks.partes.at})` : '⏳ Confirmar'}
+                  </button>
+                </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                <div className="p-3 bg-slate-50 rounded-xl space-y-1.5 border border-slate-100">
-                  <div className="font-bold text-slate-800 text-xs">Deudor / Propietario</div>
-                  <div className="text-slate-600 font-medium">{app.borrower?.first_name} {app.borrower?.last_name}</div>
-                  <div className="text-slate-500 text-[11px]">C.I.: 4.521.890-3 | Domicilio: {app.property?.address}</div>
-                  <div className="text-slate-500 text-[11px]">Estado Civil: <strong>Casado con capitulaciones matrimoniales</strong></div>
+                <div className="p-3 bg-slate-50 rounded-xl space-y-1 border border-slate-100">
+                  <div className="font-bold text-slate-800">Deudor / Propietario</div>
+                  <div className="text-slate-600">{app.borrower?.first_name} {app.borrower?.last_name} (C.I. 4.218.930-5)</div>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-xl space-y-1.5 border border-slate-100">
-                  <div className="font-bold text-slate-800 text-xs">Acreedor / Fondo</div>
-                  <div className="text-slate-600 font-medium">Fondo Hipotecario Río de la Plata SAS</div>
-                  <div className="text-slate-500 text-[11px]">RUT: 21.890.345.0019 | Representante: Esc. Mateo Silva</div>
-                  <div className="text-slate-500 text-[11px]">Poder Especial Vigente (Testimonio exhibido y verificado)</div>
+                <div className="p-3 bg-slate-50 rounded-xl space-y-1 border border-slate-100">
+                  <div className="font-bold text-slate-800">Acreedor / Fondo</div>
+                  <div className="text-slate-600">Fondo Inversor Privado Nova Capital (RUT 21.908.411.0012)</div>
                 </div>
               </div>
             </div>
 
-            {/* Bloque 2: Estado Civil y Capitulaciones (Motor Notarial) */}
+            {/* Bloque 2: Estado Civil y Régimen Matrimonial */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center space-x-2">
-                  <FileText className="w-4 h-4 text-teal-600" />
-                  <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                    2. Estado Civil, Capitulaciones y Régimen Matrimonial
-                  </h3>
+                <div className="space-y-0.5">
+                  <div className="flex items-center space-x-2">
+                    <FileText className="w-4 h-4 text-teal-600" />
+                    <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                      2. Estado Civil y Régimen Patrimonial
+                    </h3>
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    🟡 IA: Capitulaciones matrimoniales requieren confirmación notarial · Fuentes: 2
+                  </div>
                 </div>
-                <button
-                  onClick={() =>
-                    setEvidenceModalAiData({
-                      title: 'Evidencia: Capitulaciones Matrimoniales Inscritas',
-                      text: 'Las capitulaciones matrimoniales fueron otorgadas el 14/05/2018 ante el Esc. Roberto Gómez e inscriptas en el Registro Nacional de Actos Personales con el N° 4512/2018. Se estipuló separación absoluta de bienes. Por consiguiente, no se requiere consentimiento conyugal del cónyuge conforme al Art. 1970 del Código Civil uruguayo.',
-                      sources: ['Testimonio de Capitulaciones Matrimoniales (PDF)', 'Informe Registral de Actos Personales N° 2026-9912'],
-                    })
-                  }
-                  className="text-xs text-teal-700 hover:text-teal-900 font-bold inline-flex items-center space-x-1"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  <span>Ver Evidencia IA</span>
-                </button>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() =>
+                      setEvidenceModalAiData({
+                        title: 'Evidencia: Capitulaciones Matrimoniales Inscritas',
+                        text: 'Las capitulaciones matrimoniales fueron otorgadas el 14/05/2018 ante el Esc. Roberto Gómez e inscriptas en el Registro Nacional de Actos Personales con el N° 4512/2018. Régimen de separación de bienes.',
+                        sources: ['Testimonio de Capitulaciones Matrimoniales (PDF)', 'Certificado DGR Actos Personales'],
+                      })
+                    }
+                    className="text-xs text-teal-700 hover:text-teal-900 font-bold"
+                  >
+                    Ver evidencia
+                  </button>
+                  <button
+                    onClick={() => handleToggleBlockConfirm('estado_civil')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      confirmedBlocks.estado_civil?.confirmed
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {confirmedBlocks.estado_civil?.confirmed ? `✓ Confirmado (${confirmedBlocks.estado_civil.at})` : '⏳ Confirmar'}
+                  </button>
+                </div>
               </div>
               <p className="text-xs text-slate-600 leading-relaxed">
-                El deudor declara estado civil <strong>Casado con capitulaciones</strong>. Conforme al régimen notarial uruguayo, el bien fue adquirido constante el matrimonio con fondos propios bajo régimen de separación total de bienes. No se requiere firma de asentimiento del cónyuge.
+                Deudor casado con capitulaciones matrimoniales inscriptas. Conforme al régimen notarial uruguayo, el bien es propio y no requiere consentimiento del cónyuge (Art. 1970 Código Civil).
               </p>
             </div>
 
-            {/* Bloque 3: Cadena Dominial y Títulos de 30 Años */}
+            {/* Bloque 3: Titularidad y Derechos */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="space-y-0.5">
+                  <div className="flex items-center space-x-2">
+                    <Layers className="w-4 h-4 text-teal-600" />
+                    <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                      3. Titularidad y Derechos Reales
+                    </h3>
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    🟢 IA: Dominio 100% pleno en titular único · Fuentes: 2
+                  </div>
+                </div>
                 <div className="flex items-center space-x-2">
-                  <History className="w-4 h-4 text-teal-600" />
-                  <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                    3. Cadena Dominial (Estudio de Títulos 30 Años)
-                  </h3>
+                  <button
+                    onClick={() =>
+                      setEvidenceModalAiData({
+                        title: 'Evidencia: Titularidad Dominial',
+                        text: 'El deudor es titular exclusivo del 100% del dominio del padrón 14.892 sin usufructos ni gravámenes reales precedentes.',
+                        sources: ['Matriz de Compraventa 2014', 'Certificado DGR Inmobiliaria'],
+                      })
+                    }
+                    className="text-xs text-teal-700 hover:text-teal-900 font-bold"
+                  >
+                    Ver evidencia
+                  </button>
+                  <button
+                    onClick={() => handleToggleBlockConfirm('titularidad')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      confirmedBlocks.titularidad?.confirmed
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {confirmedBlocks.titularidad?.confirmed ? `✓ Confirmado (${confirmedBlocks.titularidad.at})` : '⏳ Confirmar'}
+                  </button>
                 </div>
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                  Cadena Ininterrumpida (1994 - 2026)
-                </span>
               </div>
-              
-              <div className="space-y-3">
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-start justify-between text-xs">
+              <div className="p-3 bg-slate-50 rounded-xl text-xs text-slate-700">
+                Propietario único del inmueble. No se detectan desmembramientos de dominio ni tercerías.
+              </div>
+            </div>
+
+            {/* Bloque 4: Cadena Dominial (30 Años) */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="space-y-0.5">
+                  <div className="flex items-center space-x-2">
+                    <History className="w-4 h-4 text-teal-600" />
+                    <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                      4. Cadena Dominial (Estudio de Títulos 30 Años)
+                    </h3>
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    🟢 IA: Tracto sucesivo ininterrumpido (1994 - 2026) · Fuentes: 3
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => handleToggleBlockConfirm('cadena')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      confirmedBlocks.cadena?.confirmed
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {confirmedBlocks.cadena?.confirmed ? `✓ Confirmado (${confirmedBlocks.cadena.at})` : '⏳ Confirmar'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2.5 text-xs">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
                   <div>
-                    <div className="font-bold text-slate-900">2018 — Compraventa Actual</div>
-                    <div className="text-slate-600 text-[11px]">Esc. Gonzalo Fernández | Inscripta en Registro de la Propiedad Inmueble con el N° 8901/2018.</div>
+                    <div className="font-bold text-slate-900">2014 — Compraventa Actual</div>
+                    <div className="text-slate-500 text-[11px]">Esc. Alberto Rossi | Inscripta en Registro con el N° 8901/2014.</div>
                   </div>
                   <button
                     onClick={() =>
                       setEvidenceModalAiData({
-                        title: 'Título 2018: Compraventa',
-                        text: 'El deudor adquirió el padrón 14.892 en estado civil casado con capitulaciones por un precio de USD 190.000. Tradición y posesión efectiva sin gravámenes precedentes.',
-                        sources: ['Copia Simple Escritura Matriz 2018', 'Certificado DGR N° 2026-89102'],
+                        title: 'Título 2014: Compraventa',
+                        text: 'El deudor adquirió el padrón por un precio de USD 190.000 con posesión efectiva.',
+                        sources: ['Copia Simple Matriz 2014'],
                       })
                     }
-                    className="text-xs text-teal-700 hover:text-teal-900 font-bold"
+                    className="text-xs text-teal-700 font-bold"
                   >
                     Ver detalle
                   </button>
                 </div>
 
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-start justify-between text-xs">
-                  <div>
-                    <div className="font-bold text-slate-900">2004 — Compraventa Precedente</div>
-                    <div className="text-slate-600 text-[11px]">Esc. María Del Carmen Rocha | Inscripta con el N° 4310/2004.</div>
-                  </div>
-                  <button
-                    onClick={() =>
-                      setEvidenceModalAiData({
-                        title: 'Título 2004: Compraventa Precedente',
-                        text: 'Venta efectuada por Sucesión Alberto Gómez a favor del anterior titular. Constatada partición extrajudicial previa debidamente protocolizada.',
-                        sources: ['Testimonio de Protocolización 2004', 'Certificado Registral DGR 2004'],
-                      })
-                    }
-                    className="text-xs text-teal-700 hover:text-teal-900 font-bold"
-                  >
-                    Ver detalle
-                  </button>
-                </div>
-
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-start justify-between text-xs">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
                   <div>
                     <div className="font-bold text-slate-900">1994 — Partición Judicial y Adjudicación</div>
-                    <div className="text-slate-600 text-[11px]">Juzgado Letrado de Familia de 4° Turno | Inscripción N° 1205/1994.</div>
+                    <div className="text-slate-500 text-[11px]">Juzgado Letrado de Familia 4° Turno | Inscripción N° 1205/1994.</div>
                   </div>
                   <button
                     onClick={() =>
                       setEvidenceModalAiData({
-                        title: 'Título 1994: Partición y Adjudicación',
-                        text: 'Partición que adjudica el 100% del inmueble al causante Alberto Gómez. Cumple con el término de prescripción adquisitiva treintenaria requerida por la normativa notarial uruguaya.',
+                        title: 'Título 1994: Partición',
+                        text: 'Partición que adjudica el 100% del inmueble al causante. Cumple prescripción treintenaria.',
                         sources: ['Oficio Judicial Inscripción 1994'],
                       })
                     }
-                    className="text-xs text-teal-700 hover:text-teal-900 font-bold"
+                    className="text-xs text-teal-700 font-bold"
                   >
                     Ver detalle
                   </button>
@@ -609,66 +780,119 @@ export const NotaryApplicationDetailPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Bloque 4: Validación Catastral y Certificados de Gravámenes */}
+            {/* Bloque 5: Catastro y Tributos */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="space-y-0.5">
+                  <div className="flex items-center space-x-2">
+                    <Building className="w-4 h-4 text-teal-600" />
+                    <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                      5. Catastro y Tributos Inmobiliarios
+                    </h3>
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    🟢 IA: Cédula informada vigente y al día · Fuentes: 2
+                  </div>
+                </div>
                 <div className="flex items-center space-x-2">
-                  <Building className="w-4 h-4 text-teal-600" />
-                  <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                    4. Catastro, Gravámenes y Certificados de Deuda
-                  </h3>
+                  <button
+                    onClick={() => handleToggleBlockConfirm('catastro')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      confirmedBlocks.catastro?.confirmed
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {confirmedBlocks.catastro?.confirmed ? `✓ Confirmado (${confirmedBlocks.catastro.at})` : '⏳ Confirmar'}
+                  </button>
+                </div>
+              </div>
+              <div className="p-3 bg-emerald-50/50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs">
+                <div>
+                  <div className="font-bold text-emerald-950">Dirección Nacional de Catastro (DNC)</div>
+                  <div className="text-[11px] text-emerald-700">Cédula Catastral Informada N° 145.892 (Valor Real $ 4.850.000)</div>
+                </div>
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              </div>
+            </div>
+
+            {/* Bloque 6: Situación Registral (DGR) */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="space-y-0.5">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-teal-600" />
+                    <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                      6. Situación Registral (DGR)
+                    </h3>
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    🟢 IA: Libre de gravámenes, embargos e interdicciones · Fuentes: 2
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => handleToggleBlockConfirm('registros')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      confirmedBlocks.registros?.confirmed
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {confirmedBlocks.registros?.confirmed ? `✓ Confirmado (${confirmedBlocks.registros.at})` : '⏳ Confirmar'}
+                  </button>
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div className="p-3 bg-emerald-50/50 border border-emerald-200 rounded-xl flex items-center justify-between">
                   <div>
-                    <div className="font-bold text-emerald-950">Dirección Nacional de Catastro</div>
-                    <div className="text-[11px] text-emerald-700">Cédula Catastral Informada N° 14892 (Vigente 2026)</div>
+                    <div className="font-bold text-emerald-950">Registro Inmobiliario</div>
+                    <div className="text-[11px] text-emerald-700">Certificado N° 84.192: Libre de embargos e hipotecas</div>
                   </div>
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                 </div>
                 <div className="p-3 bg-emerald-50/50 border border-emerald-200 rounded-xl flex items-center justify-between">
                   <div>
-                    <div className="font-bold text-emerald-950">Registro de la Propiedad (DGR)</div>
-                    <div className="text-[11px] text-emerald-700">Certificado N° 2026-89102: Libre de embargos e hipotecas</div>
+                    <div className="font-bold text-emerald-950">Actos Personales</div>
+                    <div className="text-[11px] text-emerald-700">Sin inhibiciones ni interdicciones registradas</div>
                   </div>
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                </div>
-                <div className="p-3 bg-emerald-50/50 border border-emerald-200 rounded-xl flex items-center justify-between">
-                  <div>
-                    <div className="font-bold text-emerald-950">Intendencia de Montevideo</div>
-                    <div className="text-[11px] text-emerald-700">Certificado Único Departamental: Al día</div>
-                  </div>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                </div>
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between">
-                  <div>
-                    <div className="font-bold text-amber-950">DGI / BPS Certificados Notariales</div>
-                    <div className="text-[11px] text-amber-700">Vencimiento próximo en 7 días hábiles</div>
-                  </div>
-                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
                 </div>
               </div>
             </div>
 
-            {/* Bloque 5: KYC Didit + Confirmación del Escribano */}
+            {/* Bloque 7: Identidad Digital y Debida Diligencia (Didit KYC) */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center space-x-2">
-                  <ShieldCheck className="w-4 h-4 text-teal-600" />
-                  <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                    5. Identidad Digital (Didit KYC) & Control de Homonimia y Listas
-                  </h3>
+                <div className="space-y-0.5">
+                  <div className="flex items-center space-x-2">
+                    <ShieldCheck className="w-4 h-4 text-teal-600" />
+                    <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                      7. Identidad y Debida Diligencia (Didit Protocol)
+                    </h3>
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    🟢 IA: Identidad digital verificada con prueba de vida y listas GAFI/PEP conformes
+                  </div>
                 </div>
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                  Biometría Aprobada
-                </span>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => handleToggleBlockConfirm('identidad')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      confirmedBlocks.identidad?.confirmed
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {confirmedBlocks.identidad?.confirmed ? `✓ Confirmado (${confirmedBlocks.identidad.at})` : '⏳ Confirmar'}
+                  </button>
+                </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <div className="text-slate-400 font-bold uppercase text-[10px]">Score Didit KYC</div>
-                  <div className="font-black text-emerald-700 text-sm mt-0.5">99.4% Confiable</div>
-                  <div className="text-[10px] text-slate-500">Liveness y DocMatch superados</div>
+                  <div className="text-slate-400 font-bold uppercase text-[10px]">Identidad Digital</div>
+                  <div className="font-black text-emerald-700 text-sm mt-0.5">Verificada por Didit</div>
+                  <div className="text-[10px] text-slate-500">Prueba de vida y DocMatch 99.4%</div>
                 </div>
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
                   <div className="text-slate-400 font-bold uppercase text-[10px]">Listas PEP / GAFI / OFAC</div>
@@ -676,19 +900,81 @@ export const NotaryApplicationDetailPage: React.FC = () => {
                   <div className="text-[10px] text-slate-500">Revisado en tiempo real</div>
                 </div>
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <div className="text-slate-400 font-bold uppercase text-[10px]">Confirmación Notarial</div>
-                  <button
-                    onClick={() => setKycNotaryConfirmed(!kycNotaryConfirmed)}
-                    className={`mt-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors w-full ${
-                      kycNotaryConfirmed
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-white border border-teal-500 text-teal-700 hover:bg-teal-50'
-                    }`}
-                  >
-                    {kycNotaryConfirmed ? '✓ Identidad Convalidada' : 'Convalidar Identidad'}
-                  </button>
+                  <div className="text-slate-400 font-bold uppercase text-[10px]">Revisión Profesional</div>
+                  <div className="font-black text-slate-900 text-sm mt-0.5">
+                    {confirmedBlocks.identidad?.confirmed ? '✓ Convalidada' : '⏳ Pendiente'}
+                  </div>
+                  <div className="text-[10px] text-slate-500">Decisión notarial profesional</div>
                 </div>
               </div>
+            </div>
+
+            {/* MÓDULO OPERATIVO: DOCUMENTACIÓN ORIGINAL */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center space-x-2">
+                  <FileCheck className="w-4 h-4 text-teal-600" />
+                  <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                    Documentación Original (Decisión Profesional Notarial)
+                  </h3>
+                </div>
+                <span className="text-[11px] font-bold text-teal-700 bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-200">
+                  {requiresOriginals ? '✓ Originales Requeridos' : 'No se requieren originales'}
+                </span>
+              </div>
+
+              <p className="text-xs text-slate-600">
+                ¿Requiere la presentación de documentos físicos originales antes del acto de firma?
+              </p>
+
+              <div className="flex items-center space-x-4 text-xs">
+                <label className="flex items-center space-x-2 cursor-pointer font-bold">
+                  <input
+                    type="radio"
+                    name="requiresOrig"
+                    checked={requiresOriginals === false}
+                    onChange={() => setRequiresOriginals(false)}
+                    className="text-teal-600 focus:ring-teal-500"
+                  />
+                  <span>No (Suficiente con cotejo digital verificado)</span>
+                </label>
+                <label className="flex items-center space-x-2 cursor-pointer font-bold">
+                  <input
+                    type="radio"
+                    name="requiresOrig"
+                    checked={requiresOriginals === true}
+                    onChange={() => setRequiresOriginals(true)}
+                    className="text-teal-600 focus:ring-teal-500"
+                  />
+                  <span>Sí (Se solicitarán originales para cotejo notarial)</span>
+                </label>
+              </div>
+
+              {requiresOriginals && (
+                <div className="p-4 bg-slate-50 rounded-xl space-y-3 border border-slate-100 text-xs">
+                  <div className="font-bold text-slate-800">Documentos físicos a solicitar:</div>
+                  <div className="space-y-1.5">
+                    {selectedOriginalDocs.map((doc, i) => (
+                      <div key={i} className="flex items-center space-x-2 text-slate-700">
+                        <Check className="w-3.5 h-3.5 text-teal-600" />
+                        <span>{doc}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-2 flex items-center justify-between border-t border-slate-200">
+                    <span className="text-[11px] text-teal-800 font-bold">
+                      Estado: ✓ Originales recibidos y cotejados por Esc. María Pérez Morales
+                    </span>
+                    <button
+                      onClick={() => setShowOriginalsModal(true)}
+                      className="px-3 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-bold"
+                    >
+                      Editar Solicitud de Originales
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Lista de Observaciones del Expediente */}
@@ -766,14 +1052,14 @@ export const NotaryApplicationDetailPage: React.FC = () => {
           </div>
         )}
 
-        {/* PESTAÑA 3: DOCUMENTOS (Motor Notarial Dinámico) */}
+        {/* PESTAÑA 3: DOCUMENTOS (Sin Ruido Visual) */}
         {activeTab === 'documentos' && (
           <div className="space-y-6">
             <div className="bg-teal-50 border border-teal-200 p-4 rounded-2xl flex items-center justify-between text-xs">
               <div className="flex items-center space-x-2.5">
                 <Sparkles className="w-4 h-4 text-teal-600" />
                 <span className="text-teal-950 font-bold">
-                  Requisitos adaptados al contexto: Casado c/ Capitulaciones + Compraventa previa + Propietario único.
+                  Documentos clasificados y vinculados automáticamente por IA según el contexto del caso.
                 </span>
               </div>
               <span className="font-mono font-bold text-teal-800">
@@ -781,41 +1067,54 @@ export const NotaryApplicationDetailPage: React.FC = () => {
               </span>
             </div>
 
-            {/* Necesitan Atención */}
+            {/* Documentos que Requieren Atención */}
             <div className="space-y-3">
               <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center space-x-2">
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                <span>Documentos que requieren tu atención notarial</span>
+                <span>Requieren Atención Notarial</span>
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {dynamicReqs.slice(0, 2).map((req) => (
-                  <div key={req.id} className="bg-white p-4 rounded-xl border border-amber-200 shadow-sm space-y-2 text-xs">
+                  <div key={req.id} className="bg-white p-4 rounded-xl border border-amber-200 shadow-sm space-y-2.5 text-xs">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-slate-900">{req.title}</span>
                       <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded">
-                        Revisión requerida
+                        ⚠ Revisión requerida
                       </span>
                     </div>
-                    <p className="text-slate-500 text-[11px]">{req.description}</p>
-                    <div className="text-[10px] text-teal-700 font-semibold bg-teal-50/50 p-2 rounded-lg border border-teal-100">
-                      💡 Base Notarial: {req.legal_basis || 'Normativa Notarial DGR'}
-                    </div>
-                    <div className="flex items-center justify-between pt-2">
-                      <button
-                        onClick={() =>
-                          setEvidenceModalAiData({
-                            title: req.title,
-                            text: req.ai_finding?.summary || 'Verificado conforme a normativa notarial uruguaya.',
-                            sources: req.ai_finding?.sources || ['Archivo Digitalizado SHA-256', 'Base Registral'],
-                          })
-                        }
-                        className="text-teal-700 hover:text-teal-900 font-bold text-xs inline-flex items-center space-x-1"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Ver Documento</span>
-                      </button>
-                      <button className="px-2.5 py-1 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700">
-                        Aprobar
+                    <p className="text-slate-600 text-[11px]">{req.ai_finding?.summary || 'HIPOTECALY verificó existencia e inscripción.'}</p>
+                    
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() =>
+                            setEvidenceModalAiData({
+                              title: req.title,
+                              text: req.ai_finding?.summary || 'Verificado conforme a normativa notarial uruguaya.',
+                              sources: req.ai_finding?.sources || ['Archivo Digitalizado SHA-256', 'Base Registral'],
+                            })
+                          }
+                          className="text-teal-700 hover:text-teal-900 font-bold text-xs inline-flex items-center space-x-1"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Ver documento</span>
+                        </button>
+                        <button
+                          onClick={() =>
+                            setLegalBasisModalData({
+                              title: req.title,
+                              basis: req.legal_basis || 'Normativa Notarial DGR',
+                              description: req.description,
+                            })
+                          }
+                          className="text-slate-400 hover:text-slate-600 text-[11px] font-medium"
+                        >
+                          Ver fundamento
+                        </button>
+                      </div>
+
+                      <button className="px-3 py-1 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 shadow-sm">
+                        Confirmar
                       </button>
                     </div>
                   </div>
@@ -823,11 +1122,11 @@ export const NotaryApplicationDetailPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Expediente Completo y Verificado */}
+            {/* Expediente Completo */}
             <div className="space-y-3">
               <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center space-x-2">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Documentos validados y conformes ({dynamicReqs.length - 2})</span>
+                <span>Expediente Completo y Verificado ({dynamicReqs.length - 2})</span>
               </h3>
               <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden text-xs">
                 {dynamicReqs.slice(2).map((req) => (
@@ -837,9 +1136,9 @@ export const NotaryApplicationDetailPage: React.FC = () => {
                         <span>{req.title}</span>
                         <span className="text-[10px] text-slate-400 font-mono">({req.category})</span>
                       </div>
-                      <div className="text-[11px] text-slate-500">{req.legal_basis || 'Normativa Notarial'}</div>
+                      <div className="text-[11px] text-slate-500">{req.description}</div>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-3">
                       <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center space-x-1">
                         <Check className="w-3 h-3" />
                         <span>Conforme</span>
@@ -852,9 +1151,9 @@ export const NotaryApplicationDetailPage: React.FC = () => {
                             sources: req.ai_finding?.sources || ['Archivo Digitalizado SHA-256'],
                           })
                         }
-                        className="p-1.5 text-slate-400 hover:text-teal-700"
+                        className="text-teal-700 hover:text-teal-900 font-bold"
                       >
-                        <Eye className="w-4 h-4" />
+                        Ver
                       </button>
                     </div>
                   </div>
@@ -864,52 +1163,84 @@ export const NotaryApplicationDetailPage: React.FC = () => {
           </div>
         )}
 
-        {/* PESTAÑA 4: ESCRITURA Y FIRMA (DocFlow + FEA + Post-Firma) */}
+        {/* PESTAÑA 4: ESCRITURA Y FIRMA (Workflow Unificado con Google Calendar y Post-Firma) */}
         {activeTab === 'escritura_firma' && (
           <div className="space-y-6">
-            {/* Tarjeta de Matriz Notarial Generada */}
+            {/* Estado de la Escritura y Firma Agendada */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
-                <div className="space-y-1">
-                  <div className="flex items-center space-x-2">
+                <div>
+                  <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center space-x-2">
                     <FileSignature className="w-4 h-4 text-teal-600" />
-                    <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                      Borrador Matriz: Hipoteca y Mutuo (Versión 4.1)
-                    </h3>
+                    <span>Escritura de Hipoteca y Mutuo (Versión 4.1)</span>
+                  </h3>
+                  <div className="mt-2 space-y-1 text-xs text-slate-600">
+                    <div className="flex items-center space-x-1.5 text-emerald-700 font-bold">
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Documentación completa</span>
+                    </div>
+                    <div className="flex items-center space-x-1.5 text-emerald-700 font-bold">
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Revisión notarial aprobada</span>
+                    </div>
+                    <div className="flex items-center space-x-1.5 text-emerald-700 font-bold">
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Originales cotejados</span>
+                    </div>
+                    <div className="flex items-center space-x-1.5 text-emerald-700 font-bold">
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Firmantes definidos y verificados con Didit KYC</span>
+                    </div>
                   </div>
-                  <p className="text-xs text-slate-500">
-                    Plantilla oficial adaptada a normativa uruguaya con soporte para Sistema Notarial Electrónico (SNE).
-                  </p>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => setShowDocGen(true)}
-                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors"
-                  >
-                    Editar Variables
-                  </button>
-                  <button
-                    onClick={() => setShowFeaModal(true)}
-                    className="px-4 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition-colors shadow-md shadow-teal-500/20 flex items-center space-x-1.5"
-                  >
-                    <Stamp className="w-3.5 h-3.5" />
-                    <span>Firmar con FEA (Firma.gub.uy)</span>
-                  </button>
+
+                <div className="flex flex-col items-end space-y-2">
+                  {scheduledEvent ? (
+                    <div className="text-right p-3 bg-teal-50 border border-teal-200 rounded-xl text-xs space-y-1">
+                      <div className="font-black text-teal-950 flex items-center justify-end space-x-1">
+                        <Calendar className="w-3.5 h-3.5 text-teal-600" />
+                        <span>Firma Agendada</span>
+                      </div>
+                      <div className="font-bold text-teal-900">{scheduledEvent.date} · {scheduledEvent.time} hs</div>
+                      <div className="text-[10px] text-teal-700 truncate max-w-[200px]">{scheduledEvent.location}</div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setShowScheduleSignModal(true)}
+                      className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center space-x-1.5"
+                    >
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>Coordinar Firma (Google Calendar)</span>
+                    </button>
+                  )}
+
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setShowDocGen(true)}
+                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors"
+                    >
+                      Generar Borrador
+                    </button>
+                    <button
+                      onClick={() => setShowFeaModal(true)}
+                      className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-colors shadow-sm flex items-center space-x-1.5"
+                    >
+                      <Stamp className="w-3.5 h-3.5 text-teal-400" />
+                      <span>Preparar Versión para Firma (FEA)</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
               {/* Vista Previa del Protocolo / Matriz */}
-              <div className="p-4 bg-slate-900 text-slate-100 rounded-xl font-mono text-xs leading-relaxed space-y-2 max-h-60 overflow-y-auto border border-slate-800">
+              <div className="p-4 bg-slate-900 text-slate-100 rounded-xl font-mono text-xs leading-relaxed space-y-2 max-h-48 overflow-y-auto border border-slate-800">
                 <div className="text-teal-400 font-bold">--- PROTOCOLO NOTARIAL HIPOTECALY ---</div>
                 <p>
-                  En la ciudad de Montevideo, el {new Date().toLocaleDateString('es-UY')}, ante mí, Esc. Mercedes Varela,
-                  comparecen por una parte el deudor {app.borrower?.first_name} {app.borrower?.last_name}, C.I. 4.521.890-3,
-                  y por otra parte el Acreedor Hipotecario Fondo Hipotecario Río de la Plata SAS (RUT 21.890.345.0019),
-                  quienes acuerdan celebrar el presente contrato de Préstamo con Garantía Hipotecaria en Primer Grado sobre el
+                  En la ciudad de Montevideo, el {new Date().toLocaleDateString('es-UY')}, ante mí, Esc. María Pérez Morales,
+                  comparecen por una parte el deudor {app.borrower?.first_name} {app.borrower?.last_name}, C.I. 4.218.930-5,
+                  y por otra parte el Acreedor Hipotecario Fondo Inversor Privado Nova Capital (RUT 21.908.411.0012),
+                  quienes acuerdan otorgar el presente contrato de Mutuo con Garantía Hipotecaria en Primer Grado sobre el
                   padrón {app.property?.cadastral_number || '14.892'} del departamento de {app.property?.department || 'Montevideo'}.
-                </p>
-                <p className="text-slate-400">
-                  [... Cláusulas de interés financiero, amortización, mora, caducidad de plazos y renuncia a trámites de juicio ejecutivo ...]
                 </p>
               </div>
             </div>
@@ -925,31 +1256,31 @@ export const NotaryApplicationDetailPage: React.FC = () => {
                   className="text-xs text-teal-700 hover:text-teal-900 font-bold inline-flex items-center space-x-1"
                 >
                   <Award className="w-3.5 h-3.5" />
-                  <span>Ver Pistas de Auditoría y Hash SHA-256</span>
+                  <span>Ver Información Técnica</span>
                 </button>
               </div>
 
               <div className="space-y-2.5 text-xs">
                 <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
-                  <div className="space-y-0.5">
+                  <div>
                     <div className="font-bold text-emerald-950">Deudor: {app.borrower?.first_name} {app.borrower?.last_name}</div>
-                    <div className="text-[11px] text-emerald-700">Firmado electrónicamente con C.I. Digital (Firma Avanzada)</div>
+                    <div className="text-[11px] text-emerald-700">✓ Firma electrónica avanzada con C.I. Digital validada</div>
                   </div>
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                 </div>
 
                 <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <div className="font-bold text-emerald-950">Acreedor: Fondo Hipotecario SAS</div>
-                    <div className="text-[11px] text-emerald-700">Firmado por Representante Legal con Token Abitab</div>
+                  <div>
+                    <div className="font-bold text-emerald-950">Acreedor: Fondo Inversor Privado Nova Capital</div>
+                    <div className="text-[11px] text-emerald-700">✓ Firmado por Representante con Token Abitab</div>
                   </div>
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                 </div>
 
                 <div className="p-3 bg-teal-50 border border-teal-300 rounded-xl flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <div className="font-bold text-teal-950">Escribano Autorizante: Esc. Mercedes Varela</div>
-                    <div className="text-[11px] text-teal-700">Pendiente de autorización final notarial con FEA</div>
+                  <div>
+                    <div className="font-bold text-teal-950">Escribana Autorizante: Esc. María Pérez Morales</div>
+                    <div className="text-[11px] text-teal-700">Firma digital disponible vía Firma.gub.uy / SNE</div>
                   </div>
                   <button
                     onClick={() => setShowFeaModal(true)}
@@ -961,7 +1292,7 @@ export const NotaryApplicationDetailPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Módulo Post-Firma y Registro DGR */}
+            {/* Módulo Post-Firma y Tramitación Registral (DGR) */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center space-x-2">
@@ -994,9 +1325,9 @@ export const NotaryApplicationDetailPage: React.FC = () => {
                     onChange={(e) => setRegistrationStatus(e.target.value as any)}
                     className="w-full p-2 border border-slate-200 rounded-xl font-bold text-xs bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
                   >
-                    <option value="presentado">Presentado en DGR</option>
+                    <option value="presentado">Presentada ante DGR</option>
                     <option value="en_tramite">En trámite con reserva de prioridad</option>
-                    <option value="inscripto">Inscripto Definitivo</option>
+                    <option value="inscripto">Inscripta definitivamente</option>
                   </select>
                 </div>
                 <div className="flex items-end">
@@ -1052,7 +1383,7 @@ export const NotaryApplicationDetailPage: React.FC = () => {
               <div className="flex items-start space-x-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
                 <div className="w-2 h-2 rounded-full bg-teal-500 mt-1.5 shrink-0" />
                 <div className="space-y-0.5">
-                  <div className="font-bold text-slate-900">Asignación a Escribana Mercedes Varela</div>
+                  <div className="font-bold text-slate-900">Asignación a Escribana María Pérez Morales</div>
                   <div className="text-slate-500 text-[11px]">Expediente transferido con éxito a la mesa notarial.</div>
                   <div className="text-slate-400 font-mono text-[10px]">Hash SHA-256: 7d10e5b309f48201...</div>
                 </div>
@@ -1063,6 +1394,164 @@ export const NotaryApplicationDetailPage: React.FC = () => {
       </div>
 
       {/* MODALES REUTILIZABLES */}
+
+      {/* Modal Coordinar Firma con Google Calendar */}
+      {showScheduleSignModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2">
+                <Calendar className="w-4 h-4 text-teal-600" />
+                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                  Coordinar Firma (Google Calendar)
+                </h3>
+              </div>
+              <button onClick={() => setShowScheduleSignModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmScheduleSignature} className="space-y-3.5 text-xs">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+                <div className="font-bold text-slate-800">{app.public_id} · {app.borrower?.first_name} {app.borrower?.last_name}</div>
+                <div className="text-slate-500 text-[11px]">Participantes: Deudor, Acreedor (Nova Capital) y Esc. María Pérez</div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Fecha del Acto</label>
+                  <input
+                    type="date"
+                    required
+                    value={scheduleDate}
+                    onChange={(e) => setScheduleDate(e.target.value)}
+                    className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Hora</label>
+                  <select
+                    value={scheduleTime}
+                    onChange={(e) => setScheduleTime(e.target.value)}
+                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none font-bold"
+                  >
+                    {getAvailableCalendarSlots(scheduleDate).map((slot, i) => (
+                      <option key={i} value={slot.time} disabled={!slot.available}>
+                        {slot.time} hs {!slot.available ? '(Ocupado)' : '✓ Libre'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Lugar del Acto</label>
+                <input
+                  type="text"
+                  required
+                  value={scheduleLocation}
+                  onChange={(e) => setScheduleLocation(e.target.value)}
+                  className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="p-3 bg-teal-50/50 rounded-xl border border-teal-100 space-y-1 text-[11px] text-teal-900">
+                <div className="font-bold flex items-center space-x-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
+                  <span>Recordatorios Automáticos Activos:</span>
+                </div>
+                <div>✓ Notificación a los firmantes 24 horas y 2 horas antes de la cita.</div>
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowScheduleSignModal(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold shadow-md shadow-teal-500/20 flex items-center space-x-1.5"
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Confirmar y Agendar</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Editar Solicitud de Originales */}
+      {showOriginalsModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                Solicitud de Documentos Físicos Originales
+              </h3>
+              <button onClick={() => setShowOriginalsModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <p className="text-slate-600">
+                Indique los documentos matrices o testimonios que los otorgantes deberán presentar en formato físico:
+              </p>
+
+              <div className="space-y-2">
+                {selectedOriginalDocs.map((doc, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                    <span className="font-medium text-slate-800">{doc}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedOriginalDocs(selectedOriginalDocs.filter((_, i) => i !== idx))}
+                      className="text-rose-600 hover:text-rose-800 text-xs font-bold"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex space-x-2 pt-2">
+                <input
+                  type="text"
+                  placeholder="Agregar otro documento..."
+                  value={newOriginalDocInput}
+                  onChange={(e) => setNewOriginalDocInput(e.target.value)}
+                  className="flex-1 p-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (newOriginalDocInput.trim()) {
+                      setSelectedOriginalDocs([...selectedOriginalDocs, newOriginalDocInput.trim()]);
+                      setNewOriginalDocInput('');
+                    }
+                  }}
+                  className="px-3 py-2 bg-slate-900 text-white rounded-xl font-bold text-xs hover:bg-slate-800"
+                >
+                  Agregar
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowOriginalsModal(false)}
+                className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold text-xs"
+              >
+                Guardar Requerimientos
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Crear Observación */}
       {showNewObsModal && (
@@ -1196,6 +1685,37 @@ export const NotaryApplicationDetailPage: React.FC = () => {
             <div className="pt-2 flex justify-end">
               <button
                 onClick={() => setEvidenceModalAiData(null)}
+                className="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-slate-800"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Fundamento Notarial */}
+      {legalBasisModalData && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                Fundamento Jurídico Notarial
+              </h3>
+              <button onClick={() => setLegalBasisModalData(null)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs space-y-1">
+              <div className="font-bold text-slate-800">{legalBasisModalData.title}</div>
+              <div className="text-slate-500">{legalBasisModalData.description}</div>
+            </div>
+            <div className="p-4 bg-teal-50/60 rounded-xl border border-teal-100 text-xs text-teal-950 font-medium">
+              ⚖️ Base Legal Aplicable: <strong>{legalBasisModalData.basis}</strong>
+            </div>
+            <div className="pt-2 flex justify-end">
+              <button
+                onClick={() => setLegalBasisModalData(null)}
                 className="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-slate-800"
               >
                 Cerrar
