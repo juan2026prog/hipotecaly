@@ -898,6 +898,174 @@ async function adminSecurityEventsHandler(req: any, res: any) {
 }
 
 // ------------------------------------------------------------------------------
+// PLATFORM MODE: /api/admin/platform-mode
+// ------------------------------------------------------------------------------
+async function adminPlatformModeHandler(req: any, res: any) {
+  if (req.method === 'GET') {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('platform_settings')
+        .select('*')
+        .eq('id', 'global')
+        .maybeSingle();
+
+      const platform_mode = data?.platform_mode || 'test';
+      const test_user_email = data?.test_user_email || 'admin@estudionova.uy';
+      const test_user_enabled = data?.test_user_enabled !== undefined ? Boolean(data.test_user_enabled) : true;
+
+      return res.status(200).json({
+        platform_mode,
+        test_user_email,
+        test_user_enabled,
+        updated_at: data?.updated_at || new Date().toISOString(),
+      });
+    } catch {
+      return res.status(200).json({
+        platform_mode: 'test',
+        test_user_email: 'admin@estudionova.uy',
+        test_user_enabled: true,
+        updated_at: new Date().toISOString(),
+      });
+    }
+  }
+
+  if (req.method === 'POST') {
+    const auth = await verifySuperAdmin(req);
+    if (!auth.authorized) {
+      return res.status(auth.status || 401).json({ error: auth.error });
+    }
+
+    const { platform_mode } = req.body || {};
+    if (platform_mode !== 'production' && platform_mode !== 'test') {
+      return res.status(400).json({ error: 'Modo no válido. Debe ser "production" o "test".' });
+    }
+
+    try {
+      await supabaseAdmin
+        .from('platform_settings')
+        .upsert({
+          id: 'global',
+          platform_mode,
+          updated_at: new Date().toISOString(),
+          updated_by: auth.adminId,
+        });
+
+      await import('../../server/security/securityEventService.js').then(({ SecurityEventService }) => {
+        SecurityEventService.logSecurityEvent({
+          eventType: 'PLATFORM_MODE_CHANGED',
+          severity: 'HIGH',
+          userId: auth.adminId,
+          metadata: { new_mode: platform_mode, changed_by: auth.userEmail },
+          req,
+        });
+      }).catch(() => {});
+
+      return res.status(200).json({
+        success: true,
+        platform_mode,
+        message: `Modo de plataforma cambiado a ${platform_mode.toUpperCase()}`,
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        error: 'Error al cambiar modo de plataforma',
+        message: error?.message || 'Error interno',
+      });
+    }
+  }
+
+  return res.status(405).json({ error: 'Method not allowed. Use GET or POST.' });
+}
+
+// ------------------------------------------------------------------------------
+// TEST USER: /api/admin/test-user
+// ------------------------------------------------------------------------------
+async function adminTestUserHandler(req: any, res: any) {
+  if (req.method === 'GET') {
+    try {
+      const { data } = await supabaseAdmin
+        .from('platform_settings')
+        .select('test_user_email, test_user_enabled, platform_mode')
+        .eq('id', 'global')
+        .maybeSingle();
+
+      return res.status(200).json({
+        email: data?.test_user_email || 'admin@estudionova.uy',
+        enabled: data?.test_user_enabled !== undefined ? Boolean(data.test_user_enabled) : true,
+        platform_mode: data?.platform_mode || 'test',
+      });
+    } catch {
+      return res.status(200).json({
+        email: 'admin@estudionova.uy',
+        enabled: true,
+        platform_mode: 'test',
+      });
+    }
+  }
+
+  if (req.method === 'POST') {
+    const auth = await verifySuperAdmin(req);
+    if (!auth.authorized) {
+      return res.status(auth.status || 401).json({ error: auth.error });
+    }
+
+    const { email, enabled, new_password } = req.body || {};
+
+    try {
+      const updates: Record<string, any> = {
+        updated_at: new Date().toISOString(),
+        updated_by: auth.adminId,
+      };
+      if (email && typeof email === 'string') {
+        updates.test_user_email = email.trim().toLowerCase();
+      }
+      if (enabled !== undefined) {
+        updates.test_user_enabled = Boolean(enabled);
+      }
+
+      await supabaseAdmin
+        .from('platform_settings')
+        .update(updates)
+        .eq('id', 'global');
+
+      await import('../../server/security/securityEventService.js').then(({ SecurityEventService }) => {
+        if (email) {
+          SecurityEventService.logSecurityEvent({
+            eventType: 'TEST_USER_EMAIL_CHANGED',
+            severity: 'MEDIUM',
+            userId: auth.adminId,
+            metadata: { new_email: updates.test_user_email },
+            req,
+          });
+        }
+        if (new_password) {
+          SecurityEventService.logSecurityEvent({
+            eventType: 'TEST_USER_PASSWORD_RESET',
+            severity: 'HIGH',
+            userId: auth.adminId,
+            metadata: { action: 'Test user password reset performed by super admin' },
+            req,
+          });
+        }
+      }).catch(() => {});
+
+      return res.status(200).json({
+        success: true,
+        email: updates.test_user_email || email,
+        enabled: updates.test_user_enabled !== undefined ? updates.test_user_enabled : enabled,
+        message: 'Configuración de usuario de prueba actualizada exitosamente',
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        error: 'Error al actualizar usuario de prueba',
+        message: error?.message || 'Error interno',
+      });
+    }
+  }
+
+  return res.status(405).json({ error: 'Method not allowed. Use GET or POST.' });
+}
+
+// ------------------------------------------------------------------------------
 // ROUTER PRINCIPAL DE /api/admin/*
 // ------------------------------------------------------------------------------
 export default async function handler(req: any, res: any) {
@@ -940,6 +1108,10 @@ export default async function handler(req: any, res: any) {
   if (normalizedPath === 'qa/toggle-feature') return adminQaToggleFeatureHandler(req, res);
   if (normalizedPath === 'qa/validate-session') return adminQaValidateSessionHandler(req, res);
 
+  // Platform Mode & Test User Subroutes
+  if (normalizedPath === 'platform-mode') return adminPlatformModeHandler(req, res);
+  if (normalizedPath === 'test-user') return adminTestUserHandler(req, res);
+
   // Security Subroutes (Cero Costo SaaS, Métricas Reales)
   if (normalizedPath === 'security/metrics') return adminSecurityMetricsHandler(req, res);
   if (normalizedPath === 'security/events') return adminSecurityEventsHandler(req, res);
@@ -959,6 +1131,8 @@ export default async function handler(req: any, res: any) {
       'POST /api/admin/qa/revoke',
       'POST /api/admin/qa/toggle-feature',
       'POST /api/admin/qa/validate-session',
+      'GET|POST /api/admin/platform-mode',
+      'GET|POST /api/admin/test-user',
       'GET /api/admin/security/metrics',
       'GET /api/admin/security/events',
     ],

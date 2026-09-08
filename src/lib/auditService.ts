@@ -238,3 +238,42 @@ function filterAuditLogsLocally(list: AuditLogEntry[], module?: string, search?:
     return true;
   });
 }
+
+export const AuditService = {
+  logAction: (params: {
+    organizationId?: string;
+    userId?: string;
+    userName?: string;
+    user_name?: string;
+    userRole?: string;
+    user_role?: string;
+    action: string;
+    module: string;
+    recordIdentifier?: string;
+    record_identifier?: string;
+    entityId?: string;
+    applicationId?: string;
+    oldValue?: string | null;
+    old_value?: string | null;
+    newValue?: string | null;
+    new_value?: string | null;
+    metadata?: Record<string, any>;
+    ipAddress?: string;
+  }) =>
+    logAuditEvent({
+      organizationId: params.organizationId,
+      userId: params.userId,
+      userName: params.userName || params.user_name,
+      userRole: params.userRole || params.user_role,
+      action: params.action,
+      module: params.module,
+      recordIdentifier: params.recordIdentifier || params.record_identifier || 'system',
+      entityId: params.entityId,
+      applicationId: params.applicationId,
+      oldValue: params.oldValue || params.old_value,
+      newValue: params.newValue || params.new_value,
+      metadata: params.metadata,
+      ipAddress: params.ipAddress,
+    }),
+  getAuditLogs,
+};

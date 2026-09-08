@@ -69,9 +69,11 @@ import { FinancialsSolutionPage } from './pages/solutions/FinancialsSolutionPage
 import { NotariesSolutionPage } from './pages/solutions/NotariesSolutionPage';
 import { SaaSModulesCatalogPage } from './pages/saas/SaaSModulesCatalogPage';
 import { TenantProvider } from './contexts/TenantContext';
+import { DemoViewProvider } from './contexts/DemoViewContext';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { OfflineNotice } from './components/ui/OfflineNotice';
 import { DemoSalesModeBar } from './components/demo/DemoSalesModeBar';
+import { DemoViewSelector } from './components/demo/DemoViewSelector';
 import { QaSessionBanner } from './components/qa/QaSessionBanner';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { useAuth } from './contexts/AuthContext';
@@ -91,14 +93,17 @@ export const App: React.FC = () => {
       <AuthProvider>
         <BrowserRouter>
           <TenantProvider>
-            {/* Banner global de sesión QA activa */}
-            <QaSessionBanner />
-            {/* Notificación flotante de PWA sin conexión */}
-            <OfflineNotice />
-            {/* Barra de navegación comercial para modo demostración y presentaciones */}
-            <DemoSalesModeBar />
+            <DemoViewProvider>
+              {/* Barra superior de selección de vistas de modo prueba */}
+              <DemoViewSelector />
+              {/* Banner global de sesión QA activa */}
+              <QaSessionBanner />
+              {/* Notificación flotante de PWA sin conexión */}
+              <OfflineNotice />
+              {/* Barra de navegación comercial para modo demostración y presentaciones */}
+              <DemoSalesModeBar />
 
-            <Routes>
+              <Routes>
               {/* ========================================================== */}
               {/* 1. RUTAS PÚBLICAS MARKETPLACE & INSTITUCIONALES           */}
               {/* ========================================================== */}
@@ -990,6 +995,7 @@ export const App: React.FC = () => {
               {/* Fallback 404 Institucional */}
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
+            </DemoViewProvider>
           </TenantProvider>
         </BrowserRouter>
       </AuthProvider>

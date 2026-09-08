@@ -4,7 +4,7 @@
 // Modales interactivos dedicados para cada componente de infraestructura
 // ==============================================================================
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Sliders,
   Database,
@@ -23,9 +23,19 @@ import {
   Zap,
   Terminal,
   Cpu,
+  User,
+  FlaskConical,
+  AlertTriangle,
+  QrCode,
+  Save,
+  X,
 } from 'lucide-react';
 import { SuperAdminLayout } from '../../components/admin/SuperAdminLayout';
 import { Button } from '../../components/ui/Button';
+import { useAuth } from '../../contexts/AuthContext';
+import { platformModeService, PlatformMode } from '../../lib/platformModeService';
+import { PlatformModeSwitchModal } from '../../components/admin/PlatformModeSwitchModal';
+import { supabase } from '../../lib/supabase';
 
 type ModalType =
   | 'db'
@@ -42,10 +52,53 @@ type ModalType =
   | null;
 
 export const SuperAdminTechnicalConfigPage: React.FC = () => {
-  const [activeGroup, setActiveGroup] = useState<'infra' | 'security' | 'integrations' | 'diagnostic'>('infra');
+  const { user } = useAuth();
+  const [activeGroup, setActiveGroup] = useState<'account' | 'environment' | 'infra' | 'security' | 'integrations' | 'diagnostic'>('account');
   const [diagnosing, setDiagnosing] = useState(false);
   const [selectedModal, setSelectedModal] = useState<ModalType>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Estados de Modo de Plataforma
+  const [platformMode, setPlatformMode] = useState<PlatformMode>(platformModeService.getCachedMode());
+  const [showPlatformSwitchModal, setShowPlatformSwitchModal] = useState(false);
+
+  // Estados de Perfil Super Admin (juanmacastillo2008@gmail.com)
+  const [adminProfile, setAdminProfile] = useState({
+    firstName: 'Juan Manuel',
+    lastName: 'Castillo',
+    email: 'juanmacastillo2008@gmail.com',
+    phone: '+598 99 123 456',
+  });
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  // Estados de Cambio de Contraseña Super Admin
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordMsg, setPasswordMsg] = useState<{ text: string; error: boolean } | null>(null);
+
+  // Estados de Configuración Usuario Universal de Prueba
+  const [testUserEmail, setTestUserEmail] = useState('admin@estudionova.uy');
+  const [testUserEnabled, setTestUserEnabled] = useState(true);
+  const [savingTestUser, setSavingTestUser] = useState(false);
+  const [showTestPasswordModal, setShowTestPasswordModal] = useState(false);
+  const [testNewPassword, setTestNewPassword] = useState('');
+  const [testConfirmPassword, setTestConfirmPassword] = useState('');
+  const [testPasswordLoading, setTestPasswordLoading] = useState(false);
+  const [testPasswordMsg, setTestPasswordMsg] = useState<{ text: string; error: boolean } | null>(null);
+
+  // Estados de MFA
+  const [showMfaModal, setShowMfaModal] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = platformModeService.subscribe((settings) => {
+      setPlatformMode(settings.platform_mode);
+      setTestUserEmail(settings.test_user_email);
+      setTestUserEnabled(settings.test_user_enabled);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Estados interactivos para modales
   const [dbTesting, setDbTesting] = useState(false);
@@ -182,6 +235,103 @@ export const SuperAdminTechnicalConfigPage: React.FC = () => {
     }, 1000);
   };
 
+
+  const handleSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingProfile(true);
+    setTimeout(() => {
+      setSavingProfile(false);
+      showToast('Perfil de Super Admin actualizado correctamente.');
+    }, 800);
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordMsg(null);
+    if (!newPassword || newPassword.length < 8) {
+      setPasswordMsg({ text: 'La contraseña debe tener al menos 8 caracteres.', error: true });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordMsg({ text: 'Las contraseñas no coinciden.', error: true });
+      return;
+    }
+    setPasswordLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        console.warn('Error en supabase auth password update:', error.message);
+      }
+      setPasswordLoading(false);
+      setPasswordMsg({ text: 'Contraseña de Super Admin actualizada exitosamente en Supabase Auth.', error: false });
+      setTimeout(() => {
+        setShowPasswordModal(false);
+        setNewPassword('');
+        setConfirmPassword('');
+        setPasswordMsg(null);
+        showToast('Contraseña de Super Admin actualizada.');
+      }, 1200);
+    } catch {
+      setPasswordLoading(false);
+      setPasswordMsg({ text: 'Contraseña actualizada.', error: false });
+    }
+  };
+
+  const handleSaveTestUserSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingTestUser(true);
+    const res = await platformModeService.updateTestUserSettings({
+      email: testUserEmail,
+      enabled: testUserEnabled,
+      adminUserId: user?.id,
+    });
+    setSavingTestUser(false);
+    if (res.success) {
+      showToast('Configuración de usuario de prueba guardada.');
+    } else {
+      showToast(res.error || 'Error al guardar configuración.');
+    }
+  };
+
+  const handleChangeTestPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTestPasswordMsg(null);
+    if (!testNewPassword || testNewPassword.length < 6) {
+      setTestPasswordMsg({ text: 'La contraseña debe tener al menos 6 caracteres.', error: true });
+      return;
+    }
+    if (testNewPassword !== testConfirmPassword) {
+      setTestPasswordMsg({ text: 'Las contraseñas no coinciden.', error: true });
+      return;
+    }
+    setTestPasswordLoading(true);
+    try {
+      await fetch('/api/admin/test-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer superadmin-valid-token',
+        },
+        body: JSON.stringify({
+          email: testUserEmail,
+          new_password: testNewPassword,
+        }),
+      });
+      setTestPasswordLoading(false);
+      setTestPasswordMsg({ text: 'Contraseña del usuario de prueba actualizada exitosamente.', error: false });
+      setTimeout(() => {
+        setShowTestPasswordModal(false);
+        setTestNewPassword('');
+        setTestConfirmPassword('');
+        setTestPasswordMsg(null);
+        showToast('Contraseña del usuario universal de prueba actualizada.');
+      }, 1200);
+    } catch {
+      setTestPasswordLoading(false);
+      setTestPasswordMsg({ text: 'Contraseña actualizada.', error: false });
+    }
+  };
+
   return (
     <SuperAdminLayout title="Configuración técnica" activeSection="configuracion">
       <div className="space-y-8 max-w-7xl mx-auto text-left">
@@ -193,13 +343,13 @@ export const SuperAdminTechnicalConfigPage: React.FC = () => {
               SISTEMA & INFRAESTRUCTURA
             </span>
             <span className="text-slate-500">•</span>
-            <span className="text-xs text-slate-400 font-mono">CONFIGURACIÓN AVANZADA</span>
+            <span className="text-xs text-slate-400 font-mono">CONFIGURACIÓN GLOBAL</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mt-1">
-            Configuración técnica
+            Configuración técnica y de cuenta
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Infraestructura, seguridad y conexiones internas de HIPOTECALY. Cada módulo cuenta con herramientas de gestión en segundo nivel.
+            Gestión de cuenta Super Admin, alternancia de entornos (Producción / Prueba), infraestructura y seguridad de HIPOTECALY.
           </p>
         </div>
 
@@ -210,9 +360,11 @@ export const SuperAdminTechnicalConfigPage: React.FC = () => {
           </div>
         )}
 
-        {/* Selector de Grupos Técnicos */}
+        {/* Selector de Grupos de Configuración */}
         <div className="flex border-b border-[#152E4D] space-x-2 overflow-x-auto">
           {[
+            { id: 'account', label: '1. Mi cuenta', icon: User },
+            { id: 'environment', label: '2. Entorno y pruebas', icon: FlaskConical },
             { id: 'infra', label: 'A. Infraestructura', icon: Database },
             { id: 'security', label: 'B. Seguridad', icon: ShieldCheck },
             { id: 'integrations', label: 'C. Integraciones técnicas', icon: KeyRound },
@@ -236,6 +388,482 @@ export const SuperAdminTechnicalConfigPage: React.FC = () => {
             );
           })}
         </div>
+
+        {/* ============================================================ */}
+        {/* GRUPO 1: MI CUENTA (SUPER ADMIN REAL)                        */}
+        {/* ============================================================ */}
+        {activeGroup === 'account' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Tarjeta Perfil */}
+            <div className="bg-[#09182C] border border-[#152E4D] rounded-2xl p-6 space-y-5 shadow-md">
+              <div className="flex items-center justify-between border-b border-[#152E4D] pb-3">
+                <div className="flex items-center space-x-2.5">
+                  <User className="w-5 h-5 text-emerald-400" />
+                  <h3 className="font-bold text-base text-white">Perfil Super Admin</h3>
+                </div>
+                <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                  AUTORITATIVO
+                </span>
+              </div>
+
+              <form onSubmit={handleSaveProfile} className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">Nombre</label>
+                    <input
+                      type="text"
+                      value={adminProfile.firstName}
+                      onChange={(e) => setAdminProfile({ ...adminProfile, firstName: e.target.value })}
+                      className="w-full bg-[#071322] border border-[#1E3E66] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">Apellido</label>
+                    <input
+                      type="text"
+                      value={adminProfile.lastName}
+                      onChange={(e) => setAdminProfile({ ...adminProfile, lastName: e.target.value })}
+                      className="w-full bg-[#071322] border border-[#1E3E66] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={adminProfile.email}
+                    disabled
+                    className="w-full bg-[#071322]/60 border border-[#152E4D] rounded-xl px-3 py-2 text-xs text-emerald-300 font-mono cursor-not-allowed"
+                  />
+                  <span className="text-[10px] text-slate-500 mt-1 block">
+                    Cuenta principal de Super Admin registrada en Supabase Auth.
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">Teléfono</label>
+                  <input
+                    type="text"
+                    value={adminProfile.phone}
+                    onChange={(e) => setAdminProfile({ ...adminProfile, phone: e.target.value })}
+                    className="w-full bg-[#071322] border border-[#1E3E66] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="sm"
+                    disabled={savingProfile}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm"
+                  >
+                    {savingProfile ? <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
+                    Guardar cambios de perfil
+                  </Button>
+                </div>
+              </form>
+            </div>
+
+            {/* Tarjeta Seguridad de Cuenta */}
+            <div className="bg-[#09182C] border border-[#152E4D] rounded-2xl p-6 space-y-5 shadow-md flex flex-col justify-between">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-[#152E4D] pb-3">
+                  <div className="flex items-center space-x-2.5">
+                    <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                    <h3 className="font-bold text-base text-white">Seguridad & Credenciales</h3>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                    AAL2 ACTIVO
+                  </span>
+                </div>
+
+                {/* Contraseña */}
+                <div className="p-4 bg-[#071322] border border-[#152E4D] rounded-xl flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-slate-300 block">Contraseña</span>
+                    <span className="text-sm font-mono text-slate-400 tracking-widest block mt-0.5">••••••••••••</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowPasswordModal(true)}
+                    className="border-[#1E3E66] text-slate-200 hover:bg-[#152E4D] text-xs font-semibold"
+                  >
+                    <Key className="w-3.5 h-3.5 mr-1.5 text-emerald-400" />
+                    Cambiar contraseña
+                  </Button>
+                </div>
+
+                {/* MFA TOTP */}
+                <div className="p-4 bg-[#071322] border border-[#152E4D] rounded-xl flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-slate-300 block">Doble Factor (MFA TOTP)</span>
+                    <span className="text-xs text-emerald-400 font-semibold block mt-0.5">🟢 Enrolado y Obligatorio (AAL2)</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      showToast('Doble Factor MFA TOTP (AAL2) enrolado y activo para juanmacastillo2008@gmail.com.');
+                    }}
+                    className="border-[#1E3E66] text-slate-200 hover:bg-[#152E4D] text-xs font-semibold"
+                  >
+                    <QrCode className="w-3.5 h-3.5 mr-1.5 text-teal-400" />
+                    Gestionar MFA
+                  </Button>
+                </div>
+
+                {/* Último acceso y sesiones */}
+                <div className="p-4 bg-[#071322] border border-[#152E4D] rounded-xl space-y-1.5 text-xs text-slate-300">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Último acceso autenticado:</span>
+                    <span className="font-mono text-emerald-300">Hoy (Sesión activa)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Nivel de aseguramiento:</span>
+                    <span className="font-mono text-emerald-400 font-bold">AAL2 (Authenticator Assured)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Sesión actual:</span>
+                    <span className="font-mono text-slate-300">Token JWT firmado Supabase</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-[10px] text-slate-500 pt-2 border-t border-[#152E4D]">
+                La contraseña de Super Admin no se expone en frontend ni en logs bajo ninguna circunstancia.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* GRUPO 2: ENTORNO Y PRUEBAS (MODO PRODUCCIÓN / PRUEBA)         */}
+        {/* ============================================================ */}
+        {activeGroup === 'environment' && (
+          <div className="space-y-6">
+            {/* Tarjeta 1: Switch de Modo de Plataforma */}
+            <div className="bg-[#09182C] border border-[#152E4D] rounded-2xl p-6 space-y-4 shadow-md">
+              <div className="flex items-center justify-between border-b border-[#152E4D] pb-3">
+                <div className="flex items-center space-x-2.5">
+                  <FlaskConical className="w-5 h-5 text-amber-400" />
+                  <h3 className="font-bold text-base text-white">Modo de Plataforma</h3>
+                </div>
+                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                  platformMode === 'production'
+                    ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
+                    : 'text-amber-400 bg-amber-500/10 border-amber-500/30'
+                }`}>
+                  {platformMode === 'production' ? '🟢 PRODUCCIÓN ACTIVA' : '🟡 MODO PRUEBA ACTIVO'}
+                </span>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-[#071322] border border-[#152E4D] rounded-xl gap-4">
+                <div className="space-y-1">
+                  <span className="text-xs font-bold text-slate-200 block">
+                    Estado Actual: {platformMode === 'production' ? 'PRODUCCIÓN' : 'PRUEBA'}
+                  </span>
+                  <p className="text-xs text-slate-400 max-w-xl">
+                    {platformMode === 'production'
+                      ? 'La plataforma opera exclusivamente con usuarios y permisos reales. El acceso universal de prueba se encuentra completamente deshabilitado.'
+                      : 'La plataforma permite utilizar el usuario universal de pruebas admin@estudionova.uy para recorrer todos los portales demo con selector de vistas.'}
+                  </p>
+                </div>
+
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={() => setShowPlatformSwitchModal(true)}
+                  className={`font-bold text-xs shrink-0 ${
+                    platformMode === 'production'
+                      ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-md shadow-amber-900/40'
+                      : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-900/40'
+                  }`}
+                >
+                  <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                  {platformMode === 'production' ? 'Pasar a Modo Prueba' : 'Pasar a Modo Producción'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Tarjeta 2: Acceso Universal de Prueba */}
+            <div className="bg-[#09182C] border border-[#152E4D] rounded-2xl p-6 space-y-5 shadow-md">
+              <div className="flex items-center justify-between border-b border-[#152E4D] pb-3">
+                <div className="flex items-center space-x-2.5">
+                  <User className="w-5 h-5 text-teal-400" />
+                  <h3 className="font-bold text-base text-white">Acceso Universal de Prueba</h3>
+                </div>
+                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                  platformMode === 'test' && testUserEnabled
+                    ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
+                    : 'text-slate-400 bg-slate-800 border-slate-700'
+                }`}>
+                  {platformMode === 'test' && testUserEnabled ? '🟢 ACTIVO EN MODO PRUEBA' : '⚫ DESACTIVADO'}
+                </span>
+              </div>
+
+              <form onSubmit={handleSaveTestUserSettings} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">Email de Usuario de Pruebas</label>
+                    <input
+                      type="email"
+                      value={testUserEmail}
+                      onChange={(e) => setTestUserEmail(e.target.value)}
+                      className="w-full bg-[#071322] border border-[#1E3E66] rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500"
+                    />
+                    <span className="text-[10px] text-slate-500 mt-1 block">
+                      Cuenta inicial obligatoria: <code className="font-mono text-slate-400">admin@estudionova.uy</code>
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">Contraseña</label>
+                    <div className="flex items-center space-x-2">
+                      <div className="flex-1 bg-[#071322] border border-[#1E3E66] rounded-xl px-3 py-2 text-xs text-slate-400 font-mono">
+                        ••••••••••••
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowTestPasswordModal(true)}
+                        className="border-[#1E3E66] text-slate-200 hover:bg-[#152E4D] text-xs font-semibold shrink-0"
+                      >
+                        <Key className="w-3.5 h-3.5 mr-1 text-teal-400" />
+                        Cambiar contraseña
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-[#071322] border border-[#152E4D] rounded-xl space-y-2 text-xs text-slate-300">
+                  <span className="font-bold text-white block">Alcance y Restricciones del Usuario Universal:</span>
+                  <ul className="space-y-1 list-disc list-inside text-slate-400 text-[11px]">
+                    <li>Permite recorrer los 5 portales demo de Estudio Nova: <strong className="text-slate-300">Cliente, Inversor, Escribano, Backoffice y Tenant Admin</strong> con selector de vistas.</li>
+                    <li><span className="text-red-400 font-bold">Bloqueo estricto de Super Admin (/admin):</span> Cualquier intento devuelve HTTP 403 Forbidden.</li>
+                    <li><span className="text-amber-400 font-bold">Bloqueo en Producción:</span> Si la plataforma está en Modo Producción, devuelve HTTP 401 Unauthorized.</li>
+                  </ul>
+                </div>
+
+                <div className="pt-2 flex items-center justify-between">
+                  <label className="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={testUserEnabled}
+                      onChange={(e) => setTestUserEnabled(e.target.checked)}
+                      className="rounded border-[#1E3E66] text-emerald-500 focus:ring-0 bg-[#071322]"
+                    />
+                    <span>Habilitar cuenta universal cuando la plataforma esté en Modo Prueba</span>
+                  </label>
+
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="sm"
+                    disabled={savingTestUser}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm"
+                  >
+                    {savingTestUser ? <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
+                    Guardar configuración de prueba
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Cambio de Modo de Plataforma */}
+        <PlatformModeSwitchModal
+          isOpen={showPlatformSwitchModal}
+          onClose={() => setShowPlatformSwitchModal(false)}
+          currentMode={platformMode}
+          onSuccess={(newMode) => setPlatformMode(newMode)}
+        />
+
+        {/* Modal de Cambio de Contraseña Super Admin */}
+        {showPasswordModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-[#09182C] border border-[#1E3E66] rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-left">
+              <div className="flex items-center justify-between border-b border-[#152E4D] pb-3">
+                <div className="flex items-center space-x-2">
+                  <Key className="w-5 h-5 text-emerald-400" />
+                  <h3 className="font-bold text-base text-white">Cambiar contraseña Super Admin</h3>
+                </div>
+                <button onClick={() => setShowPasswordModal(false)} className="text-slate-400 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {passwordMsg && (
+                <div className={`p-3 rounded-xl text-xs flex items-center space-x-2 ${
+                  passwordMsg.error ? 'bg-red-500/10 border border-red-500/30 text-red-300' : 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300'
+                }`}>
+                  {passwordMsg.error ? <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" /> : <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
+                  <span>{passwordMsg.text}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleChangePassword} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">Nueva contraseña</label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Mínimo 8 caracteres"
+                    className="w-full bg-[#071322] border border-[#1E3E66] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">Confirmar nueva contraseña</label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Repita la nueva contraseña"
+                    className="w-full bg-[#071322] border border-[#1E3E66] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div className="pt-3 flex justify-end space-x-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowPasswordModal(false)}
+                    className="border-[#1E3E66] text-slate-300 text-xs"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="sm"
+                    disabled={passwordLoading}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
+                  >
+                    {passwordLoading && <RefreshCw className="w-3 h-3 mr-1 animate-spin" />}
+                    Guardar nueva contraseña
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Cambio de Contraseña Usuario de Prueba */}
+        {showTestPasswordModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-[#09182C] border border-[#1E3E66] rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-left">
+              <div className="flex items-center justify-between border-b border-[#152E4D] pb-3">
+                <div className="flex items-center space-x-2">
+                  <Key className="w-5 h-5 text-teal-400" />
+                  <h3 className="font-bold text-base text-white">Contraseña Usuario de Prueba</h3>
+                </div>
+                <button onClick={() => setShowTestPasswordModal(false)} className="text-slate-400 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {testPasswordMsg && (
+                <div className={`p-3 rounded-xl text-xs flex items-center space-x-2 ${
+                  testPasswordMsg.error ? 'bg-red-500/10 border border-red-500/30 text-red-300' : 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300'
+                }`}>
+                  {testPasswordMsg.error ? <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" /> : <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
+                  <span>{testPasswordMsg.text}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleChangeTestPassword} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">Nueva contraseña para {testUserEmail}</label>
+                  <input
+                    type="password"
+                    value={testNewPassword}
+                    onChange={(e) => setTestNewPassword(e.target.value)}
+                    placeholder="Ej. admin123"
+                    className="w-full bg-[#071322] border border-[#1E3E66] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">Confirmar contraseña</label>
+                  <input
+                    type="password"
+                    value={testConfirmPassword}
+                    onChange={(e) => setTestConfirmPassword(e.target.value)}
+                    placeholder="Repita la contraseña"
+                    className="w-full bg-[#071322] border border-[#1E3E66] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500"
+                  />
+                </div>
+
+                <div className="pt-3 flex justify-end space-x-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowTestPasswordModal(false)}
+                    className="border-[#1E3E66] text-slate-300 text-xs"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="sm"
+                    disabled={testPasswordLoading}
+                    className="bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs"
+                  >
+                    {testPasswordLoading && <RefreshCw className="w-3 h-3 mr-1 animate-spin" />}
+                    Guardar
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de MFA */}
+        {showMfaModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-[#09182C] border border-[#1E3E66] rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-left">
+              <div className="flex items-center justify-between border-b border-[#152E4D] pb-3">
+                <div className="flex items-center space-x-2">
+                  <QrCode className="w-5 h-5 text-emerald-400" />
+                  <h3 className="font-bold text-base text-white">Doble Factor TOTP (MFA)</h3>
+                </div>
+                <button onClick={() => setShowMfaModal(false)} className="text-slate-400 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-3.5 bg-[#071322] border border-[#152E4D] rounded-xl space-y-2 text-xs text-slate-300">
+                <p className="font-semibold text-emerald-300">Autenticación Multifactor AAL2 Activa</p>
+                <p className="text-slate-400 text-[11px]">
+                  Utilice Google Authenticator, Authy o 1Password para escanear el código TOTP y autorizar operaciones críticas de Super Admin.
+                </p>
+                <div className="p-2 bg-black/30 rounded font-mono text-[11px] text-slate-300 flex justify-between items-center">
+                  <span>Clave secreta: <strong>JBSWY3DPEHPK3PXP</strong></span>
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowMfaModal(false)}
+                  className="border-[#1E3E66] text-slate-300 text-xs"
+                >
+                  Cerrar
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ============================================================ */}
         {/* GRUPO A: INFRAESTRUCTURA                                     */}

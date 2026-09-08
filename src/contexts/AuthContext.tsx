@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase';
 import { Borrower } from '../lib/types';
 import { resolveTenant } from '../lib/tenantService';
 import { adminQaService } from '../lib/adminQaService';
+import { platformModeService } from '../lib/platformModeService';
 
 export type UserRole =
   | 'super_admin'
@@ -19,7 +20,9 @@ export type UserRole =
   | 'notary'
   | 'lender'
   | 'borrower'
-  | 'viewer';
+  | 'viewer'
+  | 'test_universal'
+  | 'demo_universal';
 
 export interface UserMembership {
   organizationId: string;
@@ -356,49 +359,89 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const emailTrimmed = emailInput.trim().toLowerCase();
     const passTrimmed = passwordInput.trim();
 
-    // CLAVE DE ACCESO TOTAL QA / MASTER ADMIN GLOBAL (ÚNICAMENTE en desarrollo o preview local)
-    if (
-      !import.meta.env.PROD &&
-      (emailTrimmed === 'admin@test.com' || emailTrimmed === 'admin' || emailTrimmed === 'superadmin' || emailTrimmed === 'admin@hipotecaly.uy') &&
-      (passTrimmed === 'admin123' || passTrimmed === 'admin')
-    ) {
-      console.log('[QA_ADMIN_SESSION] Sesión temporal QA iniciada con credenciales admin@test.com / admin123 (Ambiente DEV/QA activo)');
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('hipotecaly_master_user', 'admin@test.com');
-        window.localStorage.setItem('hipotecaly_test_role', 'super_admin');
+    // 1. SUPER ADMIN REAL: juanmacastillo2008@gmail.com
+    if (emailTrimmed === 'juanmacastillo2008@gmail.com') {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email: emailTrimmed, password: passTrimmed });
+        if (!error && data.user) {
+          setIsSuperAdmin(true);
+          setUserRole('super_admin');
+          return { error: null };
+        }
+      } catch {
+        // Continuar con fallback para dev local
       }
-      const masterUser: User = {
-        id: 'u-master-superadmin-001',
-        app_metadata: { role: 'super_admin', is_super_admin: true, is_qa_admin: true },
-        user_metadata: { first_name: 'Admin', last_name: 'QA Total', role: 'super_admin' },
-        aud: 'authenticated',
-        created_at: new Date().toISOString(),
-        email: 'admin@test.com',
-      } as any;
-      setUser(masterUser);
-      setUserRole('super_admin');
-      setIsSuperAdmin(true);
-      setIsQaSession(true);
-      setMemberships([
-        {
-          organizationId: 'a0000000-0000-0000-0000-000000000001',
-          role: 'super_admin',
-          isActive: true,
-        },
-        {
-          organizationId: 'd0000000-0000-0000-0000-000000000001',
-          role: 'super_admin',
-          isActive: true,
-        },
-      ]);
-      setLoading(false);
-      return { error: null };
+
+      if (!import.meta.env.PROD) {
+        // En entorno local de desarrollo / test preview
+        const superAdminUser: User = {
+          id: 'f0000000-0000-0000-0000-000000000001',
+          app_metadata: { role: 'super_admin', is_super_admin: true },
+          user_metadata: { first_name: 'Juan Manuel', last_name: 'Castillo', role: 'super_admin' },
+          aud: 'authenticated',
+          created_at: new Date().toISOString(),
+          email: 'juanmacastillo2008@gmail.com',
+        } as any;
+        setUser(superAdminUser);
+        setUserRole('super_admin');
+        setIsSuperAdmin(true);
+        setIsQaSession(false);
+        setMemberships([
+          { organizationId: 'a0000000-0000-0000-0000-000000000001', role: 'super_admin', isActive: true },
+          { organizationId: 'd0000000-0000-0000-0000-000000000001', role: 'super_admin', isActive: true },
+        ]);
+        setLoading(false);
+        return { error: null };
+      }
+    }
+
+    // 2. USUARIO UNIVERSAL DE PRUEBAS: admin@estudionova.uy (y admin@test.com / admin)
+    const isTestUserAttempt =
+      emailTrimmed === 'admin@estudionova.uy' ||
+      emailTrimmed === 'admin@test.com' ||
+      emailTrimmed === 'admin';
+
+    if (isTestUserAttempt) {
+      const mode = platformModeService.getCachedMode();
+      // BLOQUEO OBLIGATORIO EN PRODUCCIÓN (401 Unauthorized)
+      if (mode === 'production' || import.meta.env.PROD) {
+        return {
+          error: new Error('401 Unauthorized: El acceso universal de prueba está desactivado en Modo Producción.'),
+        };
+      }
+
+      if (passTrimmed === 'admin123' || passTrimmed === 'admin') {
+        console.log('[TEST_UNIVERSAL_SESSION] Sesión universal de pruebas iniciada con admin@estudionova.uy (Modo Prueba activo)');
+        const testUniversalUser: User = {
+          id: 'd1111111-1111-1111-1111-111111111111',
+          app_metadata: { role: 'test_universal', is_super_admin: false, is_test_universal: true },
+          user_metadata: { first_name: 'Usuario', last_name: 'Pruebas Estudio Nova', role: 'test_universal', is_test_universal: true },
+          aud: 'authenticated',
+          created_at: new Date().toISOString(),
+          email: 'admin@estudionova.uy',
+        } as any;
+
+        setUser(testUniversalUser);
+        setUserRole('test_universal');
+        setIsSuperAdmin(false); // NUNCA SUPER ADMIN
+        setIsQaSession(true);
+        setMemberships([
+          { organizationId: 'd0000000-0000-0000-0000-000000000001', role: 'tenant_owner', isActive: true },
+          { organizationId: 'd0000000-0000-0000-0000-000000000001', role: 'tenant_admin', isActive: true },
+          { organizationId: 'd0000000-0000-0000-0000-000000000001', role: 'analyst', isActive: true },
+          { organizationId: 'd0000000-0000-0000-0000-000000000001', role: 'notary', isActive: true },
+          { organizationId: 'd0000000-0000-0000-0000-000000000001', role: 'lender', isActive: true },
+          { organizationId: 'd0000000-0000-0000-0000-000000000001', role: 'borrower', isActive: true },
+        ]);
+        setLoading(false);
+        return { error: null };
+      }
     }
 
     // Normalización de username simple a email
     const emailToAuth = emailTrimmed.includes('@') ? emailTrimmed : `${emailTrimmed}@hipotecaly.uy`;
 
-    // 1. Intentar autenticación real en Supabase
+    // 3. Intentar autenticación real en Supabase
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email: emailToAuth, password: passTrimmed });
       if (!error && data.user) {
@@ -408,10 +451,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Continuar con fallback de credenciales de prueba
     }
 
-    // 2. Soporte para credenciales de demostración directas ÚNICAMENTE en desarrollo/test preview
+    // 4. Soporte para credenciales de demostración directas ÚNICAMENTE en desarrollo/test preview
     if (!import.meta.env.PROD) {
       if (
-        (emailTrimmed === 'admin' || emailTrimmed === 'admin@hipotecaly.uy' || emailTrimmed === 'admin@hipotecaly.local' || emailTrimmed === 'superadmin') &&
+        (emailTrimmed === 'superadmin' || emailTrimmed === 'admin@hipotecaly.uy') &&
         (passTrimmed === 'admin123' || passTrimmed === 'admin')
       ) {
         if (typeof window !== 'undefined') {
@@ -670,6 +713,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const hasRole = (allowedRoles: UserRole[], tenantId?: string): boolean => {
     if (!user || !userRole) return false;
     if (isSuperAdmin) return true; // Super Admin accede a todo
+
+    // Usuario universal de pruebas en modo demo: accede a todos los portales excepto Super Admin
+    if (userRole === 'test_universal' || userRole === 'demo_universal' || (user.app_metadata as any)?.is_test_universal) {
+      if (allowedRoles.length === 1 && allowedRoles[0] === 'super_admin') {
+        return false;
+      }
+      return true;
+    }
 
     const expandedAllowed = new Set(allowedRoles);
     if (expandedAllowed.has('tenant_admin')) {

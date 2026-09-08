@@ -25,6 +25,8 @@ import { SuperAdminLayout } from '../../components/admin/SuperAdminLayout';
 import { SuperAdminTenantDetailModal } from '../../components/admin/SuperAdminTenantDetailModal';
 import { Button } from '../../components/ui/Button';
 import { getAllRegisteredTenants, Tenant } from '../../lib/tenantService';
+import { platformModeService, PlatformMode } from '../../lib/platformModeService';
+import { PlatformModeSwitchModal } from '../../components/admin/PlatformModeSwitchModal';
 
 interface AttentionItem {
   id: string;
@@ -41,10 +43,17 @@ interface AttentionItem {
 export const SuperAdminDashboardPage: React.FC = () => {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedTenantModal, setSelectedTenantModal] = useState<Tenant | null>(null);
+  const [platformMode, setPlatformMode] = useState<PlatformMode>(platformModeService.getCachedMode());
+  const [showSwitchModal, setShowSwitchModal] = useState(false);
 
   useEffect(() => {
     document.title = 'HIPOTECALY | Inicio Super Admin';
     setTenants(getAllRegisteredTenants());
+
+    const unsubscribe = platformModeService.subscribe((settings) => {
+      setPlatformMode(settings.platform_mode);
+    });
+    return () => unsubscribe();
   }, []);
 
   // Situaciones accionables que requieren atención
@@ -87,6 +96,63 @@ export const SuperAdminDashboardPage: React.FC = () => {
   return (
     <SuperAdminLayout title="Inicio" activeSection="overview">
       <div className="space-y-8 max-w-7xl mx-auto text-left">
+        
+        {/* ============================================================ */}
+        {/* BANNER INDICADOR DE MODO DE PLATAFORMA (PRODUCCIÓN / PRUEBA) */}
+        {/* ============================================================ */}
+        {platformMode === 'test' ? (
+          <div className="bg-amber-500/10 border border-amber-500/40 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+            <div className="flex items-center space-x-3">
+              <span className="w-3.5 h-3.5 rounded-full bg-amber-400 animate-ping shrink-0" />
+              <div>
+                <div className="text-sm font-black text-amber-300 flex items-center gap-2">
+                  🟡 PLATAFORMA EN MODO PRUEBA
+                </div>
+                <p className="text-xs text-amber-200/80 mt-0.5">
+                  El usuario universal <code className="font-mono bg-black/30 px-1.5 py-0.5 rounded text-amber-300 font-bold">admin@estudionova.uy</code> está habilitado con selector de vistas demo.
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setShowSwitchModal(true)}
+              className="bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shrink-0 shadow-sm"
+            >
+              Pasar a Producción
+            </Button>
+          </div>
+        ) : (
+          <div className="bg-emerald-500/10 border border-emerald-500/40 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+            <div className="flex items-center space-x-3">
+              <span className="w-3.5 h-3.5 rounded-full bg-emerald-400 shrink-0" />
+              <div>
+                <div className="text-sm font-black text-emerald-300 flex items-center gap-2">
+                  🟢 PLATAFORMA EN PRODUCCIÓN
+                </div>
+                <p className="text-xs text-emerald-200/80 mt-0.5">
+                  Acceso universal de prueba desactivado (401 Unauthorized). Operando con usuarios y permisos reales.
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowSwitchModal(true)}
+              className="border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/20 text-xs shrink-0 font-bold"
+            >
+              Pasar a Prueba
+            </Button>
+          </div>
+        )}
+
+        {/* Modal de confirmación para alternar modo */}
+        <PlatformModeSwitchModal
+          isOpen={showSwitchModal}
+          onClose={() => setShowSwitchModal(false)}
+          currentMode={platformMode}
+          onSuccess={(newMode) => setPlatformMode(newMode)}
+        />
         
         {/* ============================================================ */}
         {/* 1. ESTADO DE SALUD OPERATIVA (ENCABEZADO CLARO)              */}
