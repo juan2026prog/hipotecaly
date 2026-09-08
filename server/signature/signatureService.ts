@@ -218,7 +218,6 @@ export class SignatureService {
     const isWrapped = params && (params.body !== undefined || params.query !== undefined);
     const body = isWrapped ? params.body || {} : params || {};
     const query = isWrapped ? params.query || {} : {};
-    const _headers = isWrapped ? params.headers || {} : _headersFallback || {};
     const method = isWrapped ? (params.method || 'POST').toUpperCase() : 'POST';
 
     // Extraer identificador y estado de query o body
