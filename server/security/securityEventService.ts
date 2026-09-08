@@ -26,8 +26,8 @@ export interface SecurityEventParams {
   severity: SecuritySeverity;
   userId?: string | null;
   organizationId?: string | null;
-  resourceType?: string;
-  resourceId?: string;
+  resourceType?: string | null;
+  resourceId?: string | null;
   metadata?: Record<string, any>;
   req?: any;
 }
@@ -39,10 +39,10 @@ export class SecurityEventService {
     severity: SecuritySeverity;
     userId?: string | null;
     organizationId?: string | null;
-    resourceType?: string;
-    resourceId?: string;
-    ipAddress?: string;
-    userAgent?: string;
+    resourceType?: string | null;
+    resourceId?: string | null;
+    ipAddress?: string | null;
+    userAgent?: string | null;
     metadata: Record<string, any>;
     createdAt: string;
   }> = [];
@@ -106,7 +106,7 @@ export class SecurityEventService {
 
     // Persistir en PostgreSQL security_events
     try {
-      await supabaseAdmin.from('security_events').insert({
+      const { error: dbErr } = await supabaseAdmin.from('security_events').insert({
         event_type: params.eventType,
         severity: params.severity,
         user_id: params.userId || null,
@@ -118,8 +118,20 @@ export class SecurityEventService {
         metadata: sanitizedMeta,
         created_at: nowIso,
       });
-    } catch {
-      // Safe fallback si la migración aún no se ejecuta
+
+      if (dbErr) {
+        // Log forense estructurado en stderr para captura en Vercel/Cloudwatch
+        console.error('[SECURITY_ALERT_PERSISTENCE_WARNING]', JSON.stringify({
+          error: dbErr.message,
+          event: eventRecord,
+        }));
+      }
+    } catch (err: any) {
+      // Fallback forense en stderr si falla conexión
+      console.error('[SECURITY_ALERT_PERSISTENCE_FAILURE]', JSON.stringify({
+        error: err?.message,
+        event: eventRecord,
+      }));
     }
   }
 

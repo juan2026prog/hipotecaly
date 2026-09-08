@@ -213,12 +213,12 @@ export class SignatureService {
     query?: any;
     headers?: any;
     method?: string;
-  } | any, headersFallback?: any) {
+  } | any, _headersFallback?: any) {
     // Normalizar entrada (objeto con { body, query } o payload directo)
     const isWrapped = params && (params.body !== undefined || params.query !== undefined);
     const body = isWrapped ? params.body || {} : params || {};
     const query = isWrapped ? params.query || {} : {};
-    const headers = isWrapped ? params.headers || {} : headersFallback || {};
+    const _headers = isWrapped ? params.headers || {} : _headersFallback || {};
     const method = isWrapped ? (params.method || 'POST').toUpperCase() : 'POST';
 
     // Extraer identificador y estado de query o body

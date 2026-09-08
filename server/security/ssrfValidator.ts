@@ -222,46 +222,47 @@ export class SsrfValidator {
         }
       }
 
-      // 4. Hostname
+      // 4. Hostname (eliminar corchetes si es IPv6 ej: [::1])
       const rawHostname = parsed.hostname.toLowerCase();
-      if (!rawHostname) {
+      const cleanHost = rawHostname.replace(/^\[|\]$/g, '');
+      if (!cleanHost) {
         return { valid: false, reason: 'Hostname vacío.' };
       }
 
       // Prohibir terminaciones ambiguas o locales
       if (
-        rawHostname.endsWith('.local') ||
-        rawHostname.endsWith('.internal') ||
-        rawHostname.endsWith('.localhost') ||
-        rawHostname.endsWith('.onion')
+        cleanHost.endsWith('.local') ||
+        cleanHost.endsWith('.internal') ||
+        cleanHost.endsWith('.localhost') ||
+        cleanHost.endsWith('.onion')
       ) {
-        return { valid: false, reason: `Dominio interno o no público no permitido: ${rawHostname}` };
+        return { valid: false, reason: `Dominio interno o no público no permitido: ${cleanHost}` };
       }
 
       // 5. Verificar lista negra de nombres directos
-      if (this.FORBIDDEN_HOSTNAMES.has(rawHostname)) {
-        return { valid: false, reason: `Host interno/loopback bloqueado: ${rawHostname}` };
+      if (this.FORBIDDEN_HOSTNAMES.has(cleanHost) || this.FORBIDDEN_HOSTNAMES.has(rawHostname)) {
+        return { valid: false, reason: `Host interno/loopback bloqueado: ${cleanHost}` };
       }
 
       // 6. Verificar si es IP decimal/hex/octal alternativa
-      const altIpv4 = this.parseDecimalOrHexIpv4(rawHostname);
+      const altIpv4 = this.parseDecimalOrHexIpv4(cleanHost);
       if (altIpv4) {
         if (this.isPrivateOrReservedIpv4(altIpv4)) {
-          return { valid: false, reason: `Dirección IPv4 codificada (${rawHostname} -> ${altIpv4}) pertenece a rango privado o reservado.` };
+          return { valid: false, reason: `Dirección IPv4 codificada (${cleanHost} -> ${altIpv4}) pertenece a rango privado o reservado.` };
         }
       }
 
       // 7. Verificar si es IPv4 directa
-      if (net.isIPv4(rawHostname)) {
-        if (this.isPrivateOrReservedIpv4(rawHostname)) {
-          return { valid: false, reason: `Dirección IPv4 (${rawHostname}) pertenece a rango privado o reservado.` };
+      if (net.isIPv4(cleanHost)) {
+        if (this.isPrivateOrReservedIpv4(cleanHost)) {
+          return { valid: false, reason: `Dirección IPv4 (${cleanHost}) pertenece a rango privado o reservado.` };
         }
       }
 
       // 8. Verificar si es IPv6 directa
-      if (net.isIPv6(rawHostname)) {
-        if (this.isPrivateOrReservedIpv6(rawHostname)) {
-          return { valid: false, reason: `Dirección IPv6 (${rawHostname}) pertenece a rango privado o reservado.` };
+      if (net.isIPv6(cleanHost)) {
+        if (this.isPrivateOrReservedIpv6(cleanHost)) {
+          return { valid: false, reason: `Dirección IPv6 (${cleanHost}) pertenece a rango privado o reservado.` };
         }
       }
 

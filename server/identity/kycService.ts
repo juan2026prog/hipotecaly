@@ -5,11 +5,8 @@
 import crypto from 'crypto';
 import { supabaseAdmin } from '../supabase.js';
 import { HmacVerifier } from './hmacVerifier.js';
-import { kycProviderRegistry } from '../../src/lib/siteos/identity/providerRegistry.js';
-import { MockKycProvider } from '../../src/lib/siteos/identity/providers/MockKycProvider.js';
-import { DiditKycProvider } from '../../src/lib/siteos/identity/providers/DiditKycProvider.js';
 import { KycSessionInput, KycStatus } from '../../src/lib/siteos/identity/types.js';
-import { normalizeDiditStatus, normalizeKycStatus } from '../../src/lib/siteos/identity/stateMachine.js';
+import { normalizeDiditStatus } from '../../src/lib/siteos/identity/stateMachine.js';
 import { DiditClient } from './diditClient.js';
 
 export class KycService {

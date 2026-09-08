@@ -5,6 +5,7 @@
 /* global AbortController */
 import crypto from 'crypto';
 import { supabaseAdmin } from '../supabase.js';
+import { SsrfValidator } from '../security/ssrfValidator.js';
 
 export interface WebhookRegistrationParams {
   tenantId: string;
@@ -43,50 +44,24 @@ export class EnterpriseWebhookDispatcher {
 
   /**
    * Valida una URL para prevenir ataques Server-Side Request Forgery (SSRF)
+   * Utiliza el motor SsrfValidator con soporte completo IPv4, IPv6, CIDR y dominios reservados
    */
   public static validateUrlForSsrf(urlString: string): { valid: boolean; reason?: string } {
-    try {
-      const parsed = new URL(urlString);
+    return SsrfValidator.validateUrlSync(urlString);
+  }
 
-      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-        return { valid: false, reason: 'Solo se admiten protocolos HTTP o HTTPS.' };
-      }
-
-      // En producción, forzar HTTPS y bloquear direcciones internas o privadas
-      const isProd = process.env.NODE_ENV === 'production';
-      if (isProd && parsed.protocol !== 'https:') {
-        return { valid: false, reason: 'En entorno de producción los Webhooks deben utilizar HTTPS estricto.' };
-      }
-
-      const hostname = parsed.hostname.toLowerCase();
-
-      // Bloquear rangos de loopback, metadatos de nube y redes privadas
-      const isPrivateOrLoopback =
-        hostname === 'localhost' ||
-        hostname === '127.0.0.1' ||
-        hostname === '::1' ||
-        hostname.startsWith('10.') ||
-        hostname.startsWith('192.168.') ||
-        hostname.startsWith('169.254.') || // AWS/GCP metadata
-        (hostname.startsWith('172.') &&
-          parseInt(hostname.split('.')[1], 10) >= 16 &&
-          parseInt(hostname.split('.')[1], 10) <= 31);
-
-      if (isPrivateOrLoopback) {
-        return { valid: false, reason: 'La URL apunta a un rango de red privada o loopback no autorizado (SSRF Protection).' };
-      }
-
-      return { valid: true };
-    } catch {
-      return { valid: false, reason: 'URL malformada.' };
-    }
+  /**
+   * Validación asíncrona profunda con resolución DNS y protección contra DNS Rebinding
+   */
+  public static async validateUrlForSsrfAsync(urlString: string): Promise<{ valid: boolean; reason?: string }> {
+    return await SsrfValidator.validateUrlAsync(urlString);
   }
 
   /**
    * Registra un nuevo webhook con generación CSPRNG del secreto de firma HMAC
    */
   public static async registerWebhook(params: WebhookRegistrationParams): Promise<WebhookEntity> {
-    const check = this.validateUrlForSsrf(params.url);
+    const check = await this.validateUrlForSsrfAsync(params.url);
     if (!check.valid) {
       throw new Error(`URL de Webhook inválida: ${check.reason}`);
     }
@@ -176,6 +151,7 @@ export class EnterpriseWebhookDispatcher {
             'User-Agent': 'Hipotecaly-Webhook-Dispatcher/1.0',
           },
           body: payloadString,
+          redirect: 'error',
           signal: controller.signal,
         });
 
