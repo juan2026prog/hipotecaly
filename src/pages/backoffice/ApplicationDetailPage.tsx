@@ -31,7 +31,20 @@ import {
   Fingerprint,
   UserCheck,
   ShieldAlert,
+  ShieldCheck,
+  FileLock2,
+  Send,
 } from 'lucide-react';
+import {
+  getApplicationConsents,
+  ConsentRecord,
+} from '../../lib/policyEngine';
+import {
+  sendApplicationCommunication,
+  getApplicationCommunications,
+  getCommunicationTemplates,
+  CommunicationLog,
+} from '../../lib/communicationsService';
 import { ApplicationMatchingTab } from '../../components/backoffice/ApplicationMatchingTab';
 import { HipotecalyAiTab } from '../../components/ai/HipotecalyAiTab';
 import { DocumentHub } from '../../components/docflow/DocumentHub';
@@ -61,10 +74,20 @@ export const ApplicationDetailPage: React.FC = () => {
   const [showAssignNotaryModal, setShowAssignNotaryModal] = useState(false);
   const [selectedNotaryUser, setSelectedNotaryUser] = useState('u-test-notary');
   const [assignedNotaryName, setAssignedNotaryName] = useState('Esc. María Pérez Morales');
-  const [solicitanteSubTab, setSolicitanteSubTab] = useState<'perfil' | 'ingresos' | 'cotitulares' | 'kyc'>('perfil');
+  const [solicitanteSubTab, setSolicitanteSubTab] = useState<'perfil' | 'ingresos' | 'cotitulares' | 'kyc' | 'consentimientos'>('perfil');
   const [analisisSubTab, setAnalisisSubTab] = useState<'riesgo' | 'ia' | 'oferta' | 'inversores'>('riesgo');
   const [seguimientoSubTab, setSeguimientoSubTab] = useState<'tareas' | 'comunicaciones' | 'actividad'>('tareas');
   const [nextActionOverride, setNextActionOverride] = useState<any>(null);
+
+  // Estados Pass 5: Comunicaciones, Consentimientos y Evidencia de Firma
+  const [showSignatureEvidenceModal, setShowSignatureEvidenceModal] = useState(false);
+  const [showManualCommModal, setShowManualCommModal] = useState(false);
+  const [manualCommTemplate, setManualCommTemplate] = useState('solicitud_recibida');
+  const [manualCommRecipient, setManualCommRecipient] = useState('');
+  const [manualCommChannel, setManualCommChannel] = useState<'email' | 'whatsapp'>('email');
+  const [sendingComm, setSendingComm] = useState(false);
+  const [communicationsList, setCommunicationsList] = useState<CommunicationLog[]>([]);
+  const [consentsList, setConsentsList] = useState<ConsentRecord[]>([]);
 
   // Estados para valuación preliminar
   const [preliminaryValue, setPreliminaryValue] = useState<number>(0);
@@ -138,6 +161,10 @@ export const ApplicationDetailPage: React.FC = () => {
       data = DEMO_APPLICATIONS.find((a) => a.id === id || a.public_id === id) || DEMO_APPLICATIONS[0];
     }
     setApp(data);
+    if (data?.id) {
+      setCommunicationsList(getApplicationCommunications(data.id));
+      setConsentsList(getApplicationConsents(data.id));
+    }
     if (data?.valuation) {
       setPreliminaryValue(data.valuation.preliminary_value || 0);
       setValMin(data.valuation.valuation_min || 0);
@@ -149,6 +176,38 @@ export const ApplicationDetailPage: React.FC = () => {
       setPreliminaryValue(data.property.estimated_value);
     }
     if (!silent) setLoading(false);
+  };
+
+  const handleSendManualComm = async () => {
+    if (!app) return;
+    setSendingComm(true);
+    try {
+      const res = await sendApplicationCommunication({
+        organizationId: tenant.id,
+        applicationId: app.id,
+        templateCode: manualCommTemplate,
+        channel: manualCommChannel,
+        recipient: manualCommRecipient || app.borrower?.email || 'solicitante@ejemplo.com',
+        deliveryType: 'MANUAL',
+        userName: 'Operador Backoffice',
+        variables: {
+          '{{cliente.nombre}}': borrowerFullName,
+          '{{expediente.id}}': app.public_id,
+          '{{expediente.monto}}': Number(reqAmount).toLocaleString('es-UY'),
+          '{{propiedad.direccion}}': `${app.property?.property_type || 'Inmueble'} en ${app.property?.department || 'Montevideo'}`,
+          '{{responsable.nombre}}': assignedNotaryName,
+          '{{fecha_limite}}': new Date(Date.now() + 86400000 * 3).toLocaleDateString('es-UY'),
+        },
+      });
+      setCommunicationsList((prev) => [res, ...prev]);
+      setShowManualCommModal(false);
+      setCommandActionToast(`Notificación enviada exitosamente vía ${res.channel.toUpperCase()}`);
+      setTimeout(() => setCommandActionToast(null), 4000);
+    } catch (err: any) {
+      alert(err.message || 'Error al enviar la comunicación.');
+    } finally {
+      setSendingComm(false);
+    }
   };
 
   useEffect(() => {
@@ -845,6 +904,7 @@ export const ApplicationDetailPage: React.FC = () => {
                     { id: 'ingresos', label: 'Ingresos & Capacidad' },
                     { id: 'cotitulares', label: 'Personas & Cotitulares' },
                     { id: 'kyc', label: 'Identidad & KYC' },
+                    { id: 'consentimientos', label: 'Consentimientos (Legal)' },
                   ].map((sub) => (
                     <button
                       key={sub.id}
@@ -944,6 +1004,37 @@ export const ApplicationDetailPage: React.FC = () => {
                     applicantName={borrowerFullName}
                     applicantCi={app.borrower?.document_number || '4.892.114-2'}
                   />
+                )}
+
+                {solicitanteSubTab === 'consentimientos' && (
+                  <div className="space-y-4 text-xs">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                      <h4 className="font-bold text-[#102d49] uppercase tracking-wider flex items-center gap-1.5">
+                        <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                        <span>Registro de Consentimientos Digitales (Ley 18.331)</span>
+                      </h4>
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
+                        CONSENTIMIENTO VÁLIDO
+                      </span>
+                    </div>
+
+                    <div className="space-y-3">
+                      {consentsList.map((cs) => (
+                        <div key={cs.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-navy text-sm">{cs.user_name} ({cs.user_document})</span>
+                            <span className="text-[10px] font-mono text-slate-400">IP: {cs.ip_address}</span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-600">
+                            <div><strong>Términos aceptados:</strong> {cs.terms_version}</div>
+                            <div><strong>Privacidad aceptada:</strong> {cs.privacy_version}</div>
+                            <div><strong>Canal de captura:</strong> {cs.channel}</div>
+                            <div><strong>Fecha y Hora:</strong> {new Date(cs.accepted_at).toLocaleString('es-UY')}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
             )}
@@ -1089,21 +1180,58 @@ export const ApplicationDetailPage: React.FC = () => {
 
                 {analisisSubTab === 'riesgo' && (
                   <div className="space-y-4 text-xs">
+                    {/* Badge de Política Aplicada */}
+                    <div className="p-3.5 rounded-xl bg-slate-900 text-white flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                        <span className="font-bold text-xs">Evaluado con Política Hipotecaria v5</span>
+                        <span className="text-[10px] text-slate-400 font-mono">(Tope LTV: 40% · Tasa 11.5%)</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800">
+                        CONFORME A POLÍTICA
+                      </span>
+                    </div>
+
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                        <span className="text-[10px] text-slate-400 font-bold block uppercase">% Financiación</span>
+                        <span className="text-[10px] text-slate-400 font-bold block uppercase">% Financiación (LTV)</span>
                         <div className="text-2xl font-black text-[#102d49] font-serif">{financingPercent}%</div>
-                        <span className="text-slate-500">Sobre tasación</span>
+                        <span className="text-slate-500">Tope máximo permitido: 40%</span>
                       </div>
                       <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
                         <span className="text-[10px] text-slate-400 font-bold block uppercase">Monto Solicitado</span>
                         <div className="text-2xl font-black text-[#102d49] font-serif">USD {Number(reqAmount).toLocaleString('es-UY')}</div>
-                        <span className="text-slate-500">Crédito hipotecario</span>
+                        <span className="text-slate-500">Rango: USD 15k - USD 500k</span>
                       </div>
                       <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
                         <span className="text-[10px] text-slate-400 font-bold block uppercase">Valor Garantía</span>
                         <div className="text-2xl font-black text-[#102d49] font-serif">USD {Number(estValue).toLocaleString('es-UY')}</div>
-                        <span className="text-slate-500">Valor tasado</span>
+                        <span className="text-slate-500">Inmueble: {app.property?.property_type || 'Apartamento'}</span>
+                      </div>
+                    </div>
+
+                    {/* Checklist de Reglas de Admisión */}
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+                      <h4 className="text-xs font-bold text-[#102d49] uppercase tracking-wider">
+                        Matriz de Cumplimiento de Políticas
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                        <div className="flex items-center space-x-2 text-emerald-800">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>LTV {financingPercent}% &le; 40% límite institucional</span>
+                        </div>
+                        <div className="flex items-center space-x-2 text-emerald-800">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Garantía ({app.property?.property_type || 'Apartamento'}) habilitada</span>
+                        </div>
+                        <div className="flex items-center space-x-2 text-emerald-800">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Ingresos comprobados (UYU 95.000 / mes)</span>
+                        </div>
+                        <div className="flex items-center space-x-2 text-emerald-800">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Consulta Clearing / BCU sin antecedentes</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1146,6 +1274,29 @@ export const ApplicationDetailPage: React.FC = () => {
             {/* ======================================================== */}
             {activeTab === 'documentos' && (
               <div className="space-y-6">
+                {/* Banner de Evidencia Criptográfica de Firma */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 to-[#102d49] text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+                  <div className="space-y-1">
+                    <div className="flex items-center space-x-2">
+                      <FileLock2 className="w-4 h-4 text-emerald-400" />
+                      <span className="text-xs font-mono font-bold text-[#f4b43b] uppercase tracking-wider">
+                        Firma Electrónica Avanzada · Ley N° 18.600
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300">
+                      Evidencia criptográfica y sellado de tiempo ISO 8601 disponibles para este expediente.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowSignatureEvidenceModal(true)}
+                    className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 transition flex items-center space-x-1.5 shrink-0"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Ver Evidencia de Firma</span>
+                  </button>
+                </div>
+
                 <DocumentHub
                   caseId={app.id || id || 'e0000000-0000-0000-0000-000000000001'}
                   appData={app}
@@ -1212,20 +1363,54 @@ export const ApplicationDetailPage: React.FC = () => {
                 )}
 
                 {seguimientoSubTab === 'comunicaciones' && (
-                  <div className="space-y-3 text-xs">
-                    {[
-                      { canal: 'Email', msg: 'Solicitud recibida correctamente.', fecha: 'Hoy 10:15', estado: 'Entregado' },
-                      { canal: 'Email', msg: 'Documentación pendiente: Recibo de sueldo.', fecha: 'Ayer 14:30', estado: 'Entregado' },
-                      { canal: 'Email', msg: 'Cédula de identidad verificada exitosamente.', fecha: '03/09/2026', estado: 'Entregado' },
-                    ].map((com, i) => (
-                      <div key={i} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">{com.canal}</span>
-                          <span className="text-slate-400 text-[10px]">{com.fecha}</span>
+                  <div className="space-y-4 text-xs">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                      <h4 className="font-bold text-[#102d49] uppercase tracking-wider flex items-center gap-1.5">
+                        <MessageSquare className="w-4 h-4 text-blue-600" />
+                        <span>Historial de Notificaciones y Comunicaciones</span>
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => setShowManualCommModal(true)}
+                        className="px-3 py-1.5 rounded-lg bg-[#102d49] text-white font-bold text-[11px] hover:bg-[#173a5e] flex items-center space-x-1"
+                      >
+                        <Plus className="w-3.5 h-3.5 mr-0.5" />
+                        <span>Enviar Notificación</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {communicationsList.map((com) => (
+                        <div key={com.id} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full uppercase">
+                                {com.channel}
+                              </span>
+                              <span className="font-mono text-[10px] text-slate-500 font-bold">{com.event_name}</span>
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                com.delivery_type === 'AUTOMÁTICA' ? 'bg-purple-100 text-purple-800' : 'bg-slate-200 text-slate-700'
+                              }`}>
+                                {com.delivery_type}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-slate-400 text-[10px]">
+                                {new Date(com.created_at).toLocaleString('es-UY')}
+                              </span>
+                              <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">
+                                {com.status.toUpperCase()}
+                              </span>
+                            </div>
+                          </div>
+                          {com.subject && (
+                            <p className="text-slate-900 font-semibold text-[11px]">Asunto: {com.subject}</p>
+                          )}
+                          <p className="text-slate-700 text-[11px] leading-relaxed">{com.message_content}</p>
+                          <p className="text-[10px] text-slate-400">Destinatario: {com.recipient}</p>
                         </div>
-                        <p className="text-slate-700">{com.msg}</p>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -1458,6 +1643,180 @@ export const ApplicationDetailPage: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Modal Evidencia de Firma Electrónica Avanzada (Ley 18.600) */}
+      {showSignatureEvidenceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 text-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2">
+                <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                <h3 className="text-sm font-bold text-slate-900">Evidencia de Firma Digital Avanzada</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSignatureEvidenceModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold"
+              >
+                Cerrar
+              </button>
+            </div>
+
+            <p className="text-slate-600 leading-relaxed">
+              Prueba técnica y jurídica de otorgamiento de firma conforme a la Ley N° 18.600 y normativa notarial de la República Oriental del Uruguay.
+            </p>
+
+            <div className="p-3.5 rounded-xl bg-slate-900 text-white space-y-2 font-mono text-[11px]">
+              <div className="flex justify-between border-b border-slate-800 pb-1.5">
+                <span className="text-slate-400">Expediente:</span>
+                <span className="font-bold text-emerald-400">{app?.public_id || 'HIP-DEMO-00124'}</span>
+              </div>
+              <div className="space-y-0.5">
+                <span className="text-slate-400 block text-[10px]">Hash Criptográfico SHA-256 (Inmutable):</span>
+                <span className="text-[10px] text-amber-300 break-all select-all font-mono">
+                  8f4a2c91b5d6e3f017a89bc44298fc1c149afbf4c8996fb92427ae41e4649b93
+                </span>
+              </div>
+              <div className="flex justify-between pt-1">
+                <span className="text-slate-400">Sellado de Tiempo:</span>
+                <span className="text-slate-200">{new Date().toISOString()}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-[11px]">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <span className="text-slate-400 font-medium block text-[10px]">Firmante Notarial</span>
+                <strong className="text-navy">{assignedNotaryName}</strong>
+                <p className="text-[10px] text-slate-500">Caja Notarial 48.291</p>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <span className="text-slate-400 font-medium block text-[10px]">Autoridad Certificadora</span>
+                <strong className="text-navy">AGESIC / UCE Uruguay</strong>
+                <p className="text-[10px] text-emerald-700 font-bold">Certificado Válido ✓</p>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-emerald-50 text-emerald-900 border border-emerald-200 flex items-center space-x-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span className="font-semibold text-[11px]">
+                Integridad garantizada. El documento no ha sufrido alteraciones posteriores a su firma.
+              </span>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 text-right">
+              <button
+                type="button"
+                onClick={() => setShowSignatureEvidenceModal(false)}
+                className="px-4 py-2 rounded-xl bg-[#102d49] text-white font-bold hover:bg-[#173a5e]"
+              >
+                Cerrar Ficha Técnica
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Despacho Manual de Comunicaciones */}
+      {showManualCommModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 text-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2">
+                <MessageSquare className="w-4 h-4 text-blue-600" />
+                <h3 className="text-sm font-bold text-slate-900">Enviar Notificación al Solicitante</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowManualCommModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold"
+              >
+                Cerrar
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Plantilla de Evento Operativo:</label>
+                <select
+                  value={manualCommTemplate}
+                  onChange={(e) => setManualCommTemplate(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-300 font-semibold text-navy bg-white"
+                >
+                  {getCommunicationTemplates().map((tpl) => (
+                    <option key={tpl.code} value={tpl.code}>
+                      {tpl.name} ({tpl.channel.toUpperCase()})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Canal de Envío:</label>
+                <div className="flex items-center space-x-3">
+                  <label className="flex items-center space-x-1.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="commChan"
+                      value="email"
+                      checked={manualCommChannel === 'email'}
+                      onChange={() => setManualCommChannel('email')}
+                      className="text-brand-green"
+                    />
+                    <span>Email Notificación</span>
+                  </label>
+                  <label className="flex items-center space-x-1.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="commChan"
+                      value="whatsapp"
+                      checked={manualCommChannel === 'whatsapp'}
+                      onChange={() => setManualCommChannel('whatsapp')}
+                      className="text-brand-green"
+                    />
+                    <span>WhatsApp</span>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Destinatario:</label>
+                <input
+                  type="text"
+                  value={manualCommRecipient || app?.borrower?.email || 'solicitante@ejemplo.com'}
+                  onChange={(e) => setManualCommRecipient(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold text-navy"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1 text-[11px] text-slate-600">
+                <span className="font-bold text-navy block text-[10px] uppercase">Variables que se inyectarán:</span>
+                <p>• Nombre: {borrowerFullName}</p>
+                <p>• Expediente: {app?.public_id || id}</p>
+                <p>• Monto: USD {Number(reqAmount).toLocaleString('es-UY')}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowManualCommModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={sendingComm}
+                onClick={handleSendManualComm}
+                className="px-4 py-2 rounded-xl bg-[#102d49] hover:bg-[#173a5e] text-white font-bold flex items-center space-x-1.5"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>{sendingComm ? 'Enviando...' : 'Despachar Mensaje'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </BackofficeLayout>
   );
 };

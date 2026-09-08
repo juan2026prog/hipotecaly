@@ -31,7 +31,24 @@ import {
   Smartphone,
   Monitor,
   Check,
+  Play,
+  History,
+  FileCheck,
+  Send,
 } from 'lucide-react';
+import {
+  getActivePolicy,
+  getPolicyVersions,
+  publishPolicy,
+  simulatePolicyEvaluation,
+  getActiveCosts,
+  PolicyVersion,
+} from '../../lib/policyEngine';
+import {
+  getCommunicationTemplates,
+  sendApplicationCommunication,
+  CommunicationTemplate,
+} from '../../lib/communicationsService';
 
 const COLOR_PRESETS = [
   {
@@ -85,12 +102,42 @@ export const WhiteLabelBackofficePage: React.FC = () => {
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [simulatedDnsChecking, setSimulatedDnsChecking] = useState(false);
 
+  // Estados de Motor de Políticas (Pass 5)
+  const [activePolicy, setActivePolicy] = useState<PolicyVersion>(() => getActivePolicy(tenant.id));
+  const [policyVersions, setPolicyVersions] = useState<PolicyVersion[]>(() => getPolicyVersions(tenant.id));
+  const [activeCosts, setActiveCosts] = useState(() => getActiveCosts(tenant.id));
+  const [commTemplates, setCommTemplates] = useState<CommunicationTemplate[]>(() => getCommunicationTemplates());
+
+  // Simulador de Políticas ("PROBAR POLÍTICA")
+  const [showSimModal, setShowSimModal] = useState(false);
+  const [simAmount, setSimAmount] = useState(50000);
+  const [simPropValue, setSimPropValue] = useState(120000);
+  const [simPropType, setSimPropType] = useState('apartamento');
+  const [simTermMonths, setSimTermMonths] = useState(36);
+  const [simHasIncomeDocs, setSimHasIncomeDocs] = useState(true);
+  const [simHasCleanClearing, setSimHasCleanClearing] = useState(true);
+  const [simResult, setSimResult] = useState<ReturnType<typeof simulatePolicyEvaluation> | null>(null);
+
+  // Modal de Publicación de Políticas
+  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [publishNotes, setPublishNotes] = useState('');
+  const [publishing, setPublishing] = useState(false);
+  const [publishSuccessToast, setPublishSuccessToast] = useState<string | null>(null);
+
+  // Test de Comunicaciones
+  const [testCommRecipient, setTestCommRecipient] = useState('solicitante@ejemplo.com');
+  const [testCommSuccess, setTestCommSuccess] = useState<string | null>(null);
+
   // Cargar datos del tenant
   useEffect(() => {
     async function loadData() {
       setLoading(true);
       const data = await getWhiteLabelCustomization(tenant.id, tenant.slug);
       setConfig(data);
+      setActivePolicy(getActivePolicy(tenant.id));
+      setPolicyVersions(getPolicyVersions(tenant.id));
+      setActiveCosts(getActiveCosts(tenant.id));
+      setCommTemplates(getCommunicationTemplates());
       setLoading(false);
     }
     loadData();
@@ -164,6 +211,86 @@ export const WhiteLabelBackofficePage: React.FC = () => {
       : (exampleLoanAmount * (monthlyRate * Math.pow(1 + monthlyRate, sampleTerm))) /
           (Math.pow(1 + monthlyRate, sampleTerm) - 1)
   );
+
+  // Manejadores de Motor de Políticas (Pass 5)
+  const handleOpenSimulator = () => {
+    const result = simulatePolicyEvaluation(activePolicy, {
+      requestedAmount: simAmount,
+      propertyEstimatedValue: simPropValue,
+      propertyType: simPropType,
+      termMonths: simTermMonths,
+      hasIncomeDocs: simHasIncomeDocs,
+      hasCleanClearing: simHasCleanClearing,
+    });
+    setSimResult(result);
+    setShowSimModal(true);
+  };
+
+  const handleRunSimulator = () => {
+    const result = simulatePolicyEvaluation(activePolicy, {
+      requestedAmount: simAmount,
+      propertyEstimatedValue: simPropValue,
+      propertyType: simPropType,
+      termMonths: simTermMonths,
+      hasIncomeDocs: simHasIncomeDocs,
+      hasCleanClearing: simHasCleanClearing,
+    });
+    setSimResult(result);
+  };
+
+  const handlePublishPolicyAction = async () => {
+    setPublishing(true);
+    try {
+      const newPol = await publishPolicy({
+        organizationId: tenant.id,
+        draft: {
+          max_ltv_percent: config.maxLtv,
+          base_annual_rate: config.defaultInterestRate,
+          min_amount_usd: config.minLoanAmount,
+          max_amount_usd: config.maxLoanAmount,
+          notes: publishNotes || 'Actualización de política crediticia desde el panel White Label.',
+        },
+        userName: 'Admin WhiteLabel',
+        userRole: 'admin',
+      });
+      setActivePolicy(newPol);
+      setPolicyVersions(getPolicyVersions(tenant.id));
+      setShowPublishModal(false);
+      setPublishNotes('');
+      setPublishSuccessToast(`¡${newPol.version_label} publicada con éxito con registro inmutable!`);
+      setTimeout(() => setPublishSuccessToast(null), 5000);
+    } catch (err: any) {
+      alert(err.message || 'Error al publicar la política.');
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const handleTestSendComm = async (templateCode: string) => {
+    try {
+      const res = await sendApplicationCommunication({
+        organizationId: tenant.id,
+        applicationId: 'e0000000-0000-0000-0000-000000000001',
+        templateCode,
+        channel: 'email',
+        recipient: testCommRecipient,
+        deliveryType: 'MANUAL',
+        userName: 'Admin Operaciones',
+        variables: {
+          '{{cliente.nombre}}': 'María López',
+          '{{expediente.id}}': 'HIP-DEMO-00124',
+          '{{expediente.monto}}': '65.000',
+          '{{propiedad.direccion}}': 'Bvar. Artigas 1240, Pocitos',
+          '{{responsable.nombre}}': 'Esc. María Pérez Morales',
+          '{{fecha_limite}}': '15/09/2026',
+        },
+      });
+      setTestCommSuccess(`Notificación enviada vía ${res.channel.toUpperCase()} a ${testCommRecipient}`);
+      setTimeout(() => setTestCommSuccess(null), 4000);
+    } catch (err: any) {
+      alert(err.message || 'Error al enviar la comunicación.');
+    }
+  };
 
   if (loading) {
     return (
@@ -504,14 +631,63 @@ export const WhiteLabelBackofficePage: React.FC = () => {
             {/* -------------------------------------------------------- */}
             {activeTab === 'underwriting' && (
               <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
-                <div className="border-b border-slate-100 pb-3">
-                  <h3 className="text-base font-bold text-navy flex items-center gap-2">
-                    <Sliders className="w-5 h-5 text-brand-green" /> Motor de Políticas Crediticias y Riesgo
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Definí los límites cuantitativos, tasas y requisitos que el simulador y el wizard exigirán a los solicitantes.
-                  </p>
+                <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-bold text-navy flex items-center gap-2">
+                      <Sliders className="w-5 h-5 text-brand-green" /> Motor de Políticas Crediticias y Riesgo
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Definí los límites cuantitativos, tasas y requisitos que el simulador y el wizard exigirán a los solicitantes.
+                    </p>
+                  </div>
+                  
+                  {/* Acciones de Política: Probar y Publicar */}
+                  <div className="flex items-center space-x-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleOpenSimulator}
+                      className="px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold transition-all flex items-center space-x-1.5 shadow-sm"
+                    >
+                      <Play className="w-3.5 h-3.5 text-amber-700" />
+                      <span>PROBAR POLÍTICA</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowPublishModal(true)}
+                      className="px-3.5 py-2 rounded-xl bg-[#102d49] hover:bg-[#173a5e] text-white text-xs font-bold transition-all flex items-center space-x-1.5 shadow-sm"
+                    >
+                      <FileCheck className="w-3.5 h-3.5 text-[#f4b43b]" />
+                      <span>Publicar Versión</span>
+                    </button>
+                  </div>
                 </div>
+
+                {/* Banner de Versión Activa */}
+                <div className="p-4 rounded-xl bg-gradient-to-r from-slate-900 to-[#102d49] text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center space-x-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="text-xs font-mono font-bold text-[#f4b43b] uppercase tracking-wider">
+                        Versión Activa en Producción
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold text-white">{activePolicy.version_label}: {activePolicy.title}</h4>
+                    <p className="text-[11px] text-slate-300">
+                      Publicada por {activePolicy.author_name} el {new Date(activePolicy.published_at).toLocaleDateString('es-UY')}.
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="text-[10px] text-slate-400 block">LTV Activo / Tasa</span>
+                    <span className="text-lg font-black font-mono text-emerald-400">{activePolicy.max_ltv_percent}% LTV · {activePolicy.base_annual_rate}% Anual</span>
+                  </div>
+                </div>
+
+                {publishSuccessToast && (
+                  <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{publishSuccessToast}</span>
+                  </div>
+                )}
 
                 {/* Slider LTV */}
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
@@ -621,6 +797,42 @@ export const WhiteLabelBackofficePage: React.FC = () => {
                     className="w-full p-3 rounded-lg border border-slate-300 text-xs text-slate-700 focus:border-navy"
                   />
                 </div>
+
+                {/* Historial Inmutable de Versiones */}
+                <div className="pt-4 border-t border-slate-100 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-navy flex items-center space-x-1.5 uppercase tracking-wider">
+                      <History className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Historial Inmutable de Políticas</span>
+                    </h4>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {policyVersions.length} versiones registradas
+                    </span>
+                  </div>
+
+                  <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 overflow-hidden text-xs">
+                    {policyVersions.map((pol) => (
+                      <div key={pol.id} className={`p-3 flex items-center justify-between ${pol.is_active ? 'bg-emerald-50/40' : 'bg-white'}`}>
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <strong className="text-navy font-bold">{pol.version_label}</strong>
+                            {pol.is_active && (
+                              <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded-full">
+                                ACTIVA
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-500">{pol.title} · {pol.notes}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] font-mono font-bold text-slate-700 block">{pol.max_ltv_percent}% LTV · {pol.base_annual_rate}%</span>
+                          <span className="text-[9px] text-slate-400">{new Date(pol.published_at).toLocaleDateString('es-UY')}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
               </div>
             )}
 
@@ -803,13 +1015,18 @@ export const WhiteLabelBackofficePage: React.FC = () => {
             {/* -------------------------------------------------------- */}
             {activeTab === 'costs' && (
               <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
-                <div className="border-b border-slate-100 pb-3">
-                  <h3 className="text-base font-bold text-navy flex items-center gap-2">
-                    <Receipt className="w-5 h-5 text-brand-green" /> Estructura de Costos y Aranceles Notariales
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Configurá los aranceles y gastos de formalización que se deducirán o calcularán en el desglose de liquidación.
-                  </p>
+                <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-bold text-navy flex items-center gap-2">
+                      <Receipt className="w-5 h-5 text-brand-green" /> Estructura de Costos y Aranceles Notariales
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Configurá los aranceles y gastos de formalización que se deducirán o calcularán en el desglose de liquidación.
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full border border-emerald-200">
+                    🟢 {activeCosts.version_label}
+                  </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -866,6 +1083,26 @@ export const WhiteLabelBackofficePage: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Aranceles Definidos en la Versión Activa */}
+                <div className="space-y-2 pt-2 border-t border-slate-100">
+                  <span className="text-xs font-bold text-navy block uppercase tracking-wider">Conceptos Arancelarios ({activeCosts.version_label})</span>
+                  <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 overflow-hidden text-xs">
+                    {activeCosts.items.map((item) => (
+                      <div key={item.id} className="p-3 flex items-center justify-between bg-slate-50/50">
+                        <div>
+                          <strong className="text-navy">{item.name}</strong>
+                          <p className="text-[11px] text-slate-500">
+                            Paga: {item.payer === 'borrower' ? 'Solicitante' : 'Prestamista'} · Percibe: {item.payee} · IVA {item.tax_percent}%
+                          </p>
+                        </div>
+                        <span className="font-mono font-bold text-slate-800">
+                          {item.type === 'percentage' ? `${item.value}%` : `USD ${item.value}`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Simulador de Liquidación para Préstamo de Ejemplo */}
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2 text-xs">
                   <div className="flex justify-between items-center border-b border-slate-200 pb-2">
@@ -901,13 +1138,18 @@ export const WhiteLabelBackofficePage: React.FC = () => {
             {/* -------------------------------------------------------- */}
             {activeTab === 'communications' && (
               <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
-                <div className="border-b border-slate-100 pb-3">
-                  <h3 className="text-base font-bold text-navy flex items-center gap-2">
-                    <Mail className="w-5 h-5 text-brand-green" /> Remitente, Emails y WhatsApp de Atención
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Personalizá los canales de notificación automatizados que recibirán tus solicitantes.
-                  </p>
+                <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-bold text-navy flex items-center gap-2">
+                      <Mail className="w-5 h-5 text-brand-green" /> Comunicaciones Operativas & Biblioteca de Eventos
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      12 plantillas operativas configuradas con trazabilidad y variables automáticas.
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold bg-blue-100 text-blue-800 px-2.5 py-1 rounded-full border border-blue-200">
+                    {commTemplates.length} Plantillas Activas
+                  </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -940,24 +1182,72 @@ export const WhiteLabelBackofficePage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Plantilla de Bienvenida */}
-                <div className="space-y-2 pt-2 border-t border-slate-100">
-                  <label className="text-xs font-bold text-slate-700 block">Plantilla: Confirmación de Solicitud Recibida</label>
-                  <input
-                    type="text"
-                    value={config.welcomeEmailSubject}
-                    onChange={(e) => setConfig({ ...config, welcomeEmailSubject: e.target.value })}
-                    className="w-full h-9 px-3 rounded-lg border border-slate-300 text-xs font-semibold text-navy mb-2"
-                  />
-                  <textarea
-                    rows={4}
-                    value={config.welcomeEmailBody}
-                    onChange={(e) => setConfig({ ...config, welcomeEmailBody: e.target.value })}
-                    className="w-full p-3 rounded-lg border border-slate-300 text-xs font-mono text-slate-700"
-                  />
-                  <span className="text-[10px] text-slate-400 block">
-                    Variables dinámicas admitidas: <code>&#123;&#123;nombre&#125;&#125;</code>, <code>&#123;&#123;monto&#125;&#125;</code>, <code>&#123;&#123;expediente&#125;&#125;</code>, <code>&#123;&#123;publicName&#125;&#125;</code>.
-                  </span>
+                {testCommSuccess && (
+                  <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{testCommSuccess}</span>
+                  </div>
+                )}
+
+                {/* Biblioteca de 12 Eventos Operativos */}
+                <div className="space-y-3 pt-2 border-t border-slate-100">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-navy uppercase tracking-wider">
+                      Catálogo de Eventos Operativos (12 Plantillas Estándar)
+                    </h4>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {commTemplates.map((tpl) => (
+                      <div key={tpl.id} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-2 text-xs">
+                        <div className="flex items-center justify-between">
+                          <strong className="text-navy font-bold">{tpl.name}</strong>
+                          <span className="text-[10px] uppercase font-mono font-bold bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded">
+                            {tpl.channel}
+                          </span>
+                        </div>
+                        {tpl.subject && (
+                          <p className="text-[11px] font-semibold text-slate-700">Asunto: {tpl.subject}</p>
+                        )}
+                        <p className="text-[11px] text-slate-600 line-clamp-2 italic">"{tpl.body}"</p>
+                        
+                        <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between">
+                          <span className="text-[9px] text-slate-400 font-mono">
+                            {tpl.available_variables.length} variables disponibles
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleTestSendComm(tpl.code)}
+                            className="text-[11px] font-bold text-[#102d49] hover:text-brand-green flex items-center space-x-1"
+                          >
+                            <Send className="w-3 h-3 mr-0.5" />
+                            <span>Probar Envío</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Panel de Prueba de Despacho */}
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 text-xs">
+                  <span className="font-bold text-navy block uppercase tracking-wider">Destinatario de Pruebas</span>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="email"
+                      value={testCommRecipient}
+                      onChange={(e) => setTestCommRecipient(e.target.value)}
+                      placeholder="solicitante@ejemplo.com"
+                      className="flex-1 px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-navy"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleTestSendComm('solicitud_recibida')}
+                      className="px-4 py-2 rounded-lg bg-[#102d49] text-white text-xs font-bold hover:bg-[#173a5e]"
+                    >
+                      Enviar Prueba Base
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -967,13 +1257,23 @@ export const WhiteLabelBackofficePage: React.FC = () => {
             {/* -------------------------------------------------------- */}
             {activeTab === 'legal' && (
               <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
-                <div className="border-b border-slate-100 pb-3">
-                  <h3 className="text-base font-bold text-navy flex items-center gap-2">
-                    <ShieldAlert className="w-5 h-5 text-brand-green" /> Disclaimers Regulatorios y Blindaje Anti-Bypass
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Textos de cumplimiento normativo conforme a la Ley 18.212 de Usura y Ley 18.331 de Protección de Datos.
-                  </p>
+                <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-bold text-navy flex items-center gap-2">
+                      <ShieldAlert className="w-5 h-5 text-brand-green" /> Disclaimers Regulatorios y Consentimientos
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Textos de cumplimiento normativo conforme a la Ley 18.212 de Usura y Ley 18.331 de Protección de Datos.
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2 shrink-0">
+                    <span className="text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200">
+                      T&C v5
+                    </span>
+                    <span className="text-[10px] font-mono font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full border border-blue-200">
+                      Privacidad v3
+                    </span>
+                  </div>
                 </div>
 
                 <div className="space-y-4">
@@ -988,13 +1288,24 @@ export const WhiteLabelBackofficePage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1">Términos y Condiciones del Estudio</label>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">Términos y Condiciones del Estudio (v5)</label>
                     <textarea
                       rows={3}
                       value={config.customTermsText}
                       onChange={(e) => setConfig({ ...config, customTermsText: e.target.value })}
                       className="w-full p-3 rounded-lg border border-slate-300 text-xs text-slate-700"
                     />
+                  </div>
+
+                  {/* Registro de Consentimientos Inmutables */}
+                  <div className="p-4 rounded-xl bg-blue-50/50 border border-blue-200 text-xs space-y-1">
+                    <div className="flex items-center space-x-1.5 text-blue-900 font-bold">
+                      <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                      <span>Auditoría de Consentimiento Digital Conforme a Ley N° 18.331</span>
+                    </div>
+                    <p className="text-[11px] text-blue-800 leading-relaxed">
+                      Cada solicitante que envía el formulario registra su consentimiento con marca temporal ISO 8601, dirección IP y el identificador de versión legal exacto vigente al momento de la aceptación.
+                    </p>
                   </div>
 
                   {/* Nivel de Blindaje Anti-Bypass */}
@@ -1249,6 +1560,222 @@ export const WhiteLabelBackofficePage: React.FC = () => {
           )}
 
         </div>
+
+      {/* Modal Simulador de Políticas: PROBAR POLÍTICA */}
+      {showSimModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 text-xs max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2">
+                <Play className="w-4 h-4 text-amber-600" />
+                <h3 className="text-sm font-bold text-slate-900">Simulador de Políticas — {activePolicy.version_label}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSimModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold"
+              >
+                Cerrar
+              </button>
+            </div>
+
+            <p className="text-slate-500 text-[11px]">
+              Evalúa un caso crediticio contra las reglas vigentes sin alterar expedientes reales de la base de datos.
+            </p>
+
+            {/* Inputs de Prueba */}
+            <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+              <div>
+                <label className="text-[10px] font-bold text-slate-600 block mb-1">Monto Solicitado (USD)</label>
+                <input
+                  type="number"
+                  value={simAmount}
+                  onChange={(e) => setSimAmount(Number(e.target.value))}
+                  className="w-full p-2 rounded-lg border border-slate-300 text-xs font-bold text-navy bg-white"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-600 block mb-1">Valor Tasado Garantía (USD)</label>
+                <input
+                  type="number"
+                  value={simPropValue}
+                  onChange={(e) => setSimPropValue(Number(e.target.value))}
+                  className="w-full p-2 rounded-lg border border-slate-300 text-xs font-bold text-navy bg-white"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-600 block mb-1">Tipo de Inmueble</label>
+                <select
+                  value={simPropType}
+                  onChange={(e) => setSimPropType(e.target.value)}
+                  className="w-full p-2 rounded-lg border border-slate-300 text-xs font-bold text-navy bg-white"
+                >
+                  <option value="apartamento">Apartamento</option>
+                  <option value="casa">Casa</option>
+                  <option value="local_comercial">Local Comercial</option>
+                  <option value="terreno">Terreno</option>
+                  <option value="campo">Campo / Rural (No estándar)</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-600 block mb-1">Plazo (meses)</label>
+                <input
+                  type="number"
+                  value={simTermMonths}
+                  onChange={(e) => setSimTermMonths(Number(e.target.value))}
+                  className="w-full p-2 rounded-lg border border-slate-300 text-xs font-bold text-navy bg-white"
+                />
+              </div>
+              <div className="col-span-2 flex items-center space-x-4 pt-1">
+                <label className="flex items-center space-x-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={simHasIncomeDocs}
+                    onChange={(e) => setSimHasIncomeDocs(e.target.checked)}
+                    className="rounded text-brand-green"
+                  />
+                  <span className="text-[11px] font-semibold text-slate-700">Ingresos documentados</span>
+                </label>
+                <label className="flex items-center space-x-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={simHasCleanClearing}
+                    onChange={(e) => setSimHasCleanClearing(e.target.checked)}
+                    className="rounded text-brand-green"
+                  />
+                  <span className="text-[11px] font-semibold text-slate-700">Clearing BCU limpio</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={handleRunSimulator}
+                  className="ml-auto px-3 py-1.5 rounded-lg bg-[#102d49] text-white text-[11px] font-bold hover:bg-[#173a5e]"
+                >
+                  Reevaluar
+                </button>
+              </div>
+            </div>
+
+            {/* Resultado de la Simulación */}
+            {simResult && (
+              <div className="space-y-3 pt-2">
+                <div className={`p-4 rounded-xl border flex items-center justify-between ${
+                  simResult.passed
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
+                    : 'bg-rose-50 border-rose-200 text-rose-950'
+                }`}>
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                        simResult.passed ? 'bg-emerald-200 text-emerald-800' : 'bg-rose-200 text-rose-800'
+                      }`}>
+                        {simResult.passed ? '✓ CUMPLE POLÍTICA' : '✕ NO CUMPLE POLÍTICA'}
+                      </span>
+                      <span className="font-bold text-xs">
+                        {simResult.passedCount} de {simResult.totalRules} reglas conformes
+                      </span>
+                    </div>
+                    <p className="text-[11px] mt-1 opacity-80">
+                      LTV Calculado: <strong className="font-mono">{simResult.calculatedLtv}%</strong> (Tope Máx: {activePolicy.max_ltv_percent}%)
+                    </p>
+                  </div>
+                </div>
+
+                {/* Checklist de Reglas */}
+                <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 overflow-hidden text-[11px]">
+                  {simResult.rulesList.map((r) => (
+                    <div key={r.id} className="p-2.5 flex items-start justify-between gap-3 bg-white hover:bg-slate-50">
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="flex items-center space-x-1.5">
+                          <span className={`w-2 h-2 rounded-full ${
+                            r.status === 'pass' ? 'bg-emerald-500' : r.status === 'warn' ? 'bg-amber-500' : 'bg-rose-500'
+                          }`} />
+                          <strong className="text-slate-900">{r.name}</strong>
+                        </div>
+                        <p className="text-slate-500 pl-3.5">{r.description}</p>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold shrink-0 ${
+                        r.status === 'pass' ? 'bg-emerald-100 text-emerald-800' : r.status === 'warn' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
+                      }`}>
+                        {r.status === 'pass' ? 'APROBADA' : r.status === 'warn' ? 'OBSERVACIÓN' : 'RECHAZADA'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="pt-3 border-t border-slate-100 text-right">
+              <button
+                type="button"
+                onClick={() => setShowSimModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200"
+              >
+                Cerrar Simulador
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Publicar Nueva Versión de Política */}
+      {showPublishModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 text-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-1.5">
+                <FileCheck className="w-4 h-4 text-emerald-600" />
+                <span>Publicar Nueva Versión Inmutable</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowPublishModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold"
+              >
+                Cerrar
+              </button>
+            </div>
+
+            <p className="text-slate-600 leading-relaxed">
+              Esta acción creará una nueva versión numerada inmutable (v{policyVersions.length + 1}) con los valores actuales configurados y registrará el cambio en la tabla de auditoría.
+            </p>
+
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1 font-mono text-[11px]">
+              <div><strong>LTV Máximo:</strong> {config.maxLtv}%</div>
+              <div><strong>Tasa Base Anual:</strong> {config.defaultInterestRate}%</div>
+              <div><strong>Rango Monto:</strong> USD {config.minLoanAmount.toLocaleString('es-UY')} - USD {config.maxLoanAmount.toLocaleString('es-UY')}</div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-bold text-slate-700 block">Notas de la Versión / Justificación Regulatoria:</label>
+              <textarea
+                rows={3}
+                value={publishNotes}
+                onChange={(e) => setPublishNotes(e.target.value)}
+                placeholder="Ej: Ajuste de política por actualización de tasas y ratios de riesgo..."
+                className="w-full p-2.5 rounded-xl border border-slate-300 text-xs text-navy"
+              />
+            </div>
+
+            <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowPublishModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={publishing}
+                onClick={handlePublishPolicyAction}
+                className="px-4 py-2 rounded-xl bg-[#102d49] hover:bg-[#173a5e] text-white font-bold"
+              >
+                {publishing ? 'Publicando...' : 'Confirmar Publicación'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       </div>
     </BackofficeLayout>

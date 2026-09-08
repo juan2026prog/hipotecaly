@@ -694,18 +694,15 @@ function filterApplicationsLocally(list: any[], filters?: { status?: string; dep
 
 /**
  * Detalle completo de un expediente para `/app/solicitudes/:id`
+ * REGLA TÉCNICA OBLIGATORIA: Un tenant real autenticado NO puede usar DEMO_APPLICATIONS como fuente productiva.
  */
 export async function getApplicationDetail(
   idOrPublicId: string,
   options?: { isDemoMode?: boolean; organizationId?: string }
 ) {
-  if (
-    options?.isDemoMode ||
-    idOrPublicId.includes('demo') ||
-    idOrPublicId.includes('DEMO') ||
-    idOrPublicId.startsWith('HIP-') ||
-    idOrPublicId.startsWith('e0000000')
-  ) {
+  const isDemo = options?.isDemoMode ?? (idOrPublicId.includes('demo') || idOrPublicId.includes('DEMO'));
+
+  if (isDemo) {
     const normalized = idOrPublicId.replace('2026', 'DEMO');
     const found = DEMO_APPLICATIONS.find(
       (a) =>
@@ -733,10 +730,10 @@ export async function getApplicationDetail(
       return data;
     }
   } catch {
-    // Continuar a fallback de demo controlado
+    // Continuar a empty state legítimo
   }
 
-  // En producción: No revelar expedientes ficticios
+  // En producción sin demo: Retornar null (empty state legítimo)
   return null;
 }
 
