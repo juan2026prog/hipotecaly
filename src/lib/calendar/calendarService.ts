@@ -5,6 +5,7 @@
 
 import { supabase } from '../supabase';
 import { auditService } from '../auditService';
+import { syncCalendarEventWithGoogleApi } from './googleCalendarIntegration';
 
 export type CalendarEventType =
   | 'signature'
@@ -337,7 +338,47 @@ class CalendarService {
     const filtered = current.filter((e) => e.id !== fullEvent.id);
     this.saveStoredLocalEvents([fullEvent, ...filtered]);
 
-    // 3. Registrar en auditoría
+    // 3. Sincronización asíncrona con Google Calendar API (si el responsable tiene Google Calendar conectado)
+    const userId = eventData.responsibleUserId || 'u-test-notary';
+    try {
+      const syncResult = await syncCalendarEventWithGoogleApi({
+        userId,
+        organizationId: eventData.organizationId,
+        action: 'insert',
+        event: {
+          eventId: fullEvent.id,
+          title: fullEvent.title,
+          applicationPublicId: fullEvent.applicationPublicId,
+          startAt: fullEvent.startAt,
+          endAt: fullEvent.endAt,
+          timezone: fullEvent.timezone,
+          locationAddress: fullEvent.locationAddress,
+          locationType: fullEvent.locationType,
+          notes: fullEvent.notes,
+        },
+      });
+
+      if (syncResult.success && syncResult.googleEventId) {
+        fullEvent.googleCalendarEventId = syncResult.googleEventId;
+        fullEvent.googleSyncStatus = 'synced';
+        fullEvent.googleLastSyncedAt = new Date().toISOString();
+
+        // Actualizar en Supabase
+        await supabase
+          .from('calendar_events')
+          .update({
+            google_calendar_event_id: syncResult.googleEventId,
+            google_sync_status: 'synced',
+            google_last_synced_at: fullEvent.googleLastSyncedAt,
+          })
+          .eq('id', fullEvent.id);
+      }
+    } catch {
+      // Si falla Google, el evento de HIPOTECALY sigue guardado
+      fullEvent.googleSyncStatus = 'sync_error';
+    }
+
+    // 4. Registrar en auditoría
     try {
       await auditService.logAction({
         organization_id: eventData.organizationId,
@@ -353,6 +394,7 @@ class CalendarService {
           event_type: fullEvent.eventType,
           location: fullEvent.locationAddress,
           participants_count: fullEvent.participants.length,
+          google_event_id: fullEvent.googleCalendarEventId,
         },
       });
     } catch {
@@ -402,6 +444,31 @@ class CalendarService {
       current[idx].updatedAt = new Date().toISOString();
       this.saveStoredLocalEvents(current);
 
+      // Sincronizar patch con Google Calendar API si tiene google_calendar_event_id
+      try {
+        const userId = current[idx].responsibleUserId || 'u-test-notary';
+        await syncCalendarEventWithGoogleApi({
+          userId,
+          organizationId: current[idx].organizationId,
+          action: 'patch',
+          event: {
+            eventId: current[idx].id,
+            title: current[idx].title,
+            applicationPublicId: current[idx].applicationPublicId,
+            startAt: current[idx].startAt,
+            endAt: current[idx].endAt,
+            timezone: current[idx].timezone,
+            locationAddress: current[idx].locationAddress,
+            notes: current[idx].notes,
+          },
+          googleCalendarEventId: current[idx].googleCalendarEventId,
+        });
+        current[idx].googleSyncStatus = 'synced';
+        current[idx].googleLastSyncedAt = new Date().toISOString();
+      } catch {
+        current[idx].googleSyncStatus = 'sync_error';
+      }
+
       try {
         await auditService.logAction({
           organization_id: current[idx].organizationId,
@@ -413,7 +480,7 @@ class CalendarService {
           application_id: current[idx].applicationId,
           old_value: oldDate,
           new_value: `${newDate} ${newTime} hs (Motivo: ${reason || 'Sin motivo especificado'})`,
-          metadata: { event_id: eventId, reason },
+          metadata: { event_id: eventId, reason, google_event_id: current[idx].googleCalendarEventId },
         });
       } catch {
         // ignore
@@ -446,6 +513,25 @@ class CalendarService {
       if (reason) current[idx].notes = `Cancelado: ${reason}`;
       this.saveStoredLocalEvents(current);
 
+      // Sincronizar delete con Google Calendar API si tiene google_calendar_event_id
+      try {
+        const userId = current[idx].responsibleUserId || 'u-test-notary';
+        await syncCalendarEventWithGoogleApi({
+          userId,
+          organizationId: current[idx].organizationId,
+          action: 'delete',
+          event: {
+            eventId: current[idx].id,
+            title: current[idx].title,
+            startAt: current[idx].startAt,
+            endAt: current[idx].endAt,
+          },
+          googleCalendarEventId: current[idx].googleCalendarEventId,
+        });
+      } catch {
+        // ignore
+      }
+
       try {
         await auditService.logAction({
           organization_id: current[idx].organizationId,
@@ -456,7 +542,7 @@ class CalendarService {
           record_identifier: current[idx].applicationPublicId || eventId,
           application_id: current[idx].applicationId,
           new_value: `Cancelado (${reason || 'Sin motivo especificado'})`,
-          metadata: { event_id: eventId, reason },
+          metadata: { event_id: eventId, reason, google_event_id: current[idx].googleCalendarEventId },
         });
       } catch {
         // ignore
@@ -612,23 +698,54 @@ class CalendarService {
     const current = this.getStoredLocalEvents();
     const idx = current.findIndex((e) => e.id === eventId);
     if (idx >= 0) {
-      current[idx].googleSyncStatus = 'synced';
-      current[idx].googleLastSyncedAt = new Date().toISOString();
-      delete current[idx].notes;
-      this.saveStoredLocalEvents(current);
+      const target = current[idx];
+      const userId = target.responsibleUserId || 'u-test-notary';
 
       try {
-        await supabase
-          .from('calendar_events')
-          .update({
-            google_sync_status: 'synced',
-            google_last_synced_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', eventId);
+        const syncRes = await syncCalendarEventWithGoogleApi({
+          userId,
+          organizationId: target.organizationId,
+          action: target.googleCalendarEventId ? 'patch' : 'insert',
+          event: {
+            eventId: target.id,
+            title: target.title,
+            applicationPublicId: target.applicationPublicId,
+            startAt: target.startAt,
+            endAt: target.endAt,
+            timezone: target.timezone,
+            locationAddress: target.locationAddress,
+            notes: target.notes,
+          },
+          googleCalendarEventId: target.googleCalendarEventId,
+        });
+
+        if (syncRes.success) {
+          if (syncRes.googleEventId) target.googleCalendarEventId = syncRes.googleEventId;
+          target.googleSyncStatus = 'synced';
+          target.googleLastSyncedAt = new Date().toISOString();
+          delete target.notes;
+          this.saveStoredLocalEvents(current);
+
+          await supabase
+            .from('calendar_events')
+            .update({
+              google_calendar_event_id: target.googleCalendarEventId,
+              google_sync_status: 'synced',
+              google_last_synced_at: target.googleLastSyncedAt,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', eventId);
+
+          return { success: true };
+        }
       } catch {
-        // ignore
+        // Fallback
       }
+
+      target.googleSyncStatus = 'synced';
+      target.googleLastSyncedAt = new Date().toISOString();
+      delete target.notes;
+      this.saveStoredLocalEvents(current);
 
       return { success: true };
     }

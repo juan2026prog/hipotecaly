@@ -80,3 +80,5 @@ export function downloadIcsFile(event: HipotecalyCalendarEvent): void {
     console.error('Error al exportar archivo .ics:', err);
   }
 }
+
+export const generateIcsContent = generateIcsFileContent;

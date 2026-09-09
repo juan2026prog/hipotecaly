@@ -291,6 +291,79 @@ export default async function handler(req: any, res: any) {
     });
   }
 
+  // ----------------------------------------------------------------------------
+  // 4. GOOGLE CALENDAR ENDPOINTS (Incremental OAuth, Sync & Disconnect)
+  // ----------------------------------------------------------------------------
+
+  // GET /api/integrations/calendar/auth-url
+  if (normalizedPath === 'calendar/auth-url' && req.method === 'GET') {
+    const { userId = 'usr_test_default', orgId = 'd0000000-0000-0000-0000-000000000001', redirectUri } = req.query || {};
+    const { GoogleCalendarServerService } = await import('../../server/calendar/googleCalendarServerService.js');
+    const result = GoogleCalendarServerService.generateAuthUrl({
+      userId: String(userId),
+      orgId: String(orgId),
+      redirectUri: redirectUri ? String(redirectUri) : undefined,
+    });
+    return res.status(200).json({ success: true, ...result });
+  }
+
+  // POST /api/integrations/calendar/callback
+  if (normalizedPath === 'calendar/callback' && req.method === 'POST') {
+    const { code, state, redirectUri } = req.body || {};
+    if (!code || !state) {
+      return res.status(400).json({ error: 'Faltan parámetros requeridos: code o state' });
+    }
+    const { GoogleCalendarServerService } = await import('../../server/calendar/googleCalendarServerService.js');
+    const result = await GoogleCalendarServerService.handleAuthCallback({
+      code: String(code),
+      state: String(state),
+      redirectUri: redirectUri ? String(redirectUri) : undefined,
+    });
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+    return res.status(200).json(result);
+  }
+
+  // GET /api/integrations/calendar/status
+  if (normalizedPath === 'calendar/status' && req.method === 'GET') {
+    const userId = req.query?.userId as string;
+    if (!userId) {
+      return res.status(400).json({ error: 'Falta parámetro userId' });
+    }
+    const { GoogleCalendarServerService } = await import('../../server/calendar/googleCalendarServerService.js');
+    const status = await GoogleCalendarServerService.getIntegrationStatus(userId);
+    return res.status(200).json({ success: true, ...status });
+  }
+
+  // POST /api/integrations/calendar/sync-event
+  if (normalizedPath === 'calendar/sync-event' && req.method === 'POST') {
+    const { userId, organizationId, action, event, googleCalendarEventId } = req.body || {};
+    if (!userId || !organizationId || !action || !event) {
+      return res.status(400).json({ error: 'Parámetros insuficientes para sincronizar evento' });
+    }
+    const { GoogleCalendarServerService } = await import('../../server/calendar/googleCalendarServerService.js');
+    const result = await GoogleCalendarServerService.syncEventToGoogle({
+      userId,
+      organizationId,
+      action,
+      event,
+      googleCalendarEventId,
+    });
+    return res.status(200).json(result);
+  }
+
+  // POST /api/integrations/calendar/disconnect
+  if (normalizedPath === 'calendar/disconnect' && req.method === 'POST') {
+    const { userId, organizationId } = req.body || {};
+    if (!userId) {
+      return res.status(400).json({ error: 'Falta parámetro userId' });
+    }
+    const { GoogleCalendarServerService } = await import('../../server/calendar/googleCalendarServerService.js');
+    await GoogleCalendarServerService.disconnect(userId, organizationId || 'd0000000-0000-0000-0000-000000000001');
+    return res.status(200).json({ success: true, message: 'Google Calendar desconectado exitosamente' });
+  }
+
   // Fallback 404
   return res.status(404).json({
     error: 'Not Found',
@@ -306,6 +379,11 @@ export default async function handler(req: any, res: any) {
       'POST /api/integrations/signature/mock-sign',
       'GET /api/integrations/signature/health',
       'GET /api/integrations/admin/settings',
+      'GET /api/integrations/calendar/auth-url',
+      'POST /api/integrations/calendar/callback',
+      'GET /api/integrations/calendar/status',
+      'POST /api/integrations/calendar/sync-event',
+      'POST /api/integrations/calendar/disconnect',
     ],
   });
 }

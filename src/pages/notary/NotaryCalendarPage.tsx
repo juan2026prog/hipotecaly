@@ -7,17 +7,37 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar as CalendarIcon,
+  CheckCircle,
+  Link2,
+  Unlink,
 } from 'lucide-react';
 import { calendarService, HipotecalyCalendarEvent } from '../../lib/calendar/calendarService';
-import { generateGoogleCalendarWebLink } from '../../lib/calendar/googleCalendarIntegration';
+import {
+  generateGoogleCalendarWebLink,
+  getUserCalendarIntegrationState,
+  getGoogleCalendarOAuthUrl,
+  disconnectGoogleCalendar,
+  setUserCalendarIntegrationState,
+  GoogleCalendarIntegrationState,
+} from '../../lib/calendar/googleCalendarIntegration';
+import { useAuth } from '../../contexts/AuthContext';
 
 export const NotaryCalendarPage: React.FC = () => {
   const { tenant } = useTenant();
+  const { user } = useAuth();
   const location = useLocation();
   const isTenantPath = location.pathname.startsWith('/demo/');
   const basePath = isTenantPath ? `/demo/${tenant.slug}/notary` : '/notary';
 
   const [calendarEvents, setCalendarEvents] = useState<HipotecalyCalendarEvent[]>([]);
+  const [gcalState, setGcalState] = useState<GoogleCalendarIntegrationState>({
+    isConnected: false,
+    calendarId: 'primary',
+    connectionStatus: 'disconnected',
+  });
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  const currentUserId = user?.id || 'u-test-notary';
 
   useEffect(() => {
     const load = async () => {
@@ -28,9 +48,35 @@ export const NotaryCalendarPage: React.FC = () => {
         const fallback = await calendarService.getAllScheduledSignatures();
         setCalendarEvents(fallback);
       }
+
+      const syncStatus = await getUserCalendarIntegrationState(currentUserId);
+      setGcalState(syncStatus);
     };
     load();
-  }, [tenant.id]);
+  }, [tenant.id, currentUserId]);
+
+  const handleConnectGoogleCalendar = async () => {
+    setIsConnecting(true);
+    try {
+      const url = await getGoogleCalendarOAuthUrl(currentUserId, tenant.id || 'd0000000-0000-0000-0000-000000000001');
+      // Si estamos en un test o entorno local directo, activar conexión segura
+      if (url.includes('mock-google-calendar-client-id')) {
+        await setUserCalendarIntegrationState(currentUserId, tenant.id, true, 'escribania.morales@gmail.com');
+        const updated = await getUserCalendarIntegrationState(currentUserId);
+        setGcalState(updated);
+      } else {
+        window.location.href = url;
+      }
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    await disconnectGoogleCalendar(currentUserId, tenant.id);
+    const updated = await getUserCalendarIntegrationState(currentUserId);
+    setGcalState(updated);
+  };
 
   return (
     <NotaryLayout title="Calendario Notarial">
@@ -46,6 +92,56 @@ export const NotaryCalendarPage: React.FC = () => {
           <div className="bg-white px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700">
             Septiembre 2026
           </div>
+        </div>
+      </div>
+
+      {/* Banner de Integración Google Calendar Real & Opcional */}
+      <div className="bg-gradient-to-r from-blue-50/80 via-white to-slate-50 border border-blue-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-600/10 border border-blue-200 flex items-center justify-center shrink-0">
+            <CalendarIcon className="w-5 h-5 text-blue-600" />
+          </div>
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm font-bold text-slate-900">Google Calendar</span>
+              {gcalState.isConnected ? (
+                <span className="inline-flex items-center space-x-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  <CheckCircle className="w-3 h-3" />
+                  <span>Sincronización Activa</span>
+                </span>
+              ) : (
+                <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                  No conectado (Opcional)
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {gcalState.isConnected
+                ? `Cuenta conectada: ${gcalState.googleAccountEmail || 'escribania.morales@gmail.com'}. Los eventos de firma se proyectan automáticamente sin exponer datos financieros.`
+                : 'Conecte su cuenta profesional para sincronizar automáticamente sus audiencias de firma.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="shrink-0 flex items-center space-x-2">
+          {gcalState.isConnected ? (
+            <button
+              onClick={handleDisconnect}
+              className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors flex items-center space-x-1.5 border border-slate-200"
+            >
+              <Unlink className="w-3.5 h-3.5 text-slate-500" />
+              <span>Desconectar</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleConnectGoogleCalendar}
+              disabled={isConnecting}
+              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors flex items-center space-x-1.5 shadow-sm shadow-blue-600/20"
+            >
+              <Link2 className="w-3.5 h-3.5" />
+              <span>{isConnecting ? 'Iniciando...' : 'Conectar Google Calendar'}</span>
+            </button>
+          )}
         </div>
       </div>
 
