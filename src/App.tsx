@@ -62,6 +62,7 @@ import { SuperAdminServicesPage } from './pages/admin/SuperAdminServicesPage';
 import { SuperAdminImpersonatePage } from './pages/admin/SuperAdminImpersonatePage';
 import { SuperAdminActivityPage } from './pages/admin/SuperAdminActivityPage';
 import { SuperAdminTechnicalConfigPage } from './pages/admin/SuperAdminTechnicalConfigPage';
+import { SuperAdminAccountPage } from './pages/admin/SuperAdminAccountPage';
 import { TenantOnboardingWizardPage } from './pages/admin/TenantOnboardingWizardPage';
 import { GenericWhiteLabelLanding } from './pages/landing/GenericWhiteLabelLanding';
 import { LendersSolutionPage } from './pages/solutions/LendersSolutionPage';
@@ -220,6 +221,14 @@ export const App: React.FC = () => {
                 element={
                   <ProtectedRoute requireSuperAdmin>
                     <SuperAdminTechnicalConfigPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/mi-cuenta"
+                element={
+                  <ProtectedRoute requireSuperAdmin>
+                    <SuperAdminAccountPage />
                   </ProtectedRoute>
                 }
               />

@@ -122,6 +122,54 @@ export const SuperAdminServicesPage: React.FC = () => {
     }
   };
 
+  // Definición unificada de estados: 'operational' | 'pending' | 'error' | 'disabled'
+  const getServiceStatuses = () => {
+    return {
+      ai: loadingAi ? 'operational' : aiStatus?.active ? 'operational' : 'disabled',
+      kyc: 'operational',
+      signature: 'pending', // Ambiente notarial de pruebas pendiente de homologación
+      docflow: 'operational',
+      email: 'operational',
+      storage: 'operational',
+    } as const;
+  };
+
+  const statuses = getServiceStatuses();
+  const serviceList = Object.values(statuses);
+  const totalServices = serviceList.length;
+  const operationalCount = serviceList.filter((s) => s === 'operational').length;
+
+  const renderStatusBadge = (status: 'operational' | 'pending' | 'error' | 'disabled') => {
+    switch (status) {
+      case 'operational':
+        return (
+          <span className="inline-flex items-center text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />
+            🟢 Operativo
+          </span>
+        );
+      case 'pending':
+        return (
+          <span className="inline-flex items-center text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+            <AlertTriangle className="w-3 h-3 mr-1" />
+            🟡 Configuración pendiente
+          </span>
+        );
+      case 'error':
+        return (
+          <span className="inline-flex items-center text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
+            🔴 Error
+          </span>
+        );
+      case 'disabled':
+        return (
+          <span className="inline-flex items-center text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+            ⚫ Desactivado
+          </span>
+        );
+    }
+  };
+
   return (
     <SuperAdminLayout title="Servicios" activeSection="servicios">
       <div className="space-y-8 max-w-7xl mx-auto text-left">
@@ -147,7 +195,7 @@ export const SuperAdminServicesPage: React.FC = () => {
           <div className="flex items-center space-x-2">
             <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse mr-2" />
-              6 servicios operativos
+              {operationalCount} de {totalServices} servicios operativos
             </span>
           </div>
         </div>
@@ -180,15 +228,8 @@ export const SuperAdminServicesPage: React.FC = () => {
 
                 {loadingAi ? (
                   <RefreshCw className="w-4 h-4 text-slate-400 animate-spin" />
-                ) : aiStatus?.active ? (
-                  <span className="inline-flex items-center text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />
-                    Funcionando correctamente
-                  </span>
                 ) : (
-                  <span className="inline-flex items-center text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
-                    Pausada
-                  </span>
+                  renderStatusBadge(statuses.ai)
                 )}
               </div>
 
@@ -248,10 +289,7 @@ export const SuperAdminServicesPage: React.FC = () => {
                   </div>
                 </div>
 
-                <span className="inline-flex items-center text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />
-                  Funcionando correctamente
-                </span>
+                {renderStatusBadge(statuses.kyc)}
               </div>
 
               <p className="text-xs text-slate-300 leading-relaxed">
@@ -301,10 +339,7 @@ export const SuperAdminServicesPage: React.FC = () => {
                   </div>
                 </div>
 
-                <span className="inline-flex items-center text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                  <AlertTriangle className="w-3 h-3 mr-1" />
-                  Configuración incompleta
-                </span>
+                {renderStatusBadge(statuses.signature)}
               </div>
 
               <p className="text-xs text-slate-300 leading-relaxed">
@@ -351,10 +386,7 @@ export const SuperAdminServicesPage: React.FC = () => {
                   </div>
                 </div>
 
-                <span className="inline-flex items-center text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                  <CheckCircle2 className="w-3 h-3 mr-1" />
-                  Funcionando correctamente
-                </span>
+                {renderStatusBadge(statuses.docflow)}
               </div>
 
               <p className="text-xs text-slate-300 leading-relaxed">
@@ -398,10 +430,7 @@ export const SuperAdminServicesPage: React.FC = () => {
                   </div>
                 </div>
 
-                <span className="inline-flex items-center text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                  <CheckCircle2 className="w-3 h-3 mr-1" />
-                  Funcionando correctamente
-                </span>
+                {renderStatusBadge(statuses.email)}
               </div>
 
               <p className="text-xs text-slate-300 leading-relaxed">
@@ -445,10 +474,7 @@ export const SuperAdminServicesPage: React.FC = () => {
                   </div>
                 </div>
 
-                <span className="inline-flex items-center text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                  <CheckCircle2 className="w-3 h-3 mr-1" />
-                  Funcionando correctamente
-                </span>
+                {renderStatusBadge(statuses.storage)}
               </div>
 
               <p className="text-xs text-slate-300 leading-relaxed">
