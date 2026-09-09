@@ -18,6 +18,8 @@ import {
   calculateSha256,
 } from './templateEngine';
 
+import { logAuditEvent } from '../auditService';
+
 // Claves de persistencia de respaldo
 const LOCAL_TEMPLATES_KEY = 'hipotecaly_docflow_templates_v1';
 const LOCAL_DOCS_KEY = 'hipotecaly_docflow_generated_docs_v1';
@@ -30,27 +32,44 @@ function getInitialSeeds(): DocumentTemplate[] {
   return INITIAL_TEMPLATES.map((t, idx) => ({
     ...t,
     id: `tpl-seed-${idx + 1}`,
+    is_global: true,
+    scope: 'global' as const,
+    origin_type: 'global' as const,
+    available_tenant_ids: null,
     created_at: new Date('2026-09-01T10:00:00Z').toISOString(),
     updated_at: new Date('2026-09-01T10:00:00Z').toISOString(),
   }));
 }
 
 function getLocalTemplates(): DocumentTemplate[] {
+  let list: DocumentTemplate[] = [];
   if (typeof window !== 'undefined') {
     try {
       const raw = localStorage.getItem(LOCAL_TEMPLATES_KEY);
-      if (raw) return JSON.parse(raw);
+      if (raw) {
+        list = JSON.parse(raw);
+      }
     } catch {
       // ignore
     }
   }
 
-  if (memoryTemplates) return memoryTemplates;
+  if ((!list || list.length === 0) && memoryTemplates && memoryTemplates.length > 0) {
+    list = memoryTemplates;
+  }
 
-  const seeds = getInitialSeeds();
-  memoryTemplates = seeds;
-  saveLocalTemplates(seeds);
-  return seeds;
+  if (!list || list.length === 0) {
+    list = getInitialSeeds();
+    saveLocalTemplates(list);
+  }
+
+  // Sanitizar y normalizar campos para garantizar compatibilidad completa
+  return list.map((t) => ({
+    ...t,
+    is_global: t.is_global !== undefined ? t.is_global : (t.scope === 'global' || !t.tenant_id),
+    scope: t.scope || (t.is_global ? 'global' : 'tenant'),
+    origin_type: t.origin_type || (t.is_global ? 'global' : t.parent_template_id ? 'derived' : 'custom'),
+  }));
 }
 
 function saveLocalTemplates(templates: DocumentTemplate[]) {
@@ -115,7 +134,18 @@ export class DocumentService {
 
         const { data, error } = await query;
         if (!error && data && data.length > 0) {
-          return data as DocumentTemplate[];
+          const templates = data as DocumentTemplate[];
+          if (tenantId) {
+            return templates.filter((t) => {
+              if (!t.is_global && t.tenant_id === tenantId) return true;
+              if (t.is_global) {
+                if (!t.available_tenant_ids || t.available_tenant_ids.length === 0) return true;
+                return t.available_tenant_ids.includes(tenantId);
+              }
+              return false;
+            });
+          }
+          return templates;
         }
       } catch (err) {
         console.warn('DocFlow: fallback a templates locales', err);
@@ -124,12 +154,40 @@ export class DocumentService {
 
     let local = getLocalTemplates().filter((t) => t.status !== 'archived');
     if (tenantId) {
-      local = local.filter((t) => t.is_global || t.tenant_id === tenantId);
+      local = local.filter((t) => {
+        if (!t.is_global && t.tenant_id === tenantId) return true;
+        if (t.is_global) {
+          if (!t.available_tenant_ids || t.available_tenant_ids.length === 0) return true;
+          return t.available_tenant_ids.includes(tenantId);
+        }
+        return false;
+      });
     }
     if (category) {
       local = local.filter((t) => t.category === category);
     }
     return local;
+  }
+
+  static async getGlobalTemplates(
+    tenantIdFilter?: string,
+    category?: string
+  ): Promise<DocumentTemplate[]> {
+    const all = await this.getTemplates(undefined, category);
+    const globals = all.filter((t) => t.is_global || t.scope === 'global');
+    if (!tenantIdFilter) return globals;
+    return globals.filter((t) => {
+      if (!t.available_tenant_ids || t.available_tenant_ids.length === 0) return true;
+      return t.available_tenant_ids.includes(tenantIdFilter);
+    });
+  }
+
+  static async getTenantTemplates(
+    tenantId: string,
+    category?: string
+  ): Promise<DocumentTemplate[]> {
+    const all = await this.getTemplates(tenantId, category);
+    return all.filter((t) => !t.is_global && t.tenant_id === tenantId);
   }
 
   static async getTemplate(id: string): Promise<DocumentTemplate | null> {
@@ -157,6 +215,8 @@ export class DocumentService {
     const newTpl: DocumentTemplate = {
       ...payload,
       id: `tpl-${Date.now()}`,
+      scope: payload.scope || (payload.is_global ? 'global' : 'tenant'),
+      origin_type: payload.origin_type || (payload.is_global ? 'global' : payload.parent_template_id ? 'derived' : 'custom'),
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -169,7 +229,18 @@ export class DocumentService {
           .select()
           .single();
 
-        if (!error && data) return data as DocumentTemplate;
+        if (!error && data) {
+          await logAuditEvent({
+            organizationId: newTpl.tenant_id || undefined,
+            userId: newTpl.created_by,
+            userRole: newTpl.is_global ? 'super_admin' : 'tenant_admin',
+            action: newTpl.is_global ? 'GLOBAL_TEMPLATE_CREATED' : newTpl.parent_template_id ? 'TEMPLATE_DERIVED' : 'TEMPLATE_CREATED',
+            module: 'DOCFLOW',
+            recordIdentifier: data.id,
+            metadata: { name: newTpl.name, version: newTpl.version, scope: newTpl.scope },
+          }).catch(() => {});
+          return data as DocumentTemplate;
+        }
       } catch {
         // ignore
       }
@@ -178,6 +249,17 @@ export class DocumentService {
     const local = getLocalTemplates();
     local.push(newTpl);
     saveLocalTemplates(local);
+
+    await logAuditEvent({
+      organizationId: newTpl.tenant_id || undefined,
+      userId: newTpl.created_by,
+      userRole: newTpl.is_global ? 'super_admin' : 'tenant_admin',
+      action: newTpl.is_global ? 'GLOBAL_TEMPLATE_CREATED' : newTpl.parent_template_id ? 'TEMPLATE_DERIVED' : 'TEMPLATE_CREATED',
+      module: 'DOCFLOW',
+      recordIdentifier: newTpl.id,
+      metadata: { name: newTpl.name, version: newTpl.version, scope: newTpl.scope },
+    }).catch(() => {});
+
     return newTpl;
   }
 
@@ -199,7 +281,18 @@ export class DocumentService {
           .select()
           .single();
 
-        if (!error && data) return data as DocumentTemplate;
+        if (!error && data) {
+          await logAuditEvent({
+            organizationId: data.tenant_id || undefined,
+            userId: data.created_by,
+            userRole: data.is_global ? 'super_admin' : 'tenant_admin',
+            action: data.is_global ? 'GLOBAL_TEMPLATE_UPDATED' : 'TEMPLATE_UPDATED',
+            module: 'DOCFLOW',
+            recordIdentifier: id,
+            metadata: { name: data.name, version: data.version },
+          }).catch(() => {});
+          return data as DocumentTemplate;
+        }
       } catch {
         // ignore
       }
@@ -211,7 +304,84 @@ export class DocumentService {
 
     local[index] = { ...local[index], ...updatedFields };
     saveLocalTemplates(local);
+
+    await logAuditEvent({
+      organizationId: local[index].tenant_id || undefined,
+      userId: local[index].created_by,
+      userRole: local[index].is_global ? 'super_admin' : 'tenant_admin',
+      action: local[index].is_global ? 'GLOBAL_TEMPLATE_UPDATED' : 'TEMPLATE_UPDATED',
+      module: 'DOCFLOW',
+      recordIdentifier: id,
+      metadata: { name: local[index].name, version: local[index].version },
+    }).catch(() => {});
+
     return local[index];
+  }
+
+  static async deriveTemplate(
+    globalTemplateId: string,
+    tenantId: string,
+    tenantName: string,
+    customName?: string
+  ): Promise<DocumentTemplate> {
+    const parentTpl = await this.getTemplate(globalTemplateId);
+    if (!parentTpl) {
+      throw new Error(`Plantilla global con ID ${globalTemplateId} no encontrada.`);
+    }
+
+    const derivedName = customName || `${parentTpl.name} — ${tenantName} v1`;
+    const derivedSlug = derivedName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+    const created = await this.createTemplate({
+      name: derivedName,
+      slug: derivedSlug,
+      description: parentTpl.description ? `Derivada de ${parentTpl.name} (Global v${parentTpl.version}). ${parentTpl.description}` : `Derivada de ${parentTpl.name} (Global v${parentTpl.version}).`,
+      category: parentTpl.category,
+      document_type: parentTpl.document_type,
+      status: 'active',
+      version: 1,
+      template_content: parentTpl.template_content,
+      output_format: parentTpl.output_format,
+      requires_signature: parentTpl.requires_signature,
+      signature_type: parentTpl.signature_type,
+      required_roles: parentTpl.required_roles,
+      required_fields: [...(parentTpl.required_fields || [])],
+      conditional_rules: parentTpl.conditional_rules ? [...parentTpl.conditional_rules] : undefined,
+      signers_config: parentTpl.signers_config ? [...parentTpl.signers_config] : undefined,
+      is_global: false,
+      scope: 'tenant',
+      tenant_id: tenantId,
+      parent_template_id: parentTpl.id,
+      parent_version: parentTpl.version,
+      origin_type: 'derived',
+    });
+
+    return created;
+  }
+
+  static async setGlobalAvailability(
+    templateId: string,
+    tenantIds: string[] | null
+  ): Promise<DocumentTemplate | null> {
+    return this.updateTemplate(templateId, {
+      available_tenant_ids: tenantIds,
+    });
+  }
+
+  static async checkForGlobalUpdates(
+    derivedTemplate: DocumentTemplate
+  ): Promise<{ hasUpdate: boolean; latestGlobalVersion: number; globalName: string } | null> {
+    if (!derivedTemplate.parent_template_id) return null;
+    const globalTpl = await this.getTemplate(derivedTemplate.parent_template_id);
+    if (!globalTpl) return null;
+
+    const parentVer = derivedTemplate.parent_version || 1;
+    const hasUpdate = globalTpl.version > parentVer;
+    return {
+      hasUpdate,
+      latestGlobalVersion: globalTpl.version,
+      globalName: globalTpl.name,
+    };
   }
 
   static async archiveTemplate(id: string): Promise<boolean> {

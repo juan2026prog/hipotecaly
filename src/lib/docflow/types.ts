@@ -91,6 +91,11 @@ export interface DocumentTemplate {
   conditional_rules?: ConditionalRule[];
   signers_config?: SignerConfig[];
   is_global: boolean;
+  scope?: 'global' | 'tenant';
+  parent_template_id?: string | null;
+  parent_version?: number | null;
+  available_tenant_ids?: string[] | null;
+  origin_type?: 'global' | 'derived' | 'custom';
   created_by?: string;
   created_at: string;
   updated_at: string;

@@ -249,7 +249,7 @@ export const TenantOnboardingWizardPage: React.FC = () => {
             </p>
           </div>
 
-          <Link to="/admin/tenants">
+          <Link to="/superadmin/tenants">
             <Button variant="outline" size="sm">
               <ArrowLeft className="w-4 h-4 mr-1.5" /> Volver a Tenants
             </Button>

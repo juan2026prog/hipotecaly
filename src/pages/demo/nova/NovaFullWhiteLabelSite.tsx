@@ -557,7 +557,7 @@ export const NovaFullWhiteLabelSite: React.FC = () => {
             <ul className="space-y-2">
               <li><a href="#simulador" className="hover:text-white">Simulador en Línea</a></li>
               <li><Link to="/mi-cuenta" className="hover:text-white">Portal del Solicitante</Link></li>
-              <li><Link to="/app" className="hover:text-white">Acceso del Estudio</Link></li>
+              <li><Link to="/demo/estudio-nova/admin" className="hover:text-white">Acceso del Estudio</Link></li>
             </ul>
           </div>
 

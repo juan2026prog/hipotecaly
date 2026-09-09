@@ -252,6 +252,7 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
       const targetVersion = templateToEdit ? (publishAsActive ? (templateToEdit.version || 1) + 1 : templateToEdit.version || 1) : 1;
 
       if (templateToEdit?.id) {
+        const isGlobalTemplate = templateToEdit.is_global || templateToEdit.scope === 'global';
         const updated = await DocumentService.updateTemplate(templateToEdit.id, {
           name,
           slug: generatedSlug,
@@ -262,9 +263,15 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
           required_fields: requiredFields,
           status: targetStatus,
           version: targetVersion,
+          scope: isGlobalTemplate ? 'global' : 'tenant',
+          is_global: isGlobalTemplate,
+          parent_template_id: templateToEdit.parent_template_id,
+          parent_version: templateToEdit.parent_version,
+          origin_type: templateToEdit.origin_type,
         });
         if (updated) onSaved(updated);
       } else {
+        const isGlobal = !tenantId || tenantName === 'HIPOTECALY GLOBAL';
         const created = await DocumentService.createTemplate({
           name,
           slug: generatedSlug,
@@ -277,8 +284,12 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
           template_content: content,
           requires_signature: requiresSignature,
           required_fields: requiredFields,
-          is_global: !tenantId,
-          tenant_id: tenantId || null,
+          is_global: isGlobal,
+          scope: isGlobal ? 'global' : 'tenant',
+          tenant_id: isGlobal ? null : tenantId,
+          origin_type: isGlobal ? 'global' : templateToEdit?.parent_template_id ? 'derived' : 'custom',
+          parent_template_id: templateToEdit?.parent_template_id || null,
+          parent_version: templateToEdit?.parent_version || null,
         });
         onSaved(created);
       }

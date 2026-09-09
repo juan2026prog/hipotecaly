@@ -54,7 +54,7 @@ export const SignatureReturnPage: React.FC = () => {
         </div>
 
         <div className="space-y-3 pt-2">
-          <Link to={caseId ? `/app/solicitudes/${caseId}` : '/mi-cuenta'}>
+          <Link to={caseId ? `/demo/estudio-nova/admin/solicitudes/${caseId}` : '/mi-cuenta'}>
             <Button variant="primary" size="lg" fullWidth className="text-xs font-bold bg-brand-green text-white">
               Volver al Expediente <ArrowRight className="w-4 h-4 ml-2" />
             </Button>

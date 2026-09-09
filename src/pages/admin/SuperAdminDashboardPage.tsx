@@ -179,7 +179,7 @@ export const SuperAdminDashboardPage: React.FC = () => {
 
           {/* Acciones Rápidas Principales */}
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-            <Link to="/admin/tenants/new">
+            <Link to="/superadmin/tenants/new">
               <Button
                 variant="primary"
                 size="sm"
@@ -190,7 +190,7 @@ export const SuperAdminDashboardPage: React.FC = () => {
               </Button>
             </Link>
 
-            <Link to="/admin/ver-como-cliente">
+            <Link to="/superadmin/ver-como-cliente">
               <Button
                 variant="outline"
                 size="sm"
@@ -201,7 +201,7 @@ export const SuperAdminDashboardPage: React.FC = () => {
               </Button>
             </Link>
 
-            <Link to="/admin/servicios">
+            <Link to="/superadmin/servicios">
               <Button
                 variant="outline"
                 size="sm"
@@ -364,7 +364,7 @@ export const SuperAdminDashboardPage: React.FC = () => {
               <h2 className="text-sm font-bold text-white">Clientes de HIPOTECALY</h2>
               <p className="text-xs text-slate-400">Organizaciones activas en la plataforma y accesos de operación</p>
             </div>
-            <Link to="/admin/clientes" className="text-xs font-bold text-emerald-400 hover:underline flex items-center space-x-1">
+            <Link to="/superadmin/tenants" className="text-xs font-bold text-emerald-400 hover:underline flex items-center space-x-1">
               <span>Ver todos los clientes</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>

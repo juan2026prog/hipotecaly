@@ -96,10 +96,10 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
   }, []);
 
   const isTenantPath = location.pathname.startsWith('/demo/');
-  const baseRoute = isTenantPath ? `/demo/${tenant.slug}/admin` : '/app';
+  const baseRoute = `/demo/${tenant.slug || 'estudio-nova'}/admin`;
   const canManageSettings = isSuperAdmin || hasRole(['tenant_admin', 'tenant_owner'], tenant.id);
 
-  // 4 Grupos Simplificados según requerimiento UX
+  // 4 Grupos Simplificados de Navegación Operativa del White Label
   const navigationGroups: NavGroup[] = [
     {
       title: 'TRABAJO',
@@ -137,17 +137,6 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
         ...(canManageSettings ? [{ name: 'Configuración', href: `${baseRoute}/configuracion`, icon: Settings }] : []),
       ],
     },
-    ...(isSuperAdmin
-      ? [
-          {
-            title: 'SUPER ADMIN GLOBAL',
-            items: [
-              { name: 'Consola Central', href: '/admin', icon: UserCheck },
-              { name: 'Gestión de Tenants', href: '/admin/tenants', icon: Building2 },
-            ],
-          },
-        ]
-      : []),
   ];
 
   const isItemActive = (href: string) => {
@@ -169,7 +158,7 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
       <aside className="hidden lg:flex lg:flex-col lg:w-64 bg-navy text-white flex-shrink-0 z-30 border-r border-navy-border shadow-xl">
         {/* Brand Header */}
         <div className="h-20 flex items-center px-6 border-b border-navy-border/70 justify-between">
-          <Link to="/app" className="flex items-center space-x-3">
+          <Link to={baseRoute} className="flex items-center space-x-3">
             <TenantBrand isWhite size="sm" customName={tenant.branding.public_name || 'HIPOTECALY'} />
           </Link>
         </div>
@@ -198,7 +187,7 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
             </div>
             <p className="text-amber-200 font-semibold truncate">{tenant.branding.public_name || tenant.name}</p>
             <Link
-              to="/admin"
+              to="/superadmin"
               className="inline-flex items-center text-[10px] font-bold text-amber-400 hover:text-amber-300 transition-colors"
             >
               ← Volver al Super Admin

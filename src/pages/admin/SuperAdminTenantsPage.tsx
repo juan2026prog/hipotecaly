@@ -91,7 +91,7 @@ export const SuperAdminTenantsPage: React.FC = () => {
               <RefreshCw className="w-3.5 h-3.5 mr-1.5 text-amber-400" />
               Restablecer Demo Nova
             </Button>
-            <Link to="/admin/tenants/new">
+            <Link to="/superadmin/tenants/new">
               <Button
                 variant="primary"
                 size="sm"
@@ -174,7 +174,7 @@ export const SuperAdminTenantsPage: React.FC = () => {
                   <tr>
                     <td colSpan={8} className="py-8 text-center text-slate-400">
                       <p className="font-semibold text-slate-300">No existen clientes que coincidan con la búsqueda.</p>
-                      <Link to="/admin/tenants/new" className="mt-2 inline-block text-emerald-400 font-bold hover:underline">
+                      <Link to="/superadmin/tenants/new" className="mt-2 inline-block text-emerald-400 font-bold hover:underline">
                         + Crear nuevo cliente
                       </Link>
                     </td>

@@ -37,10 +37,10 @@ export const SuperAdminQaToolsCard: React.FC = () => {
 
   const roleOptions = [
     { value: 'borrower', label: 'Solicitante', targetPath: '/mi-cuenta', emailHint: 'qa.applicant@hipotecaly.local' },
-    { value: 'analyst', label: 'Operador / Backoffice', targetPath: '/app', emailHint: 'qa.operator@hipotecaly.local' },
-    { value: 'tenant_admin', label: 'Administrador de Tenant', targetPath: '/app', emailHint: 'qa.tenantadmin@hipotecaly.local' },
+    { value: 'analyst', label: 'Operador / Backoffice', targetPath: '/demo/estudio-nova/admin', emailHint: 'qa.operator@hipotecaly.local' },
+    { value: 'tenant_admin', label: 'Administrador de Tenant', targetPath: '/demo/estudio-nova/admin', emailHint: 'qa.tenantadmin@hipotecaly.local' },
     { value: 'lender', label: 'Prestamista', targetPath: '/lender', emailHint: 'qa.lender@hipotecaly.local' },
-    { value: 'super_admin', label: 'Super Admin', targetPath: '/platform-admin', emailHint: 'qa.superadmin@hipotecaly.local' },
+    { value: 'super_admin', label: 'Super Admin', targetPath: '/superadmin', emailHint: 'qa.superadmin@hipotecaly.local' },
   ];
 
   const durationOptions = [
@@ -311,14 +311,14 @@ export const SuperAdminQaToolsCard: React.FC = () => {
           <button
             type="button"
             disabled={!qaEnabled || loading}
-            onClick={() => handleLaunchSession('analyst', 'a0000000-0000-0000-0000-000000000001', '/app')}
+            onClick={() => handleLaunchSession('analyst', 'a0000000-0000-0000-0000-000000000001', '/demo/estudio-nova/admin')}
             className="p-3 bg-white rounded-lg border border-slate-200 hover:border-navy hover:shadow-xs text-left transition-all group"
           >
             <span className="text-xs font-bold text-navy group-hover:text-brand-green flex items-center justify-between">
               Operador
               <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-brand-green" />
             </span>
-            <span className="text-[10px] text-slate-400 block mt-0.5 font-mono">/app</span>
+            <span className="text-[10px] text-slate-400 block mt-0.5 font-mono">/demo/estudio-nova/admin</span>
           </button>
 
           <button

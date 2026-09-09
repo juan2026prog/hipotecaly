@@ -64,3 +64,6 @@ temp_*.json
 *.dump
 *.sql.dump
 *.bak
+
+.vercel
+.env*

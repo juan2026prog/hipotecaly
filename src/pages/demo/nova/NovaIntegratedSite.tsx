@@ -269,7 +269,7 @@ export const NovaIntegratedSite: React.FC = () => {
                       El equipo del estudio accede a los expedientes en tiempo real, verifica el análisis preliminar de IA, aprueba o solicita reemplazo de documentos.
                     </p>
                     <div className="pt-2">
-                      <Link to="/app">
+                      <Link to="/demo/estudio-nova/admin">
                         <Button variant="primary" size="sm" className="w-full">
                           Abrir Backoffice Real de NOVA <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
                         </Button>

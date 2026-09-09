@@ -101,11 +101,11 @@ export const QaSessionBanner: React.FC = () => {
                   <span className="text-[10px] text-slate-400 font-mono">/mi-cuenta</span>
                 </button>
                 <button
-                  onClick={() => handleQuickSwitch('analyst', '/app')}
+                  onClick={() => handleQuickSwitch('analyst', '/demo/estudio-nova/admin')}
                   className="w-full text-left px-3 py-1.5 hover:bg-amber-50 text-xs font-semibold flex items-center justify-between"
                 >
                   <span>Operador Backoffice</span>
-                  <span className="text-[10px] text-slate-400 font-mono">/app</span>
+                  <span className="text-[10px] text-slate-400 font-mono">/demo/estudio-nova/admin</span>
                 </button>
                 <button
                   onClick={() => handleQuickSwitch('lender', '/lender')}
@@ -115,11 +115,11 @@ export const QaSessionBanner: React.FC = () => {
                   <span className="text-[10px] text-slate-400 font-mono">/lender</span>
                 </button>
                 <button
-                  onClick={() => handleQuickSwitch('tenant_admin', '/app')}
+                  onClick={() => handleQuickSwitch('tenant_admin', '/demo/estudio-nova/admin')}
                   className="w-full text-left px-3 py-1.5 hover:bg-amber-50 text-xs font-semibold flex items-center justify-between"
                 >
                   <span>Admin de Tenant</span>
-                  <span className="text-[10px] text-slate-400 font-mono">/app</span>
+                  <span className="text-[10px] text-slate-400 font-mono">/demo/estudio-nova/admin</span>
                 </button>
               </div>
             )}

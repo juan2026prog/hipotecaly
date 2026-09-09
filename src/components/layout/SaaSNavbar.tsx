@@ -255,7 +255,7 @@ export const SaaSNavbar: React.FC = () => {
 
         {/* Desktop CTAs */}
         <div className="hidden lg:flex items-center space-x-3">
-          <Link to="/app">
+          <Link to="/demo/estudio-nova/admin">
             <Button variant="ghost" size="sm" className="text-xs text-navy font-semibold">
               <Shield className="w-3.5 h-3.5 mr-1 text-brand-green" /> Backoffice
             </Button>
@@ -403,7 +403,7 @@ export const SaaSNavbar: React.FC = () => {
                 Agendar demo <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
-            <Link to="/app" onClick={() => setMobileMenuOpen(false)}>
+            <Link to="/demo/estudio-nova/admin" onClick={() => setMobileMenuOpen(false)}>
               <Button variant="ghost" size="md" fullWidth className="text-navy font-semibold">
                 <Shield className="w-4 h-4 mr-2 text-brand-green" /> Acceso backoffice
               </Button>

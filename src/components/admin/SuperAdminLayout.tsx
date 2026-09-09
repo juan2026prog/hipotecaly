@@ -21,6 +21,7 @@ import {
   User,
   ChevronDown,
   Lock,
+  FileCheck,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -47,50 +48,55 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
-  // Las áreas maestras de primer nivel
+  // Las áreas maestras de primer nivel del Super Admin oficial
   const primaryNavItems: SuperAdminNavItem[] = [
-    { name: 'Inicio', href: '/admin', icon: Home },
-    { name: 'Clientes', href: '/admin/clientes', icon: Users2 },
-    { name: 'Leads Comerciales', href: '/admin/leads', icon: UserPlus },
-    { name: 'Servicios', href: '/admin/servicios', icon: Boxes },
-    { name: 'Ver como cliente', href: '/admin/ver-como-cliente', icon: UserCheck },
-    { name: 'Actividad', href: '/admin/actividad', icon: Activity },
-    { name: 'Configuración técnica', href: '/admin/configuracion', icon: Sliders },
+    { name: 'Inicio', href: '/superadmin', icon: Home },
+    { name: 'Tenants', href: '/superadmin/tenants', icon: Users2 },
+    { name: 'Leads Comerciales', href: '/superadmin/leads', icon: UserPlus },
+    { name: 'Biblioteca de Plantillas', href: '/superadmin/documentos', icon: FileCheck },
+    { name: 'Servicios', href: '/superadmin/servicios', icon: Boxes },
+    { name: 'Ver como cliente', href: '/superadmin/ver-como-cliente', icon: UserCheck },
+    { name: 'Actividad', href: '/superadmin/actividad', icon: Activity },
+    { name: 'Configuración técnica', href: '/superadmin/configuracion', icon: Sliders },
   ];
 
   const isItemActive = (href: string) => {
     if (activeSection) {
-      if (activeSection === 'overview' && href === '/admin') return true;
-      if (activeSection === 'clientes' && (href === '/admin/clientes' || href === '/admin/tenants')) return true;
-      if (activeSection === 'leads' && href === '/admin/leads') return true;
-      if (activeSection === 'servicios' && (href === '/admin/servicios' || href === '/admin/ai' || href.includes('tab=integrations'))) return true;
-      if (activeSection === 'impersonate' && (href === '/admin/ver-como-cliente' || href.includes('tab=qa'))) return true;
-      if (activeSection === 'actividad' && (href === '/admin/actividad' || href.includes('tab=audit'))) return true;
-      if (activeSection === 'configuracion' && (href === '/admin/configuracion' || href.includes('tab=security'))) return true;
-      if (activeSection === 'account' && href === '/admin/mi-cuenta') return true;
+      if (activeSection === 'overview' && href === '/superadmin') return true;
+      if ((activeSection === 'clientes' || activeSection === 'tenants') && href === '/superadmin/tenants') return true;
+      if (activeSection === 'leads' && href === '/superadmin/leads') return true;
+      if (activeSection === 'documentos' && href === '/superadmin/documentos') return true;
+      if (activeSection === 'servicios' && (href === '/superadmin/servicios' || location.search.includes('tab=integrations'))) return true;
+      if (activeSection === 'impersonate' && (href === '/superadmin/ver-como-cliente' || location.search.includes('tab=qa'))) return true;
+      if (activeSection === 'actividad' && (href === '/superadmin/actividad' || location.search.includes('tab=audit'))) return true;
+      if (activeSection === 'configuracion' && (href === '/superadmin/configuracion' || location.search.includes('tab=security'))) return true;
+      if (activeSection === 'account' && href === '/superadmin/mi-cuenta') return true;
     }
 
     const currentPath = location.pathname;
-    if (href === '/admin') {
-      return currentPath === '/admin' && (!location.search || location.search === '?tab=overview');
+    if (href === '/superadmin') {
+      return (currentPath === '/superadmin' || currentPath === '/admin') && (!location.search || location.search === '?tab=overview');
     }
-    if (href === '/admin/clientes') {
-      return currentPath === '/admin/clientes' || currentPath === '/admin/tenants' || currentPath.startsWith('/admin/tenants/');
+    if (href === '/superadmin/tenants') {
+      return currentPath === '/superadmin/tenants' || currentPath.startsWith('/superadmin/tenants/') || currentPath === '/admin/tenants';
     }
-    if (href === '/admin/leads') {
-      return currentPath === '/admin/leads';
+    if (href === '/superadmin/leads') {
+      return currentPath === '/superadmin/leads' || currentPath === '/admin/leads';
     }
-    if (href === '/admin/servicios') {
-      return currentPath === '/admin/servicios' || currentPath === '/admin/ai' || location.search.includes('tab=integrations');
+    if (href === '/superadmin/documentos') {
+      return currentPath === '/superadmin/documentos' || currentPath === '/admin/documentos';
     }
-    if (href === '/admin/ver-como-cliente') {
-      return currentPath === '/admin/ver-como-cliente' || currentPath === '/admin/qa' || location.search.includes('tab=qa');
+    if (href === '/superadmin/servicios') {
+      return currentPath === '/superadmin/servicios' || currentPath === '/superadmin/ai' || location.search.includes('tab=integrations');
     }
-    if (href === '/admin/actividad') {
-      return currentPath === '/admin/actividad' || location.search.includes('tab=audit');
+    if (href === '/superadmin/ver-como-cliente') {
+      return currentPath === '/superadmin/ver-como-cliente' || currentPath === '/superadmin/qa' || location.search.includes('tab=qa');
     }
-    if (href === '/admin/configuracion') {
-      return currentPath === '/admin/configuracion' || location.search.includes('tab=security');
+    if (href === '/superadmin/actividad') {
+      return currentPath === '/superadmin/actividad' || location.search.includes('tab=audit');
+    }
+    if (href === '/superadmin/configuracion') {
+      return currentPath === '/superadmin/configuracion' || location.search.includes('tab=security');
     }
     return currentPath.startsWith(href);
   };
@@ -101,7 +107,7 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
       <aside className="hidden md:flex flex-col w-64 bg-[#09182C] border-r border-[#152E4D] shrink-0 min-h-screen">
         {/* Brand Header */}
         <div className="p-5 border-b border-[#152E4D]">
-          <Link to="/admin" className="flex items-center space-x-3 group">
+          <Link to="/superadmin" className="flex items-center space-x-3 group">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform">
               <ShieldCheck className="w-6 h-6" />
             </div>
@@ -171,7 +177,7 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
 
         {/* User Footer */}
         <div className="p-4 border-t border-[#152E4D] bg-[#071322]/80 flex items-center justify-between">
-          <Link to="/admin/mi-cuenta" className="text-left overflow-hidden group">
+          <Link to="/superadmin/mi-cuenta" className="text-left overflow-hidden group">
             <span className="text-[10px] font-mono text-emerald-400 block font-bold group-hover:underline">
               SUPER ADMIN
             </span>
@@ -191,11 +197,11 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
 
       {/* Header Móvil */}
       <div className="md:hidden bg-[#09182C] border-b border-[#152E4D] p-4 flex items-center justify-between sticky top-0 z-50">
-        <Link to="/admin" className="flex items-center space-x-2.5">
+        <Link to="/superadmin" className="flex items-center space-x-2.5">
           <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white">
             <ShieldCheck className="w-5 h-5" />
           </div>
-          <span className="font-extrabold text-sm tracking-tight text-white">HIPOTECALY ADMIN</span>
+          <span className="font-extrabold text-sm tracking-tight text-white">HIPOTECALY SUPER ADMIN</span>
         </Link>
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -231,7 +237,7 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
             })}
             
             <Link
-              to="/admin/mi-cuenta"
+              to="/superadmin/mi-cuenta"
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold text-emerald-300 hover:bg-white/5 border border-emerald-500/20 bg-emerald-500/10"
             >
@@ -308,7 +314,7 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
 
                 <div className="py-1">
                   <Link
-                    to="/admin/mi-cuenta"
+                    to="/superadmin/mi-cuenta"
                     className="flex items-center space-x-2.5 px-4 py-2.5 text-xs text-slate-200 hover:bg-white/5 hover:text-white transition-colors"
                   >
                     <User className="w-4 h-4 text-emerald-400" />
@@ -316,7 +322,7 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
                   </Link>
 
                   <Link
-                    to="/admin/configuracion"
+                    to="/superadmin/configuracion"
                     className="flex items-center space-x-2.5 px-4 py-2.5 text-xs text-slate-200 hover:bg-white/5 hover:text-white transition-colors"
                   >
                     <Lock className="w-4 h-4 text-teal-400" />

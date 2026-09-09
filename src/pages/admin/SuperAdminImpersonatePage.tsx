@@ -46,14 +46,14 @@ export const SuperAdminImpersonatePage: React.FC = () => {
       id: 'analyst',
       title: 'Operador',
       desc: 'Comprueba la bandeja de trabajo de los operadores para revisar expedientes.',
-      targetPath: '/app',
+      targetPath: '/demo/estudio-nova/admin',
       email: 'qa.operator@hipotecaly.local',
     },
     {
       id: 'notary',
       title: 'Escribano',
       desc: 'Comprueba el área notarial para revisión de títulos y minutas.',
-      targetPath: '/app/documentos',
+      targetPath: '/demo/estudio-nova/admin/documentos',
       email: 'qa.notary@hipotecaly.local',
     },
     {

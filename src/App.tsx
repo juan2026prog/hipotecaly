@@ -63,6 +63,7 @@ import { SuperAdminImpersonatePage } from './pages/admin/SuperAdminImpersonatePa
 import { SuperAdminActivityPage } from './pages/admin/SuperAdminActivityPage';
 import { SuperAdminTechnicalConfigPage } from './pages/admin/SuperAdminTechnicalConfigPage';
 import { SuperAdminAccountPage } from './pages/admin/SuperAdminAccountPage';
+import { SuperAdminDocumentsPage } from './pages/admin/SuperAdminDocumentsPage';
 import { TenantOnboardingWizardPage } from './pages/admin/TenantOnboardingWizardPage';
 import { GenericWhiteLabelLanding } from './pages/landing/GenericWhiteLabelLanding';
 import { LendersSolutionPage } from './pages/solutions/LendersSolutionPage';
@@ -91,6 +92,16 @@ const LenderRouteGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
 const TenantLeadsRedirect: React.FC = () => {
   const { tenantSlug } = useParams<{ tenantSlug: string }>();
   return <Navigate to={`/demo/${tenantSlug || 'estudio-nova'}/admin`} replace />;
+};
+
+const LegacyAppApplicationRedirect: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/demo/estudio-nova/admin/solicitudes/${id || ''}`} replace />;
+};
+
+const LegacyAppLenderRedirect: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/demo/estudio-nova/admin/prestamistas/${id || ''}`} replace />;
 };
 
 export const App: React.FC = () => {
@@ -163,10 +174,10 @@ export const App: React.FC = () => {
               <Route path="/empresas/estudios" element={<NotariesSolutionPage />} />
 
               {/* ========================================================== */}
-              {/* 3. SUPER ADMIN HIPOTECALY (/admin)                         */}
+              {/* 3. SUPER ADMIN HIPOTECALY (/superadmin)                    */}
               {/* ========================================================== */}
               <Route
-                path="/admin"
+                path="/superadmin"
                 element={
                   <ProtectedRoute requireSuperAdmin>
                     <SuperAdminDashboardPage />
@@ -174,7 +185,7 @@ export const App: React.FC = () => {
                 }
               />
               <Route
-                path="/admin/clientes"
+                path="/superadmin/clientes"
                 element={
                   <ProtectedRoute requireSuperAdmin>
                     <SuperAdminTenantsPage />
@@ -182,7 +193,7 @@ export const App: React.FC = () => {
                 }
               />
               <Route
-                path="/admin/tenants"
+                path="/superadmin/tenants"
                 element={
                   <ProtectedRoute requireSuperAdmin>
                     <SuperAdminTenantsPage />
@@ -190,7 +201,7 @@ export const App: React.FC = () => {
                 }
               />
               <Route
-                path="/admin/tenants/new"
+                path="/superadmin/tenants/new"
                 element={
                   <ProtectedRoute requireSuperAdmin>
                     <TenantOnboardingWizardPage />
@@ -198,7 +209,23 @@ export const App: React.FC = () => {
                 }
               />
               <Route
-                path="/admin/servicios"
+                path="/superadmin/leads"
+                element={
+                  <ProtectedRoute requireSuperAdmin>
+                    <SuperAdminLeadsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/superadmin/documentos"
+                element={
+                  <ProtectedRoute requireSuperAdmin>
+                    <SuperAdminDocumentsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/superadmin/servicios"
                 element={
                   <ProtectedRoute requireSuperAdmin>
                     <SuperAdminServicesPage />
@@ -206,7 +233,7 @@ export const App: React.FC = () => {
                 }
               />
               <Route
-                path="/admin/ver-como-cliente"
+                path="/superadmin/ver-como-cliente"
                 element={
                   <ProtectedRoute requireSuperAdmin>
                     <SuperAdminImpersonatePage />
@@ -214,7 +241,7 @@ export const App: React.FC = () => {
                 }
               />
               <Route
-                path="/admin/actividad"
+                path="/superadmin/actividad"
                 element={
                   <ProtectedRoute requireSuperAdmin>
                     <SuperAdminActivityPage />
@@ -222,7 +249,7 @@ export const App: React.FC = () => {
                 }
               />
               <Route
-                path="/admin/configuracion"
+                path="/superadmin/configuracion"
                 element={
                   <ProtectedRoute requireSuperAdmin>
                     <SuperAdminTechnicalConfigPage />
@@ -230,27 +257,30 @@ export const App: React.FC = () => {
                 }
               />
               <Route
-                path="/admin/mi-cuenta"
+                path="/superadmin/mi-cuenta"
                 element={
                   <ProtectedRoute requireSuperAdmin>
                     <SuperAdminAccountPage />
                   </ProtectedRoute>
                 }
               />
-              <Route
-                path="/admin/leads"
-                element={
-                  <ProtectedRoute requireSuperAdmin>
-                    <SuperAdminLeadsPage />
-                  </ProtectedRoute>
-                }
-              />
 
-              {/* Redirecciones de compatibilidad para Super Admin */}
-              <Route path="/admin/ai" element={<Navigate to="/admin/servicios" replace />} />
-              <Route path="/admin/qa" element={<Navigate to="/admin/ver-como-cliente" replace />} />
-              <Route path="/platform-admin" element={<Navigate to="/admin" replace />} />
-              <Route path="/app/ai-admin" element={<Navigate to="/admin/servicios" replace />} />
+              {/* Redirecciones de compatibilidad para Super Admin (/admin/* -> /superadmin/*) */}
+              <Route path="/admin" element={<Navigate to="/superadmin" replace />} />
+              <Route path="/admin/clientes" element={<Navigate to="/superadmin/tenants" replace />} />
+              <Route path="/admin/tenants" element={<Navigate to="/superadmin/tenants" replace />} />
+              <Route path="/admin/tenants/new" element={<Navigate to="/superadmin/tenants/new" replace />} />
+              <Route path="/admin/leads" element={<Navigate to="/superadmin/leads" replace />} />
+              <Route path="/admin/documentos" element={<Navigate to="/superadmin/documentos" replace />} />
+              <Route path="/admin/servicios" element={<Navigate to="/superadmin/servicios" replace />} />
+              <Route path="/admin/ver-como-cliente" element={<Navigate to="/superadmin/ver-como-cliente" replace />} />
+              <Route path="/admin/actividad" element={<Navigate to="/superadmin/actividad" replace />} />
+              <Route path="/admin/configuracion" element={<Navigate to="/superadmin/configuracion" replace />} />
+              <Route path="/admin/mi-cuenta" element={<Navigate to="/superadmin/mi-cuenta" replace />} />
+              <Route path="/admin/ai" element={<Navigate to="/superadmin/servicios" replace />} />
+              <Route path="/admin/qa" element={<Navigate to="/superadmin/ver-como-cliente" replace />} />
+              <Route path="/platform-admin" element={<Navigate to="/superadmin" replace />} />
+              <Route path="/app/ai-admin" element={<Navigate to="/superadmin/servicios" replace />} />
 
               {/* ========================================================== */}
               {/* 4. ARQUITECTURA DEMO & TENANT DINÁMICO (/demo/:tenantSlug)  */}
@@ -664,148 +694,27 @@ export const App: React.FC = () => {
               />
 
               {/* ========================================================== */}
-              {/* 6. RUTAS BACKOFFICE LEGACY /app/*                           */}
+              {/* 6. REDIRECCIONES SEGURAS BACKOFFICE LEGACY /app/*         */}
               {/* ========================================================== */}
-              <Route
-                path="/app"
-                element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'super_admin']}>
-                    <DashboardPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/app/solicitudes"
-                element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'super_admin']}>
-                    <ApplicationsPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/app/solicitudes/:id"
-                element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'super_admin']}>
-                    <ApplicationDetailPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/app/clientes"
-                element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'super_admin']}>
-                    <ClientsPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/app/leads"
-                element={<Navigate to="/app" replace />}
-              />
-              <Route
-                path="/app/propiedades"
-                element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'super_admin']}>
-                    <PropertiesPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/app/documentos"
-                element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'super_admin']}>
-                    <DocumentsPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/app/tasaciones"
-                element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'super_admin']}>
-                    <ValuationsPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/app/tareas"
-                element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'super_admin']}>
-                    <TasksPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/app/reportes"
-                element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'super_admin']}>
-                    <ReportsPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/app/analitica"
-                element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'super_admin']}>
-                    <AnalyticsPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/app/auditoria"
-                element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'super_admin']}>
-                    <AuditPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/app/configuracion"
-                element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'super_admin']}>
-                    <SettingsPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/app/prestamistas"
-                element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'super_admin']}>
-                    <LendersPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/app/prestamistas/:id"
-                element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'super_admin']}>
-                    <LenderDetailPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/app/usuarios"
-                element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'super_admin']}>
-                    <UsersManagementPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/app/organizacion"
-                element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'super_admin']}>
-                    <OrganizationSettingsPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/app/whitelabel"
-                element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'super_admin']}>
-                    <WhiteLabelBackofficePage />
-                  </ProtectedRoute>
-                }
-              />
+              <Route path="/app" element={<Navigate to="/demo/estudio-nova/admin" replace />} />
+              <Route path="/app/solicitudes" element={<Navigate to="/demo/estudio-nova/admin/solicitudes" replace />} />
+              <Route path="/app/solicitudes/:id" element={<LegacyAppApplicationRedirect />} />
+              <Route path="/app/clientes" element={<Navigate to="/demo/estudio-nova/admin/clientes" replace />} />
+              <Route path="/app/leads" element={<Navigate to="/demo/estudio-nova/admin" replace />} />
+              <Route path="/app/propiedades" element={<Navigate to="/demo/estudio-nova/admin/propiedades" replace />} />
+              <Route path="/app/documentos" element={<Navigate to="/demo/estudio-nova/admin/documentos" replace />} />
+              <Route path="/app/tasaciones" element={<Navigate to="/demo/estudio-nova/admin/tasaciones" replace />} />
+              <Route path="/app/tareas" element={<Navigate to="/demo/estudio-nova/admin/tareas" replace />} />
+              <Route path="/app/reportes" element={<Navigate to="/demo/estudio-nova/admin/reportes" replace />} />
+              <Route path="/app/analitica" element={<Navigate to="/demo/estudio-nova/admin/analitica" replace />} />
+              <Route path="/app/auditoria" element={<Navigate to="/demo/estudio-nova/admin/auditoria" replace />} />
+              <Route path="/app/configuracion" element={<Navigate to="/demo/estudio-nova/admin/configuracion" replace />} />
+              <Route path="/app/prestamistas" element={<Navigate to="/demo/estudio-nova/admin/prestamistas" replace />} />
+              <Route path="/app/prestamistas/:id" element={<LegacyAppLenderRedirect />} />
+              <Route path="/app/usuarios" element={<Navigate to="/demo/estudio-nova/admin/usuarios" replace />} />
+              <Route path="/app/organizacion" element={<Navigate to="/demo/estudio-nova/admin/organizacion" replace />} />
+              <Route path="/app/whitelabel" element={<Navigate to="/demo/estudio-nova/admin/whitelabel" replace />} />
+              <Route path="/app/*" element={<Navigate to="/demo/estudio-nova/admin" replace />} />
 
               {/* ========================================================== */}
               {/* 7. PORTAL LENDER LEGACY MARKETPLACE (Bloqueado por flag)   */}

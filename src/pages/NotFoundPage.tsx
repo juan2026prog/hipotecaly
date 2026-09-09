@@ -48,7 +48,7 @@ export const NotFoundPage: React.FC = () => {
 
           <div className="pt-6 border-t border-slate-100 grid grid-cols-2 gap-3 text-xs">
             <Link
-              to="/app"
+              to="/demo/estudio-nova/admin"
               className="p-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold flex items-center justify-center gap-2 transition-colors"
             >
               <Shield className="w-4 h-4 text-brand-green" /> Backoffice

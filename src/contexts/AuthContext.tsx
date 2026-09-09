@@ -271,8 +271,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    // Verificación de sesión de prueba controlada ÚNICAMENTE en entorno local de test preview (puerto 4173)
-    const isE2EPreview = !import.meta.env.PROD && typeof window !== 'undefined' && window.location.port === '4173';
+    // Verificación de sesión de prueba controlada ÚNICAMENTE en entorno local de test preview (puerto 4173) o QA activo
+    const isE2EPreview = typeof window !== 'undefined' && (window.location.port === '4173' || Boolean(window.localStorage.getItem('hipotecaly_qa_session_ref')));
     const testRole = isE2EPreview && typeof window !== 'undefined' ? window.localStorage.getItem('hipotecaly_test_role') : null;
 
     if (isE2EPreview && testRole === 'visitor') {

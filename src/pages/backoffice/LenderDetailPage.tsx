@@ -4,9 +4,12 @@ import { BackofficeLayout } from '../../components/backoffice/BackofficeLayout';
 import { Button } from '../../components/ui/Button';
 import { CurrencyInput } from '../../components/ui/CurrencyInput';
 import { getLenderById, saveLenderRules, Lender, LenderRules } from '../../lib/lendersService';
+import { useTenant } from '../../contexts/TenantContext';
 import { ArrowLeft, Save, CheckCircle2, ListChecks } from 'lucide-react';
 
 export const LenderDetailPage: React.FC = () => {
+  const { tenant } = useTenant();
+  const baseRoute = tenant ? `/demo/${tenant.slug}/admin` : '/demo/estudio-nova/admin';
   const { id } = useParams<{ id: string }>();
   const [lender, setLender] = useState<Lender | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,7 +77,7 @@ export const LenderDetailPage: React.FC = () => {
       <BackofficeLayout title="Prestamista no encontrado">
         <div className="bg-white p-12 rounded-card text-center">
           <p className="text-slate-muted mb-4">No se encontró el prestamista solicitado.</p>
-          <Link to="/app/prestamistas">
+          <Link to={`${baseRoute}/prestamistas`}>
             <Button variant="outline"><ArrowLeft className="w-4 h-4 mr-2" /> Volver al catálogo</Button>
           </Link>
         </div>
@@ -88,7 +91,7 @@ export const LenderDetailPage: React.FC = () => {
 
         {/* Barra superior con volver y estado */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <Link to="/app/prestamistas" className="inline-flex items-center text-xs text-slate-500 hover:text-navy font-semibold">
+          <Link to={`${baseRoute}/prestamistas`} className="inline-flex items-center text-xs text-slate-500 hover:text-navy font-semibold">
             <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Volver a Prestamistas
           </Link>
           <div className="flex items-center space-x-2">

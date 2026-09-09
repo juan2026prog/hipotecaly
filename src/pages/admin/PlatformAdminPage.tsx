@@ -40,13 +40,13 @@ export const PlatformAdminPage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <Link to="/admin/tenants">
+            <Link to="/superadmin/tenants">
               <Button variant="outline" size="md" className="text-xs">
                 <Building2 className="w-3.5 h-3.5 mr-1.5 text-slate-600" />
                 Gestionar Tenants
               </Button>
             </Link>
-            <Link to="/admin/ai">
+            <Link to="/superadmin/servicios">
               <Button variant="outline" size="md" className="text-xs">
                 <Cpu className="w-3.5 h-3.5 mr-1.5 text-brand-green" />
                 Copiloto IA & Bóveda
@@ -76,7 +76,7 @@ export const PlatformAdminPage: React.FC = () => {
                 Administrá marcas white-label, feature flags modulares, subdominios y reglas crediticias en caliente.
               </p>
             </div>
-            <Link to="/admin/tenants">
+            <Link to="/superadmin/tenants">
               <Button variant="outline" size="sm" fullWidth className="text-xs">
                 Abrir Gestión de Tenants <ExternalLink className="w-3.5 h-3.5 ml-1" />
               </Button>
@@ -94,7 +94,7 @@ export const PlatformAdminPage: React.FC = () => {
                 Control del Master Switch de IA, cifrado de OpenAI API Key en Supabase Vault y métricas de razonamiento.
               </p>
             </div>
-            <Link to="/admin/ai">
+            <Link to="/superadmin/servicios">
               <Button variant="outline" size="sm" fullWidth className="text-xs">
                 Configurar Inteligencia <ExternalLink className="w-3.5 h-3.5 ml-1" />
               </Button>
@@ -112,9 +112,9 @@ export const PlatformAdminPage: React.FC = () => {
                 Administrá las 15 plantillas globales oficiales, control de firmas, snapshots y hashes SHA-256.
               </p>
             </div>
-            <Link to="/app/documentos">
+            <Link to="/superadmin/documentos">
               <Button variant="outline" size="sm" fullWidth className="text-xs">
-                Abrir DocFlow Hub <ExternalLink className="w-3.5 h-3.5 ml-1" />
+                Abrir Biblioteca Global <ExternalLink className="w-3.5 h-3.5 ml-1" />
               </Button>
             </Link>
           </div>
@@ -130,9 +130,9 @@ export const PlatformAdminPage: React.FC = () => {
                 Ingresá directamente al backoffice operativo con rol transversal para auditar expedientes y tasaciones.
               </p>
             </div>
-            <Link to="/app">
+            <Link to="/demo/estudio-nova/admin">
               <Button variant="outline" size="sm" fullWidth className="text-xs">
-                Ir al Backoffice (/app) <ExternalLink className="w-3.5 h-3.5 ml-1" />
+                Ir al Backoffice <ExternalLink className="w-3.5 h-3.5 ml-1" />
               </Button>
             </Link>
           </div>

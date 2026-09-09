@@ -54,11 +54,11 @@ test.describe('HIPOTECALY — MIGRACIÓN DE LEADS COMERCIALES SAAS AL SUPER ADMI
     const isMobile = await page.evaluate(() => window.innerWidth < 768);
     if (isMobile) {
       await page.click('button:has(svg.lucide-menu)');
-      const leadsLink = page.locator('a[href="/admin/leads"]').locator('visible=true').first();
+      const leadsLink = page.locator('a[href="/superadmin/leads"]').locator('visible=true').first();
       await expect(leadsLink).toBeVisible();
       await expect(leadsLink).toContainText('Leads Comerciales');
     } else {
-      const leadsNavLink = page.locator('aside.border-r a[href="/admin/leads"]');
+      const leadsNavLink = page.locator('aside.border-r a[href="/superadmin/leads"]');
       await expect(leadsNavLink).toBeVisible();
       await expect(leadsNavLink).toContainText('Leads Comerciales');
     }
@@ -173,7 +173,7 @@ test.describe('HIPOTECALY — MIGRACIÓN DE LEADS COMERCIALES SAAS AL SUPER ADMI
       const sidebarText = await page.locator('aside.border-r').textContent();
       expect(sidebarText).not.toContain('Estudio Nova Backoffice');
     } else {
-      await expect(page.locator('header, div').filter({ hasText: 'HIPOTECALY ADMIN' }).first()).toBeVisible();
+      await expect(page.locator('header, div').filter({ hasText: 'HIPOTECALY SUPER ADMIN' }).first()).toBeVisible();
     }
   });
 
