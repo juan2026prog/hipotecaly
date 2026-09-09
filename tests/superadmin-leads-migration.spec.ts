@@ -11,7 +11,7 @@ test.describe('HIPOTECALY — MIGRACIÓN DE LEADS COMERCIALES SAAS AL SUPER ADMI
     });
 
     await page.goto('/demo/estudio-nova/admin?demo=true');
-    await expect(page.locator('h1')).toContainText('Inicio');
+    await expect(page.locator('h1').first()).toContainText(/Inicio|Panel Operativo/i);
 
     // Verificar que en el sidebar del Backoffice no exista Leads ni Leads SaaS
     const isMobile = await page.evaluate(() => window.innerWidth < 1024);

@@ -10,6 +10,7 @@ import {
   ResolvedCaseData,
   ValidationResult,
   DocFlowStatus,
+  TemplateAvailability,
 } from './types';
 import { INITIAL_TEMPLATES } from './initialTemplates';
 import {
@@ -35,6 +36,7 @@ function getInitialSeeds(): DocumentTemplate[] {
     is_global: true,
     scope: 'global' as const,
     origin_type: 'global' as const,
+    availability: 'all' as const,
     available_tenant_ids: null,
     created_at: new Date('2026-09-01T10:00:00Z').toISOString(),
     updated_at: new Date('2026-09-01T10:00:00Z').toISOString(),
@@ -64,12 +66,17 @@ function getLocalTemplates(): DocumentTemplate[] {
   }
 
   // Sanitizar y normalizar campos para garantizar compatibilidad completa
-  return list.map((t) => ({
-    ...t,
-    is_global: t.is_global !== undefined ? t.is_global : (t.scope === 'global' || !t.tenant_id),
-    scope: t.scope || (t.is_global ? 'global' : 'tenant'),
-    origin_type: t.origin_type || (t.is_global ? 'global' : t.parent_template_id ? 'derived' : 'custom'),
-  }));
+  return list.map((t) => {
+    const isGlobal = t.is_global !== undefined ? t.is_global : (t.scope === 'global' || !t.tenant_id);
+    const availability = t.availability || (t.available_tenant_ids && t.available_tenant_ids.length > 0 ? 'selected' : 'all');
+    return {
+      ...t,
+      is_global: isGlobal,
+      scope: t.scope || (isGlobal ? 'global' : 'tenant'),
+      origin_type: t.origin_type || (isGlobal ? 'global' : t.parent_template_id ? 'derived' : 'custom'),
+      availability: isGlobal ? availability : undefined,
+    };
+  });
 }
 
 function saveLocalTemplates(templates: DocumentTemplate[]) {
@@ -139,8 +146,10 @@ export class DocumentService {
             return templates.filter((t) => {
               if (!t.is_global && t.tenant_id === tenantId) return true;
               if (t.is_global) {
-                if (!t.available_tenant_ids || t.available_tenant_ids.length === 0) return true;
-                return t.available_tenant_ids.includes(tenantId);
+                const avail = t.availability || (t.available_tenant_ids && t.available_tenant_ids.length > 0 ? 'selected' : 'all');
+                if (avail === 'disabled') return false;
+                if (avail === 'all') return true;
+                if (avail === 'selected') return Boolean(t.available_tenant_ids && t.available_tenant_ids.includes(tenantId));
               }
               return false;
             });
@@ -157,8 +166,10 @@ export class DocumentService {
       local = local.filter((t) => {
         if (!t.is_global && t.tenant_id === tenantId) return true;
         if (t.is_global) {
-          if (!t.available_tenant_ids || t.available_tenant_ids.length === 0) return true;
-          return t.available_tenant_ids.includes(tenantId);
+          const avail = t.availability || (t.available_tenant_ids && t.available_tenant_ids.length > 0 ? 'selected' : 'all');
+          if (avail === 'disabled') return false;
+          if (avail === 'all') return true;
+          if (avail === 'selected') return Boolean(t.available_tenant_ids && t.available_tenant_ids.includes(tenantId));
         }
         return false;
       });
@@ -177,8 +188,11 @@ export class DocumentService {
     const globals = all.filter((t) => t.is_global || t.scope === 'global');
     if (!tenantIdFilter) return globals;
     return globals.filter((t) => {
-      if (!t.available_tenant_ids || t.available_tenant_ids.length === 0) return true;
-      return t.available_tenant_ids.includes(tenantIdFilter);
+      const avail = t.availability || (t.available_tenant_ids && t.available_tenant_ids.length > 0 ? 'selected' : 'all');
+      if (avail === 'disabled') return false;
+      if (avail === 'all') return true;
+      if (avail === 'selected') return Boolean(t.available_tenant_ids && t.available_tenant_ids.includes(tenantIdFilter));
+      return false;
     });
   }
 
@@ -214,7 +228,7 @@ export class DocumentService {
   ): Promise<DocumentTemplate> {
     const newTpl: DocumentTemplate = {
       ...payload,
-      id: `tpl-${Date.now()}`,
+      id: `tpl-${Date.now()}-${Math.floor(Math.random() * 1000000)}`,
       scope: payload.scope || (payload.is_global ? 'global' : 'tenant'),
       origin_type: payload.origin_type || (payload.is_global ? 'global' : payload.parent_template_id ? 'derived' : 'custom'),
       created_at: new Date().toISOString(),
@@ -361,10 +375,26 @@ export class DocumentService {
 
   static async setGlobalAvailability(
     templateId: string,
-    tenantIds: string[] | null
+    availabilityOrTenantIds: TemplateAvailability | string[] | null,
+    tenantIds?: string[] | null
   ): Promise<DocumentTemplate | null> {
+    let targetAvailability: TemplateAvailability = 'all';
+    let targetTenantIds: string[] | null = null;
+
+    if (typeof availabilityOrTenantIds === 'string') {
+      targetAvailability = availabilityOrTenantIds;
+      targetTenantIds = tenantIds || null;
+    } else if (Array.isArray(availabilityOrTenantIds)) {
+      targetAvailability = availabilityOrTenantIds.length > 0 ? 'selected' : 'all';
+      targetTenantIds = availabilityOrTenantIds.length > 0 ? availabilityOrTenantIds : null;
+    } else {
+      targetAvailability = 'all';
+      targetTenantIds = null;
+    }
+
     return this.updateTemplate(templateId, {
-      available_tenant_ids: tenantIds,
+      availability: targetAvailability,
+      available_tenant_ids: targetTenantIds,
     });
   }
 
@@ -442,54 +472,51 @@ export class DocumentService {
     return {
       case: {
         id: app?.id || (typeof caseIdOrApp === 'string' ? caseIdOrApp : 'e0000000-0000-0000-0000-000000000001'),
-        code: app?.public_id || 'HPT-2026-00124',
-        created_at: createdAt.toLocaleDateString('es-UY'),
-        status: app?.status || 'info_review',
+        code: app?.public_id || 'HIP-2026-0001',
+        created_at: app?.created_at || now.toISOString(),
+        status: app?.status || 'evaluacion',
         days_open: daysOpen,
         source: app?.source || 'native_white_label',
-        purpose: app?.purpose || 'Refacción y consolidación',
+        purpose: app?.purpose || 'Préstamo Hipotecario',
       },
       applicant: {
-        first_name: app?.borrower?.first_name || 'Ignacio',
-        last_name: app?.borrower?.last_name || 'Silva Gómez',
-        full_name: app?.borrower
-          ? `${app.borrower.first_name || ''} ${app.borrower.last_name || ''}`.trim()
-          : 'Ignacio Silva Gómez',
-        document_id: app?.borrower?.id_number || '4.182.930-1',
-        id_type: app?.borrower?.id_type || 'CI',
-        birth_date: '1985-05-14',
-        phone: app?.borrower?.phone || '099 123 456',
-        email: app?.borrower?.email || 'ignacio@ejemplo.com',
-        address: app?.borrower?.address || 'Benito Blanco 1245 Apto 402',
+        first_name: app?.borrower?.first_name || 'Rodrigo',
+        last_name: app?.borrower?.last_name || 'Larrañaga',
+        full_name: `${app?.borrower?.first_name || 'Rodrigo'} ${app?.borrower?.last_name || 'Larrañaga'}`,
+        document_id: app?.borrower?.document_id || '3.987.654-2',
+        id_type: 'CI',
+        birth_date: app?.borrower?.birth_date || '1984-06-15',
+        phone: app?.borrower?.phone || '+598 99 123 456',
+        email: app?.borrower?.email || 'rodrigo.larranaga@ejemplo.com',
+        address: app?.borrower?.address || 'Av. Brasil 2890 Apt 402',
         city: app?.borrower?.city || 'Montevideo',
         department: app?.borrower?.department || 'Montevideo',
-        marital_status: 'Casado/a',
-        occupation: 'Ingeniero de Software / Dependiente',
-        employer: 'Tecnologías del Plata S.A.',
-        monthly_income: app?.income?.monthly_amount || 95000,
-        clearing_status: app?.borrower?.clearing_status || 'Sin antecedentes adversos',
+        marital_status: app?.borrower?.civil_status || 'Casado',
+        occupation: 'Ingeniero',
+        employer: 'Empresa S.A.',
+        monthly_income: Number(app?.income?.declared_amount) || 120000,
+        clearing_status: 'Normal',
       },
       spouse: {
-        full_name: 'María Elena Larrosa',
-        document_id: '3.987.654-2',
-        phone: '099 654 321',
-        email: 'maria.larrosa@ejemplo.com',
-        occupation: 'Arquitecta',
+        full_name: 'Mariana Silva Gómez',
+        document_id: '4.123.456-7',
+        email: 'mariana.silva@ejemplo.com',
+        phone: '+598 99 654 321',
       },
       property: {
-        padron: app?.property?.cadastral_number || '48.912',
+        padron: app?.property?.cadastral_number || '142.890',
         department: app?.property?.department || 'Montevideo',
-        city: app?.property?.city || 'Montevideo',
-        neighborhood: app?.property?.neighborhood || 'Pocitos',
-        address: app?.property?.address || 'Av. Brasil 2840',
+        city: app?.property?.locality || 'Montevideo',
+        neighborhood: 'Pocitos',
+        address: app?.property?.address || 'Benito Blanco 1240 Apt 801',
         type: app?.property?.property_type || 'Apartamento',
-        area_m2: Number(app?.property?.surface_m2) || 120,
-        bedrooms: Number(app?.property?.bedrooms) || 3,
-        bathrooms: Number(app?.property?.bathrooms) || 2,
+        area_m2: Number(app?.property?.surface_m2) || 85,
+        bedrooms: Number(app?.property?.bedrooms) || 2,
+        bathrooms: Number(app?.property?.bathrooms) || 1,
         estimated_value: estVal,
         appraised_value: appVal,
         guarantee_value: appVal * 0.85,
-        legal_status: (app?.property?.legal_status || 'libre_gravamenes').replace('_', ' '),
+        legal_status: 'Libre de gravámenes',
       },
       loan: {
         requested_amount: requested,
@@ -594,6 +621,8 @@ export class DocumentService {
       case_id: caseId,
       template_id: template.id,
       template_version: template.version,
+      parent_template_id: template.parent_template_id || null,
+      parent_template_version: template.parent_version || null,
       document_version: docVersion,
       title: `${template.name} (v${docVersion})`,
       category: template.category,

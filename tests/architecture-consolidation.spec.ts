@@ -118,7 +118,7 @@ test.describe('HIPOTECALY — CONSOLIDACIÓN DE ARQUITECTURA: BACKOFFICE ÚNICO 
     });
 
     await page.goto('/demo/estudio-nova/admin?demo=true');
-    await expect(page.locator('h1')).toContainText('Inicio');
+    await expect(page.locator('h1').first()).toContainText(/Inicio|Panel Operativo/i);
 
     const isMobile = await page.evaluate(() => window.innerWidth < 1024);
     if (!isMobile) {
@@ -240,8 +240,9 @@ test.describe('HIPOTECALY — CONSOLIDACIÓN DE ARQUITECTURA: BACKOFFICE ÚNICO 
     await page.goto('/demo/capital-soluciones/admin/documentos?demo=true');
     await expect(page.locator('h1')).toContainText('Documentos & Plantillas');
     
-    // Esperar a que las plantillas se carguen
-    const tabMy = page.locator('button:has-text("Mis Plantillas")').first();
+    // Esperar a que el contenedor principal esté listo
+    await page.waitForLoadState('domcontentloaded');
+    const tabMy = page.getByRole('button', { name: /Mis Plantillas/i });
     await expect(tabMy).toBeVisible();
     await tabMy.click();
 

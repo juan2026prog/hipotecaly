@@ -192,5 +192,5 @@ export async function calculateSha256(content: string): Promise<string> {
     hash |= 0;
   }
   const hex = Math.abs(hash).toString(16).padStart(8, '0');
-  return `sha256_${hex.repeat(8).slice(0, 64)}`;
+  return hex.repeat(8).slice(0, 64);
 }

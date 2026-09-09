@@ -72,6 +72,8 @@ export interface ConditionalRule {
   targetBlockId?: string;
 }
 
+export type TemplateAvailability = 'all' | 'selected' | 'disabled';
+
 export interface DocumentTemplate {
   id: string;
   tenant_id?: string | null;
@@ -94,6 +96,7 @@ export interface DocumentTemplate {
   scope?: 'global' | 'tenant';
   parent_template_id?: string | null;
   parent_version?: number | null;
+  availability?: TemplateAvailability;
   available_tenant_ids?: string[] | null;
   origin_type?: 'global' | 'derived' | 'custom';
   created_by?: string;
@@ -108,6 +111,8 @@ export interface GeneratedDocument {
   case_id: string;
   template_id?: string | null;
   template_version: number;
+  parent_template_id?: string | null;
+  parent_template_version?: number | null;
   document_version: number;
   title: string;
   category: DocumentCategory;

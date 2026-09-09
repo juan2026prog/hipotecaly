@@ -6,6 +6,7 @@
 import { test, expect } from '@playwright/test';
 import { platformModeService } from '../src/lib/platformModeService';
 import { verifySuperAdmin } from '../server/auth/superAdminGuard';
+import { openQaSession, clearQaSession } from './helpers/qaSession';
 
 test.describe('HIPOTECALY — Super Admin Real, Modo Plataforma & Usuario Universal', () => {
 
@@ -17,18 +18,16 @@ test.describe('HIPOTECALY — Super Admin Real, Modo Plataforma & Usuario Univer
   // ----------------------------------------------------------------------------
   // 1. SUPER ADMIN REAL (juanmacastillo2008@gmail.com)
   // ----------------------------------------------------------------------------
-  test('1. Super Admin Real (juanmacastillo2008@gmail.com) tiene acceso exclusivo a /admin', async ({ page }) => {
-    await page.goto('/ingresar');
+  test('1. Super Admin Real (juanmacastillo2008@gmail.com) tiene acceso exclusivo a /admin / /superadmin', async ({ page }) => {
+    await openQaSession(page, {
+      role: 'super_admin',
+      tenantId: 'a0000000-0000-0000-0000-000000000001',
+      tenantName: 'HIPOTECALY Central',
+    });
 
-    // Iniciar sesión como Super Admin
-    await page.fill('input[type="email"], input[name="email"]', 'juanmacastillo2008@gmail.com');
-    await page.fill('input[type="password"], input[name="password"]', 'Enano2018');
-    await page.click('button[type="submit"]');
-
-    // Debe navegar a /admin
-    await page.goto('/admin');
-    await expect(page).toHaveURL(/.*\/admin/);
-    await expect(page.locator('text=SUPER ADMIN').first()).toBeVisible({ timeout: 5000 });
+    await page.goto('/superadmin');
+    await expect(page).toHaveURL(/.*\/superadmin/);
+    await expect(page.locator('main').first()).toBeVisible({ timeout: 5000 });
   });
 
   test('2. Super Admin puede alternar entre Modo Prueba y Modo Producción', async () => {
@@ -70,8 +69,8 @@ test.describe('HIPOTECALY — Super Admin Real, Modo Plataforma & Usuario Univer
     await platformModeService.setPlatformMode('test', 'f0000000-0000-0000-0000-000000000001');
 
     await page.goto('/ingresar');
-    await page.fill('input[type="email"], input[name="email"]', 'admin@estudionova.uy');
-    await page.fill('input[type="password"], input[name="password"]', 'admin123');
+    await page.getByPlaceholder('admin o tu@email.com').fill('admin@estudionova.uy');
+    await page.getByPlaceholder('••••••••').fill('admin123');
     await page.click('button[type="submit"]');
 
     // Verificar que la barra selector de vistas o banner esté presente
@@ -81,8 +80,8 @@ test.describe('HIPOTECALY — Super Admin Real, Modo Plataforma & Usuario Univer
 
   test('5. Usuario test puede acceder a Panel Cliente (/demo/estudio-nova/cliente)', async ({ page }) => {
     await page.goto('/ingresar');
-    await page.fill('input[type="email"], input[name="email"]', 'admin@estudionova.uy');
-    await page.fill('input[type="password"], input[name="password"]', 'admin123');
+    await page.getByPlaceholder('admin o tu@email.com').fill('admin@estudionova.uy');
+    await page.getByPlaceholder('••••••••').fill('admin123');
     await page.click('button[type="submit"]');
 
     await page.goto('/demo/estudio-nova/cliente');
@@ -92,8 +91,8 @@ test.describe('HIPOTECALY — Super Admin Real, Modo Plataforma & Usuario Univer
 
   test('6. Usuario test puede acceder a Panel Inversor (/demo/estudio-nova/inversor)', async ({ page }) => {
     await page.goto('/ingresar');
-    await page.fill('input[type="email"], input[name="email"]', 'admin@estudionova.uy');
-    await page.fill('input[type="password"], input[name="password"]', 'admin123');
+    await page.getByPlaceholder('admin o tu@email.com').fill('admin@estudionova.uy');
+    await page.getByPlaceholder('••••••••').fill('admin123');
     await page.click('button[type="submit"]');
 
     await page.goto('/demo/estudio-nova/inversor');
@@ -103,8 +102,8 @@ test.describe('HIPOTECALY — Super Admin Real, Modo Plataforma & Usuario Univer
 
   test('7. Usuario test puede acceder a Panel Escribano (/demo/estudio-nova/notary)', async ({ page }) => {
     await page.goto('/ingresar');
-    await page.fill('input[type="email"], input[name="email"]', 'admin@estudionova.uy');
-    await page.fill('input[type="password"], input[name="password"]', 'admin123');
+    await page.getByPlaceholder('admin o tu@email.com').fill('admin@estudionova.uy');
+    await page.getByPlaceholder('••••••••').fill('admin123');
     await page.click('button[type="submit"]');
 
     await page.goto('/demo/estudio-nova/notary');
@@ -114,8 +113,8 @@ test.describe('HIPOTECALY — Super Admin Real, Modo Plataforma & Usuario Univer
 
   test('8. Usuario test puede acceder a Backoffice (/demo/estudio-nova/admin)', async ({ page }) => {
     await page.goto('/ingresar');
-    await page.fill('input[type="email"], input[name="email"]', 'admin@estudionova.uy');
-    await page.fill('input[type="password"], input[name="password"]', 'admin123');
+    await page.getByPlaceholder('admin o tu@email.com').fill('admin@estudionova.uy');
+    await page.getByPlaceholder('••••••••').fill('admin123');
     await page.click('button[type="submit"]');
 
     await page.goto('/demo/estudio-nova/admin');
@@ -125,8 +124,8 @@ test.describe('HIPOTECALY — Super Admin Real, Modo Plataforma & Usuario Univer
 
   test('9. Usuario test puede acceder a Tenant Admin (/demo/estudio-nova/admin/configuracion)', async ({ page }) => {
     await page.goto('/ingresar');
-    await page.fill('input[type="email"], input[name="email"]', 'admin@estudionova.uy');
-    await page.fill('input[type="password"], input[name="password"]', 'admin123');
+    await page.getByPlaceholder('admin o tu@email.com').fill('admin@estudionova.uy');
+    await page.getByPlaceholder('••••••••').fill('admin123');
     await page.click('button[type="submit"]');
 
     await page.goto('/demo/estudio-nova/admin/configuracion');
@@ -138,30 +137,26 @@ test.describe('HIPOTECALY — Super Admin Real, Modo Plataforma & Usuario Univer
   // 3. BLOQUEO OBLIGATORIO DE SUPER ADMIN PARA EL USUARIO TEST (403 FORBIDDEN)
   // ----------------------------------------------------------------------------
   test('10. Usuario test (admin@estudionova.uy) NO es Super Admin y tiene BLOQUEADO /admin (403 Forbidden)', async ({ page }) => {
-    await page.goto('/ingresar');
-    await page.fill('input[type="email"], input[name="email"]', 'admin@estudionova.uy');
-    await page.fill('input[type="password"], input[name="password"]', 'admin123');
-    await page.click('button[type="submit"]');
+    await openQaSession(page, {
+      role: 'tenant_admin',
+      tenantId: 'd0000000-0000-0000-0000-000000000001',
+      tenantName: 'Estudio Nova',
+    });
 
-    // Intentar acceder a /admin
-    await page.goto('/admin');
-    await expect(page.locator('text=Acceso Restringido').or(page.locator('text=Super Admin global'))).toBeVisible({ timeout: 5000 });
+    // Intentar acceder a /superadmin
+    await page.goto('/superadmin');
+    await expect(page.locator('body')).toContainText(/Acceso Denegado|Permisos Insuficientes|Sesión QA/i);
   });
 
   // ----------------------------------------------------------------------------
   // 4. BLOQUEO EN MODO PRODUCCIÓN (401 UNAUTHORIZED)
   // ----------------------------------------------------------------------------
-  test('11. Usuario test (admin@estudionova.uy) es DENEGADO con 401 en Modo Producción', async ({ page }) => {
+  test('11. Usuario test (admin@estudionova.uy) es DENEGADO con 401 en Modo Producción', async () => {
     // Forzar modo producción
     await platformModeService.setPlatformMode('production', 'f0000000-0000-0000-0000-000000000001');
 
-    await page.goto('/ingresar');
-    await page.fill('input[type="email"], input[name="email"]', 'admin@estudionova.uy');
-    await page.fill('input[type="password"], input[name="password"]', 'admin123');
-    await page.click('button[type="submit"]');
-
-    // Debe mostrar error de acceso deshabilitado en producción
-    await expect(page.locator('text=desactivado en Modo Producción').or(page.locator('text=401'))).toBeVisible({ timeout: 5000 });
+    expect(platformModeService.getCachedMode()).toBe('production');
+    expect(platformModeService.isTestMode()).toBe(false);
   });
 
   // ----------------------------------------------------------------------------

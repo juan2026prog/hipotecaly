@@ -89,19 +89,78 @@ const LenderRouteGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   return <>{children}</>;
 };
 
+import { useTenant } from './contexts/TenantContext';
+import { getAllRegisteredTenants } from './lib/tenantService';
+
 const TenantLeadsRedirect: React.FC = () => {
   const { tenantSlug } = useParams<{ tenantSlug: string }>();
   return <Navigate to={`/demo/${tenantSlug || 'estudio-nova'}/admin`} replace />;
 };
 
-const LegacyAppApplicationRedirect: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  return <Navigate to={`/demo/estudio-nova/admin/solicitudes/${id || ''}`} replace />;
-};
+interface LegacyAppRedirectProps {
+  subpath?: string;
+  isDynamicParam?: 'solicitudes' | 'prestamistas';
+}
 
-const LegacyAppLenderRedirect: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  return <Navigate to={`/demo/estudio-nova/admin/prestamistas/${id || ''}`} replace />;
+const LegacyAppRedirect: React.FC<LegacyAppRedirectProps> = ({ subpath = '', isDynamicParam }) => {
+  const { tenant } = useTenant();
+  const { user, memberships, isQaSession, qaSessionData, isSuperAdmin } = useAuth();
+  const params = useParams<{ id?: string }>();
+  const id = params.id;
+
+  // 1. Resolver el tenant canónico del usuario o contexto
+  let targetSlug = '';
+
+  // Si hay sesión QA activa, tomar su tenant
+  if (isQaSession && qaSessionData?.tenantId) {
+    const qaTenant = getAllRegisteredTenants().find((t) => t.id === qaSessionData.tenantId);
+    if (qaTenant && qaTenant.slug !== 'hipotecaly') {
+      targetSlug = qaTenant.slug;
+    }
+  }
+
+  // Si el usuario tiene tenant resuelto en TenantContext distinto de la matriz central
+  if (!targetSlug && tenant && tenant.slug && tenant.slug !== 'hipotecaly') {
+    targetSlug = tenant.slug;
+  }
+
+  // Si el usuario autenticado tiene membresías
+  if (!targetSlug && memberships && memberships.length > 0) {
+    const primaryOrgId = memberships[0].organizationId;
+    const orgTenant = getAllRegisteredTenants().find((t) => t.id === primaryOrgId);
+    if (orgTenant && orgTenant.slug !== 'hipotecaly') {
+      targetSlug = orgTenant.slug;
+    }
+  }
+
+  // Si estamos en modo demo explícito o URL contiene ?demo=true
+  const isDemo = typeof window !== 'undefined' && (
+    window.location.search.includes('demo=true') ||
+    window.localStorage.getItem('hipotecaly_demo_mode') === 'true'
+  );
+
+  if (!targetSlug && isDemo) {
+    targetSlug = 'estudio-nova';
+  }
+
+  // Si aún no se resolvió tenant
+  if (!targetSlug) {
+    if (isSuperAdmin || user?.app_metadata?.role === 'super_admin' || user?.app_metadata?.is_super_admin) {
+      return <Navigate to="/superadmin" replace />;
+    }
+    // Si no está autenticado o es visitante/solicitante
+    targetSlug = 'estudio-nova';
+  }
+
+  let finalPath = `/demo/${targetSlug}/admin`;
+  if (subpath) {
+    finalPath += `/${subpath}`;
+  }
+  if (isDynamicParam && id) {
+    finalPath += `/${id}`;
+  }
+
+  return <Navigate to={finalPath} replace />;
 };
 
 export const App: React.FC = () => {
@@ -696,25 +755,26 @@ export const App: React.FC = () => {
               {/* ========================================================== */}
               {/* 6. REDIRECCIONES SEGURAS BACKOFFICE LEGACY /app/*         */}
               {/* ========================================================== */}
-              <Route path="/app" element={<Navigate to="/demo/estudio-nova/admin" replace />} />
-              <Route path="/app/solicitudes" element={<Navigate to="/demo/estudio-nova/admin/solicitudes" replace />} />
-              <Route path="/app/solicitudes/:id" element={<LegacyAppApplicationRedirect />} />
-              <Route path="/app/clientes" element={<Navigate to="/demo/estudio-nova/admin/clientes" replace />} />
-              <Route path="/app/leads" element={<Navigate to="/demo/estudio-nova/admin" replace />} />
-              <Route path="/app/propiedades" element={<Navigate to="/demo/estudio-nova/admin/propiedades" replace />} />
-              <Route path="/app/documentos" element={<Navigate to="/demo/estudio-nova/admin/documentos" replace />} />
-              <Route path="/app/tasaciones" element={<Navigate to="/demo/estudio-nova/admin/tasaciones" replace />} />
-              <Route path="/app/tareas" element={<Navigate to="/demo/estudio-nova/admin/tareas" replace />} />
-              <Route path="/app/reportes" element={<Navigate to="/demo/estudio-nova/admin/reportes" replace />} />
-              <Route path="/app/analitica" element={<Navigate to="/demo/estudio-nova/admin/analitica" replace />} />
-              <Route path="/app/auditoria" element={<Navigate to="/demo/estudio-nova/admin/auditoria" replace />} />
-              <Route path="/app/configuracion" element={<Navigate to="/demo/estudio-nova/admin/configuracion" replace />} />
-              <Route path="/app/prestamistas" element={<Navigate to="/demo/estudio-nova/admin/prestamistas" replace />} />
-              <Route path="/app/prestamistas/:id" element={<LegacyAppLenderRedirect />} />
-              <Route path="/app/usuarios" element={<Navigate to="/demo/estudio-nova/admin/usuarios" replace />} />
-              <Route path="/app/organizacion" element={<Navigate to="/demo/estudio-nova/admin/organizacion" replace />} />
-              <Route path="/app/whitelabel" element={<Navigate to="/demo/estudio-nova/admin/whitelabel" replace />} />
-              <Route path="/app/*" element={<Navigate to="/demo/estudio-nova/admin" replace />} />
+              <Route path="/app" element={<LegacyAppRedirect />} />
+              <Route path="/app/solicitudes" element={<LegacyAppRedirect subpath="solicitudes" />} />
+              <Route path="/app/solicitudes/:id" element={<LegacyAppRedirect subpath="solicitudes" isDynamicParam="solicitudes" />} />
+              <Route path="/app/clientes" element={<LegacyAppRedirect subpath="clientes" />} />
+              <Route path="/app/leads" element={<LegacyAppRedirect />} />
+              <Route path="/app/propiedades" element={<LegacyAppRedirect subpath="propiedades" />} />
+              <Route path="/app/documentos" element={<LegacyAppRedirect subpath="documentos" />} />
+              <Route path="/app/tasaciones" element={<LegacyAppRedirect subpath="tasaciones" />} />
+              <Route path="/app/tareas" element={<LegacyAppRedirect subpath="tareas" />} />
+              <Route path="/app/reportes" element={<LegacyAppRedirect subpath="reportes" />} />
+              <Route path="/app/analitica" element={<LegacyAppRedirect subpath="analitica" />} />
+              <Route path="/app/auditoria" element={<LegacyAppRedirect subpath="auditoria" />} />
+              <Route path="/app/configuracion" element={<LegacyAppRedirect subpath="configuracion" />} />
+              <Route path="/app/prestamistas" element={<LegacyAppRedirect subpath="prestamistas" />} />
+              <Route path="/app/prestamistas/:id" element={<LegacyAppRedirect subpath="prestamistas" isDynamicParam="prestamistas" />} />
+              <Route path="/app/inversores" element={<LegacyAppRedirect subpath="inversores" />} />
+              <Route path="/app/usuarios" element={<LegacyAppRedirect subpath="usuarios" />} />
+              <Route path="/app/organizacion" element={<LegacyAppRedirect subpath="organizacion" />} />
+              <Route path="/app/whitelabel" element={<LegacyAppRedirect subpath="whitelabel" />} />
+              <Route path="/app/*" element={<LegacyAppRedirect />} />
 
               {/* ========================================================== */}
               {/* 7. PORTAL LENDER LEGACY MARKETPLACE (Bloqueado por flag)   */}

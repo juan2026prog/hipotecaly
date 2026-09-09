@@ -49,7 +49,7 @@ export const LoginPage: React.FC = () => {
       if (redirectTo) {
         destination = redirectTo;
       } else if (isSuper || role === 'super_admin' || role === 'platform_admin') {
-        destination = '/admin';
+        destination = '/superadmin';
       } else if (role === 'tenant_admin' || role === 'tenant_owner' || role === 'analyst' || role === 'operator') {
         destination = `/demo/${targetTenantSlug}/admin`;
       } else if (role === 'notary') {
@@ -114,7 +114,8 @@ export const LoginPage: React.FC = () => {
       <form onSubmit={handleLogin} className="space-y-4">
         <Input
           label="Usuario o Email"
-          type="text"
+          name="email"
+          type="email"
           required
           placeholder="admin o tu@email.com"
           value={email}
@@ -123,6 +124,7 @@ export const LoginPage: React.FC = () => {
 
         <Input
           label="Contraseña"
+          name="password"
           type="password"
           required
           placeholder="••••••••"
