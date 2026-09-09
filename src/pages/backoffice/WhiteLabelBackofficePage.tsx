@@ -13,10 +13,14 @@ import {
   OrganizationHomeSettings,
   DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS,
   getOrganizationHomeSettings,
-  updateOrganizationHomeSettings,
+  saveHomeDraft,
+  publishHomeVersion,
+  getHomeVersionHistory,
+  rollbackHomeVersion,
   uploadOrganizationAsset,
   HeroBackgroundMode,
   HeroImagePosition,
+  OrganizationHomeVersionItem,
 } from '../../lib/organizationHomeService';
 import { OrganizationHero } from '../../components/organization/OrganizationHero';
 import {
@@ -68,6 +72,10 @@ import {
   Phone,
   MapPin,
   Clock,
+  Search,
+  Share2,
+  Sparkles,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   getActivePolicy,
@@ -126,10 +134,11 @@ export const WhiteLabelBackofficePage: React.FC = () => {
   const [config, setConfig] = useState<WhiteLabelCustomization>(DEFAULT_WHITELABEL_CONFIG);
   const [homeSettings, setHomeSettings] = useState<OrganizationHomeSettings>(DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS);
   const [uploadingHeroImg, setUploadingHeroImg] = useState(false);
+  const [uploadingOgImg, setUploadingOgImg] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<
-    'branding' | 'underwriting' | 'domain' | 'landing' | 'costs' | 'communications' | 'legal' | 'modules'
+    'branding' | 'underwriting' | 'domain' | 'landing' | 'seo' | 'versions' | 'costs' | 'communications' | 'legal' | 'modules'
   >('landing');
 
   const [loading, setLoading] = useState(true);
@@ -138,6 +147,16 @@ export const WhiteLabelBackofficePage: React.FC = () => {
   const [showLivePreview, setShowLivePreview] = useState(true);
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [simulatedDnsChecking, setSimulatedDnsChecking] = useState(false);
+
+  // Estados de Versionado y Publicación de Home (Fase 6)
+  const [homeVersions, setHomeVersions] = useState<OrganizationHomeVersionItem[]>([]);
+  const [showPublishHomeModal, setShowPublishHomeModal] = useState(false);
+  const [homePublishNotes, setHomePublishNotes] = useState('');
+  const [publishingHome, setPublishingHome] = useState(false);
+  const [homePublishToast, setHomePublishToast] = useState<string | null>(null);
+  const [showRollbackModal, setShowRollbackModal] = useState(false);
+  const [selectedRollbackVersion, setSelectedRollbackVersion] = useState<OrganizationHomeVersionItem | null>(null);
+  const [rollingBackHome, setRollingBackHome] = useState(false);
 
   // Estados de Motor de Políticas (Pass 5)
   const [activePolicy, setActivePolicy] = useState<PolicyVersion>(() => getActivePolicy(tenant.id));
@@ -177,14 +196,16 @@ export const WhiteLabelBackofficePage: React.FC = () => {
   useEffect(() => {
     async function loadData() {
       setLoading(true);
-      const [data, homeData, faqsData] = await Promise.all([
+      const [data, homeData, faqsData, versionsData] = await Promise.all([
         getWhiteLabelCustomization(tenant.id, tenant.slug),
-        getOrganizationHomeSettings(tenant.id),
+        getOrganizationHomeSettings(tenant.id, { preview: true }),
         getOrganizationFaqs(tenant.id, false),
+        getHomeVersionHistory(tenant.id),
       ]);
       setConfig(data);
       setHomeSettings(homeData);
       setFaqs(faqsData);
+      setHomeVersions(versionsData);
       setActivePolicy(getActivePolicy(tenant.id));
       setPolicyVersions(getPolicyVersions(tenant.id));
       setActiveCosts(getActiveCosts(tenant.id));
@@ -263,21 +284,107 @@ export const WhiteLabelBackofficePage: React.FC = () => {
     setFaqs(refreshed);
   };
 
-  // Guardar configuración completa (White-Label + Home Settings)
+  // Guardar configuración completa como BORRADOR (White-Label + Home Settings Draft)
   const handleSaveAll = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setSaving(true);
     try {
       await Promise.all([
         saveWhiteLabelCustomization(config),
-        updateOrganizationHomeSettings(tenant.id, homeSettings),
+        saveHomeDraft(tenant.id, homeSettings),
       ]);
+      setHomeSettings((prev) => ({ ...prev, hasUnpublishedChanges: true, status: 'draft' }));
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 4000);
     } catch {
       // Ignorar
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Publicar versión productiva inmutable de la Home (Fase 6)
+  const handlePublishHomeAction = async () => {
+    setPublishingHome(true);
+    try {
+      // 1. Guardar primero cambios pendientes
+      await Promise.all([
+        saveWhiteLabelCustomization(config),
+        saveHomeDraft(tenant.id, homeSettings),
+      ]);
+
+      // 2. Publicar nueva versión
+      const res = await publishHomeVersion(tenant.id, {
+        changelogNotes: homePublishNotes || 'Actualización de contenidos y configuración desde el panel White-Label.',
+        authorName: 'Admin WhiteLabel',
+      });
+
+      if (res.success && res.data) {
+        setHomeSettings(res.data);
+        const history = await getHomeVersionHistory(tenant.id);
+        setHomeVersions(history);
+        setShowPublishHomeModal(false);
+        setHomePublishNotes('');
+        setHomePublishToast(`¡Versión ${res.version?.versionNumber || ''} de la Home publicada con éxito en producción!`);
+        setTimeout(() => setHomePublishToast(null), 5000);
+      } else {
+        alert(res.error || 'Error al publicar la versión');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Error inesperado al publicar');
+    } finally {
+      setPublishingHome(false);
+    }
+  };
+
+  // Restaurar versión histórica (Rollback 1-clic)
+  const handleRollbackHomeAction = async () => {
+    if (!selectedRollbackVersion) return;
+    setRollingBackHome(true);
+    try {
+      const res = await rollbackHomeVersion(tenant.id, selectedRollbackVersion.id, {
+        authorName: 'Admin WhiteLabel',
+      });
+
+      if (res.success && res.data) {
+        setHomeSettings(res.data);
+        const history = await getHomeVersionHistory(tenant.id);
+        setHomeVersions(history);
+        setShowRollbackModal(false);
+        setSelectedRollbackVersion(null);
+        setHomePublishToast(`¡Home restaurada exitosamente a ${selectedRollbackVersion.versionLabel}!`);
+        setTimeout(() => setHomePublishToast(null), 5000);
+      } else {
+        alert(res.error || 'Error al restaurar versión');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Error inesperado al restaurar');
+    } finally {
+      setRollingBackHome(false);
+    }
+  };
+
+  // Subida de imagen para OpenGraph / SEO
+  const handleOgImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingOgImg(true);
+    setUploadError(null);
+    try {
+      const res = await uploadOrganizationAsset(tenant.id, file, 'logo');
+      if (res.success && res.url) {
+        setHomeSettings({
+          ...homeSettings,
+          seoOgImageUrl: res.url,
+        });
+      } else {
+        setUploadError(res.error || 'Error al subir la imagen OpenGraph');
+      }
+    } catch (err: any) {
+      setUploadError(err.message || 'Error inesperado al subir la imagen');
+    } finally {
+      setUploadingOgImg(false);
     }
   };
 
@@ -449,7 +556,7 @@ export const WhiteLabelBackofficePage: React.FC = () => {
         {/* 1. ENCABEZADO Y BARRA DE ACCIONES SUPERIOR                   */}
         {/* ============================================================ */}
         <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <div className="flex items-center space-x-3">
               <div
                 className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-sm"
@@ -458,13 +565,23 @@ export const WhiteLabelBackofficePage: React.FC = () => {
                 {config.publicName.charAt(0)}
               </div>
               <div>
-                <h1 className="text-xl sm:text-2xl font-black text-navy tracking-tight flex items-center gap-2">
-                  <span>{config.publicName}</span>
-                  <span className="text-[11px] font-mono font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
-                    White-Label Activo
-                  </span>
-                </h1>
-                <p className="text-xs text-slate-500">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-xl sm:text-2xl font-black text-navy tracking-tight">
+                    {config.publicName}
+                  </h1>
+                  {homeSettings.hasUnpublishedChanges ? (
+                    <span className="text-[10px] font-mono font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                      Borrador con Cambios Pendientes
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-mono font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      Publicado · Versión {homeSettings.versionNumber || 1}.0
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
                   Instancia: <strong className="font-mono text-navy">{config.slug}</strong> · Dominio:{' '}
                   <span className="font-mono text-brand-green font-bold">{config.customDomain}</span>
                 </p>
@@ -481,27 +598,47 @@ export const WhiteLabelBackofficePage: React.FC = () => {
               }`}
             >
               {showLivePreview ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-              <span>{showLivePreview ? 'Ocultar Vista Previa' : 'Ver Vista Previa'}</span>
+              <span>{showLivePreview ? 'Ocultar Mini-Preview' : 'Ver Mini-Preview'}</span>
             </button>
 
             <Link
-              to={`/org/${config.slug}`}
+              to={`/demo/${tenant.slug || 'estudio-nova'}?preview=true`}
+              target="_blank"
+              className="px-3 py-2 rounded-xl text-xs font-bold bg-amber-50 border border-amber-300 text-amber-950 hover:bg-amber-100 transition-colors flex items-center space-x-1.5 shadow-xs"
+              title="Abrir vista previa del borrador sin publicar"
+            >
+              <Eye className="w-3.5 h-3.5 text-amber-700" />
+              <span>Vista Previa (Borrador)</span>
+            </Link>
+
+            <Link
+              to={`/demo/${tenant.slug || 'estudio-nova'}`}
               target="_blank"
               className="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-slate-200 text-slate-700 hover:text-navy hover:bg-slate-50 transition-colors flex items-center space-x-1.5"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              <span>Abrir Portal Real</span>
+              <span>Ver Sitio Público</span>
             </Link>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleSaveAll()}
+              disabled={saving}
+              className="shadow-sm font-bold border-slate-300 text-slate-700 hover:bg-slate-50"
+            >
+              <Save className="w-4 h-4 mr-1.5 text-slate-600" />
+              {saving ? 'Guardando...' : 'Guardar Borrador'}
+            </Button>
 
             <Button
               variant="primary"
               size="sm"
-              onClick={() => handleSaveAll()}
-              disabled={saving}
-              className="shadow-sm font-bold"
+              onClick={() => setShowPublishHomeModal(true)}
+              className="shadow-md font-bold bg-[#102d49] hover:bg-[#173a5e] text-white"
             >
-              <Save className="w-4 h-4 mr-1.5" />
-              {saving ? 'Guardando...' : 'Guardar y Aplicar'}
+              <Sparkles className="w-4 h-4 mr-1.5 text-[#f4b43b]" />
+              Publicar Versión
             </Button>
           </div>
         </div>
@@ -511,9 +648,20 @@ export const WhiteLabelBackofficePage: React.FC = () => {
           <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold flex items-center justify-between animate-fadeIn">
             <div className="flex items-center space-x-2">
               <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-              <span>¡Configuración White-Label aplicada en caliente y persistida exitosamente en toda la plataforma!</span>
+              <span>¡Borrador guardado exitosamente! Podés probarlo en Vista Previa antes de publicar.</span>
             </div>
-            <span className="text-[10px] font-mono text-emerald-600 uppercase">CSS & Reglas Actualizadas</span>
+            <span className="text-[10px] font-mono text-emerald-600 uppercase">Borrador Actualizado</span>
+          </div>
+        )}
+
+        {/* Notificación de publicación de Home exitosa */}
+        {homePublishToast && (
+          <div className="p-4 bg-emerald-900 text-white rounded-xl text-xs font-bold flex items-center justify-between shadow-lg animate-fadeIn">
+            <div className="flex items-center space-x-2">
+              <Sparkles className="w-5 h-5 text-[#f4b43b] shrink-0" />
+              <span>{homePublishToast}</span>
+            </div>
+            <span className="text-[10px] font-mono text-emerald-300 uppercase">Publicación Inmutable</span>
           </div>
         )}
 
@@ -533,9 +681,11 @@ export const WhiteLabelBackofficePage: React.FC = () => {
               >
                 {[
                   { id: 'branding', label: 'Identidad & Marca', icon: '🎨' },
+                  { id: 'landing', label: 'Sitio Web & Home', icon: '📱' },
+                  { id: 'seo', label: 'SEO & Metadatos', icon: '🔍' },
+                  { id: 'versions', label: 'Historial de Versiones', icon: '📜' },
                   { id: 'underwriting', label: 'Políticas & Riesgo', icon: '⚖️' },
                   { id: 'domain', label: 'Dominio & SSL', icon: '🌐' },
-                  { id: 'landing', label: 'Landing & Funnel', icon: '📱' },
                   { id: 'costs', label: 'Costos & Honorarios', icon: '💰' },
                   { id: 'communications', label: 'Comunicaciones', icon: '📧' },
                   { id: 'legal', label: 'Legal & Privacidad', icon: '🛡️' },
@@ -554,9 +704,11 @@ export const WhiteLabelBackofficePage: React.FC = () => {
               <nav className="p-2 space-y-0.5">
                 {[
                   { id: 'branding', label: 'Identidad & Marca', icon: Palette, desc: 'Colores, logos, tipografía' },
+                  { id: 'landing', label: 'Sitio Web & Home', icon: Layout, desc: 'Hero, secciones, FAQ' },
+                  { id: 'seo', label: 'SEO & Metadatos', icon: Search, desc: 'Google SERP, OpenGraph, redes' },
+                  { id: 'versions', label: 'Historial de Versiones', icon: History, desc: 'Changelogs y rollback 1-clic' },
                   { id: 'underwriting', label: 'Políticas & Riesgo', icon: Sliders, desc: 'Tasas, LTV, requisitos' },
                   { id: 'domain', label: 'Dominio & SSL', icon: Globe, desc: 'Dominio, CNAME, email' },
-                  { id: 'landing', label: 'Landing & Funnel', icon: Layout, desc: 'Hero, CTA, pasos' },
                   { id: 'costs', label: 'Costos & Honorarios', icon: Receipt, desc: 'Honorarios, gastos' },
                   { id: 'communications', label: 'Comunicaciones', icon: Mail, desc: 'Plantillas, canales' },
                   { id: 'legal', label: 'Legal & Privacidad', icon: ShieldAlert, desc: 'T&C, privacidad' },
@@ -2180,6 +2332,333 @@ export const WhiteLabelBackofficePage: React.FC = () => {
               </div>
             )}
 
+            {/* -------------------------------------------------------- */}
+            {/* TAB: SEO & METADATOS (FASE 6)                            */}
+            {/* -------------------------------------------------------- */}
+            {activeTab === 'seo' && (
+              <div className="space-y-6">
+                <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+                  <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-base font-bold text-navy flex items-center gap-2">
+                        <Search className="w-5 h-5 text-brand-green" /> Posicionamiento SEO y Metadatos de la Home
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Configurá cómo aparece tu portal en Google, WhatsApp, redes sociales y motores de búsqueda.
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold bg-blue-100 text-blue-800 px-2.5 py-1 rounded-full border border-blue-200 shrink-0">
+                      SEO Dinámico
+                    </span>
+                  </div>
+
+                  <div className="space-y-5">
+                    {/* 1. Título SEO */}
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="text-xs font-bold text-slate-700">
+                          Título de Página para Motores de Búsqueda (&lt;title&gt; / og:title)
+                        </label>
+                        <span className={`text-[11px] font-mono font-bold ${
+                          (homeSettings.seoTitle?.length || 0) > 60 ? 'text-amber-600' : 'text-slate-400'
+                        }`}>
+                          {homeSettings.seoTitle?.length || 0} / 60 car. (Recomendado: 50-60)
+                        </span>
+                      </div>
+                      <input
+                        type="text"
+                        value={homeSettings.seoTitle || ''}
+                        onChange={(e) => setHomeSettings({ ...homeSettings, seoTitle: e.target.value })}
+                        placeholder={`${config.publicName} — ${config.tagline || 'Financiación & Inversión Hipotecaria'}`}
+                        className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs font-bold text-navy focus:border-navy"
+                      />
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        Este título se muestra en la pestaña del navegador y como encabezado azul en los resultados de Google.
+                      </p>
+                    </div>
+
+                    {/* 2. Meta Descripción */}
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="text-xs font-bold text-slate-700">
+                          Meta Descripción (&lt;meta name="description"&gt; / og:description)
+                        </label>
+                        <span className={`text-[11px] font-mono font-bold ${
+                          (homeSettings.seoDescription?.length || 0) > 160 ? 'text-amber-600' : 'text-slate-400'
+                        }`}>
+                          {homeSettings.seoDescription?.length || 0} / 160 car. (Recomendado: 120-160)
+                        </span>
+                      </div>
+                      <textarea
+                        rows={3}
+                        value={homeSettings.seoDescription || ''}
+                        onChange={(e) => setHomeSettings({ ...homeSettings, seoDescription: e.target.value })}
+                        placeholder="Estructuración de operaciones de crédito con respaldo en activos inmobiliarios en Uruguay. Evaluación ágil y formalización notarial."
+                        className="w-full p-3 rounded-lg border border-slate-300 text-xs text-navy focus:border-navy leading-relaxed"
+                      />
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        Breve resumen comercial para el snippet de búsqueda y previsualizaciones al compartir enlaces.
+                      </p>
+                    </div>
+
+                    {/* 3. Palabras Clave */}
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">
+                        Palabras Clave (Keywords separadas por coma)
+                      </label>
+                      <input
+                        type="text"
+                        value={homeSettings.seoKeywords || ''}
+                        onChange={(e) => setHomeSettings({ ...homeSettings, seoKeywords: e.target.value })}
+                        placeholder="creditos hipotecarios uruguay, prestamos con garantia inmobiliaria, estudio nova"
+                        className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs text-slate-700 focus:border-navy"
+                      />
+                    </div>
+
+                    {/* 4. URL Canónica */}
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">
+                        URL Canónica (Canonical Link)
+                      </label>
+                      <input
+                        type="text"
+                        value={homeSettings.seoCanonicalUrl || ''}
+                        onChange={(e) => setHomeSettings({ ...homeSettings, seoCanonicalUrl: e.target.value })}
+                        placeholder={`https://hipotecaly.vercel.app/demo/${tenant.slug || 'estudio-nova'}`}
+                        className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs font-mono text-slate-700 focus:border-navy"
+                      />
+                    </div>
+
+                    {/* 5. Imagen Social / OpenGraph */}
+                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                          <label className="text-xs font-bold text-navy block">
+                            Imagen para Redes Sociales y WhatsApp (OpenGraph Image)
+                          </label>
+                          <span className="text-[11px] text-slate-500">
+                            Recomendado: 1200x630 px. Formato JPG o PNG.
+                          </span>
+                        </div>
+                        <label className={`px-3 py-1.5 rounded-lg text-xs font-bold bg-white border border-slate-300 text-slate-700 hover:text-navy cursor-pointer flex items-center space-x-1.5 transition-colors ${uploadingOgImg ? 'opacity-50 pointer-events-none' : ''}`}>
+                          <UploadCloud className="w-3.5 h-3.5 text-brand-green" />
+                          <span>{uploadingOgImg ? 'Subiendo...' : 'Subir Imagen OG'}</span>
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={handleOgImageUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+
+                      <input
+                        type="text"
+                        value={homeSettings.seoOgImageUrl || ''}
+                        onChange={(e) => setHomeSettings({ ...homeSettings, seoOgImageUrl: e.target.value })}
+                        placeholder="https://..."
+                        className="w-full h-9 px-3 rounded-lg border border-slate-300 text-xs font-mono text-slate-700"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. PREVIEWS EN VIVO: GOOGLE Y SOCIAL CARDS */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  
+                  {/* Google Search SERP Snippet Preview */}
+                  <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+                    <div className="border-b border-slate-100 pb-2.5 flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-navy uppercase tracking-wider flex items-center gap-1.5">
+                        <Search className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Vista Previa en Google Búsqueda</span>
+                      </h4>
+                      <span className="text-[10px] font-mono text-slate-400">SERP Snippet</span>
+                    </div>
+
+                    <div className="p-4 bg-[#f8f9fa] rounded-xl border border-slate-200 font-sans space-y-1.5 text-left">
+                      <div className="flex items-center space-x-2 text-[11px] text-[#202124]">
+                        <div className="w-4 h-4 rounded-full bg-slate-200 flex items-center justify-center text-[9px] font-bold text-slate-700">
+                          {config.publicName.charAt(0)}
+                        </div>
+                        <div className="truncate">
+                          <span className="text-[#202124] font-medium">{config.publicName}</span>
+                          <span className="text-[#5f6368] text-[10px] ml-1">
+                            · https://hipotecaly.vercel.app/demo/{tenant.slug || 'estudio-nova'}
+                          </span>
+                        </div>
+                      </div>
+                      <h3 className="text-base text-[#1a0dab] hover:underline font-normal cursor-pointer leading-snug truncate">
+                        {homeSettings.seoTitle || `${config.publicName} — ${config.tagline || 'Financiación & inversión'}`}
+                      </h3>
+                      <p className="text-xs text-[#4d5156] leading-relaxed line-clamp-2">
+                        {homeSettings.seoDescription || homeSettings.heroDescription || 'Estructuración de operaciones de crédito con respaldo en activos inmobiliarios en Uruguay.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Social / WhatsApp Card Preview */}
+                  <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+                    <div className="border-b border-slate-100 pb-2.5 flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-navy uppercase tracking-wider flex items-center gap-1.5">
+                        <Share2 className="w-3.5 h-3.5 text-brand-green" />
+                        <span>Vista Previa en Redes y WhatsApp</span>
+                      </h4>
+                      <span className="text-[10px] font-mono text-slate-400">OpenGraph Card</span>
+                    </div>
+
+                    <div className="rounded-xl overflow-hidden border border-slate-300 bg-slate-50 text-left shadow-sm">
+                      <div className="h-32 bg-slate-200 relative overflow-hidden">
+                        <img
+                          src={homeSettings.seoOgImageUrl || homeSettings.heroBackgroundImageUrl || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1920&q=80'}
+                          alt="OpenGraph preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="p-3.5 bg-white space-y-1">
+                        <span className="text-[10px] font-mono uppercase font-bold text-slate-400 block tracking-wider">
+                          HIPOTECALY.VERCEL.APP
+                        </span>
+                        <h4 className="text-xs font-bold text-navy line-clamp-1">
+                          {homeSettings.seoTitle || `${config.publicName} — ${config.tagline || 'Financiación & inversión'}`}
+                        </h4>
+                        <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
+                          {homeSettings.seoDescription || homeSettings.heroDescription || 'Estructuración de operaciones de crédito con respaldo en activos inmobiliarios en Uruguay.'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            )}
+
+            {/* -------------------------------------------------------- */}
+            {/* TAB: HISTORIAL DE VERSIONES & ROLLBACK (FASE 6)          */}
+            {/* -------------------------------------------------------- */}
+            {activeTab === 'versions' && (
+              <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+                <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-bold text-navy flex items-center gap-2">
+                      <History className="w-5 h-5 text-brand-green" /> Historial Inmutable de Versiones de la Home
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Cada publicación genera una versión congelada e inmutable con notas de cambios y restauración en 1 clic.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setShowPublishHomeModal(true)}
+                    className="font-bold shrink-0 bg-[#102d49] hover:bg-[#173a5e] text-white"
+                  >
+                    <Sparkles className="w-4 h-4 mr-1.5 text-[#f4b43b]" />
+                    Publicar Nueva Versión
+                  </Button>
+                </div>
+
+                {/* Banner de Estado de Versión Actual */}
+                <div className="p-4 rounded-xl bg-gradient-to-r from-slate-900 to-[#102d49] text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center space-x-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="text-xs font-mono font-bold text-[#f4b43b] uppercase tracking-wider">
+                        Versión Activa en Producción
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold text-white">
+                      Versión {homeSettings.versionNumber || 1}.0
+                    </h4>
+                    <p className="text-[11px] text-slate-300">
+                      {homeSettings.hasUnpublishedChanges
+                        ? '🟡 Existen cambios en borrador pendientes de publicar.'
+                        : '🟢 Todo el contenido en producción se encuentra 100% sincronizado con la última versión.'}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="text-[10px] text-slate-400 block">Total Versiones</span>
+                    <span className="text-lg font-black font-mono text-emerald-400">
+                      {homeVersions.length} Registradas
+                    </span>
+                  </div>
+                </div>
+
+                {/* Tabla de Versiones */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-navy uppercase tracking-wider">
+                      Registro de Auditoría de Versiones
+                    </h4>
+                  </div>
+
+                  <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 overflow-hidden text-xs">
+                    {homeVersions.length === 0 ? (
+                      <div className="p-8 text-center text-slate-400">
+                        No hay versiones previas registradas. La primera publicación creará la Versión 1.0.
+                      </div>
+                    ) : (
+                      homeVersions.map((ver) => {
+                        const isCurrentActive = ver.isActive;
+                        return (
+                          <div
+                            key={ver.id}
+                            className={`p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors ${
+                              isCurrentActive ? 'bg-emerald-50/40' : 'bg-white hover:bg-slate-50'
+                            }`}
+                          >
+                            <div className="space-y-1 min-w-0">
+                              <div className="flex items-center space-x-2">
+                                <strong className="text-navy font-bold text-sm">{ver.versionLabel}</strong>
+                                {isCurrentActive ? (
+                                  <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                                    ACTIVA EN PRODUCCIÓN
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                                    HISTÓRICA
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-slate-700">
+                                {ver.changelogNotes || 'Sin notas descriptivas'}
+                              </p>
+                              <div className="flex items-center space-x-3 text-[11px] text-slate-400">
+                                <span>Autor: <strong>{ver.authorName}</strong></span>
+                                <span>·</span>
+                                <span>Fecha: {new Date(ver.publishedAt || ver.createdAt).toLocaleString('es-UY')}</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-2 shrink-0">
+                              {isCurrentActive ? (
+                                <span className="text-xs font-bold text-emerald-700 px-3 py-1.5 rounded-lg bg-emerald-100/60 border border-emerald-200">
+                                  ✓ Versión Vigente
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedRollbackVersion(ver);
+                                    setShowRollbackModal(true);
+                                  }}
+                                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white border border-slate-300 text-slate-700 hover:text-navy hover:bg-slate-100 transition-colors flex items-center space-x-1"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
+                                  <span>Restaurar esta Versión</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Modal para Crear Nueva FAQ */}
             {showNewFaqModal && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
@@ -2952,6 +3431,144 @@ export const WhiteLabelBackofficePage: React.FC = () => {
                 className="px-4 py-2 rounded-xl bg-[#102d49] hover:bg-[#173a5e] text-white font-bold"
               >
                 {publishing ? 'Publicando...' : 'Confirmar Publicación'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Publicar Nueva Versión de la Home (Fase 6) */}
+      {showPublishHomeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 text-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-1.5">
+                <Sparkles className="w-4 h-4 text-[#f4b43b]" />
+                <span>Publicar Versión {(homeSettings.versionNumber || 1) + 1}.0 en Producción</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowPublishHomeModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-slate-600 leading-relaxed">
+              Esta acción congelará el borrador actual en un snapshot inmutable, actualizará la versión pública visible para todos los usuarios y registrará el cambio con fecha y autor.
+            </p>
+
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 text-[11px]">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Organización:</span>
+                <strong className="text-navy">{config.publicName}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Nueva versión:</span>
+                <strong className="font-mono text-emerald-700 font-bold">
+                  Versión {(homeSettings.versionNumber || 1) + 1}.0
+                </strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Hero Eyebrow:</span>
+                <span className="text-navy font-mono truncate max-w-[240px]">{homeSettings.heroEyebrow}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Título SEO:</span>
+                <span className="text-navy font-mono truncate max-w-[240px]">{homeSettings.seoTitle}</span>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-bold text-slate-700 block">
+                Resumen de Cambios (Changelog Notes):
+              </label>
+              <textarea
+                rows={3}
+                value={homePublishNotes}
+                onChange={(e) => setHomePublishNotes(e.target.value)}
+                placeholder="Ej: Actualización de textos en Hero, adición de nuevas FAQs y optimización de metadatos SEO..."
+                className="w-full p-2.5 rounded-xl border border-slate-300 text-xs text-navy focus:border-navy"
+              />
+            </div>
+
+            <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowPublishHomeModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={publishingHome}
+                onClick={handlePublishHomeAction}
+                className="px-4 py-2 rounded-xl bg-[#102d49] hover:bg-[#173a5e] text-white font-bold flex items-center space-x-1.5"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-[#f4b43b]" />
+                <span>{publishingHome ? 'Publicando...' : 'Confirmar y Publicar'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Confirmar Rollback de Versión (Fase 6) */}
+      {showRollbackModal && selectedRollbackVersion && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 text-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-1.5 text-amber-700">
+                <AlertTriangle className="w-4 h-4 text-amber-600" />
+                <span>Restaurar {selectedRollbackVersion.versionLabel}</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRollbackModal(false);
+                  setSelectedRollbackVersion(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-slate-600 leading-relaxed">
+              ¿Estás seguro de que deseas restaurar la Home al estado de <strong>{selectedRollbackVersion.versionLabel}</strong>?
+            </p>
+
+            <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 space-y-1 text-amber-900 text-[11px]">
+              <div><strong>Fecha original:</strong> {new Date(selectedRollbackVersion.publishedAt || selectedRollbackVersion.createdAt).toLocaleString('es-UY')}</div>
+              <div><strong>Autor original:</strong> {selectedRollbackVersion.authorName}</div>
+              <div><strong>Notas originales:</strong> {selectedRollbackVersion.changelogNotes}</div>
+            </div>
+
+            <p className="text-slate-500 text-[11px]">
+              Esta operación restaurará los textos, apariencia, secciones y SEO exactamente como estaban en dicho snapshot y publicará una nueva versión de restauración.
+            </p>
+
+            <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRollbackModal(false);
+                  setSelectedRollbackVersion(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={rollingBackHome}
+                onClick={handleRollbackHomeAction}
+                className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold flex items-center space-x-1.5"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>{rollingBackHome ? 'Restaurando...' : 'Confirmar Restauración'}</span>
               </button>
             </div>
           </div>

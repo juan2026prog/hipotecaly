@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link, useParams } from 'react-router-dom';
+import { useNavigate, Link, useParams, useSearchParams } from 'react-router-dom';
 import {
   Phone,
   Mail,
@@ -22,6 +22,8 @@ import {
   Compass,
   ShieldCheck,
   Award,
+  Eye,
+  ArrowLeft,
 } from 'lucide-react';
 import { useTenant } from '../../../contexts/TenantContext';
 import {
@@ -52,6 +54,7 @@ import { OrganizationHero } from '../../../components/organization/OrganizationH
 import { Button } from '../../../components/ui/Button';
 import { CurrencyInput } from '../../../components/ui/CurrencyInput';
 import { WhatsAppFloatingButton } from '../../../components/whatsapp/WhatsAppFloatingButton';
+import { useOrganizationSeo } from '../../../hooks/useOrganizationSeo';
 
 // Mapeo dinámico y seguro de iconos para las tarjetas de la Home
 const ICON_MAP: Record<string, React.FC<{ className?: string }>> = {
@@ -70,7 +73,10 @@ const ICON_MAP: Record<string, React.FC<{ className?: string }>> = {
 export const EstudioNovaPage: React.FC = () => {
   const { tenant } = useTenant();
   const { tenantSlug } = useParams<{ tenantSlug?: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+
+  const isPreview = searchParams.get('preview') === 'true';
 
   // Resolución dinámica de organización
   const effectiveOrgId = tenant?.id && tenant.id !== '00000000-0000-0000-0000-000000000000'
@@ -98,6 +104,13 @@ export const EstudioNovaPage: React.FC = () => {
   const [modules, setModules] = useState<Record<TenantModuleKey, boolean>>(DEFAULT_MODULES_MAP);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
+  // Inyección dinámica de SEO / Metadatos
+  useOrganizationSeo({
+    settings: homeSettings,
+    orgName,
+    orgTagline,
+  });
+
   // Estados del simulador
   const [propertyValue, setPropertyValue] = useState<number>(200000);
   const [loanAmount, setLoanAmount] = useState<number>(70000);
@@ -106,8 +119,6 @@ export const EstudioNovaPage: React.FC = () => {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   useEffect(() => {
-    document.title = `${orgName} — ${orgTagline}`;
-
     // 1. Cargar Reglas Crediticias del Tenant
     getTenantLendingRules(effectiveOrgId).then((r) => setRules(r));
     const unsubscribeRules = subscribeToTenantRules((updatedTenantId, updatedRules) => {
@@ -116,8 +127,8 @@ export const EstudioNovaPage: React.FC = () => {
       }
     });
 
-    // 2. Cargar Configuración de Home de la Organización
-    getOrganizationHomeSettings(effectiveOrgId).then((h) => setHomeSettings(h));
+    // 2. Cargar Configuración de Home de la Organización (con soporte preview)
+    getOrganizationHomeSettings(effectiveOrgId, { preview: isPreview }).then((h) => setHomeSettings(h));
     const unsubscribeHome = subscribeToOrganizationHomeSettings((updatedOrgId, updatedSettings) => {
       if (updatedOrgId === effectiveOrgId) {
         setHomeSettings(updatedSettings);
@@ -140,7 +151,7 @@ export const EstudioNovaPage: React.FC = () => {
       unsubscribeHome();
       unsubscribeFaqs();
     };
-  }, [effectiveOrgId, orgName, orgTagline]);
+  }, [effectiveOrgId, isPreview]);
 
   // Cálculos dinámicos del simulador
   const financedPercentage = propertyValue > 0 ? (loanAmount / propertyValue) * 100 : 0;
@@ -182,6 +193,38 @@ export const EstudioNovaPage: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-white text-[#27384a] font-sans antialiased selection:bg-[#f4b43b] selection:text-[#102d49]">
       
+      {/* ============================================================== */}
+      {/* 0. BANNER MODO VISTA PREVIA (BORRADOR NO PUBLICADO)            */}
+      {/* ============================================================== */}
+      {isPreview && (
+        <div className="bg-amber-500 text-slate-950 px-4 py-2 text-xs font-bold shadow-md sticky top-0 z-50 flex items-center justify-between border-b border-amber-600">
+          <div className="max-w-7xl mx-auto w-full flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div className="flex items-center space-x-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-slate-950 animate-ping shrink-0" />
+              <Eye className="w-4 h-4 shrink-0" />
+              <span>
+                MODO VISTA PREVIA — Estás viendo el borrador de trabajo con cambios pendientes de publicación.
+              </span>
+            </div>
+            <div className="flex items-center space-x-3">
+              <Link
+                to={`/demo/${effectiveSlug}/admin/whitelabel`}
+                className="inline-flex items-center px-3 py-1 bg-slate-950 text-white rounded text-[11px] font-bold uppercase tracking-wider hover:bg-slate-900 transition-colors"
+              >
+                <ArrowLeft className="w-3 h-3 mr-1.5" />
+                Volver al Backoffice
+              </Link>
+              <Link
+                to={`/demo/${effectiveSlug}`}
+                className="text-[11px] font-semibold underline text-slate-900 hover:text-black transition-colors"
+              >
+                Ver Sitio Público
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ============================================================== */}
       {/* 1. TOPBAR INSTITUCIONAL (DATOS COMPARTIDOS DRY)                */}
       {/* ============================================================== */}
