@@ -242,6 +242,7 @@ function filterAuditLogsLocally(list: AuditLogEntry[], module?: string, search?:
 export const AuditService = {
   logAction: (params: {
     organizationId?: string;
+    organization_id?: string;
     userId?: string;
     userName?: string;
     user_name?: string;
@@ -253,6 +254,7 @@ export const AuditService = {
     record_identifier?: string;
     entityId?: string;
     applicationId?: string;
+    application_id?: string;
     oldValue?: string | null;
     old_value?: string | null;
     newValue?: string | null;
@@ -261,7 +263,7 @@ export const AuditService = {
     ipAddress?: string;
   }) =>
     logAuditEvent({
-      organizationId: params.organizationId,
+      organizationId: params.organizationId || params.organization_id,
       userId: params.userId,
       userName: params.userName || params.user_name,
       userRole: params.userRole || params.user_role,
@@ -269,7 +271,7 @@ export const AuditService = {
       module: params.module,
       recordIdentifier: params.recordIdentifier || params.record_identifier || 'system',
       entityId: params.entityId,
-      applicationId: params.applicationId,
+      applicationId: params.applicationId || params.application_id,
       oldValue: params.oldValue || params.old_value,
       newValue: params.newValue || params.new_value,
       metadata: params.metadata,
@@ -277,3 +279,5 @@ export const AuditService = {
     }),
   getAuditLogs,
 };
+
+export const auditService = AuditService;

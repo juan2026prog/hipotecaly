@@ -21,8 +21,13 @@ export const NotaryCalendarPage: React.FC = () => {
 
   useEffect(() => {
     const load = async () => {
-      const evs = await calendarService.getEventsByOrganization(tenant.id || 'd0000000-0000-0000-0000-000000000001');
-      setCalendarEvents(evs);
+      const evs = await calendarService.getEventsByOrganization(tenant.id);
+      if (evs && evs.length > 0) {
+        setCalendarEvents(evs);
+      } else {
+        const fallback = await calendarService.getAllScheduledSignatures();
+        setCalendarEvents(fallback);
+      }
     };
     load();
   }, [tenant.id]);

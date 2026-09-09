@@ -21,6 +21,7 @@ import {
   Calendar,
   MapPin,
   Users,
+  Download,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import {
@@ -30,6 +31,7 @@ import {
 } from '../../lib/clientPortalService';
 import { calendarService, HipotecalyCalendarEvent } from '../../lib/calendar/calendarService';
 import { generateGoogleCalendarWebLink } from '../../lib/calendar/googleCalendarIntegration';
+import { downloadIcsFile } from '../../lib/calendar/icsExport';
 import { MockSigningModal } from '../../components/signature/MockSigningModal';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -456,7 +458,17 @@ export const ApplicationDetailView: React.FC<ApplicationDetailViewProps> = ({
                       </div>
                     )}
 
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-end">
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-end space-x-2 flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => downloadIcsFile(ev)}
+                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors flex items-center space-x-1.5 border border-slate-200"
+                        title="Descargar archivo universal .ics (Apple, Outlook, etc.)"
+                      >
+                        <Download className="w-3.5 h-3.5 text-slate-600" />
+                        <span>Descargar (.ics)</span>
+                      </button>
+
                       <a
                         href={generateGoogleCalendarWebLink(ev)}
                         target="_blank"

@@ -39,6 +39,8 @@ export function generateGoogleCalendarWebLink(event: HipotecalyCalendarEvent): s
   }
 }
 
+const memorySyncStates = new Map<string, boolean>();
+
 /**
  * Consulta el estado de conexión de Google Calendar del usuario profesional.
  */
@@ -54,11 +56,15 @@ export async function getUserCalendarIntegrationState(userId: string): Promise<{
       .eq('provider', 'google_calendar')
       .maybeSingle();
 
-    if (data && data.sync_enabled) {
-      return { isConnected: true, calendarId: data.calendar_id || 'primary' };
+    if (data && data.sync_enabled !== undefined) {
+      return { isConnected: Boolean(data.sync_enabled), calendarId: data.calendar_id || 'primary' };
     }
   } catch {
     // Fallback local
+  }
+
+  if (memorySyncStates.has(userId)) {
+    return { isConnected: Boolean(memorySyncStates.get(userId)), calendarId: 'primary' };
   }
 
   const localState = typeof window !== 'undefined' ? window.localStorage.getItem(`gcal_sync_${userId}`) : null;
@@ -73,6 +79,7 @@ export async function setUserCalendarIntegrationState(
   organizationId: string,
   enabled: boolean
 ): Promise<boolean> {
+  memorySyncStates.set(userId, enabled);
   try {
     await supabase.from('user_calendar_integrations').upsert({
       user_id: userId,

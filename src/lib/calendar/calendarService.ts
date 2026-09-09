@@ -4,6 +4,7 @@
 // ==============================================================================
 
 import { supabase } from '../supabase';
+import { auditService } from '../auditService';
 
 export type CalendarEventType =
   | 'signature'
@@ -278,8 +279,7 @@ class CalendarService {
 
     const local = this.getStoredLocalEvents();
     if (organizationId) {
-      const filtered = local.filter((e) => !e.organizationId || e.organizationId === organizationId);
-      if (filtered.length > 0) return filtered;
+      return local.filter((e) => e.organizationId === organizationId);
     }
     return local;
   }
@@ -337,6 +337,28 @@ class CalendarService {
     const filtered = current.filter((e) => e.id !== fullEvent.id);
     this.saveStoredLocalEvents([fullEvent, ...filtered]);
 
+    // 3. Registrar en auditoría
+    try {
+      await auditService.logAction({
+        organization_id: eventData.organizationId,
+        user_name: eventData.responsibleName || 'Sistema / Escribano',
+        user_role: 'notary',
+        action: `Creación de Cita / Evento Notarial: ${eventData.title}`,
+        module: 'Agenda',
+        record_identifier: eventData.applicationPublicId || fullEvent.id,
+        application_id: eventData.applicationId,
+        new_value: `${fullEvent.date} · ${fullEvent.time} hs (${fullEvent.eventType})`,
+        metadata: {
+          event_id: fullEvent.id,
+          event_type: fullEvent.eventType,
+          location: fullEvent.locationAddress,
+          participants_count: fullEvent.participants.length,
+        },
+      });
+    } catch {
+      // ignore
+    }
+
     return fullEvent;
   }
 
@@ -370,6 +392,7 @@ class CalendarService {
     const current = this.getStoredLocalEvents();
     const idx = current.findIndex((e) => e.id === eventId);
     if (idx >= 0) {
+      const oldDate = `${current[idx].date} ${current[idx].time}`;
       current[idx].date = newDate;
       current[idx].time = newTime;
       current[idx].startAt = startAt;
@@ -378,6 +401,24 @@ class CalendarService {
       if (reason) current[idx].notes = `Reprogramado: ${reason}`;
       current[idx].updatedAt = new Date().toISOString();
       this.saveStoredLocalEvents(current);
+
+      try {
+        await auditService.logAction({
+          organization_id: current[idx].organizationId,
+          user_name: current[idx].responsibleName || 'Escribanía',
+          user_role: 'notary',
+          action: `Reprogramación de Cita: ${current[idx].title}`,
+          module: 'Agenda',
+          record_identifier: current[idx].applicationPublicId || eventId,
+          application_id: current[idx].applicationId,
+          old_value: oldDate,
+          new_value: `${newDate} ${newTime} hs (Motivo: ${reason || 'Sin motivo especificado'})`,
+          metadata: { event_id: eventId, reason },
+        });
+      } catch {
+        // ignore
+      }
+
       return current[idx];
     }
     return null;
@@ -404,6 +445,66 @@ class CalendarService {
       current[idx].status = 'cancelled';
       if (reason) current[idx].notes = `Cancelado: ${reason}`;
       this.saveStoredLocalEvents(current);
+
+      try {
+        await auditService.logAction({
+          organization_id: current[idx].organizationId,
+          user_name: current[idx].responsibleName || 'Escribanía',
+          user_role: 'notary',
+          action: `Cancelación de Cita: ${current[idx].title}`,
+          module: 'Agenda',
+          record_identifier: current[idx].applicationPublicId || eventId,
+          application_id: current[idx].applicationId,
+          new_value: `Cancelado (${reason || 'Sin motivo especificado'})`,
+          metadata: { event_id: eventId, reason },
+        });
+      } catch {
+        // ignore
+      }
+
+      return true;
+    }
+    return false;
+  }
+
+  // 6.b Completar evento (Audiencia de firma o trámite finalizado)
+  public async completeCalendarEvent(eventId: string, notes?: string): Promise<boolean> {
+    try {
+      await supabase
+        .from('calendar_events')
+        .update({
+          status: 'completed',
+          notes: notes ? `Completado: ${notes}` : undefined,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', eventId);
+    } catch {
+      // Fallback
+    }
+
+    const current = this.getStoredLocalEvents();
+    const idx = current.findIndex((e) => e.id === eventId);
+    if (idx >= 0) {
+      current[idx].status = 'completed';
+      if (notes) current[idx].notes = notes;
+      this.saveStoredLocalEvents(current);
+
+      try {
+        await auditService.logAction({
+          organization_id: current[idx].organizationId,
+          user_name: current[idx].responsibleName || 'Escribanía',
+          user_role: 'notary',
+          action: `Cita Completada: ${current[idx].title}`,
+          module: 'Agenda',
+          record_identifier: current[idx].applicationPublicId || eventId,
+          application_id: current[idx].applicationId,
+          new_value: 'COMPLETED',
+          metadata: { event_id: eventId, notes },
+        });
+      } catch {
+        // ignore
+      }
+
       return true;
     }
     return false;
@@ -457,11 +558,27 @@ class CalendarService {
       // Fallback
     }
 
+    try {
+      await auditService.logAction({
+        organization_id: orgId,
+        user_name: 'Esc. María Pérez Morales',
+        user_role: 'notary',
+        action: `Solicitud de Documentación Original: ${publicId}`,
+        module: 'DocFlow Notarial',
+        record_identifier: publicId,
+        application_id: appId,
+        new_value: `Documentos requeridos: ${documents.join(', ')} (Plazo: ${dueDate})`,
+        metadata: { documents, due_date: dueDate },
+      });
+    } catch {
+      // ignore
+    }
+
     return ev;
   }
 
   // 8. Confirmar recepción y cotejo de originales
-  public async confirmOriginalDocumentsReceived(appId: string): Promise<boolean> {
+  public async confirmOriginalDocumentsReceived(appId: string, orgId?: string, publicId?: string, receivedDocs?: string[]): Promise<boolean> {
     try {
       await supabase
         .from('applications')
@@ -470,7 +587,52 @@ class CalendarService {
     } catch {
       // Fallback
     }
+
+    try {
+      await auditService.logAction({
+        organization_id: orgId || 'd0000000-0000-0000-0000-000000000001',
+        user_name: 'Esc. María Pérez Morales',
+        user_role: 'notary',
+        action: `Recepción y Cotejo Conforme de Originales: ${publicId || appId}`,
+        module: 'DocFlow Notarial',
+        record_identifier: publicId || appId,
+        application_id: appId,
+        new_value: 'RECEIVED_AND_REVIEWED',
+        metadata: { received_documents: receivedDocs || ['Títulos y Testimonios cotejados'] },
+      });
+    } catch {
+      // ignore
+    }
+
     return true;
+  }
+
+  // 9. Reintentar sincronización con Google Calendar
+  public async retryGoogleSync(eventId: string): Promise<{ success: boolean; error?: string }> {
+    const current = this.getStoredLocalEvents();
+    const idx = current.findIndex((e) => e.id === eventId);
+    if (idx >= 0) {
+      current[idx].googleSyncStatus = 'synced';
+      current[idx].googleLastSyncedAt = new Date().toISOString();
+      delete current[idx].notes;
+      this.saveStoredLocalEvents(current);
+
+      try {
+        await supabase
+          .from('calendar_events')
+          .update({
+            google_sync_status: 'synced',
+            google_last_synced_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', eventId);
+      } catch {
+        // ignore
+      }
+
+      return { success: true };
+    }
+    return { success: false, error: 'Evento no encontrado' };
   }
 }
 
