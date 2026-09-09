@@ -6,6 +6,21 @@
   },
   "rewrites": [
     {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
+    },
+    {
+      "source": "/((?!api/|assets/|favicon|pwa|manifest).*)/?",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i).*(facebookexternalhit|WhatsApp|Twitterbot|LinkedInBot|TelegramBot|Slackbot|SkypeUriPreview|Applebot|Discordbot).*"
+        }
+      ],
+      "destination": "/api/og-render?path=/$1"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }

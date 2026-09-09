@@ -79,10 +79,37 @@ export function useOrganizationSeo({
     }
     setMetaTag('name', 'robots', effectiveRobots);
 
-    // 6. Canonical URL
-    const resolvedCanonical =
-      settings?.seoCanonicalUrl?.trim() ||
-      (customDomain ? `https://${customDomain}` : window.location.origin + window.location.pathname);
+    // 6. Canonical URL Seguro (Validación contra dominios autorizados)
+    let resolvedCanonical = window.location.origin + window.location.pathname;
+    if (customDomain) {
+      resolvedCanonical = `https://${customDomain}`;
+    }
+
+    const rawCanonical = settings?.seoCanonicalUrl?.trim();
+    if (rawCanonical) {
+      try {
+        const parsedUrl = new URL(rawCanonical.startsWith('http') ? rawCanonical : `https://${rawCanonical}`);
+        const parsedHost = parsedUrl.hostname.toLowerCase();
+        const currentHost = window.location.hostname.toLowerCase();
+        const customHost = customDomain ? customDomain.toLowerCase() : '';
+        
+        // Dominios autorizados: hipotecaly.vercel.app, hipotecaly.com, subdominios *.hipotecaly.com, host actual o customDomain verificado
+        const isAuthorizedHost =
+          parsedHost === 'hipotecaly.vercel.app' ||
+          parsedHost === 'hipotecaly.com' ||
+          parsedHost.endsWith('.hipotecaly.com') ||
+          parsedHost === currentHost ||
+          (customHost && parsedHost === customHost);
+
+        if (isAuthorizedHost) {
+          resolvedCanonical = parsedUrl.toString();
+        } else {
+          console.warn(`[useOrganizationSeo] Canonical URL '${rawCanonical}' rechazada por no pertenecer a un dominio autorizado de la organización.`);
+        }
+      } catch {
+        // Fallback seguro si URL es inválida
+      }
+    }
 
     let linkCanonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
     if (!linkCanonical) {
@@ -92,10 +119,21 @@ export function useOrganizationSeo({
     }
     linkCanonical.setAttribute('href', resolvedCanonical);
 
-    // 7. Schema.org JSON-LD Estructurado
+    // 7. Schema.org JSON-LD Estructurado (Resolución dinámica de tipos)
+    const schemaTypes: string[] = ['Organization'];
+    if (resolvedName.toLowerCase().includes('crédito') || resolvedName.toLowerCase().includes('finan') || orgTagline.toLowerCase().includes('finan')) {
+      schemaTypes.push('FinancialService');
+    }
+    if (resolvedName.toLowerCase().includes('estudio') || resolvedName.toLowerCase().includes('notar') || resolvedName.toLowerCase().includes('abogad')) {
+      schemaTypes.push('ProfessionalService');
+    }
+    if (schemaTypes.length === 1) {
+      schemaTypes.push('FinancialService'); // Default coherente con plataforma hipotecaria
+    }
+
     const schemaOrgData = {
       '@context': 'https://schema.org',
-      '@type': ['Organization', 'FinancialService'],
+      '@type': schemaTypes.length === 1 ? schemaTypes[0] : schemaTypes,
       name: resolvedName,
       description: resolvedDescription,
       url: resolvedCanonical,

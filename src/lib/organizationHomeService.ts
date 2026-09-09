@@ -1180,7 +1180,8 @@ export async function uploadOrganizationAsset(
   }
 
   const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-  const cleanName = `${folder}-${Date.now()}.${fileExt}`;
+  const uniqueId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11);
+  const cleanName = `${folder}-${Date.now()}-${uniqueId}.${fileExt}`;
   const filePath = `${orgId}/${folder}/${cleanName}`;
 
   if (isSupabaseConfigured) {
@@ -1188,8 +1189,8 @@ export async function uploadOrganizationAsset(
       const { error: uploadError } = await supabase.storage
         .from('organization-assets')
         .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true,
+          cacheControl: '31536000', // 1 año cacheable porque el nombre es inmutable
+          upsert: false,
         });
 
       if (uploadError) {
