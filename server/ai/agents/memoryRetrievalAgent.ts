@@ -26,7 +26,37 @@ export class MemoryRetrievalAgent {
     _locality?: string
   ): Promise<GlobalMemoryItem[]> {
     try {
-      // 1. Intentar consulta a la tabla ai_global_memory
+      // 1. Intentar búsqueda vectorial RAG si OpenAI está disponible
+      try {
+        const { openAiService } = await import('../openAiService.js');
+        const queryText = `Inmueble tipo ${propertyType} en departamento ${department} localidad ${_locality || 'Uruguay'}`;
+        const embRes = await openAiService.createEmbeddings(queryText);
+        if (embRes.embeddings && embRes.embeddings[0]) {
+          const { data: vectorMatches, error: vecErr } = await supabase.rpc('match_global_memory', {
+            query_embedding: embRes.embeddings[0],
+            match_threshold: 0.60,
+            match_count: 4,
+            filter_department: department,
+          });
+
+          if (!vecErr && vectorMatches && vectorMatches.length > 0) {
+            return vectorMatches.map((row: any) => ({
+              id: row.id,
+              memoryType: row.memory_type,
+              department: row.department,
+              locality: row.locality,
+              propertyType: row.property_type,
+              patternSummary: GlobalMemorySanitizer.sanitize(row.pattern_summary),
+              sanitizedInsight: GlobalMemorySanitizer.sanitize(row.sanitized_insight),
+              similarity: Number(row.similarity || 0.85),
+            }));
+          }
+        }
+      } catch {
+        // Continuar con consulta SQL tradicional
+      }
+
+      // 2. Consulta SQL tradicional a la tabla ai_global_memory
       const { data, error } = await supabase
         .from('ai_global_memory')
         .select('id, memory_type, department, locality, property_type, pattern_summary, sanitized_insight')

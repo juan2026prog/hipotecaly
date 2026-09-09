@@ -52,6 +52,15 @@ export class UnderwritingAgent {
     monthlyIncome?: number,
     policy: UnderwritingPolicyConfig = DEFAULT_PILOT_UNDERWRITING_POLICY
   ): UnderwritingOutput {
+    const effectivePolicy: UnderwritingPolicyConfig = {
+      ...DEFAULT_PILOT_UNDERWRITING_POLICY,
+      ...(policy || {}),
+      acceptedPropertyTypes:
+        policy?.acceptedPropertyTypes && policy.acceptedPropertyTypes.length > 0
+          ? policy.acceptedPropertyTypes
+          : DEFAULT_PILOT_UNDERWRITING_POLICY.acceptedPropertyTypes,
+    };
+
     // 1. Cálculos Determinísticos Estrictos
     const loanAmount = Number(requestedAmount) || 0;
     const marketVal = Number(marketPropertyValue) || 0;
@@ -63,39 +72,39 @@ export class UnderwritingAgent {
 
     // Capacidad máxima de financiamiento según LTV conservador
     const maxAllowedByLtv = Number(
-      Math.min(consVal * (policy.maxLtv / 100), policy.maxLoanAmount).toFixed(2)
+      Math.min(consVal * (effectivePolicy.maxLtv / 100), effectivePolicy.maxLoanAmount).toFixed(2)
     );
 
     // 2. Validación de Límites de Política
     const violations: string[] = [];
 
-    if (loanAmount > policy.maxLoanAmount) {
+    if (loanAmount > effectivePolicy.maxLoanAmount) {
       violations.push(
-        `El monto solicitado (USD ${loanAmount.toLocaleString('es-UY')}) supera el tope máximo de la política (USD ${policy.maxLoanAmount.toLocaleString('es-UY')}).`
+        `El monto solicitado (USD ${loanAmount.toLocaleString('es-UY')}) supera el tope máximo de la política (USD ${effectivePolicy.maxLoanAmount.toLocaleString('es-UY')}).`
       );
     }
 
-    if (loanAmount < policy.minLoanAmount) {
+    if (loanAmount < effectivePolicy.minLoanAmount) {
       violations.push(
-        `El monto solicitado está por debajo del monto mínimo admisible (USD ${policy.minLoanAmount.toLocaleString('es-UY')}).`
+        `El monto solicitado está por debajo del monto mínimo admisible (USD ${effectivePolicy.minLoanAmount.toLocaleString('es-UY')}).`
       );
     }
 
     // Se evalúa LTV preferentemente contra el valor conservador de garantía
-    if (ltvConservative > policy.maxLtv) {
+    if (ltvConservative > effectivePolicy.maxLtv) {
       violations.push(
-        `El LTV calculado sobre el valor de garantía (${ltvConservative}%) supera el tope reglamentario del ${policy.maxLtv}%. Monto máximo permitido por LTV: USD ${maxAllowedByLtv.toLocaleString('es-UY')}.`
+        `El LTV calculado sobre el valor de garantía (${ltvConservative}%) supera el tope reglamentario del ${effectivePolicy.maxLtv}%. Monto máximo permitido por LTV: USD ${maxAllowedByLtv.toLocaleString('es-UY')}.`
       );
     }
 
-    if (termMonths < policy.minTermMonths || termMonths > policy.maxTermMonths) {
+    if (termMonths < effectivePolicy.minTermMonths || termMonths > effectivePolicy.maxTermMonths) {
       violations.push(
-        `El plazo solicitado (${termMonths} meses) se encuentra fuera del rango permitido (${policy.minTermMonths} a ${policy.maxTermMonths} meses).`
+        `El plazo solicitado (${termMonths} meses) se encuentra fuera del rango permitido (${effectivePolicy.minTermMonths} a ${effectivePolicy.maxTermMonths} meses).`
       );
     }
 
     const normType = (propertyType || '').toLowerCase();
-    const typeAccepted = policy.acceptedPropertyTypes.some((t) =>
+    const typeAccepted = effectivePolicy.acceptedPropertyTypes.some((t) =>
       normType.includes(t.toLowerCase())
     );
     if (!typeAccepted) {
@@ -103,7 +112,7 @@ export class UnderwritingAgent {
     }
 
     // 3. Estimación de Cuota Financiera (Solo intereses base + amortización simple)
-    const monthlyRate = (policy.defaultInterestRateAnnual / 100) / 12;
+    const monthlyRate = (effectivePolicy.defaultInterestRateAnnual / 100) / 12;
     // Cuota mensual aproximada (modalidad solo intereses mensual estándar en mercado hipotecario privado uruguayo)
     const estimatedMonthlyInstallment = Math.round(loanAmount * monthlyRate);
 

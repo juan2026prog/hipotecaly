@@ -50,6 +50,7 @@ import { HipotecalyAiTab } from '../../components/ai/HipotecalyAiTab';
 import { DocumentHub } from '../../components/docflow/DocumentHub';
 import { DocumentGenerationModal } from '../../components/docflow/DocumentGenerationModal';
 import { KycVerificationCard } from '../../components/identity/KycVerificationCard';
+import { AiAssistantDrawer } from '../../components/ai/AiAssistantDrawer';
 import { isMarketplaceEnabled } from '../../config/features';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
@@ -70,6 +71,7 @@ export const ApplicationDetailPage: React.FC = () => {
   const [showDocGen, setShowDocGen] = useState(false);
   const [docGenTplId, setDocGenTplId] = useState<string | undefined>(undefined);
   const [showCommandCenter, setShowCommandCenter] = useState(false);
+  const [showAiAssistantDrawer, setShowAiAssistantDrawer] = useState(false);
   const [commandActionToast, setCommandActionToast] = useState<string | null>(null);
   const [showAssignNotaryModal, setShowAssignNotaryModal] = useState(false);
   const [selectedNotaryUser, setSelectedNotaryUser] = useState('u-test-notary');
@@ -568,6 +570,17 @@ export const ApplicationDetailPage: React.FC = () => {
               <option value="approved">7. Finalizada / Aprobada</option>
               <option value="rejected">Rechazada</option>
             </select>
+
+            {/* Botón Asistente IA */}
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => setShowAiAssistantDrawer(true)}
+              className="text-xs font-bold bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white shadow-sm flex items-center gap-1.5"
+            >
+              <Sparkles className="w-4 h-4 text-blue-200 animate-pulse" />
+              <span>Asistente IA</span>
+            </Button>
 
             {/* Botón Imprimir / PDF */}
             <Button
@@ -1828,6 +1841,13 @@ export const ApplicationDetailPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Drawer del Asistente IA */}
+      <AiAssistantDrawer
+        isOpen={showAiAssistantDrawer}
+        onClose={() => setShowAiAssistantDrawer(false)}
+        app={app}
+      />
 
     </BackofficeLayout>
   );

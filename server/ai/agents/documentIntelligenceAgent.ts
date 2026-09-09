@@ -106,28 +106,86 @@ export class DocumentIntelligenceAgent {
       warnings.push('Documento escaneado con baja resolución o texto borroso. Se recomienda solicitar copia legible.');
     }
 
-    // 4. Extracción Estructurada con Validación Zod
-    const padronMatch = (doc.contentSnippet || doc.fileName).match(/padr[oó]n\s*(?:n[uú]mero|n[ºo]|nro\.?)?\s*[:#]?\s*(\d+)/i);
-    const surfaceMatch = (doc.contentSnippet || '').match(/(\d+(?:[.,]\d+)?)\s*m(?:2|²|etros)/i);
-    const incomeMatch = (doc.contentSnippet || '').match(/(?:\$|uyu|usd)\s*(\d+(?:[.,]\d+)?)/i);
+    // 4. Extracción Estructurada Híbrida (LLM cuando está disponible + Fallback Regex Determinista)
+    let parsedExtraction: Partial<DocumentExtraction> | null = null;
 
-    const rawExtraction: Partial<DocumentExtraction> = {
-      document_type: docType,
-      document_date: new Date().toISOString().split('T')[0],
-      padron: padronMatch ? padronMatch[1] : isIllegible ? null : undefined,
-      land_area_m2: surfaceMatch ? parseFloat(surfaceMatch[1].replace(',', '.')) : null,
-      built_area_m2: surfaceMatch && docType === 'plano' ? parseFloat(surfaceMatch[1].replace(',', '.')) : null,
-      income: incomeMatch && (docType === 'recibo_sueldo' || docType === 'certificado_ingresos')
-        ? parseFloat(incomeMatch[1].replace(',', ''))
-        : null,
-      currency: (doc.contentSnippet || '').toUpperCase().includes('USD') ? 'USD' : 'UYU',
-      confidence,
-      warnings,
-    };
+    if (doc.contentSnippet && doc.contentSnippet.length > 50 && !isIllegible) {
+      try {
+        const { openAiService } = await import('../openAiService.js');
+        const llmResult = await openAiService.chatCompletion<{
+          document_type?: string;
+          padron?: string;
+          property_owner?: string;
+          holder?: string;
+          land_area_m2?: number;
+          built_area_m2?: number;
+          income?: number;
+          currency?: string;
+          confidence?: number;
+          warnings?: string[];
+        }>({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: 'Sos el extractor documental de HIPOTECALY. Extraé campos notariales e inmobiliarios uruguayos en formato JSON estricto. Campos: document_type, padron, property_owner, land_area_m2, income, currency, confidence (0-100), warnings.'
+            },
+            {
+              role: 'user',
+              content: `Analizá el siguiente texto extraído del documento "${doc.fileName}":\n<DOCUMENT_CONTENT>\n${doc.contentSnippet.slice(0, 4000)}\n</DOCUMENT_CONTENT>`
+            }
+          ],
+          responseFormat: { type: 'json_object' },
+          timeoutMs: 8000,
+        });
+
+        if (llmResult.parsedJson) {
+          const json = llmResult.parsedJson;
+          if (json.document_type && json.document_type !== 'otro') {
+            docType = json.document_type as DocumentType;
+          }
+          parsedExtraction = {
+            document_type: docType,
+            document_date: new Date().toISOString().split('T')[0],
+            padron: json.padron || undefined,
+            property_owner: json.property_owner || undefined,
+            holder: json.holder || json.property_owner || undefined,
+            land_area_m2: json.land_area_m2 || null,
+            built_area_m2: json.built_area_m2 || null,
+            income: json.income || null,
+            currency: json.currency || 'UYU',
+            confidence: json.confidence || 95,
+            warnings: json.warnings || warnings,
+          };
+        }
+      } catch {
+        // Fallback determinista silencioso si OpenAI está offline o deshabilitado
+      }
+    }
+
+    if (!parsedExtraction) {
+      const padronMatch = (doc.contentSnippet || doc.fileName).match(/padr[oó]n\s*(?:n[uú]mero|n[ºo]|nro\.?)?\s*[:#]?\s*(\d+)/i);
+      const surfaceMatch = (doc.contentSnippet || '').match(/(\d+(?:[.,]\d+)?)\s*m(?:2|²|etros)/i);
+      const incomeMatch = (doc.contentSnippet || '').match(/(?:\$|uyu|usd)\s*(\d+(?:[.,]\d+)?)/i);
+
+      parsedExtraction = {
+        document_type: docType,
+        document_date: new Date().toISOString().split('T')[0],
+        padron: padronMatch ? padronMatch[1] : isIllegible ? null : undefined,
+        land_area_m2: surfaceMatch ? parseFloat(surfaceMatch[1].replace(',', '.')) : null,
+        built_area_m2: surfaceMatch && docType === 'plano' ? parseFloat(surfaceMatch[1].replace(',', '.')) : null,
+        income: incomeMatch && (docType === 'recibo_sueldo' || docType === 'certificado_ingresos')
+          ? parseFloat(incomeMatch[1].replace(',', ''))
+          : null,
+        currency: (doc.contentSnippet || '').toUpperCase().includes('USD') ? 'USD' : 'UYU',
+        confidence,
+        warnings,
+      };
+    }
 
     // Validar mediante Zod
     const parsed = DocumentExtractionSchema.parse({
-      ...rawExtraction,
+      ...parsedExtraction,
       debts: [],
       liens: [],
       detected_people: [],

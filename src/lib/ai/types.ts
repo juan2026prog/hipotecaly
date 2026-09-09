@@ -383,12 +383,13 @@ export interface ApplicationCaseInput {
 export const AI_STANDARD_CASE_COST_USD = 0.50;
 
 export const AI_MODELS = {
-  extraction: 'gpt-5.6-luna',
-  reasoning: 'gpt-5.6-terra',
-  deep: 'gpt-5.6-sol',
-  fallbackExtraction: 'gpt-5.6-luna',
-  fallbackReasoning: 'gpt-5.6-terra',
-  fallbackDeep: 'gpt-5.6-sol',
+  extraction: 'gpt-4o-mini',
+  reasoning: 'gpt-4o',
+  deep: 'o3-mini',
+  embeddings: 'text-embedding-3-small',
+  fallbackExtraction: 'gpt-4o-mini',
+  fallbackReasoning: 'gpt-4o',
+  fallbackDeep: 'o3-mini',
 };
 
 export const DEFAULT_MODEL_PRICING: Record<
@@ -400,22 +401,57 @@ export const DEFAULT_MODEL_PRICING: Record<
     costPerSearchUsd: number;
   }
 > = {
-  'gpt-5.6-luna': {
-    costInputPerMillionUsd: 0.20,
-    costCachedInputPerMillionUsd: 0.02,
-    costOutputPerMillionUsd: 1.20,
+  'gpt-4o-mini': {
+    costInputPerMillionUsd: 0.15,
+    costCachedInputPerMillionUsd: 0.075,
+    costOutputPerMillionUsd: 0.60,
     costPerSearchUsd: 0.01,
   },
-  'gpt-5.6-terra': {
-    costInputPerMillionUsd: 2.00,
-    costCachedInputPerMillionUsd: 0.20,
-    costOutputPerMillionUsd: 12.00,
+  'gpt-4o': {
+    costInputPerMillionUsd: 2.50,
+    costCachedInputPerMillionUsd: 1.25,
+    costOutputPerMillionUsd: 10.00,
     costPerSearchUsd: 0.01,
   },
-  'gpt-5.6-sol': {
-    costInputPerMillionUsd: 4.00,
-    costCachedInputPerMillionUsd: 0.40,
-    costOutputPerMillionUsd: 20.00,
+  'o3-mini': {
+    costInputPerMillionUsd: 1.10,
+    costCachedInputPerMillionUsd: 0.55,
+    costOutputPerMillionUsd: 4.40,
     costPerSearchUsd: 0.01,
   },
 };
+
+export interface AiChatMessage {
+  id?: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  created_at?: string;
+  sources?: Array<{ title: string; type: string; id?: string }>;
+  tokens_used?: number;
+  cost_usd?: number;
+  model?: string;
+}
+
+export interface AiConversation {
+  id: string;
+  application_id?: string;
+  organization_id: string;
+  title: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AiChatResponse {
+  success: boolean;
+  conversationId: string;
+  message: string;
+  sources: Array<{ title: string; type: string; id?: string }>;
+  usage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    costUsd: number;
+  };
+}
+

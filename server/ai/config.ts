@@ -12,25 +12,41 @@ export interface ModelProfile {
   description: string;
 }
 
-export const AI_MODELS: {
-  extraction: ModelProfile;
-  reasoning: ModelProfile;
-  deep: ModelProfile;
-} = {
+export const AI_MODELS = {
+  fast_extraction: {
+    name: 'gpt-4o-mini',
+    fallback: 'gpt-4o-mini',
+    description: 'Extracción rápida, OCR, clasificación de documentos y tareas estructuradas masivas',
+  },
   extraction: {
-    name: 'gpt-5.6-luna',
-    fallback: 'gpt-5.6-luna',
-    description: 'Extracción masiva, clasificación documental, OCR y tareas repetitivas estructuradas',
+    name: 'gpt-4o-mini',
+    fallback: 'gpt-4o-mini',
+    description: 'Extracción de legajos y categorización documental rápida',
+  },
+  document_analysis: {
+    name: 'gpt-4o',
+    fallback: 'gpt-4o-mini',
+    description: 'Lectura visual, análisis semántico de títulos y escrituras complejas',
   },
   reasoning: {
-    name: 'gpt-5.6-terra',
-    fallback: 'gpt-5.6-terra',
+    name: 'gpt-4o',
+    fallback: 'gpt-4o-mini',
     description: 'Cruces documentales, underwriting, consistencia, tasación preliminar y semáforos',
   },
+  assistant: {
+    name: 'gpt-4o',
+    fallback: 'gpt-4o-mini',
+    description: 'Asistente IA contextual por expediente, preguntas abiertas y explicaciones a clientes',
+  },
   deep: {
-    name: 'gpt-5.6-sol',
-    fallback: 'gpt-5.6-sol',
-    description: 'Análisis de alta complejidad, contradicciones severas o solicitud explícita de revisión profunda',
+    name: 'gpt-4o',
+    fallback: 'gpt-4o-mini',
+    description: 'Análisis de alta complejidad, contradicciones severas o revisión profunda',
+  },
+  embeddings: {
+    name: 'text-embedding-3-small',
+    fallback: 'text-embedding-3-small',
+    description: 'Generación de vectores para RAG y recuperación en memoria global',
   },
 };
 
@@ -45,28 +61,73 @@ export interface ModelPricing {
 }
 
 export const DEFAULT_MODEL_PRICING: Record<string, ModelPricing> = {
-  'gpt-5.6-luna': {
-    costInputPerMillionUsd: 0.20,
+  'gpt-4o-mini': {
+    costInputPerMillionUsd: 0.15,
+    costCachedInputPerMillionUsd: 0.075,
+    costOutputPerMillionUsd: 0.60,
+    costPerSearchUsd: 0.01,
+    standardCaseCostUsd: AI_STANDARD_CASE_COST_USD,
+  },
+  'gpt-4o': {
+    costInputPerMillionUsd: 2.50,
+    costCachedInputPerMillionUsd: 1.25,
+    costOutputPerMillionUsd: 10.00,
+    costPerSearchUsd: 0.01,
+    standardCaseCostUsd: AI_STANDARD_CASE_COST_USD,
+  },
+  'o3-mini': {
+    costInputPerMillionUsd: 1.10,
+    costCachedInputPerMillionUsd: 0.55,
+    costOutputPerMillionUsd: 4.40,
+    costPerSearchUsd: 0.01,
+    standardCaseCostUsd: AI_STANDARD_CASE_COST_USD,
+  },
+  'text-embedding-3-small': {
+    costInputPerMillionUsd: 0.02,
     costCachedInputPerMillionUsd: 0.02,
-    costOutputPerMillionUsd: 1.20,
+    costOutputPerMillionUsd: 0.00,
+    costPerSearchUsd: 0.00,
+    standardCaseCostUsd: AI_STANDARD_CASE_COST_USD,
+  },
+  // Mapeos de compatibilidad con configuraciones previas
+  'gpt-5.6-luna': {
+    costInputPerMillionUsd: 0.15,
+    costCachedInputPerMillionUsd: 0.075,
+    costOutputPerMillionUsd: 0.60,
     costPerSearchUsd: 0.01,
     standardCaseCostUsd: AI_STANDARD_CASE_COST_USD,
   },
   'gpt-5.6-terra': {
-    costInputPerMillionUsd: 2.00,
-    costCachedInputPerMillionUsd: 0.20,
-    costOutputPerMillionUsd: 12.00,
+    costInputPerMillionUsd: 2.50,
+    costCachedInputPerMillionUsd: 1.25,
+    costOutputPerMillionUsd: 10.00,
     costPerSearchUsd: 0.01,
     standardCaseCostUsd: AI_STANDARD_CASE_COST_USD,
   },
   'gpt-5.6-sol': {
-    costInputPerMillionUsd: 4.00,
-    costCachedInputPerMillionUsd: 0.40,
-    costOutputPerMillionUsd: 20.00,
+    costInputPerMillionUsd: 2.50,
+    costCachedInputPerMillionUsd: 1.25,
+    costOutputPerMillionUsd: 10.00,
     costPerSearchUsd: 0.01,
     standardCaseCostUsd: AI_STANDARD_CASE_COST_USD,
   },
 };
+
+/**
+ * Normaliza cualquier identificador de modelo al nombre oficial de OpenAI API
+ */
+export function normalizeOpenAiModel(modelName: string): string {
+  if (!modelName) return 'gpt-4o-mini';
+  const clean = modelName.toLowerCase().trim();
+  if (clean.includes('luna')) return 'gpt-4o-mini';
+  if (clean.includes('terra')) return 'gpt-4o';
+  if (clean.includes('sol')) return 'o3-mini';
+  if (clean.includes('gpt-4o-mini')) return 'gpt-4o-mini';
+  if (clean.includes('gpt-4o')) return 'gpt-4o';
+  if (clean.includes('o3-mini')) return 'o3-mini';
+  if (clean.includes('embedding')) return 'text-embedding-3-small';
+  return modelName;
+}
 
 /**
  * Calcula el costo real en USD a partir del consumo exacto de tokens devuelto por la API.
