@@ -147,7 +147,7 @@ INSERT INTO public.organization_home_settings (
   'd0000000-0000-0000-0000-000000000001',
   'FINANCIACIÓN CON GARANTÍA HIPOTECARIA',
   'Convertí el valor de tu inmueble en capital para avanzar.',
-  'Accedé a una evaluación clara y ordenada de tu operación. Viviendas, locales comerciales y campos como respaldo para una financiación adaptada a cada caso.',
+  'Accedé a una evaluación clara y ordenada de tu operación. Viviendas, locales comerciales y campos con respaldo para una financiación adaptada a cada caso.',
   'SIMULAR FINANCIACIÓN',
   '#simulador',
   TRUE,
