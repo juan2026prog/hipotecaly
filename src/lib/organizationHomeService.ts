@@ -56,7 +56,7 @@ export const DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS: OrganizationHomeSettings = {
   heroEyebrow: 'FINANCIACIÓN CON GARANTÍA HIPOTECARIA',
   heroTitle: 'Convertí el valor de tu inmueble en capital para avanzar.',
   heroDescription:
-    'Accedé a una evaluación clara y ordenada de tu operación. Viviendas, locales comerciales y campos como respaldo para una financiación adaptada a cada caso.',
+    'Accedé a una evaluación clara y ordenada de tu operación. Viviendas, locales comerciales y campos con respaldo para una financiación adaptada a cada caso.',
   heroPrimaryCtaText: 'SIMULAR FINANCIACIÓN',
   heroPrimaryCtaTarget: '#simulador',
   heroPrimaryCtaVisible: true,
