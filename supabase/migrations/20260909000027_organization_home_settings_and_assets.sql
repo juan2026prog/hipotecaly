@@ -65,8 +65,26 @@ CREATE POLICY "Org admins and super admin manage organization home settings"
   ON public.organization_home_settings
   FOR ALL
   TO authenticated
-  USING (public.is_member_of_org(organization_id) OR public.is_super_admin())
-  WITH CHECK (public.is_member_of_org(organization_id) OR public.is_super_admin());
+  USING (
+    public.is_super_admin() OR
+    EXISTS (
+      SELECT 1 FROM public.organization_members
+      WHERE user_id = auth.uid()
+        AND organization_id = public.organization_home_settings.organization_id
+        AND role IN ('tenant_admin', 'tenant_owner')
+        AND is_active = TRUE
+    )
+  )
+  WITH CHECK (
+    public.is_super_admin() OR
+    EXISTS (
+      SELECT 1 FROM public.organization_members
+      WHERE user_id = auth.uid()
+        AND organization_id = public.organization_home_settings.organization_id
+        AND role IN ('tenant_admin', 'tenant_owner')
+        AND is_active = TRUE
+    )
+  );
 
 -- 3. STORAGE BUCKET PÚBLICO: organization-assets
 DO $$
@@ -100,14 +118,26 @@ BEGIN
         bucket_id = 'organization-assets' AND
         (
           public.is_super_admin() OR
-          public.is_member_of_org(((storage.foldername(name))[1])::uuid)
+          EXISTS (
+            SELECT 1 FROM public.organization_members
+            WHERE user_id = auth.uid()
+              AND organization_id = ((storage.foldername(name))[1])::uuid
+              AND role IN ('tenant_admin', 'tenant_owner')
+              AND is_active = TRUE
+          )
         )
       )
       WITH CHECK (
         bucket_id = 'organization-assets' AND
         (
           public.is_super_admin() OR
-          public.is_member_of_org(((storage.foldername(name))[1])::uuid)
+          EXISTS (
+            SELECT 1 FROM public.organization_members
+            WHERE user_id = auth.uid()
+              AND organization_id = ((storage.foldername(name))[1])::uuid
+              AND role IN ('tenant_admin', 'tenant_owner')
+              AND is_active = TRUE
+          )
         )
       );
   END IF;
