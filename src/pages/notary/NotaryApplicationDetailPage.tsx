@@ -33,7 +33,8 @@ import {
   DynamicNotaryRequirement,
   CaseNotarialContext,
 } from '../../lib/notarialRequirementsEngine';
-import { googleCalendarService, CalendarEventSchedule, getAvailableCalendarSlots } from '../../lib/calendar/googleCalendarService';
+import { calendarService, HipotecalyCalendarEvent, getAvailableCalendarSlots } from '../../lib/calendar/calendarService';
+import { generateGoogleCalendarWebLink } from '../../lib/calendar/googleCalendarIntegration';
 import { DocumentGenerationModal } from '../../components/docflow/DocumentGenerationModal';
 import { AdvancedSignatureModal } from '../../components/signature/AdvancedSignatureModal';
 import { SignatureEvidenceModal } from '../../components/signature/SignatureEvidenceModal';
@@ -108,7 +109,7 @@ export const NotaryApplicationDetailPage: React.FC = () => {
   const [scheduleDate, setScheduleDate] = useState('2026-09-15');
   const [scheduleTime, setScheduleTime] = useState('15:30');
   const [scheduleLocation, setScheduleLocation] = useState('Estudio Fernández & Asociados (Rincón 487 Piso 3)');
-  const [scheduledEvent, setScheduledEvent] = useState<CalendarEventSchedule | null>(null);
+  const [scheduledEvent, setScheduledEvent] = useState<HipotecalyCalendarEvent | null>(null);
 
   const loadData = async () => {
     if (!id) return;
@@ -133,8 +134,9 @@ export const NotaryApplicationDetailPage: React.FC = () => {
       const obs = await notaryService.getNotaryObservations(appData.id);
       setObservations(obs);
 
-      const ev = googleCalendarService.getEventByApplication(appData.id);
-      setScheduledEvent(ev);
+      const events = await calendarService.getEventsByApplication(appData.id);
+      const activeSignature = events.find((e) => e.eventType === 'signature' && e.status !== 'cancelled');
+      setScheduledEvent(activeSignature || null);
     } catch {
       // Fallback
     } finally {
@@ -177,6 +179,19 @@ export const NotaryApplicationDetailPage: React.FC = () => {
     const nextStatus: NotaryStatus = requiresOriginals ? 'originals_required' : 'signature_to_coordinate';
     setApp({ ...app, notary_status: nextStatus });
     await notaryService.updateNotaryStatus(app.id, app.organization_id, nextStatus);
+
+    if (requiresOriginals) {
+      await calendarService.requestOriginalDocuments(
+        app.id,
+        app.organization_id,
+        app.public_id,
+        `${app.borrower?.first_name || 'Solicitante'} ${app.borrower?.last_name || ''}`.trim(),
+        app.borrower?.email || '',
+        selectedOriginalDocs,
+        '2026-09-18'
+      );
+    }
+
     setStatusToast('🟢 Revisión Notarial Aprobada conforme');
     setTimeout(() => setStatusToast(null), 3500);
   };
@@ -185,31 +200,43 @@ export const NotaryApplicationDetailPage: React.FC = () => {
     e.preventDefault();
     if (!app) return;
 
-    const newEv = await googleCalendarService.scheduleEvent({
+    const startAt = `${scheduleDate}T${scheduleTime}:00-03:00`;
+    const startDate = new Date(startAt);
+    const endAt = new Date(startDate.getTime() + 45 * 60000).toISOString();
+
+    const newEv = await calendarService.createCalendarEvent({
+      organizationId: app.organization_id,
       applicationId: app.id,
       applicationPublicId: app.public_id,
-      type: 'firma_escritura',
-      title: `Firma Matriz Hipotecaria — ${app.borrower?.first_name} ${app.borrower?.last_name}`,
+      eventType: 'signature',
+      title: `Firma Matriz Hipotecaria — ${app.borrower?.first_name || ''} ${app.borrower?.last_name || ''}`.trim(),
+      description: 'Audiencia de otorgamiento de escritura pública de mutuo hipotecario.',
+      startAt,
+      endAt,
       date: scheduleDate,
       time: scheduleTime,
       durationMinutes: 45,
-      location: scheduleLocation,
-      locationType: 'estudio',
+      timezone: 'America/Montevideo',
+      locationType: 'notary_office',
+      locationAddress: scheduleLocation,
+      virtualMeetingUrl: 'https://meet.google.com/hpt-notary-sign',
+      responsibleUserId: user?.id || 'u-test-notary',
+      responsibleName: 'Esc. María Pérez Morales',
       participants: [
-        { name: `${app.borrower?.first_name} ${app.borrower?.last_name}`, role: 'Deudor', email: app.borrower?.email || 'cliente@ejemplo.com' },
-        { name: 'Esc. María Pérez Morales', role: 'Escribano', email: 'maria.perez@notarios.org.uy' },
-        { name: 'Mateo Silva (Nova Capital)', role: 'Acreedor', email: 'mateo.silva@novacapital.uy' },
+        { name: `${app.borrower?.first_name || 'Deudor'} ${app.borrower?.last_name || ''}`.trim(), role: 'Deudor', email: app.borrower?.email || 'cliente@ejemplo.com', status: 'confirmed' },
+        { name: 'Esc. María Pérez Morales', role: 'Escribano', email: 'maria.perez@notarios.org.uy', status: 'confirmed' },
+        { name: 'Mateo Silva (Nova Capital)', role: 'Acreedor', email: 'mateo.silva@novacapital.uy', status: 'confirmed' },
       ],
-      reminders: { hours24: true, hours2: true },
-      googleMeetLink: 'https://meet.google.com/hpt-notary-sign',
-      createdBy: 'Esc. María Pérez Morales',
+      requiredDocuments: ['Cédula de Identidad Vigente', 'Título de Propiedad Original'],
+      status: 'scheduled',
+      googleSyncStatus: 'synced',
     });
 
     setScheduledEvent(newEv);
     setApp({ ...app, notary_status: 'signature_scheduled' });
     await notaryService.updateNotaryStatus(app.id, app.organization_id, 'signature_scheduled');
     setShowScheduleSignModal(false);
-    setStatusToast('📅 Firma Agendada y sincronizada con Google Calendar');
+    setStatusToast('📅 Firma Agendada en HIPOTECALY y sincronizada con Google Calendar');
     setTimeout(() => setStatusToast(null), 3500);
   };
 
@@ -1202,7 +1229,17 @@ export const NotaryApplicationDetailPage: React.FC = () => {
                         <span>Firma Agendada</span>
                       </div>
                       <div className="font-bold text-teal-900">{scheduledEvent.date} · {scheduledEvent.time} hs</div>
-                      <div className="text-[10px] text-teal-700 truncate max-w-[200px]">{scheduledEvent.location}</div>
+                      <div className="text-[10px] text-teal-700 truncate max-w-[200px]">{scheduledEvent.locationAddress || 'Estudio Notarial'}</div>
+                      <div className="pt-1 flex items-center justify-end space-x-1">
+                        <a
+                          href={generateGoogleCalendarWebLink(scheduledEvent)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] font-bold text-blue-700 hover:text-blue-900 underline flex items-center space-x-1"
+                        >
+                          <span>Abrir en Google Calendar ↗</span>
+                        </a>
+                      </div>
                     </div>
                   ) : (
                     <button
@@ -1210,7 +1247,7 @@ export const NotaryApplicationDetailPage: React.FC = () => {
                       className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center space-x-1.5"
                     >
                       <Calendar className="w-3.5 h-3.5" />
-                      <span>Coordinar Firma (Google Calendar)</span>
+                      <span>Coordinar Firma</span>
                     </button>
                   )}
 

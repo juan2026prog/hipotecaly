@@ -31,6 +31,7 @@ export const LoginPage: React.FC = () => {
     const { error } = await signInWithGoogle({
       redirectTo,
       targetTenantSlug: tenantParam || undefined,
+      intent: isFromSaveSimulation ? 'borrower_signup' : 'generic_login',
     });
     if (error) {
       setGoogleLoading(false);

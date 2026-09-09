@@ -6,47 +6,136 @@ import { MANDATORY_AI_DISCLAIMER } from './types';
 
 export { MANDATORY_AI_DISCLAIMER };
 
-export interface ModelProfile {
-  name: string;
-  fallback: string;
+export type AiProfileName =
+  | 'FAST_EXTRACTION'
+  | 'DOCUMENT_ANALYSIS'
+  | 'ASSISTANT'
+  | 'DEEP_REASONING'
+  | 'EMBEDDINGS';
+
+export interface AiModelProfile {
+  profile: AiProfileName;
+  primaryModel: string;
+  fallbackModel: string;
+  temperature: number;
+  maxTokens: number;
+  supportsVision: boolean;
+  supportsStructuredOutputs: boolean;
+  costInputPerMillionUsd: number;
+  costCachedInputPerMillionUsd: number;
+  costOutputPerMillionUsd: number;
   description: string;
+  rationale: string;
 }
+
+export const AI_MODEL_PROFILES: Record<AiProfileName, AiModelProfile> = {
+  FAST_EXTRACTION: {
+    profile: 'FAST_EXTRACTION',
+    primaryModel: 'gpt-4o-mini',
+    fallbackModel: 'gpt-4o-mini',
+    temperature: 0.0,
+    maxTokens: 3000,
+    supportsVision: true,
+    supportsStructuredOutputs: true,
+    costInputPerMillionUsd: 0.15,
+    costCachedInputPerMillionUsd: 0.075,
+    costOutputPerMillionUsd: 0.60,
+    description: 'Extracción rápida, OCR ligero, clasificación de documentos y metadata.',
+    rationale: 'Menor latencia (<1.2s), costo ultra bajo (USD 0.15/1M) y soporte completo de JSON Schema para extracción de recibos y cédulas.',
+  },
+  DOCUMENT_ANALYSIS: {
+    profile: 'DOCUMENT_ANALYSIS',
+    primaryModel: 'gpt-4o',
+    fallbackModel: 'gpt-4o-mini',
+    temperature: 0.1,
+    maxTokens: 4000,
+    supportsVision: true,
+    supportsStructuredOutputs: true,
+    costInputPerMillionUsd: 2.50,
+    costCachedInputPerMillionUsd: 1.25,
+    costOutputPerMillionUsd: 10.00,
+    description: 'Lectura visual profunda de planos, escrituras, testimonios por exhibición y contratos notariales.',
+    rationale: 'Alta capacidad multimodal de visión para documentos notariales escaneados con sellos y firmas, con structured outputs precisos.',
+  },
+  ASSISTANT: {
+    profile: 'ASSISTANT',
+    primaryModel: 'gpt-4o',
+    fallbackModel: 'gpt-4o-mini',
+    temperature: 0.2,
+    maxTokens: 2500,
+    supportsVision: false,
+    supportsStructuredOutputs: true,
+    costInputPerMillionUsd: 2.50,
+    costCachedInputPerMillionUsd: 1.25,
+    costOutputPerMillionUsd: 10.00,
+    description: 'Asistente contextual conversacional multi-turno con grounding documental de expediente.',
+    rationale: 'Fluidez ejecutiva, comprensión avanzada de normativa hipotecaria uruguaya y estricta adherencia a delimitadores anti-inyección.',
+  },
+  DEEP_REASONING: {
+    profile: 'DEEP_REASONING',
+    primaryModel: 'o3-mini',
+    fallbackModel: 'gpt-4o',
+    temperature: 0.1,
+    maxTokens: 6000,
+    supportsVision: false,
+    supportsStructuredOutputs: true,
+    costInputPerMillionUsd: 1.10,
+    costCachedInputPerMillionUsd: 0.55,
+    costOutputPerMillionUsd: 4.40,
+    description: 'Resolución de discrepancias graves, cadenas de titularidad complejas y dictámenes de riesgo dudoso.',
+    rationale: 'Capacidad de razonamiento paso a paso optimizada con bajo costo (USD 1.10/1M) para desentrañar sucesiones y embargos complejos.',
+  },
+  EMBEDDINGS: {
+    profile: 'EMBEDDINGS',
+    primaryModel: 'text-embedding-3-small',
+    fallbackModel: 'text-embedding-3-small',
+    temperature: 0.0,
+    maxTokens: 8191,
+    supportsVision: false,
+    supportsStructuredOutputs: false,
+    costInputPerMillionUsd: 0.02,
+    costCachedInputPerMillionUsd: 0.02,
+    costOutputPerMillionUsd: 0.00,
+    description: 'Generación de vectores densos para pgvector y RAG en memoria global anonimizada.',
+    rationale: 'Dimensión 1536 estandarizada, excelente desempeño semántico multilingüe y costo prácticamente nulo (USD 0.02/1M).',
+  },
+};
 
 export const AI_MODELS = {
   fast_extraction: {
-    name: 'gpt-4o-mini',
-    fallback: 'gpt-4o-mini',
-    description: 'Extracción rápida, OCR, clasificación de documentos y tareas estructuradas masivas',
+    name: AI_MODEL_PROFILES.FAST_EXTRACTION.primaryModel,
+    fallback: AI_MODEL_PROFILES.FAST_EXTRACTION.fallbackModel,
+    description: AI_MODEL_PROFILES.FAST_EXTRACTION.description,
   },
   extraction: {
-    name: 'gpt-4o-mini',
-    fallback: 'gpt-4o-mini',
-    description: 'Extracción de legajos y categorización documental rápida',
+    name: AI_MODEL_PROFILES.FAST_EXTRACTION.primaryModel,
+    fallback: AI_MODEL_PROFILES.FAST_EXTRACTION.fallbackModel,
+    description: AI_MODEL_PROFILES.FAST_EXTRACTION.description,
   },
   document_analysis: {
-    name: 'gpt-4o',
-    fallback: 'gpt-4o-mini',
-    description: 'Lectura visual, análisis semántico de títulos y escrituras complejas',
+    name: AI_MODEL_PROFILES.DOCUMENT_ANALYSIS.primaryModel,
+    fallback: AI_MODEL_PROFILES.DOCUMENT_ANALYSIS.fallbackModel,
+    description: AI_MODEL_PROFILES.DOCUMENT_ANALYSIS.description,
   },
   reasoning: {
-    name: 'gpt-4o',
-    fallback: 'gpt-4o-mini',
-    description: 'Cruces documentales, underwriting, consistencia, tasación preliminar y semáforos',
+    name: AI_MODEL_PROFILES.ASSISTANT.primaryModel,
+    fallback: AI_MODEL_PROFILES.ASSISTANT.fallbackModel,
+    description: AI_MODEL_PROFILES.ASSISTANT.description,
   },
   assistant: {
-    name: 'gpt-4o',
-    fallback: 'gpt-4o-mini',
-    description: 'Asistente IA contextual por expediente, preguntas abiertas y explicaciones a clientes',
+    name: AI_MODEL_PROFILES.ASSISTANT.primaryModel,
+    fallback: AI_MODEL_PROFILES.ASSISTANT.fallbackModel,
+    description: AI_MODEL_PROFILES.ASSISTANT.description,
   },
   deep: {
-    name: 'gpt-4o',
-    fallback: 'gpt-4o-mini',
-    description: 'Análisis de alta complejidad, contradicciones severas o revisión profunda',
+    name: AI_MODEL_PROFILES.DEEP_REASONING.primaryModel,
+    fallback: AI_MODEL_PROFILES.DEEP_REASONING.fallbackModel,
+    description: AI_MODEL_PROFILES.DEEP_REASONING.description,
   },
   embeddings: {
-    name: 'text-embedding-3-small',
-    fallback: 'text-embedding-3-small',
-    description: 'Generación de vectores para RAG y recuperación en memoria global',
+    name: AI_MODEL_PROFILES.EMBEDDINGS.primaryModel,
+    fallback: AI_MODEL_PROFILES.EMBEDDINGS.fallbackModel,
+    description: AI_MODEL_PROFILES.EMBEDDINGS.description,
   },
 };
 

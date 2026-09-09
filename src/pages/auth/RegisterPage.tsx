@@ -30,6 +30,7 @@ export const RegisterPage: React.FC = () => {
     setErrorMessage(null);
     const { error } = await signInWithGoogle({
       targetTenantSlug: tenantParam || undefined,
+      intent: 'borrower_signup',
     });
     if (error) {
       setGoogleLoading(false);

@@ -1,11 +1,9 @@
-// ==============================================================================
-// HIPOTECALY AI: Document Intelligence Agent (Extracción Masiva e Ingesta Incremental)
-// ==============================================================================
-
+import crypto from 'crypto';
 import { DocumentExtraction, DocumentExtractionSchema, DocumentType } from '../types.js';
 
 export interface RawDocumentInput {
   id?: string;
+  documentId?: string;
   fileName: string;
   filePath?: string;
   mimeType?: string;
@@ -27,18 +25,22 @@ export interface DocumentAnalysisResult {
 }
 
 /**
- * Genera un hash SHA-256 simple y determinista para contenido o metadata del archivo
+ * Genera un hash SHA-256 estándar de 64 caracteres para contenido y metadata del archivo
  */
 export function computeSimulatedHash(fileName: string, sizeBytes?: number, content?: string): string {
-  const seed = `${fileName}_${sizeBytes || 0}_${(content || '').slice(0, 200)}`;
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    const char = seed.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash |= 0; // Convert to 32bit integer
+  const seed = `${fileName}_${sizeBytes || 0}_${(content || '').slice(0, 500)}`;
+  try {
+    return crypto.createHash('sha256').update(seed).digest('hex');
+  } catch {
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+      const char = seed.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash |= 0;
+    }
+    const hex = Math.abs(hash).toString(16).padStart(8, '0');
+    return `${hex}${hex}${hex}${hex}${hex}${hex}${hex}${hex}`.slice(0, 64);
   }
-  const hex = Math.abs(hash).toString(16).padStart(8, '0');
-  return `sha256_${hex}${hex}${hex}${hex}`;
 }
 
 export class DocumentIntelligenceAgent {
@@ -167,11 +169,15 @@ export class DocumentIntelligenceAgent {
       const padronMatch = (doc.contentSnippet || doc.fileName).match(/padr[oó]n\s*(?:n[uú]mero|n[ºo]|nro\.?)?\s*[:#]?\s*(\d+)/i);
       const surfaceMatch = (doc.contentSnippet || '').match(/(\d+(?:[.,]\d+)?)\s*m(?:2|²|etros)/i);
       const incomeMatch = (doc.contentSnippet || '').match(/(?:\$|uyu|usd)\s*(\d+(?:[.,]\d+)?)/i);
+      const holderMatch = (doc.contentSnippet || '').match(/(?:titular|adquirente|propietario|comparece|empleado)\s*(?:es|y\s*adquirente)?\s*[:]?\s*([A-Za-zÁÉÍÓÚáéíóúñÑ\s]+?)(?:\s*\(|\s*,|\s*\.|\s*\||\s*CI|$)/i);
+      const extractedHolder = holderMatch ? holderMatch[1].trim() : undefined;
 
       parsedExtraction = {
         document_type: docType,
         document_date: new Date().toISOString().split('T')[0],
         padron: padronMatch ? padronMatch[1] : isIllegible ? null : undefined,
+        holder: extractedHolder,
+        property_owner: extractedHolder,
         land_area_m2: surfaceMatch ? parseFloat(surfaceMatch[1].replace(',', '.')) : null,
         built_area_m2: surfaceMatch && docType === 'plano' ? parseFloat(surfaceMatch[1].replace(',', '.')) : null,
         income: incomeMatch && (docType === 'recibo_sueldo' || docType === 'certificado_ingresos')
@@ -194,7 +200,7 @@ export class DocumentIntelligenceAgent {
     });
 
     const result: DocumentAnalysisResult = {
-      documentId: doc.id,
+      documentId: doc.documentId || doc.id,
       fileName: doc.fileName,
       fileHash: hash,
       documentType: docType,

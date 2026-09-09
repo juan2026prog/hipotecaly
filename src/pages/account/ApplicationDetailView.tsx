@@ -4,7 +4,7 @@
 // Integra DOCFLOW real, Storage privado, observaciones de backoffice y firma electrónica con hash
 // ==============================================================================
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -18,6 +18,9 @@ import {
   X,
   ExternalLink,
   ShieldCheck,
+  Calendar,
+  MapPin,
+  Users,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import {
@@ -25,6 +28,8 @@ import {
   ApplicationDocumentItem,
   clientPortalService,
 } from '../../lib/clientPortalService';
+import { calendarService, HipotecalyCalendarEvent } from '../../lib/calendar/calendarService';
+import { generateGoogleCalendarWebLink } from '../../lib/calendar/googleCalendarIntegration';
 import { MockSigningModal } from '../../components/signature/MockSigningModal';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -52,6 +57,17 @@ export const ApplicationDetailView: React.FC<ApplicationDetailViewProps> = ({
   // Modal para Firma Electrónica
   const [signModalOpen, setSignModalOpen] = useState(false);
   const [docToSign, setDocToSign] = useState<ApplicationDocumentItem | null>(null);
+
+  // Agenda Soberana - Citas de la Solicitud
+  const [appEvents, setAppEvents] = useState<HipotecalyCalendarEvent[]>([]);
+
+  useEffect(() => {
+    const loadEvents = async () => {
+      const evs = await calendarService.getEventsByApplication(application.id);
+      setAppEvents(evs.filter((e) => e.status !== 'cancelled'));
+    };
+    loadEvents();
+  }, [application.id]);
 
   const showToast = (msg: string) => {
     setSuccessToast(msg);
@@ -381,6 +397,81 @@ export const ApplicationDetailView: React.FC<ApplicationDetailViewProps> = ({
               </div>
             )}
           </div>
+
+          {/* Citas y Firmas Notariales Agendadas */}
+          {appEvents.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center space-x-1.5">
+                <Calendar className="w-4 h-4 text-teal-600" />
+                <span>Citas y Audiencias Notariales ({appEvents.length})</span>
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {appEvents.map((ev) => (
+                  <div
+                    key={ev.id}
+                    className="bg-white p-5 rounded-3xl border border-teal-500/30 shadow-xs space-y-3 relative overflow-hidden"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200 uppercase">
+                        {ev.eventType === 'signature' ? 'Firma de Escritura' : 'Entrega de Títulos'}
+                      </span>
+                      <span className="text-[11px] font-mono text-slate-400">
+                        {ev.applicationPublicId}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h4 className="font-serif font-bold text-slate-900 text-sm">{ev.title}</h4>
+                      <p className="text-xs text-slate-500 mt-0.5">{ev.description}</p>
+                    </div>
+
+                    <div className="space-y-1.5 text-xs text-slate-600 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                      <div className="flex items-center space-x-2 font-bold text-teal-950">
+                        <Clock className="w-4 h-4 text-teal-600 shrink-0" />
+                        <span>{ev.date} a las {ev.time} hs</span>
+                      </div>
+                      {ev.locationAddress && (
+                        <div className="flex items-center space-x-2">
+                          <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+                          <span>{ev.locationAddress}</span>
+                        </div>
+                      )}
+                      {ev.responsibleName && (
+                        <div className="flex items-center space-x-2">
+                          <Users className="w-4 h-4 text-slate-400 shrink-0" />
+                          <span>Escribana: {ev.responsibleName}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {ev.requiredDocuments && ev.requiredDocuments.length > 0 && (
+                      <div className="text-xs space-y-1">
+                        <span className="font-bold text-slate-700 text-[11px]">Documentación física a presentar:</span>
+                        <ul className="list-disc list-inside text-slate-500 space-y-0.5 text-[11px]">
+                          {ev.requiredDocuments.map((doc, i) => (
+                            <li key={i}>{doc}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-end">
+                      <a
+                        href={generateGoogleCalendarWebLink(ev)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl transition-colors flex items-center space-x-1.5 border border-blue-200"
+                      >
+                        <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Agregar a mi Google Calendar</span>
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
         </div>
       )}

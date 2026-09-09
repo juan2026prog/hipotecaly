@@ -15,7 +15,10 @@ export interface AiAuthOptions {
 export interface AiAuthResult {
   authorized: boolean;
   status: 200 | 400 | 401 | 403 | 404 | 500;
+  statusCode: 200 | 400 | 401 | 403 | 404 | 500;
   error?: string;
+  errorCode?: string;
+  errorMessage?: string;
   userId?: string;
   organizationId?: string;
   role?: string;
@@ -34,10 +37,14 @@ export async function requireAiAuthorization(
   // 1. Validar autenticación JWT
   const auth = await requireAuth(req);
   if (!auth.authorized || !auth.data) {
+    const errText = auth.error || 'No autorizado: Sesión de usuario inválida o ausente.';
     return {
       authorized: false,
       status: auth.status,
-      error: auth.error || 'No autorizado: Sesión de usuario inválida o ausente.',
+      statusCode: auth.status,
+      error: errText,
+      errorCode: auth.status === 403 ? 'FORBIDDEN' : 'UNAUTHORIZED',
+      errorMessage: errText,
     };
   }
 
@@ -84,7 +91,10 @@ export async function requireAiAuthorization(
         return {
           authorized: false,
           status: 404,
+          statusCode: 404,
           error: 'Expediente no encontrado.',
+          errorCode: 'APPLICATION_NOT_FOUND',
+          errorMessage: 'Expediente no encontrado.',
         };
       }
 
@@ -107,16 +117,21 @@ export async function requireAiAuthorization(
           .maybeSingle();
 
         if (!borrower) {
+          const deniedMsg = 'Acceso denegado: No tienes permisos sobre este expediente ni perteneces a la organización titular.';
           return {
             authorized: false,
             status: 403,
-            error: 'Acceso denegado: No tienes permisos sobre este expediente ni perteneces a la organización titular.',
+            statusCode: 403,
+            error: deniedMsg,
+            errorCode: 'FORBIDDEN',
+            errorMessage: deniedMsg,
           };
         }
 
         return {
           authorized: true,
           status: 200,
+          statusCode: 200,
           userId,
           organizationId: app.organization_id,
           role: 'borrower',
@@ -127,16 +142,21 @@ export async function requireAiAuthorization(
 
       // Validar roles si fueron requeridos
       if (options.allowedRoles && options.allowedRoles.length > 0 && !options.allowedRoles.includes(member.role)) {
+        const roleDeniedMsg = `Acceso denegado: Tu rol (${member.role}) no tiene permisos para esta función de IA.`;
         return {
           authorized: false,
           status: 403,
-          error: `Acceso denegado: Tu rol (${member.role}) no tiene permisos para esta función de IA.`,
+          statusCode: 403,
+          error: roleDeniedMsg,
+          errorCode: 'ROLE_FORBIDDEN',
+          errorMessage: roleDeniedMsg,
         };
       }
 
       return {
         authorized: true,
         status: 200,
+        statusCode: 200,
         userId,
         organizationId: app.organization_id,
         role: member.role,
@@ -147,7 +167,10 @@ export async function requireAiAuthorization(
       return {
         authorized: false,
         status: 500,
+        statusCode: 500,
         error: 'Error al verificar autorización sobre el expediente.',
+        errorCode: 'INTERNAL_AUTH_ERROR',
+        errorMessage: 'Error al verificar autorización sobre el expediente.',
       };
     }
   }
@@ -158,7 +181,10 @@ export async function requireAiAuthorization(
     return {
       authorized: false,
       status: 400,
+      statusCode: 400,
       error: 'Debe especificarse organizationId o applicationId para ejecutar esta operación.',
+      errorCode: 'MISSING_ORG_OR_APP',
+      errorMessage: 'Debe especificarse organizationId o applicationId para ejecutar esta operación.',
     };
   }
 
@@ -172,24 +198,33 @@ export async function requireAiAuthorization(
       .maybeSingle();
 
     if (!member) {
+      const orgDeniedMsg = 'Acceso denegado: No eres miembro activo de la organización especificada.';
       return {
         authorized: false,
         status: 403,
-        error: 'Acceso denegado: No eres miembro activo de la organización especificada.',
+        statusCode: 403,
+        error: orgDeniedMsg,
+        errorCode: 'ORG_FORBIDDEN',
+        errorMessage: orgDeniedMsg,
       };
     }
 
     if (options.allowedRoles && options.allowedRoles.length > 0 && !options.allowedRoles.includes(member.role)) {
+      const roleDeniedMsg = `Acceso denegado: Tu rol (${member.role}) no tiene permisos para esta función de IA.`;
       return {
         authorized: false,
         status: 403,
-        error: `Acceso denegado: Tu rol (${member.role}) no tiene permisos para esta función de IA.`,
+        statusCode: 403,
+        error: roleDeniedMsg,
+        errorCode: 'ROLE_FORBIDDEN',
+        errorMessage: roleDeniedMsg,
       };
     }
 
     return {
       authorized: true,
       status: 200,
+      statusCode: 200,
       userId,
       organizationId: targetOrgId,
       role: member.role,
@@ -199,7 +234,10 @@ export async function requireAiAuthorization(
     return {
       authorized: false,
       status: 500,
+      statusCode: 500,
       error: 'Error al verificar membresía en la organización.',
+      errorCode: 'INTERNAL_AUTH_ERROR',
+      errorMessage: 'Error al verificar membresía en la organización.',
     };
   }
 }

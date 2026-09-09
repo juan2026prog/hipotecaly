@@ -1,0 +1,477 @@
+// ==============================================================================
+// HIPOTECALY: Servicio Soberano de Agenda Interna (Fuente Única de Verdad)
+// Gestiona eventos de firma, remesa de originales, vencimientos y citas notariales
+// ==============================================================================
+
+import { supabase } from '../supabase';
+
+export type CalendarEventType =
+  | 'signature'
+  | 'original_documents'
+  | 'valuation'
+  | 'client_meeting'
+  | 'notary_review'
+  | 'deadline'
+  | 'other';
+
+export type CalendarEventStatus =
+  | 'pending_coordination'
+  | 'proposed'
+  | 'scheduled'
+  | 'completed'
+  | 'rescheduled'
+  | 'cancelled';
+
+export interface CalendarParticipant {
+  name: string;
+  role: 'Deudor' | 'Hipotecante' | 'Acreedor' | 'Escribano' | 'Representante' | 'Garante' | 'Analista';
+  email: string;
+  phone?: string;
+  status?: 'confirmed' | 'pending' | 'declined';
+}
+
+export interface HipotecalyCalendarEvent {
+  id: string;
+  organizationId: string;
+  applicationId?: string;
+  applicationPublicId?: string;
+  eventType: CalendarEventType;
+  title: string;
+  description?: string;
+  startAt: string; // ISO 8601
+  endAt: string;   // ISO 8601
+  date: string;    // YYYY-MM-DD
+  time: string;    // HH:MM
+  durationMinutes: number;
+  timezone: string;
+  locationType: 'notary_office' | 'virtual' | 'property' | 'other';
+  locationAddress?: string;
+  virtualMeetingUrl?: string;
+  responsibleUserId?: string;
+  responsibleName?: string;
+  participants: CalendarParticipant[];
+  requiredDocuments?: string[];
+  status: CalendarEventStatus;
+  googleCalendarEventId?: string;
+  googleSyncStatus?: 'not_synced' | 'synced' | 'sync_error';
+  googleLastSyncedAt?: string;
+  notes?: string;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const getAvailableCalendarSlots = (_dateString: string) => {
+  return [
+    { time: '09:30', available: true },
+    { time: '11:00', available: true },
+    { time: '14:30', available: false, conflict: 'Audiencia Juzgado Paz 2° Turno' },
+    { time: '15:30', available: true },
+    { time: '17:00', available: true },
+  ];
+};
+
+class CalendarService {
+  private localKey = 'hipotecaly_sovereign_calendar_events';
+  private memoryEvents: HipotecalyCalendarEvent[] | null = null;
+
+  private getInitialFallbackEvents(): HipotecalyCalendarEvent[] {
+    return [
+      {
+        id: 'cal-ev-001',
+        organizationId: 'd0000000-0000-0000-0000-000000000001',
+        applicationId: 'e0000000-0000-0000-0000-000000000001',
+        applicationPublicId: 'HIP-2026-00158',
+        eventType: 'signature',
+        title: 'Firma Escritura Matriz Hipoteca y Mutuo — Martín López',
+        description: 'Audiencia de otorgamiento de escritura pública de mutuo hipotecario.',
+        startAt: '2026-09-15T15:30:00-03:00',
+        endAt: '2026-09-15T16:15:00-03:00',
+        date: '2026-09-15',
+        time: '15:30',
+        durationMinutes: 45,
+        timezone: 'America/Montevideo',
+        locationType: 'notary_office',
+        locationAddress: 'Estudio Fernández & Asociados (Rincón 487 Piso 3)',
+        virtualMeetingUrl: 'https://meet.google.com/hpt-notary-sign',
+        responsibleUserId: 'u-test-notary',
+        responsibleName: 'Esc. María Pérez Morales',
+        participants: [
+          { name: 'Martín López Arispe', role: 'Deudor', email: 'martin.lopez@ejemplo.com', status: 'confirmed' },
+          { name: 'Esc. María Pérez Morales', role: 'Escribano', email: 'maria.perez@notarios.org.uy', status: 'confirmed' },
+          { name: 'Mateo Silva (Nova Capital)', role: 'Acreedor', email: 'mateo.silva@novacapital.uy', status: 'confirmed' },
+        ],
+        requiredDocuments: ['Cédula de Identidad Vigente', 'Título de Propiedad Original', 'Plano de Mensura'],
+        status: 'scheduled',
+        googleCalendarEventId: 'gcal_894120938f82190',
+        googleSyncStatus: 'synced',
+        googleLastSyncedAt: '2026-09-07T14:30:00Z',
+        createdAt: '2026-09-07T14:30:00Z',
+        updatedAt: '2026-09-07T14:30:00Z',
+        createdBy: 'Esc. María Pérez Morales',
+      },
+      {
+        id: 'cal-ev-002',
+        organizationId: 'd0000000-0000-0000-0000-000000000001',
+        applicationId: 'e0000000-0000-0000-0000-000000000002',
+        applicationPublicId: 'HIP-2026-00142',
+        eventType: 'original_documents',
+        title: 'Cotejo y Custodia de Títulos Originales — Rodrigo Gómez',
+        description: 'Entrega física de primera copia de escritura matriz y antecedentes sucesorios.',
+        startAt: '2026-09-11T11:00:00-03:00',
+        endAt: '2026-09-11T11:30:00-03:00',
+        date: '2026-09-11',
+        time: '11:00',
+        durationMinutes: 30,
+        timezone: 'America/Montevideo',
+        locationType: 'notary_office',
+        locationAddress: 'Estudio Fernández & Asociados (Rincón 487 Piso 3)',
+        responsibleName: 'Esc. María Pérez Morales',
+        participants: [
+          { name: 'Rodrigo Gómez Silveira', role: 'Deudor', email: 'rodrigo.gomez@ejemplo.com', status: 'confirmed' },
+          { name: 'Esc. María Pérez Morales', role: 'Escribano', email: 'maria.perez@notarios.org.uy', status: 'confirmed' },
+        ],
+        requiredDocuments: ['Título Original', 'Contribución Inmobiliaria al Día', 'Certificado Catastral'],
+        status: 'scheduled',
+        googleSyncStatus: 'not_synced',
+        createdAt: '2026-09-08T10:00:00Z',
+        updatedAt: '2026-09-08T10:00:00Z',
+        createdBy: 'Esc. María Pérez Morales',
+      },
+    ];
+  }
+
+  private getStoredLocalEvents(): HipotecalyCalendarEvent[] {
+    try {
+      const data = typeof window !== 'undefined' ? window.localStorage.getItem(this.localKey) : null;
+      if (data) {
+        this.memoryEvents = JSON.parse(data);
+        return this.memoryEvents!;
+      }
+    } catch {
+      // Fallback
+    }
+    if (this.memoryEvents) return this.memoryEvents;
+
+    const initial = this.getInitialFallbackEvents();
+    this.memoryEvents = initial;
+    this.saveStoredLocalEvents(initial);
+    return initial;
+  }
+
+  private saveStoredLocalEvents(events: HipotecalyCalendarEvent[]) {
+    this.memoryEvents = events;
+    try {
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(this.localKey, JSON.stringify(events));
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  private mapRowToEvent(row: any): HipotecalyCalendarEvent {
+    const start = new Date(row.start_at);
+    const date = start.toISOString().split('T')[0];
+    const time = start.toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const end = new Date(row.end_at);
+    const durationMinutes = Math.max(15, Math.round((end.getTime() - start.getTime()) / 60000));
+
+    return {
+      id: row.id,
+      organizationId: row.organization_id,
+      applicationId: row.application_id,
+      applicationPublicId: row.application_public_id || (row.metadata?.public_id ?? 'HIP-2026-EXP'),
+      eventType: row.event_type as CalendarEventType,
+      title: row.title,
+      description: row.description,
+      startAt: row.start_at,
+      endAt: row.end_at,
+      date,
+      time,
+      durationMinutes,
+      timezone: row.timezone || 'America/Montevideo',
+      locationType: row.location_type || 'notary_office',
+      locationAddress: row.location_address,
+      virtualMeetingUrl: row.virtual_meeting_url,
+      responsibleUserId: row.responsible_user_id,
+      responsibleName: row.responsible_name || 'Esc. María Pérez Morales',
+      participants: Array.isArray(row.participants) ? row.participants : [],
+      requiredDocuments: Array.isArray(row.required_documents) ? row.required_documents : [],
+      status: row.status as CalendarEventStatus,
+      googleCalendarEventId: row.google_calendar_event_id,
+      googleSyncStatus: row.google_sync_status || 'not_synced',
+      googleLastSyncedAt: row.google_last_synced_at,
+      notes: row.notes,
+      createdBy: row.created_by,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
+
+  // 1. Obtener eventos de un expediente
+  public async getEventsByApplication(applicationId: string): Promise<HipotecalyCalendarEvent[]> {
+    try {
+      const { data, error } = await supabase
+        .from('calendar_events')
+        .select('*')
+        .eq('application_id', applicationId)
+        .order('start_at', { ascending: true });
+
+      if (!error && data && data.length > 0) {
+        return data.map((r) => this.mapRowToEvent(r));
+      }
+    } catch {
+      // Fallback
+    }
+
+    const local = this.getStoredLocalEvents();
+    return local.filter((e) => e.applicationId === applicationId && e.status !== 'cancelled');
+  }
+
+  // 2. Obtener evento activo de firma de un expediente
+  public async getActiveSignatureEvent(applicationId: string): Promise<HipotecalyCalendarEvent | null> {
+    const events = await this.getEventsByApplication(applicationId);
+    return events.find((e) => e.eventType === 'signature' && (e.status === 'scheduled' || e.status === 'rescheduled')) || null;
+  }
+
+  // 3. Obtener todas las firmas agendadas
+  public async getAllScheduledSignatures(): Promise<HipotecalyCalendarEvent[]> {
+    try {
+      const { data, error } = await supabase
+        .from('calendar_events')
+        .select('*')
+        .eq('event_type', 'signature')
+        .in('status', ['scheduled', 'rescheduled'])
+        .order('start_at', { ascending: true });
+
+      if (!error && data && data.length > 0) {
+        return data.map((r) => this.mapRowToEvent(r));
+      }
+    } catch {
+      // Fallback
+    }
+
+    const local = this.getStoredLocalEvents();
+    return local.filter((e) => e.eventType === 'signature' && (e.status === 'scheduled' || e.status === 'rescheduled'));
+  }
+
+  // 3.b Obtener todos los eventos de la organización
+  public async getEventsByOrganization(organizationId?: string): Promise<HipotecalyCalendarEvent[]> {
+    try {
+      let query = supabase
+        .from('calendar_events')
+        .select('*')
+        .order('start_at', { ascending: true });
+
+      if (organizationId) {
+        query = query.eq('organization_id', organizationId);
+      }
+
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) {
+        return data.map((r) => this.mapRowToEvent(r));
+      }
+    } catch {
+      // Fallback
+    }
+
+    const local = this.getStoredLocalEvents();
+    if (organizationId) {
+      const filtered = local.filter((e) => !e.organizationId || e.organizationId === organizationId);
+      if (filtered.length > 0) return filtered;
+    }
+    return local;
+  }
+
+  // 4. Crear evento en la Agenda
+  public async createCalendarEvent(
+    eventData: Omit<HipotecalyCalendarEvent, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<HipotecalyCalendarEvent> {
+    const now = new Date().toISOString();
+    const newId = 'cal-ev-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 6);
+
+    const fullEvent: HipotecalyCalendarEvent = {
+      ...eventData,
+      id: newId,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    // 1. Intentar persistencia real en Supabase
+    try {
+      const { data, error } = await supabase
+        .from('calendar_events')
+        .insert({
+          organization_id: eventData.organizationId,
+          application_id: eventData.applicationId,
+          event_type: eventData.eventType,
+          title: eventData.title,
+          description: eventData.description,
+          start_at: eventData.startAt,
+          end_at: eventData.endAt,
+          timezone: eventData.timezone || 'America/Montevideo',
+          location_type: eventData.locationType,
+          location_address: eventData.locationAddress,
+          virtual_meeting_url: eventData.virtualMeetingUrl,
+          responsible_user_id: eventData.responsibleUserId,
+          participants: eventData.participants,
+          required_documents: eventData.requiredDocuments,
+          status: eventData.status,
+          google_calendar_event_id: eventData.googleCalendarEventId,
+          google_sync_status: eventData.googleSyncStatus || 'not_synced',
+          notes: eventData.notes,
+        })
+        .select('*')
+        .single();
+
+      if (!error && data) {
+        fullEvent.id = data.id;
+      }
+    } catch {
+      // Fallback a almacenamiento local persistente
+    }
+
+    // 2. Sincronizar almacenamiento local
+    const current = this.getStoredLocalEvents();
+    const filtered = current.filter((e) => e.id !== fullEvent.id);
+    this.saveStoredLocalEvents([fullEvent, ...filtered]);
+
+    return fullEvent;
+  }
+
+  // 5. Reprogramar evento
+  public async rescheduleEvent(
+    eventId: string,
+    newDate: string,
+    newTime: string,
+    reason?: string
+  ): Promise<HipotecalyCalendarEvent | null> {
+    const startAt = `${newDate}T${newTime}:00-03:00`;
+    const startDate = new Date(startAt);
+    const endDate = new Date(startDate.getTime() + 45 * 60000);
+    const endAt = endDate.toISOString();
+
+    try {
+      await supabase
+        .from('calendar_events')
+        .update({
+          start_at: startAt,
+          end_at: endAt,
+          status: 'rescheduled',
+          notes: reason ? `Reprogramado: ${reason}` : undefined,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', eventId);
+    } catch {
+      // Fallback
+    }
+
+    const current = this.getStoredLocalEvents();
+    const idx = current.findIndex((e) => e.id === eventId);
+    if (idx >= 0) {
+      current[idx].date = newDate;
+      current[idx].time = newTime;
+      current[idx].startAt = startAt;
+      current[idx].endAt = endAt;
+      current[idx].status = 'rescheduled';
+      if (reason) current[idx].notes = `Reprogramado: ${reason}`;
+      current[idx].updatedAt = new Date().toISOString();
+      this.saveStoredLocalEvents(current);
+      return current[idx];
+    }
+    return null;
+  }
+
+  // 6. Cancelar evento
+  public async cancelCalendarEvent(eventId: string, reason?: string): Promise<boolean> {
+    try {
+      await supabase
+        .from('calendar_events')
+        .update({
+          status: 'cancelled',
+          notes: reason ? `Cancelado: ${reason}` : undefined,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', eventId);
+    } catch {
+      // Fallback
+    }
+
+    const current = this.getStoredLocalEvents();
+    const idx = current.findIndex((e) => e.id === eventId);
+    if (idx >= 0) {
+      current[idx].status = 'cancelled';
+      if (reason) current[idx].notes = `Cancelado: ${reason}`;
+      this.saveStoredLocalEvents(current);
+      return true;
+    }
+    return false;
+  }
+
+  // 7. Solicitar documentación original (Crea evento tipo original_documents y actualiza estado)
+  public async requestOriginalDocuments(
+    appId: string,
+    orgId: string,
+    publicId: string,
+    applicantName: string,
+    applicantEmail: string,
+    documents: string[],
+    dueDate: string
+  ): Promise<HipotecalyCalendarEvent> {
+    const startAt = `${dueDate}T10:00:00-03:00`;
+    const endAt = `${dueDate}T10:30:00-03:00`;
+
+    const ev = await this.createCalendarEvent({
+      organizationId: orgId,
+      applicationId: appId,
+      applicationPublicId: publicId,
+      eventType: 'original_documents',
+      title: `Plazo Límite: Entrega de Originales — ${applicantName}`,
+      description: `Requerimiento de documentación original para cotejo notarial: ${documents.join(', ')}`,
+      startAt,
+      endAt,
+      date: dueDate,
+      time: '10:00',
+      durationMinutes: 30,
+      timezone: 'America/Montevideo',
+      locationType: 'notary_office',
+      locationAddress: 'Estudio Notarial (Rincón 487 Piso 3)',
+      responsibleName: 'Esc. María Pérez Morales',
+      participants: [
+        { name: applicantName, role: 'Deudor', email: applicantEmail, status: 'pending' },
+        { name: 'Esc. María Pérez Morales', role: 'Escribano', email: 'maria.perez@notarios.org.uy', status: 'confirmed' },
+      ],
+      requiredDocuments: documents,
+      status: 'scheduled',
+      googleSyncStatus: 'not_synced',
+    });
+
+    // Actualizar estado en applications
+    try {
+      await supabase
+        .from('applications')
+        .update({ notary_status: 'originals_required', updated_at: new Date().toISOString() })
+        .eq('id', appId);
+    } catch {
+      // Fallback
+    }
+
+    return ev;
+  }
+
+  // 8. Confirmar recepción y cotejo de originales
+  public async confirmOriginalDocumentsReceived(appId: string): Promise<boolean> {
+    try {
+      await supabase
+        .from('applications')
+        .update({ notary_status: 'signature_to_coordinate', updated_at: new Date().toISOString() })
+        .eq('id', appId);
+    } catch {
+      // Fallback
+    }
+    return true;
+  }
+}
+
+export const calendarService = new CalendarService();

@@ -24,6 +24,21 @@ export type UserRole =
   | 'test_universal'
   | 'demo_universal';
 
+export type AuthIntent =
+  | 'generic_login'
+  | 'borrower_signup'
+  | 'organization_invite'
+  | 'notary_invite'
+  | 'investor_invite'
+  | 'superadmin_login';
+
+export interface GoogleAuthOptions {
+  redirectTo?: string;
+  targetTenantSlug?: string;
+  intent?: AuthIntent;
+  inviteToken?: string;
+}
+
 export interface UserMembership {
   organizationId: string;
   role: UserRole;
@@ -63,10 +78,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   exitQaSession: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
-  signInWithGoogle: (options?: {
-    redirectTo?: string;
-    targetTenantSlug?: string;
-  }) => Promise<{ error: Error | null; data?: { url: string | null; provider: string } }>;
+  signInWithGoogle: (options?: GoogleAuthOptions) => Promise<{ error: Error | null; data?: { url: string | null; provider: string } }>;
   refreshBorrower: () => Promise<void>;
   hasRole: (allowedRoles: UserRole[], tenantId?: string) => boolean;
 }
@@ -692,21 +704,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signInWithGoogle = async (options?: {
-    redirectTo?: string;
-    targetTenantSlug?: string;
-  }) => {
+  const signInWithGoogle = async (options?: GoogleAuthOptions) => {
     try {
       const origin = typeof window !== 'undefined' ? window.location.origin : '';
       const callbackPath = '/auth/callback';
+      const intent = options?.intent || 'generic_login';
       const params = new URLSearchParams();
+      params.set('intent', intent);
       if (options?.redirectTo) {
         params.set('redirectTo', options.redirectTo);
       }
       if (options?.targetTenantSlug) {
         params.set('tenant', options.targetTenantSlug);
       }
+      if (options?.inviteToken) {
+        params.set('inviteToken', options.inviteToken);
+      }
       const finalRedirectTo = `${origin}${callbackPath}${params.toString() ? `?${params.toString()}` : ''}`;
+
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem(
+          'hipotecaly_auth_intent',
+          JSON.stringify({
+            intent,
+            targetTenantSlug: options?.targetTenantSlug,
+            redirectTo: options?.redirectTo,
+            inviteToken: options?.inviteToken,
+            timestamp: Date.now(),
+          })
+        );
+      }
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
