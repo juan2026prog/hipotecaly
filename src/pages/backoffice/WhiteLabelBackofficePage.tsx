@@ -10,6 +10,16 @@ import {
   saveWhiteLabelCustomization,
 } from '../../lib/tenantCustomizationService';
 import {
+  OrganizationHomeSettings,
+  DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS,
+  getOrganizationHomeSettings,
+  updateOrganizationHomeSettings,
+  uploadOrganizationAsset,
+  HeroBackgroundMode,
+  HeroImagePosition,
+} from '../../lib/organizationHomeService';
+import { OrganizationHero } from '../../components/organization/OrganizationHero';
+import {
   Palette,
   Sliders,
   Globe,
@@ -24,7 +34,6 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
-  Sparkles,
   Lock,
   Download,
   Upload,
@@ -35,6 +44,10 @@ import {
   History,
   FileCheck,
   Send,
+  Image as ImageIcon,
+  Trash2,
+  UploadCloud,
+  Layers,
 } from 'lucide-react';
 import {
   getActivePolicy,
@@ -91,9 +104,13 @@ const COLOR_PRESETS = [
 export const WhiteLabelBackofficePage: React.FC = () => {
   const { tenant } = useTenant();
   const [config, setConfig] = useState<WhiteLabelCustomization>(DEFAULT_WHITELABEL_CONFIG);
+  const [homeSettings, setHomeSettings] = useState<OrganizationHomeSettings>(DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS);
+  const [uploadingHeroImg, setUploadingHeroImg] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   const [activeTab, setActiveTab] = useState<
     'branding' | 'underwriting' | 'domain' | 'landing' | 'costs' | 'communications' | 'legal' | 'modules'
-  >('branding');
+  >('landing');
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -132,8 +149,12 @@ export const WhiteLabelBackofficePage: React.FC = () => {
   useEffect(() => {
     async function loadData() {
       setLoading(true);
-      const data = await getWhiteLabelCustomization(tenant.id, tenant.slug);
+      const [data, homeData] = await Promise.all([
+        getWhiteLabelCustomization(tenant.id, tenant.slug),
+        getOrganizationHomeSettings(tenant.id),
+      ]);
       setConfig(data);
+      setHomeSettings(homeData);
       setActivePolicy(getActivePolicy(tenant.id));
       setPolicyVersions(getPolicyVersions(tenant.id));
       setActiveCosts(getActiveCosts(tenant.id));
@@ -143,18 +164,46 @@ export const WhiteLabelBackofficePage: React.FC = () => {
     loadData();
   }, [tenant.id, tenant.slug]);
 
-  // Guardar configuración completa
+  // Guardar configuración completa (White-Label + Home Settings)
   const handleSaveAll = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setSaving(true);
     try {
-      await saveWhiteLabelCustomization(config);
+      await Promise.all([
+        saveWhiteLabelCustomization(config),
+        updateOrganizationHomeSettings(tenant.id, homeSettings),
+      ]);
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 4000);
     } catch {
       // Ignorar
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Subida de imagen para el Hero
+  const handleHeroImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingHeroImg(true);
+    setUploadError(null);
+    try {
+      const res = await uploadOrganizationAsset(tenant.id, 'hero', file);
+      if (res.success && res.publicUrl) {
+        setHomeSettings({
+          ...homeSettings,
+          heroBackgroundImageUrl: res.publicUrl,
+          heroBackgroundMode: homeSettings.heroBackgroundMode === 'color' ? 'image_overlay' : homeSettings.heroBackgroundMode,
+        });
+      } else {
+        setUploadError(res.error || 'Error al subir la imagen');
+      }
+    } catch (err: any) {
+      setUploadError(err.message || 'Error inesperado al subir la imagen');
+    } finally {
+      setUploadingHeroImg(false);
     }
   };
 
@@ -202,15 +251,6 @@ export const WhiteLabelBackofficePage: React.FC = () => {
   const totalDeductions = notaryFee + adminFee + config.appraisalFeeUsd + config.certificatesFeeUsd + config.registryFeeUsd;
   const netDisbursed = exampleLoanAmount - totalDeductions;
 
-  // Calculo de cuota estimada para el preview
-  const monthlyRate = config.defaultInterestRate / 100 / 12;
-  const sampleTerm = config.availableTerms[0] || 36;
-  const sampleEstimatedMonthly = Math.round(
-    config.repaymentModes.includes('solo_intereses')
-      ? exampleLoanAmount * monthlyRate
-      : (exampleLoanAmount * (monthlyRate * Math.pow(1 + monthlyRate, sampleTerm))) /
-          (Math.pow(1 + monthlyRate, sampleTerm) - 1)
-  );
 
   // Manejadores de Motor de Políticas (Pass 5)
   const handleOpenSimulator = () => {
@@ -923,90 +963,412 @@ export const WhiteLabelBackofficePage: React.FC = () => {
             )}
 
             {/* -------------------------------------------------------- */}
-            {/* TAB 4: LANDING & FUNNEL                                  */}
+            {/* TAB 4: SITIO WEB & HOME                                  */}
             {/* -------------------------------------------------------- */}
             {activeTab === 'landing' && (
-              <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
-                <div className="border-b border-slate-100 pb-3">
-                  <h3 className="text-base font-bold text-navy flex items-center gap-2">
-                    <Layout className="w-5 h-5 text-brand-green" /> Textos del Funnel y Experiencia del Solicitante
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Modificá los encabezados principales, botones y mensajes que ve el usuario en tu landing.
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1">Título Principal del Hero (H1)</label>
-                    <input
-                      type="text"
-                      value={config.heroTitle}
-                      onChange={(e) => setConfig({ ...config, heroTitle: e.target.value })}
-                      className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs font-bold text-navy"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1">Subtítulo / Bajada Comercial</label>
-                    <textarea
-                      rows={2}
-                      value={config.heroSubtitle}
-                      onChange={(e) => setConfig({ ...config, heroSubtitle: e.target.value })}
-                      className="w-full p-3 rounded-lg border border-slate-300 text-xs text-slate-700"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-6">
+                
+                {/* 1. SECCIÓN HERO: CONTENIDO */}
+                <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+                  <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
                     <div>
-                      <label className="text-xs font-bold text-slate-700 block mb-1">Texto del Botón CTA</label>
+                      <h3 className="text-base font-bold text-navy flex items-center gap-2">
+                        <Layout className="w-5 h-5 text-brand-green" /> Hero — Contenido y Mensajes
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Definí los textos principales, etiqueta, llamadas a la acción y línea de confianza del Hero.
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full border border-slate-200">
+                      Home Pública
+                    </span>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* Eyebrow */}
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">
+                        Etiqueta Superior (Eyebrow Badge)
+                      </label>
                       <input
                         type="text"
-                        value={config.ctaButtonText}
-                        onChange={(e) => setConfig({ ...config, ctaButtonText: e.target.value })}
-                        className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs font-bold text-navy"
+                        value={homeSettings.heroEyebrow}
+                        onChange={(e) => setHomeSettings({ ...homeSettings, heroEyebrow: e.target.value })}
+                        placeholder="FINANCIACIÓN CON GARANTÍA HIPOTECARIA"
+                        className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs font-bold text-navy focus:border-navy"
                       />
                     </div>
+
+                    {/* Título Principal */}
                     <div>
-                      <label className="text-xs font-bold text-slate-700 block mb-1">Badge de Confianza</label>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">
+                        Título Principal (H1)
+                      </label>
                       <input
                         type="text"
-                        value={config.trustBadgeText}
-                        onChange={(e) => setConfig({ ...config, trustBadgeText: e.target.value })}
+                        value={homeSettings.heroTitle}
+                        onChange={(e) => setHomeSettings({ ...homeSettings, heroTitle: e.target.value })}
+                        placeholder="Convertí el valor de tu inmueble en capital para avanzar."
+                        className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs font-bold text-navy focus:border-navy"
+                      />
+                    </div>
+
+                    {/* Descripción */}
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">
+                        Descripción / Bajada Comercial
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={homeSettings.heroDescription}
+                        onChange={(e) => setHomeSettings({ ...homeSettings, heroDescription: e.target.value })}
+                        placeholder="Accedé a una evaluación clara y ordenada de tu operación..."
+                        className="w-full p-3 rounded-lg border border-slate-300 text-xs text-slate-700 focus:border-navy leading-relaxed"
+                      />
+                    </div>
+
+                    {/* Botones CTA */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                      {/* CTA Primario */}
+                      <div className="p-3.5 bg-slate-50/70 rounded-xl border border-slate-200 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-navy">Botón Principal (CTA 1)</span>
+                          <label className="flex items-center space-x-1.5 cursor-pointer text-[11px] font-semibold text-slate-600">
+                            <input
+                              type="checkbox"
+                              checked={homeSettings.heroPrimaryCtaVisible}
+                              onChange={(e) => setHomeSettings({ ...homeSettings, heroPrimaryCtaVisible: e.target.checked })}
+                              className="rounded text-brand-green"
+                            />
+                            <span>Visible</span>
+                          </label>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-500 block mb-1">Texto del botón</label>
+                          <input
+                            type="text"
+                            value={homeSettings.heroPrimaryCtaText}
+                            onChange={(e) => setHomeSettings({ ...homeSettings, heroPrimaryCtaText: e.target.value })}
+                            placeholder="SIMULAR FINANCIACIÓN"
+                            className="w-full h-9 px-2.5 rounded-lg border border-slate-300 text-xs font-bold text-navy"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-500 block mb-1">Destino (Anchor o URL)</label>
+                          <input
+                            type="text"
+                            value={homeSettings.heroPrimaryCtaTarget}
+                            onChange={(e) => setHomeSettings({ ...homeSettings, heroPrimaryCtaTarget: e.target.value })}
+                            placeholder="#simulador"
+                            className="w-full h-9 px-2.5 rounded-lg border border-slate-300 text-xs font-mono text-slate-700"
+                          />
+                        </div>
+                      </div>
+
+                      {/* CTA Secundario */}
+                      <div className="p-3.5 bg-slate-50/70 rounded-xl border border-slate-200 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-navy">Botón Secundario (CTA 2)</span>
+                          <label className="flex items-center space-x-1.5 cursor-pointer text-[11px] font-semibold text-slate-600">
+                            <input
+                              type="checkbox"
+                              checked={homeSettings.heroSecondaryCtaVisible}
+                              onChange={(e) => setHomeSettings({ ...homeSettings, heroSecondaryCtaVisible: e.target.checked })}
+                              className="rounded text-brand-green"
+                            />
+                            <span>Visible</span>
+                          </label>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-500 block mb-1">Texto del botón</label>
+                          <input
+                            type="text"
+                            value={homeSettings.heroSecondaryCtaText}
+                            onChange={(e) => setHomeSettings({ ...homeSettings, heroSecondaryCtaText: e.target.value })}
+                            placeholder="CÓMO FUNCIONA"
+                            className="w-full h-9 px-2.5 rounded-lg border border-slate-300 text-xs font-bold text-navy"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-500 block mb-1">Destino (Anchor o URL)</label>
+                          <input
+                            type="text"
+                            value={homeSettings.heroSecondaryCtaTarget}
+                            onChange={(e) => setHomeSettings({ ...homeSettings, heroSecondaryCtaTarget: e.target.value })}
+                            placeholder="#como-funciona"
+                            className="w-full h-9 px-2.5 rounded-lg border border-slate-300 text-xs font-mono text-slate-700"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Trust Line */}
+                    <div className="pt-2 border-t border-slate-100">
+                      <label className="text-xs font-bold text-slate-700 block mb-1">
+                        Línea Inferior de Confianza (Trust Line)
+                      </label>
+                      <input
+                        type="text"
+                        value={homeSettings.heroTrustLine}
+                        onChange={(e) => setHomeSettings({ ...homeSettings, heroTrustLine: e.target.value })}
+                        placeholder="Evaluación inicial online · Proceso documentado · Seguimiento de la operación"
                         className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs text-slate-700"
                       />
                     </div>
                   </div>
+                </div>
 
-                  {/* Asistente IA */}
-                  <div className="p-4 bg-emerald-50/60 rounded-xl border border-emerald-200 flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <div className="flex items-center space-x-2">
-                        <Sparkles className="w-4 h-4 text-emerald-600" />
-                        <span className="text-xs font-bold text-navy">Copiloto IA de Admisión para Solicitantes</span>
-                      </div>
-                      <p className="text-[11px] text-slate-500">
-                        Permite a los usuarios recibir una pre-calificación instantánea con análisis zonal del inmueble.
-                      </p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={config.aiPrequalEnabled}
-                      onChange={(e) => setConfig({ ...config, aiPrequalEnabled: e.target.checked })}
-                      className="w-4 h-4 rounded text-brand-green"
-                    />
+                {/* 2. SECCIÓN HERO: APARIENCIA Y FONDO */}
+                <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+                  <div className="border-b border-slate-100 pb-3">
+                    <h3 className="text-base font-bold text-navy flex items-center gap-2">
+                      <ImageIcon className="w-5 h-5 text-brand-green" /> Hero — Apariencia, Fondo y Composición
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Configurá el modo de fondo (color, imagen o imagen con overlay), la opacidad y la alineación.
+                    </p>
                   </div>
 
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1">Mensaje Post-Envío de Solicitud</label>
-                    <textarea
-                      rows={2}
-                      value={config.successMessage}
-                      onChange={(e) => setConfig({ ...config, successMessage: e.target.value })}
-                      className="w-full p-3 rounded-lg border border-slate-300 text-xs text-slate-700"
-                    />
+                  {/* Selector de Modo de Fondo */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700 block">Tipo de Fondo del Hero</label>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { id: 'color', label: 'Solo Color', desc: 'Fondo plano institucional' },
+                        { id: 'image', label: 'Solo Imagen', desc: 'Fotografía en cover limpio' },
+                        { id: 'image_overlay', label: 'Imagen + Color', desc: 'Foto con capa de color y opacidad' },
+                      ].map((mode) => (
+                        <button
+                          key={mode.id}
+                          type="button"
+                          onClick={() => setHomeSettings({ ...homeSettings, heroBackgroundMode: mode.id as HeroBackgroundMode })}
+                          className={`p-3 rounded-xl border text-left transition-all ${
+                            homeSettings.heroBackgroundMode === mode.id
+                              ? 'border-navy bg-navy/5 ring-2 ring-navy/20'
+                              : 'border-slate-200 hover:border-slate-300 bg-white'
+                          }`}
+                        >
+                          <span className={`text-xs font-bold block ${homeSettings.heroBackgroundMode === mode.id ? 'text-navy' : 'text-slate-700'}`}>
+                            {mode.label}
+                          </span>
+                          <span className="text-[10px] text-slate-500 mt-0.5 block leading-tight">{mode.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Uploader y Gestión de Imagen de Fondo */}
+                  {(homeSettings.heroBackgroundMode === 'image' || homeSettings.heroBackgroundMode === 'image_overlay') && (
+                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                          <span className="text-xs font-bold text-navy block">Fotografía de Fondo del Hero</span>
+                          <span className="text-[11px] text-slate-500">Se almacena de forma pública y optimizada en organization-assets</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <label className={`px-3 py-2 rounded-lg text-xs font-bold bg-white border border-slate-300 text-slate-700 hover:text-navy cursor-pointer flex items-center space-x-1.5 transition-colors ${uploadingHeroImg ? 'opacity-50 pointer-events-none' : ''}`}>
+                            <UploadCloud className="w-3.5 h-3.5 text-brand-green" />
+                            <span>{uploadingHeroImg ? 'Subiendo...' : 'Subir Imagen'}</span>
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              onChange={handleHeroImageUpload}
+                              className="hidden"
+                            />
+                          </label>
+                          {homeSettings.heroBackgroundImageUrl && (
+                            <button
+                              type="button"
+                              onClick={() => setHomeSettings({ ...homeSettings, heroBackgroundImageUrl: '' })}
+                              className="px-2.5 py-2 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 flex items-center space-x-1"
+                              title="Eliminar imagen"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Quitar</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {uploadError && (
+                        <p className="text-xs text-rose-600 font-semibold">{uploadError}</p>
+                      )}
+
+                      {/* Miniatura de la imagen actual */}
+                      {homeSettings.heroBackgroundImageUrl && (
+                        <div className="relative h-28 rounded-lg overflow-hidden border border-slate-300 bg-slate-200">
+                          <img
+                            src={homeSettings.heroBackgroundImageUrl}
+                            alt="Hero preview"
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/70 text-white text-[10px] font-mono truncate max-w-[80%]">
+                            {homeSettings.heroBackgroundImageUrl}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Configuración de Color, Overlay y Opacidad */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2 border-t border-slate-100">
+                    {/* Color de Fondo Base */}
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Color de Fondo Base</label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="color"
+                          value={homeSettings.heroBackgroundColor}
+                          onChange={(e) => setHomeSettings({ ...homeSettings, heroBackgroundColor: e.target.value })}
+                          className="w-10 h-10 rounded border border-slate-300 cursor-pointer p-0.5 shrink-0"
+                        />
+                        <input
+                          type="text"
+                          value={homeSettings.heroBackgroundColor}
+                          onChange={(e) => setHomeSettings({ ...homeSettings, heroBackgroundColor: e.target.value })}
+                          className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs font-mono font-bold uppercase text-navy"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Color de Overlay */}
+                    {homeSettings.heroBackgroundMode === 'image_overlay' && (
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 block mb-1">Color de Capa Overlay</label>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="color"
+                            value={homeSettings.heroOverlayColor}
+                            onChange={(e) => setHomeSettings({ ...homeSettings, heroOverlayColor: e.target.value })}
+                            className="w-10 h-10 rounded border border-slate-300 cursor-pointer p-0.5 shrink-0"
+                          />
+                          <input
+                            type="text"
+                            value={homeSettings.heroOverlayColor}
+                            onChange={(e) => setHomeSettings({ ...homeSettings, heroOverlayColor: e.target.value })}
+                            className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs font-mono font-bold uppercase text-navy"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Slider de Opacidad del Overlay */}
+                    {homeSettings.heroBackgroundMode === 'image_overlay' && (
+                      <div className="sm:col-span-2 lg:col-span-1 space-y-1.5">
+                        <div className="flex justify-between items-center text-xs">
+                          <label className="font-bold text-slate-700">Opacidad del Overlay</label>
+                          <span className="font-mono font-bold text-navy px-2 py-0.5 bg-slate-100 rounded text-[11px]">
+                            {homeSettings.heroOverlayOpacity}%
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="1"
+                          value={homeSettings.heroOverlayOpacity}
+                          onChange={(e) => setHomeSettings({ ...homeSettings, heroOverlayOpacity: Number(e.target.value) })}
+                          className="w-full accent-[#102d49] cursor-pointer"
+                        />
+                        <div className="flex justify-between text-[10px] text-slate-400">
+                          <span>0% (Transparente)</span>
+                          <span>65% (Recomendado)</span>
+                          <span>100% (Opaco)</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Posición de Imagen y Patrón de Puntos */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                    {/* Alineación de Imagen */}
+                    {(homeSettings.heroBackgroundMode === 'image' || homeSettings.heroBackgroundMode === 'image_overlay') && (
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 block mb-1">Alineación / Enfoque de Imagen</label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { id: 'left', label: 'Izquierda' },
+                            { id: 'center', label: 'Centro' },
+                            { id: 'right', label: 'Derecha' },
+                          ].map((pos) => (
+                            <button
+                              key={pos.id}
+                              type="button"
+                              onClick={() => setHomeSettings({ ...homeSettings, heroImagePosition: pos.id as HeroImagePosition })}
+                              className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all ${
+                                homeSettings.heroImagePosition === pos.id
+                                  ? 'bg-navy text-white border-navy shadow-xs'
+                                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                              }`}
+                            >
+                              {pos.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Patrón de Puntos */}
+                    <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                      <div>
+                        <span className="text-xs font-bold text-navy block">Patrón de Puntos Sutil</span>
+                        <span className="text-[11px] text-slate-500">Malla gráfica sobre el degradado</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={homeSettings.heroPatternEnabled}
+                        onChange={(e) => setHomeSettings({ ...homeSettings, heroPatternEnabled: e.target.checked })}
+                        className="w-4 h-4 rounded text-brand-green cursor-pointer"
+                      />
+                    </div>
                   </div>
                 </div>
+
+                {/* 3. SECCIÓN: VISIBILIDAD DE SECCIONES DE LA HOME */}
+                <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+                  <div className="border-b border-slate-100 pb-3">
+                    <h3 className="text-base font-bold text-navy flex items-center gap-2">
+                      <Layers className="w-5 h-5 text-brand-green" /> Visibilidad de Secciones en la Home
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Activá o desactivá los bloques que componen la Home pública de tu organización.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                    {[
+                      { key: 'showMetrics', label: 'Métricas del Tenant', desc: 'Tope LTV, plazos y montos' },
+                      { key: 'showPropertyTypes', label: 'Inmuebles Admitidos', desc: 'Viviendas, locales, campos' },
+                      { key: 'showSimulator', label: 'Simulador Interactivo', desc: 'Cotizador de cuotas en vivo' },
+                      { key: 'showHowItWorks', label: 'Cómo Funciona', desc: 'Paso a paso del proceso' },
+                      { key: 'showOperationSection', label: 'Operación Ordenada', desc: 'Expediente digital y firma' },
+                      { key: 'showInvestorSection', label: 'Área de Inversores', desc: 'Pilares y botón de acceso' },
+                      { key: 'showFaq', label: 'Preguntas Frecuentes', desc: 'Acordeón informativo FAQ' },
+                      { key: 'showContact', label: 'Bloque de Contacto', desc: 'Tarjetas de atención y correo' },
+                    ].map((sec) => (
+                      <label
+                        key={sec.key}
+                        className={`p-3.5 rounded-xl border flex flex-col justify-between cursor-pointer transition-all ${
+                          (homeSettings as any)[sec.key]
+                            ? 'border-emerald-200 bg-emerald-50/50 text-navy'
+                            : 'border-slate-200 bg-slate-50/50 text-slate-400'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-bold">{sec.label}</span>
+                          <input
+                            type="checkbox"
+                            checked={Boolean((homeSettings as any)[sec.key])}
+                            onChange={(e) => setHomeSettings({ ...homeSettings, [sec.key]: e.target.checked })}
+                            className="rounded text-brand-green mt-0.5"
+                          />
+                        </div>
+                        <span className="text-[10px] mt-1 opacity-80">{sec.desc}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
               </div>
             )}
 
@@ -1476,89 +1838,32 @@ export const WhiteLabelBackofficePage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Marco de Simulación del Portal */}
+                {/* Marco de Simulación del Portal utilizando OrganizationHero real */}
                 <div
-                  className={`mx-auto rounded-xl border border-slate-200 overflow-hidden shadow-inner transition-all ${
-                    previewDevice === 'mobile' ? 'max-w-[320px]' : 'w-full'
+                  className={`mx-auto rounded-xl overflow-hidden shadow-inner border border-slate-200 transition-all ${
+                    previewDevice === 'mobile' ? 'max-w-[340px] text-xs' : 'w-full text-xs'
                   }`}
-                  style={{ backgroundColor: config.backgroundColor }}
                 >
-                  {/* Navbar Simulado */}
-                  <div
-                    className="px-4 py-3 text-white flex items-center justify-between"
-                    style={{ backgroundColor: config.secondaryColor }}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <div
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-black text-xs"
-                        style={{ backgroundColor: config.primaryColor }}
-                      >
-                        {config.publicName.charAt(0)}
-                      </div>
-                      <span className="font-bold text-xs truncate max-w-[140px]">{config.publicName}</span>
-                    </div>
-                    <span
-                      className="text-[10px] font-bold px-2 py-1 rounded text-white"
-                      style={{ backgroundColor: config.primaryColor }}
-                    >
-                      Simular
-                    </span>
-                  </div>
-
-                  {/* Hero Simulado */}
-                  <div className="p-5 text-left space-y-3 bg-white">
-                    <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
-                      {config.trustBadgeText}
-                    </span>
-                    <h4 className="text-base font-extrabold text-slate-900 leading-snug">
-                      {config.heroTitle}
-                    </h4>
-                    <p className="text-[11px] text-slate-600 line-clamp-2">
-                      {config.heroSubtitle}
-                    </p>
-
-                    {/* Simulador Simulado */}
-                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 text-xs">
-                      <div className="flex justify-between items-center text-[11px]">
-                        <span className="text-slate-500">Tope Financiado:</span>
-                        <strong className="font-mono text-slate-900">{config.maxLtv}% del Inmueble</strong>
-                      </div>
-                      <div className="flex justify-between items-center text-[11px]">
-                        <span className="text-slate-500">Tasa Base Anual:</span>
-                        <strong className="font-mono text-slate-900">{config.defaultInterestRate}%</strong>
-                      </div>
-                      <div className="flex justify-between items-baseline pt-2 border-t border-slate-200">
-                        <span className="text-slate-600 font-bold text-[11px]">Cuota Estimada (USD 100k):</span>
-                        <span className="text-base font-black text-slate-900 font-mono">
-                          USD {sampleEstimatedMonthly.toLocaleString('es-UY')}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        className="w-full py-2.5 rounded-lg text-white font-bold text-xs shadow-xs transition-opacity hover:opacity-90"
-                        style={{ backgroundColor: config.primaryColor }}
-                      >
-                        {config.ctaButtonText}
-                      </button>
-                    </div>
-
-                    {/* Copiloto IA si está activo */}
-                    {config.aiPrequalEnabled && (
-                      <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center space-x-2 text-[10px] text-emerald-900">
-                        <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <span>Copiloto de Pre-calificación IA Activo</span>
-                      </div>
-                    )}
-                  </div>
+                  <OrganizationHero
+                    branding={{
+                      public_name: config.publicName,
+                      tag_line: config.tagline,
+                      primary_color: config.primaryColor,
+                      secondary_color: config.secondaryColor,
+                      accent_color: config.accentColor,
+                    }}
+                    homeSettings={homeSettings}
+                    className="!py-8 !sm:py-10"
+                  />
                 </div>
 
                 <div className="text-center pt-2">
                   <Link
-                    to={`/org/${config.slug}`}
+                    to={`/demo/${tenant.slug || 'estudio-nova'}`}
                     target="_blank"
                     className="text-xs font-bold text-navy hover:text-brand-green inline-flex items-center"
                   >
-                    Probar interactividad completa en vivo →
+                    Abrir Home Pública en Nueva Pestaña →
                   </Link>
                 </div>
               </div>
