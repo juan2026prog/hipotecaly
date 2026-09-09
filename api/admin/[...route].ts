@@ -903,7 +903,7 @@ async function adminSecurityEventsHandler(req: any, res: any) {
 async function adminPlatformModeHandler(req: any, res: any) {
   if (req.method === 'GET') {
     try {
-      const { data, error } = await supabaseAdmin
+      const { data } = await supabaseAdmin
         .from('platform_settings')
         .select('*')
         .eq('id', 'global')
