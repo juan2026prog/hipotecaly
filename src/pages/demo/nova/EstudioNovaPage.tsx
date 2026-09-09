@@ -28,6 +28,7 @@ import {
 } from '../../../lib/tenantRulesService';
 import { Button } from '../../../components/ui/Button';
 import { CurrencyInput } from '../../../components/ui/CurrencyInput';
+import { WhatsAppFloatingButton } from '../../../components/whatsapp/WhatsAppFloatingButton';
 
 export const EstudioNovaPage: React.FC = () => {
   const navigate = useNavigate();
@@ -1001,6 +1002,9 @@ export const EstudioNovaPage: React.FC = () => {
           </span>
         </div>
       </footer>
+
+      {/* Botón Flotante de WhatsApp Oficial */}
+      <WhatsAppFloatingButton tenantId={tenantId} organizationName="Estudio Nova" />
 
     </div>
   );

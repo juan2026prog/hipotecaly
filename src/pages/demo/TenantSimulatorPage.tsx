@@ -22,6 +22,7 @@ import {
 import { clientSimulationService } from '../../lib/clientSimulationService';
 import { Button } from '../../components/ui/Button';
 import { CurrencyInput } from '../../components/ui/CurrencyInput';
+import { WhatsAppFloatingButton } from '../../components/whatsapp/WhatsAppFloatingButton';
 
 export const TenantSimulatorPage: React.FC = () => {
   const navigate = useNavigate();
@@ -411,6 +412,9 @@ export const TenantSimulatorPage: React.FC = () => {
           </span>
         </div>
       </footer>
+
+      {/* Botón Flotante de WhatsApp */}
+      <WhatsAppFloatingButton tenantId={tenant.id} organizationName={brandName} />
     </div>
   );
 };

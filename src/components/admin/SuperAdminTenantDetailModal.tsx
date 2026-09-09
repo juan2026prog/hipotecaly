@@ -72,6 +72,7 @@ export const SuperAdminTenantDetailModal: React.FC<SuperAdminTenantDetailModalPr
     { key: 'signatures_enabled', name: 'Firma Digital Notarial', desc: 'Firma electrónica e integración notarial' },
     { key: 'investor_portal_enabled', name: 'Red Privada de Inversores', desc: 'Portal exclusivo para inversores del cliente' },
     { key: 'protected_contact_enabled', name: 'Protección de Contactos', desc: 'Privacidad y protección anti-bypass' },
+    { key: 'whatsapp_direct_enabled', name: 'WhatsApp Directo', desc: 'Botón flotante de contacto WhatsApp directo en el sitio público' },
   ];
 
   return (

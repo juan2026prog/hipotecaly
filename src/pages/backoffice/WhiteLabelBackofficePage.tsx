@@ -1381,6 +1381,12 @@ export const WhiteLabelBackofficePage: React.FC = () => {
                       note: 'Disponible. Activar junto con Red de Inversores en tu cuenta.',
                     },
                     {
+                      name: 'WhatsApp Directo',
+                      desc: 'Botón flotante oficial wa.me para tu sitio web público con mensaje configurable.',
+                      status: 'enabled' as const,
+                      note: 'Disponible. Gestioná número y mensaje desde Administración > WhatsApp Directo.',
+                    },
+                    {
                       name: 'Reportes Programados',
                       desc: 'Generación y envío automático de reportes operativos según frecuencia configurada.',
                       status: 'unavailable' as const,

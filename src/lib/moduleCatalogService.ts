@@ -285,6 +285,18 @@ export const SAAS_MODULE_CATALOG: SaaSModuleDefinition[] = [
     tenantAware: true,
     commercialStatus: 'available',
   },
+  {
+    id: 'whatsapp_direct',
+    name: 'WhatsApp Directo',
+    category: 'Communication',
+    description: 'Botón flotante de contacto directo oficial wa.me para el sitio web público del tenant.',
+    tier: 'included',
+    dependencies: ['core_tenancy'],
+    backendReady: true,
+    frontendReady: true,
+    tenantAware: true,
+    commercialStatus: 'available',
+  },
 
   // 11. White-Label
   {

@@ -15,6 +15,7 @@ import {
 import { getTenantModules, DEFAULT_MODULES_MAP } from '../../lib/tenantModulesService';
 import { TenantNotFoundPage } from '../TenantNotFoundPage';
 import { CurrencyInput } from '../../components/ui/CurrencyInput';
+import { WhatsAppFloatingButton } from '../../components/whatsapp/WhatsAppFloatingButton';
 
 export const GenericWhiteLabelLanding: React.FC = () => {
   const { tenant, loading } = useTenant();
@@ -303,6 +304,9 @@ export const GenericWhiteLabelLanding: React.FC = () => {
           <p className="text-[11px] text-slate-400 mt-1">Plataforma tecnológica provista por HIPOTECALY Core.</p>
         </div>
       </footer>
+
+      {/* Botón Flotante de WhatsApp */}
+      <WhatsAppFloatingButton tenantId={tenant.id} organizationName={tenant.branding?.public_name || tenant.name} />
 
     </div>
   );

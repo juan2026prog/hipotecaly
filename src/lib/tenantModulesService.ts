@@ -21,7 +21,8 @@ export type TenantModuleKey =
   | 'protected_contact_enabled'
   | 'cost_breakdown_enabled'
   | 'external_simulator_integration_enabled'
-  | 'investor_portal_enabled';
+  | 'investor_portal_enabled'
+  | 'whatsapp_direct_enabled';
 
 export interface TenantModule {
   id?: string;
@@ -50,6 +51,7 @@ export const DEFAULT_MODULES_MAP: Record<TenantModuleKey, boolean> = {
   cost_breakdown_enabled: true,
   external_simulator_integration_enabled: true,
   investor_portal_enabled: true,
+  whatsapp_direct_enabled: true,
 };
 
 // Cache en memoria por tenant

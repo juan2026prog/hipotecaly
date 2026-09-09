@@ -36,6 +36,7 @@ import { LenderMessagesPage } from './pages/lender/LenderMessagesPage';
 import { UsersManagementPage } from './pages/backoffice/UsersManagementPage';
 import { OrganizationSettingsPage } from './pages/backoffice/OrganizationSettingsPage';
 import { WhiteLabelBackofficePage } from './pages/backoffice/WhiteLabelBackofficePage';
+import { WhatsAppSettingsPage } from './pages/backoffice/WhatsAppSettingsPage';
 import { SuperAdminLeadsPage } from './pages/admin/SuperAdminLeadsPage';
 
 // Tenant Demo ESTUDIO NOVA & Portales Tenant
@@ -562,6 +563,28 @@ export const App: React.FC = () => {
                     requireTenantMatch
                   >
                     <WhiteLabelBackofficePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/admin/whatsapp"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={['tenant_admin', 'tenant_owner', 'super_admin']}
+                    requireTenantMatch
+                  >
+                    <WhatsAppSettingsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/admin/configuracion/whatsapp"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={['tenant_admin', 'tenant_owner', 'super_admin']}
+                    requireTenantMatch
+                  >
+                    <WhatsAppSettingsPage />
                   </ProtectedRoute>
                 }
               />

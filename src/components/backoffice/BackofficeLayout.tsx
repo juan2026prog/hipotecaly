@@ -23,6 +23,7 @@ import {
   ChevronDown,
   Clock,
   Home,
+  MessageSquare,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
@@ -132,6 +133,7 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
       title: 'ADMINISTRACIÓN',
       items: [
         ...(canManageSettings ? [{ name: 'Marca y Portal', href: `${baseRoute}/whitelabel`, icon: Palette }] : []),
+        ...(canManageSettings ? [{ name: 'WhatsApp Directo', href: `${baseRoute}/whatsapp`, icon: MessageSquare }] : []),
         ...(canManageSettings ? [{ name: 'Equipo', href: `${baseRoute}/usuarios`, icon: Users }] : []),
         ...(canManageSettings ? [{ name: 'Organización', href: `${baseRoute}/organizacion`, icon: Building2 }] : []),
         ...(canManageSettings ? [{ name: 'Configuración', href: `${baseRoute}/configuracion`, icon: Settings }] : []),

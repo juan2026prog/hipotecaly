@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useTenant } from '../../../contexts/TenantContext';
 import { useAuth } from '../../../contexts/AuthContext';
+import { WhatsAppFloatingButton } from '../../../components/whatsapp/WhatsAppFloatingButton';
 
 export const EstudioNovaAccessHubPage: React.FC = () => {
   const { tenantSlug } = useParams<{ tenantSlug: string }>();
@@ -258,6 +259,9 @@ export const EstudioNovaAccessHubPage: React.FC = () => {
       <footer className="border-t border-slate-200 py-6 text-center text-xs text-slate-500 bg-white">
         HIPOTECALY · Demostración Oficial para {brandName}
       </footer>
+
+      {/* Botón Flotante de WhatsApp */}
+      <WhatsAppFloatingButton tenantId={tenant.id} organizationName={brandName} />
     </div>
   );
 };
