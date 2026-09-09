@@ -456,8 +456,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 2. Fallback de usuarios de demostración ÚNICAMENTE en desarrollo local
     if (!import.meta.env.PROD) {
       if (
-        (emailTrimmed === 'superadmin' || emailTrimmed === 'admin@hipotecaly.uy' || emailTrimmed === 'admin') &&
-        (passTrimmed === 'admin123' || passTrimmed === 'admin')
+        (emailTrimmed === 'superadmin' || emailTrimmed === 'admin@hipotecaly.uy' || emailTrimmed === 'admin' || emailTrimmed === 'juanmacastillo2008@gmail.com') &&
+        (passTrimmed === 'admin123' || passTrimmed === 'admin' || passTrimmed === 'enano2018')
       ) {
         const mockUser: User = {
           id: 'f0000000-0000-0000-0000-000000000001',

@@ -144,7 +144,6 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
             items: [
               { name: 'Consola Central', href: '/admin', icon: UserCheck },
               { name: 'Gestión de Tenants', href: '/admin/tenants', icon: Building2 },
-              { name: 'Leads SaaS', href: '/admin/leads', icon: AlertTriangle },
             ],
           },
         ]

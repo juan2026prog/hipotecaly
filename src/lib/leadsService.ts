@@ -69,7 +69,7 @@ export const leadsService = {
           type: 'saas_lead_received',
           title: `Nuevo Lead SaaS: ${data.company_name}`,
           message: `${data.full_name} (${data.email}) solicitó información/demo para ${data.company_name}.`,
-          link: '/app/leads',
+          link: '/admin/leads',
           is_read: false,
           created_at: new Date().toISOString(),
         });

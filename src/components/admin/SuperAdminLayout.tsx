@@ -8,6 +8,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   Home,
   Users2,
+  UserPlus,
   Boxes,
   UserCheck,
   Activity,
@@ -46,10 +47,11 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
-  // Las 6 áreas maestras de primer nivel
+  // Las áreas maestras de primer nivel
   const primaryNavItems: SuperAdminNavItem[] = [
     { name: 'Inicio', href: '/admin', icon: Home },
     { name: 'Clientes', href: '/admin/clientes', icon: Users2 },
+    { name: 'Leads Comerciales', href: '/admin/leads', icon: UserPlus },
     { name: 'Servicios', href: '/admin/servicios', icon: Boxes },
     { name: 'Ver como cliente', href: '/admin/ver-como-cliente', icon: UserCheck },
     { name: 'Actividad', href: '/admin/actividad', icon: Activity },
@@ -60,6 +62,7 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
     if (activeSection) {
       if (activeSection === 'overview' && href === '/admin') return true;
       if (activeSection === 'clientes' && (href === '/admin/clientes' || href === '/admin/tenants')) return true;
+      if (activeSection === 'leads' && href === '/admin/leads') return true;
       if (activeSection === 'servicios' && (href === '/admin/servicios' || href === '/admin/ai' || href.includes('tab=integrations'))) return true;
       if (activeSection === 'impersonate' && (href === '/admin/ver-como-cliente' || href.includes('tab=qa'))) return true;
       if (activeSection === 'actividad' && (href === '/admin/actividad' || href.includes('tab=audit'))) return true;
@@ -73,6 +76,9 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
     }
     if (href === '/admin/clientes') {
       return currentPath === '/admin/clientes' || currentPath === '/admin/tenants' || currentPath.startsWith('/admin/tenants/');
+    }
+    if (href === '/admin/leads') {
+      return currentPath === '/admin/leads';
     }
     if (href === '/admin/servicios') {
       return currentPath === '/admin/servicios' || currentPath === '/admin/ai' || location.search.includes('tab=integrations');

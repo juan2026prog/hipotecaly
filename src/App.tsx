@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { MarketplaceHome } from './pages/MarketplaceHome';
 import { SaaSHome } from './pages/SaaSHome';
@@ -35,7 +35,7 @@ import { LenderMessagesPage } from './pages/lender/LenderMessagesPage';
 import { UsersManagementPage } from './pages/backoffice/UsersManagementPage';
 import { OrganizationSettingsPage } from './pages/backoffice/OrganizationSettingsPage';
 import { WhiteLabelBackofficePage } from './pages/backoffice/WhiteLabelBackofficePage';
-import { LeadsManagementPage } from './pages/backoffice/LeadsManagementPage';
+import { SuperAdminLeadsPage } from './pages/admin/SuperAdminLeadsPage';
 
 // Tenant Demo ESTUDIO NOVA & Portales Tenant
 import { EstudioNovaPage } from './pages/demo/nova/EstudioNovaPage';
@@ -86,6 +86,11 @@ const LenderRouteGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
     return <NotFoundPage />;
   }
   return <>{children}</>;
+};
+
+const TenantLeadsRedirect: React.FC = () => {
+  const { tenantSlug } = useParams<{ tenantSlug: string }>();
+  return <Navigate to={`/demo/${tenantSlug || 'estudio-nova'}/admin`} replace />;
 };
 
 export const App: React.FC = () => {
@@ -236,7 +241,7 @@ export const App: React.FC = () => {
                 path="/admin/leads"
                 element={
                   <ProtectedRoute requireSuperAdmin>
-                    <LeadsManagementPage />
+                    <SuperAdminLeadsPage />
                   </ProtectedRoute>
                 }
               />
@@ -346,14 +351,7 @@ export const App: React.FC = () => {
               />
               <Route
                 path="/demo/:tenantSlug/admin/leads"
-                element={
-                  <ProtectedRoute
-                    allowedRoles={['tenant_admin', 'tenant_owner', 'super_admin']}
-                    requireTenantMatch
-                  >
-                    <LeadsManagementPage />
-                  </ProtectedRoute>
-                }
+                element={<TenantLeadsRedirect />}
               />
               <Route
                 path="/demo/:tenantSlug/admin/propiedades"
@@ -702,11 +700,7 @@ export const App: React.FC = () => {
               />
               <Route
                 path="/app/leads"
-                element={
-                  <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_owner', 'super_admin']}>
-                    <LeadsManagementPage />
-                  </ProtectedRoute>
-                }
+                element={<Navigate to="/app" replace />}
               />
               <Route
                 path="/app/propiedades"
