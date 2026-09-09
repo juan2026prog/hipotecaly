@@ -63,6 +63,10 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   exitQaSession: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
+  signInWithGoogle: (options?: {
+    redirectTo?: string;
+    targetTenantSlug?: string;
+  }) => Promise<{ error: Error | null; data?: { url: string | null; provider: string } }>;
   refreshBorrower: () => Promise<void>;
   hasRole: (allowedRoles: UserRole[], tenantId?: string) => boolean;
 }
@@ -228,13 +232,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         // Asignación segura con tenant resuelto o fallback
         const orgId = currentUser.user_metadata?.organization_id || 'a0000000-0000-0000-0000-000000000001';
+        const fullName = currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || '';
+        const nameParts = fullName.split(' ');
+        const derivedFirstName = currentUser.user_metadata?.first_name || currentUser.user_metadata?.given_name || (nameParts[0] || 'Usuario');
+        const derivedLastName = currentUser.user_metadata?.last_name || currentUser.user_metadata?.family_name || (nameParts.slice(1).join(' ') || '');
+
         setBorrower({
           id: currentUser.id,
           user_id: currentUser.id,
           organization_id: orgId,
           id_type: 'CI',
-          first_name: currentUser.user_metadata?.first_name || 'Usuario',
-          last_name: currentUser.user_metadata?.last_name || '',
+          first_name: derivedFirstName,
+          last_name: derivedLastName,
           email: currentUser.email || '',
           phone: currentUser.user_metadata?.phone || '',
           department: 'Montevideo',
@@ -683,6 +692,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signInWithGoogle = async (options?: {
+    redirectTo?: string;
+    targetTenantSlug?: string;
+  }) => {
+    try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      const callbackPath = '/auth/callback';
+      const params = new URLSearchParams();
+      if (options?.redirectTo) {
+        params.set('redirectTo', options.redirectTo);
+      }
+      if (options?.targetTenantSlug) {
+        params.set('tenant', options.targetTenantSlug);
+      }
+      const finalRedirectTo = `${origin}${callbackPath}${params.toString() ? `?${params.toString()}` : ''}`;
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: finalRedirectTo,
+          scopes: 'openid email profile',
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'select_account',
+          },
+        },
+      });
+
+      if (error) {
+        return { error: new Error(error.message) };
+      }
+      return { error: null, data: data ? { url: data.url, provider: data.provider } : undefined };
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err : new Error('Error al iniciar sesión con Google') };
+    }
+  };
+
   const refreshBorrower = async () => {
     if (user) await fetchBorrowerProfile(user);
   };
@@ -733,6 +779,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signOut,
         exitQaSession,
         resetPassword,
+        signInWithGoogle,
         refreshBorrower,
         hasRole,
       }}

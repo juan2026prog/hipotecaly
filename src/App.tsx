@@ -11,6 +11,7 @@ import { ApplicantAccount } from './pages/account/ApplicantAccount';
 import { LoginPage } from './pages/auth/LoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
+import { AuthCallbackPage } from './pages/auth/AuthCallbackPage';
 import { HowItWorksPage, FaqPage, SaaSPricingPage, ContactPage } from './pages/MarketingPages';
 import { AboutPage } from './pages/landing/AboutPage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -196,6 +197,7 @@ export const App: React.FC = () => {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/ingresar" element={<LoginPage />} />
               <Route path="/registro" element={<RegisterPage />} />
+              <Route path="/auth/callback" element={<AuthCallbackPage />} />
               <Route path="/recuperar-clave" element={<ForgotPasswordPage />} />
               <Route path="/forgot-password" element={<Navigate to="/recuperar-clave" replace />} />
 
