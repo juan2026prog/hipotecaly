@@ -19,6 +19,16 @@ export interface TenantBranding {
   font_family_display?: string;
   font_family_ui?: string;
   powered_by_text?: string;
+  support_phone?: string;
+  support_email?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+  business_hours?: string;
+  social_instagram?: string;
+  social_linkedin?: string;
+  social_facebook?: string;
+  footer_description?: string;
 }
 
 export interface TenantSettings {
@@ -98,6 +108,13 @@ export const NOVA_TENANT: Tenant = {
     font_family_display: 'serif',
     font_family_ui: 'sans',
     powered_by_text: 'Tecnología provista por HIPOTECALY',
+    support_phone: '+598 2916 4455',
+    support_email: 'contacto@estudionova.uy',
+    address: 'Montevideo, Uruguay',
+    city: 'Montevideo',
+    country: 'Uruguay',
+    business_hours: 'Lun a Vie 09:00 – 18:00 hs',
+    footer_description: 'Financiación & inversión con respaldo inmobiliario en Uruguay. Estructuración legal y notarial de operaciones.',
   },
   settings: {
     allow_borrower_portal: true,
@@ -368,6 +385,16 @@ export async function resolveTenant(
               logo_url: b.logo_url,
               favicon_url: b.favicon_url,
               powered_by_text: 'Tecnología provista por HIPOTECALY',
+              support_phone: b.support_phone || '+598 2916 4455',
+              support_email: b.support_email || 'contacto@estudionova.uy',
+              address: b.address || 'Montevideo, Uruguay',
+              city: b.city || 'Montevideo',
+              country: b.country || 'Uruguay',
+              business_hours: b.business_hours || 'Lun a Vie 09:00 – 18:00 hs',
+              social_instagram: b.social_instagram || '',
+              social_linkedin: b.social_linkedin || '',
+              social_facebook: b.social_facebook || '',
+              footer_description: b.footer_description || 'Financiación & inversión con respaldo inmobiliario en Uruguay. Estructuración legal y notarial de operaciones.',
             },
             settings: s.allow_borrower_portal !== undefined ? s : DEFAULT_TENANT.settings,
             is_white_label: true,

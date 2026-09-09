@@ -20,6 +20,14 @@ import {
 } from '../../lib/organizationHomeService';
 import { OrganizationHero } from '../../components/organization/OrganizationHero';
 import {
+  OrganizationFaqItem,
+  getOrganizationFaqs,
+  createOrganizationFaq,
+  updateOrganizationFaq,
+  deleteOrganizationFaq,
+  reorderOrganizationFaqs,
+} from '../../lib/organizationFaqService';
+import {
   Palette,
   Sliders,
   Globe,
@@ -48,6 +56,18 @@ import {
   Trash2,
   UploadCloud,
   Layers,
+  Plus,
+  ArrowUp,
+  ArrowDown,
+  HelpCircle,
+  Building,
+  CheckSquare,
+  Briefcase,
+  TrendingUp,
+  Edit3,
+  Phone,
+  MapPin,
+  Clock,
 } from 'lucide-react';
 import {
   getActivePolicy,
@@ -145,16 +165,26 @@ export const WhiteLabelBackofficePage: React.FC = () => {
   const [testCommRecipient, setTestCommRecipient] = useState('solicitante@ejemplo.com');
   const [testCommSuccess, setTestCommSuccess] = useState<string | null>(null);
 
+  // Estados de Preguntas Frecuentes (FAQ)
+  const [faqs, setFaqs] = useState<OrganizationFaqItem[]>([]);
+  const [editingFaqId, setEditingFaqId] = useState<string | null>(null);
+  const [showNewFaqModal, setShowNewFaqModal] = useState(false);
+  const [newFaqQuestion, setNewFaqQuestion] = useState('');
+  const [newFaqAnswer, setNewFaqAnswer] = useState('');
+  const [faqActionToast, setFaqActionToast] = useState<string | null>(null);
+
   // Cargar datos del tenant
   useEffect(() => {
     async function loadData() {
       setLoading(true);
-      const [data, homeData] = await Promise.all([
+      const [data, homeData, faqsData] = await Promise.all([
         getWhiteLabelCustomization(tenant.id, tenant.slug),
         getOrganizationHomeSettings(tenant.id),
+        getOrganizationFaqs(tenant.id, false),
       ]);
       setConfig(data);
       setHomeSettings(homeData);
+      setFaqs(faqsData);
       setActivePolicy(getActivePolicy(tenant.id));
       setPolicyVersions(getPolicyVersions(tenant.id));
       setActiveCosts(getActiveCosts(tenant.id));
@@ -163,6 +193,75 @@ export const WhiteLabelBackofficePage: React.FC = () => {
     }
     loadData();
   }, [tenant.id, tenant.slug]);
+
+  // Manejadores de Preguntas Frecuentes (FAQ)
+  const handleCreateFaq = async () => {
+    if (!newFaqQuestion.trim() || !newFaqAnswer.trim()) {
+      alert('Por favor completá la pregunta y la respuesta.');
+      return;
+    }
+    const maxOrder = faqs.length > 0 ? Math.max(...faqs.map((f) => f.sortOrder)) : 0;
+    const res = await createOrganizationFaq(tenant.id, {
+      question: newFaqQuestion.trim(),
+      answer: newFaqAnswer.trim(),
+      sortOrder: maxOrder + 1,
+      isActive: true,
+    });
+    if (res.success) {
+      const refreshed = await getOrganizationFaqs(tenant.id, false);
+      setFaqs(refreshed);
+      setNewFaqQuestion('');
+      setNewFaqAnswer('');
+      setShowNewFaqModal(false);
+      setFaqActionToast('Pregunta frecuente creada exitosamente');
+      setTimeout(() => setFaqActionToast(null), 4000);
+    } else {
+      alert(res.error || 'Error al crear la pregunta frecuente');
+    }
+  };
+
+  const handleUpdateFaq = async (faqId: string, updates: Partial<OrganizationFaqItem>) => {
+    const res = await updateOrganizationFaq(tenant.id, faqId, updates);
+    if (res.success) {
+      const refreshed = await getOrganizationFaqs(tenant.id, false);
+      setFaqs(refreshed);
+      setEditingFaqId(null);
+      setFaqActionToast('Pregunta frecuente actualizada');
+      setTimeout(() => setFaqActionToast(null), 3000);
+    } else {
+      alert(res.error || 'Error al actualizar');
+    }
+  };
+
+  const handleDeleteFaq = async (faqId: string) => {
+    if (!window.confirm('¿Deseas eliminar esta pregunta frecuente?')) return;
+    const res = await deleteOrganizationFaq(tenant.id, faqId);
+    if (res.success) {
+      const refreshed = await getOrganizationFaqs(tenant.id, false);
+      setFaqs(refreshed);
+      setFaqActionToast('Pregunta frecuente eliminada');
+      setTimeout(() => setFaqActionToast(null), 3000);
+    } else {
+      alert(res.error || 'Error al eliminar');
+    }
+  };
+
+  const handleMoveFaq = async (faqId: string, direction: 'up' | 'down') => {
+    const idx = faqs.findIndex((f) => f.id === faqId);
+    if (idx === -1) return;
+    if (direction === 'up' && idx === 0) return;
+    if (direction === 'down' && idx === faqs.length - 1) return;
+
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    const newFaqs = [...faqs];
+    const [moved] = newFaqs.splice(idx, 1);
+    newFaqs.splice(targetIdx, 0, moved);
+
+    const orderedIds = newFaqs.map((f) => f.id);
+    await reorderOrganizationFaqs(tenant.id, orderedIds);
+    const refreshed = await getOrganizationFaqs(tenant.id, false);
+    setFaqs(refreshed);
+  };
 
   // Guardar configuración completa (White-Label + Home Settings)
   const handleSaveAll = async (e?: React.FormEvent) => {
@@ -190,11 +289,11 @@ export const WhiteLabelBackofficePage: React.FC = () => {
     setUploadingHeroImg(true);
     setUploadError(null);
     try {
-      const res = await uploadOrganizationAsset(tenant.id, 'hero', file);
-      if (res.success && res.publicUrl) {
+      const res = await uploadOrganizationAsset(tenant.id, file, 'hero');
+      if (res.success && res.url) {
         setHomeSettings({
           ...homeSettings,
-          heroBackgroundImageUrl: res.publicUrl,
+          heroBackgroundImageUrl: res.url,
           heroBackgroundMode: homeSettings.heroBackgroundMode === 'color' ? 'image_overlay' : homeSettings.heroBackgroundMode,
         });
       } else {
@@ -661,6 +760,132 @@ export const WhiteLabelBackofficePage: React.FC = () => {
                       <option value="rounded-2xl">Bordes Suaves (16px)</option>
                       <option value="rounded-none">Bordes Rectos / Minimalista (0px)</option>
                     </select>
+                  </div>
+                </div>
+
+                {/* Presencia Institucional & Datos de Contacto (Compartidos DRY) */}
+                <div className="pt-4 border-t border-slate-100 space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Building className="w-4 h-4 text-brand-green" />
+                    <div>
+                      <h4 className="text-xs font-bold text-navy uppercase tracking-wider">
+                        Presencia Institucional & Contacto (Fuente Única DRY)
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        Estos datos se propagan automáticamente al Topbar, Sección de Contacto y Footer institucional.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">
+                        <span className="flex items-center gap-1"><Phone className="w-3 h-3 text-slate-400" /> Teléfono / WhatsApp</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={config.supportPhone}
+                        onChange={(e) => setConfig({ ...config, supportPhone: e.target.value, supportPhoneWhatsapp: e.target.value })}
+                        placeholder="+598 2916 4455"
+                        className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs font-mono text-navy focus:border-navy"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">
+                        <span className="flex items-center gap-1"><Mail className="w-3 h-3 text-slate-400" /> Email de Atención</span>
+                      </label>
+                      <input
+                        type="email"
+                        value={config.supportEmail}
+                        onChange={(e) => setConfig({ ...config, supportEmail: e.target.value })}
+                        placeholder="contacto@estudionova.uy"
+                        className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs text-navy focus:border-navy"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">
+                        <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-slate-400" /> Horario de Atención</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={config.businessHours}
+                        onChange={(e) => setConfig({ ...config, businessHours: e.target.value })}
+                        placeholder="Lun a Vie 09:00 – 18:00 hs"
+                        className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs text-navy focus:border-navy"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="text-xs font-bold text-slate-700 block mb-1">
+                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-400" /> Dirección Física</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={config.address}
+                        onChange={(e) => setConfig({ ...config, address: e.target.value })}
+                        placeholder="Plaza Independencia 848, Oficina 602"
+                        className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs text-navy focus:border-navy"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Ciudad / Departamento</label>
+                      <input
+                        type="text"
+                        value={config.city}
+                        onChange={(e) => setConfig({ ...config, city: e.target.value })}
+                        placeholder="Montevideo"
+                        className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs text-navy focus:border-navy"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Instagram URL</label>
+                      <input
+                        type="text"
+                        value={config.socialInstagram}
+                        onChange={(e) => setConfig({ ...config, socialInstagram: e.target.value })}
+                        placeholder="https://instagram.com/..."
+                        className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs text-slate-700 focus:border-navy"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">LinkedIn URL</label>
+                      <input
+                        type="text"
+                        value={config.socialLinkedin}
+                        onChange={(e) => setConfig({ ...config, socialLinkedin: e.target.value })}
+                        placeholder="https://linkedin.com/company/..."
+                        className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs text-slate-700 focus:border-navy"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Facebook URL</label>
+                      <input
+                        type="text"
+                        value={config.socialFacebook}
+                        onChange={(e) => setConfig({ ...config, socialFacebook: e.target.value })}
+                        placeholder="https://facebook.com/..."
+                        className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs text-slate-700 focus:border-navy"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2 lg:col-span-3">
+                      <label className="text-xs font-bold text-slate-700 block mb-1">
+                        Descripción Institucional del Footer
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={config.footerDescription}
+                        onChange={(e) => setConfig({ ...config, footerDescription: e.target.value })}
+                        placeholder="Financiación & inversión con respaldo inmobiliario en Uruguay. Estructuración legal y notarial de operaciones."
+                        className="w-full p-3 rounded-lg border border-slate-300 text-xs text-navy focus:border-navy leading-relaxed"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1369,6 +1594,651 @@ export const WhiteLabelBackofficePage: React.FC = () => {
                   </div>
                 </div>
 
+                {/* 4. SECCIÓN: INMUEBLES ADMITIDOS (GARANTÍAS) */}
+                <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+                  <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-base font-bold text-navy flex items-center gap-2">
+                        <Building className="w-5 h-5 text-brand-green" /> Inmuebles Admitidos — Textos y Categorías
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Definí los tipos de activos inmobiliarios aceptados como garantía para la estructuración.
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full border border-slate-200">
+                      Garantías
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Etiqueta Superior (Eyebrow)</label>
+                      <input
+                        type="text"
+                        value={homeSettings.propertyTypesEyebrow}
+                        onChange={(e) => setHomeSettings({ ...homeSettings, propertyTypesEyebrow: e.target.value })}
+                        placeholder="GARANTÍAS INMOBILIARIAS"
+                        className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs font-bold text-navy focus:border-navy"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Título de la Sección</label>
+                      <input
+                        type="text"
+                        value={homeSettings.propertyTypesTitle}
+                        onChange={(e) => setHomeSettings({ ...homeSettings, propertyTypesTitle: e.target.value })}
+                        placeholder="Inmuebles admitidos para estructuración"
+                        className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs font-bold text-navy focus:border-navy"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Descripción / Bajada</label>
+                      <textarea
+                        rows={2}
+                        value={homeSettings.propertyTypesDescription}
+                        onChange={(e) => setHomeSettings({ ...homeSettings, propertyTypesDescription: e.target.value })}
+                        placeholder="Analizamos operaciones respaldadas por diversos tipos de activos con títulos en regla y tasación técnica."
+                        className="w-full p-3 rounded-lg border border-slate-300 text-xs text-slate-700 focus:border-navy"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Tarjetas de Tipos de Inmuebles */}
+                  <div className="space-y-3 pt-2 border-t border-slate-100">
+                    <label className="text-xs font-bold text-navy block uppercase tracking-wider">
+                      Tarjetas de Activos ({homeSettings.propertyTypesItems?.length || 0})
+                    </label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {homeSettings.propertyTypesItems?.map((item, idx) => (
+                        <div key={item.id || idx} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3 text-xs">
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 block mb-1">Título del Activo</label>
+                            <input
+                              type="text"
+                              value={item.title}
+                              onChange={(e) => {
+                                const updated = [...homeSettings.propertyTypesItems];
+                                updated[idx] = { ...updated[idx], title: e.target.value };
+                                setHomeSettings({ ...homeSettings, propertyTypesItems: updated });
+                              }}
+                              className="w-full h-9 px-2.5 rounded-lg border border-slate-300 text-xs font-bold text-navy"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 block mb-1">Descripción</label>
+                            <textarea
+                              rows={3}
+                              value={item.description}
+                              onChange={(e) => {
+                                const updated = [...homeSettings.propertyTypesItems];
+                                updated[idx] = { ...updated[idx], description: e.target.value };
+                                setHomeSettings({ ...homeSettings, propertyTypesItems: updated });
+                              }}
+                              className="w-full p-2.5 rounded-lg border border-slate-300 text-[11px] text-slate-700 leading-relaxed"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 block mb-1">Puntos Clave (separados por coma)</label>
+                            <input
+                              type="text"
+                              value={item.bullets?.join(', ') || ''}
+                              onChange={(e) => {
+                                const updated = [...homeSettings.propertyTypesItems];
+                                updated[idx] = {
+                                  ...updated[idx],
+                                  bullets: e.target.value.split(',').map((b) => b.trim()).filter(Boolean),
+                                };
+                                setHomeSettings({ ...homeSettings, propertyTypesItems: updated });
+                              }}
+                              placeholder="Punto 1, Punto 2"
+                              className="w-full h-8 px-2.5 rounded-lg border border-slate-300 text-[10px] text-slate-600"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. SECCIÓN: CÓMO FUNCIONA (PASO A PASO) */}
+                <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+                  <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-base font-bold text-navy flex items-center gap-2">
+                        <CheckSquare className="w-5 h-5 text-brand-green" /> Cómo Funciona — 4 Pasos del Proceso
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Explicación paso a paso desde la cotización hasta la recepción de la propuesta.
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full border border-slate-200">
+                      Funnel
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Etiqueta Superior (Eyebrow)</label>
+                      <input
+                        type="text"
+                        value={homeSettings.howItWorksEyebrow}
+                        onChange={(e) => setHomeSettings({ ...homeSettings, howItWorksEyebrow: e.target.value })}
+                        placeholder="PASO A PASO"
+                        className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs font-bold text-navy focus:border-navy"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Título de la Sección</label>
+                      <input
+                        type="text"
+                        value={homeSettings.howItWorksTitle}
+                        onChange={(e) => setHomeSettings({ ...homeSettings, howItWorksTitle: e.target.value })}
+                        placeholder="Cómo funciona el proceso"
+                        className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs font-bold text-navy focus:border-navy"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Descripción / Bajada</label>
+                      <textarea
+                        rows={2}
+                        value={homeSettings.howItWorksDescription}
+                        onChange={(e) => setHomeSettings({ ...homeSettings, howItWorksDescription: e.target.value })}
+                        placeholder="Cuatro etapas ordenadas desde la primera simulación hasta la recepción de la propuesta definitiva."
+                        className="w-full p-3 rounded-lg border border-slate-300 text-xs text-slate-700 focus:border-navy"
+                      />
+                    </div>
+                  </div>
+
+                  {/* 4 Pasos */}
+                  <div className="space-y-3 pt-2 border-t border-slate-100">
+                    <label className="text-xs font-bold text-navy block uppercase tracking-wider">
+                      Etapas del Proceso ({homeSettings.howItWorksSteps?.length || 0})
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {homeSettings.howItWorksSteps?.map((st, idx) => (
+                        <div key={st.step || idx} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2 text-xs">
+                          <div className="flex items-center space-x-2">
+                            <span className="w-6 h-6 rounded-full bg-navy text-white text-[11px] font-black flex items-center justify-center shrink-0">
+                              {st.step}
+                            </span>
+                            <span className="font-bold text-navy">Paso {st.step}</span>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 block mb-1">Título del Paso</label>
+                            <input
+                              type="text"
+                              value={st.title}
+                              onChange={(e) => {
+                                const updated = [...homeSettings.howItWorksSteps];
+                                updated[idx] = { ...updated[idx], title: e.target.value };
+                                setHomeSettings({ ...homeSettings, howItWorksSteps: updated });
+                              }}
+                              className="w-full h-8 px-2 rounded border border-slate-300 text-xs font-bold text-navy"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 block mb-1">Descripción</label>
+                            <textarea
+                              rows={3}
+                              value={st.description}
+                              onChange={(e) => {
+                                const updated = [...homeSettings.howItWorksSteps];
+                                updated[idx] = { ...updated[idx], description: e.target.value };
+                                setHomeSettings({ ...homeSettings, howItWorksSteps: updated });
+                              }}
+                              className="w-full p-2 rounded border border-slate-300 text-[11px] text-slate-700 leading-relaxed"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 6. SECCIÓN: OPERACIÓN ORDENADA */}
+                <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+                  <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-base font-bold text-navy flex items-center gap-2">
+                        <Briefcase className="w-5 h-5 text-brand-green" /> Operación Institucional — Pilares de Gestión
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Transparencia, legajo digital, seguimiento de estados y preparación para validaciones y firma.
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full border border-slate-200">
+                      Operativa
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Etiqueta Superior (Eyebrow)</label>
+                      <input
+                        type="text"
+                        value={homeSettings.operationEyebrow}
+                        onChange={(e) => setHomeSettings({ ...homeSettings, operationEyebrow: e.target.value })}
+                        placeholder="UNA OPERACIÓN, TODO ORDENADO"
+                        className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs font-bold text-navy focus:border-navy"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Título de la Sección</label>
+                      <input
+                        type="text"
+                        value={homeSettings.operationTitle}
+                        onChange={(e) => setHomeSettings({ ...homeSettings, operationTitle: e.target.value })}
+                        placeholder="Información clara desde el primer paso."
+                        className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs font-bold text-navy focus:border-navy"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Descripción / Bajada</label>
+                      <textarea
+                        rows={2}
+                        value={homeSettings.operationDescription}
+                        onChange={(e) => setHomeSettings({ ...homeSettings, operationDescription: e.target.value })}
+                        placeholder="Estructuramos cada operación para que solicitantes, profesionales y escribanos cuenten con un flujo predecible y documentado."
+                        className="w-full p-3 rounded-lg border border-slate-300 text-xs text-slate-700 focus:border-navy"
+                      />
+                    </div>
+                  </div>
+
+                  {/* 4 Pilares Operativos */}
+                  <div className="space-y-3 pt-2 border-t border-slate-100">
+                    <label className="text-xs font-bold text-navy block uppercase tracking-wider">
+                      Pilares Operativos ({homeSettings.operationFeatures?.length || 0})
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {homeSettings.operationFeatures?.map((feat, idx) => (
+                        <div key={idx} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2 text-xs">
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 block mb-1">Título del Pilar</label>
+                            <input
+                              type="text"
+                              value={feat.title}
+                              onChange={(e) => {
+                                const updated = [...homeSettings.operationFeatures];
+                                updated[idx] = { ...updated[idx], title: e.target.value };
+                                setHomeSettings({ ...homeSettings, operationFeatures: updated });
+                              }}
+                              className="w-full h-8 px-2 rounded border border-slate-300 text-xs font-bold text-navy"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 block mb-1">Descripción</label>
+                            <textarea
+                              rows={2}
+                              value={feat.description}
+                              onChange={(e) => {
+                                const updated = [...homeSettings.operationFeatures];
+                                updated[idx] = { ...updated[idx], description: e.target.value };
+                                setHomeSettings({ ...homeSettings, operationFeatures: updated });
+                              }}
+                              className="w-full p-2 rounded border border-slate-300 text-[11px] text-slate-700"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 7. SECCIÓN: ÁREA DE INVERSORES */}
+                <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+                  <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-base font-bold text-navy flex items-center gap-2">
+                        <TrendingUp className="w-5 h-5 text-brand-green" /> Área de Inversores — Mensaje y Pilares de Capital
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Propuesta de valor para prestamistas e inversores privados con garantía real en Uruguay.
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold bg-amber-100 text-amber-900 px-2.5 py-1 rounded-full border border-amber-200">
+                      Inversores
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Etiqueta Superior (Eyebrow)</label>
+                      <input
+                        type="text"
+                        value={homeSettings.investorEyebrow}
+                        onChange={(e) => setHomeSettings({ ...homeSettings, investorEyebrow: e.target.value })}
+                        placeholder="ÁREA DE INVERSIÓN"
+                        className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs font-bold text-navy focus:border-navy"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Título de la Sección</label>
+                      <input
+                        type="text"
+                        value={homeSettings.investorTitle}
+                        onChange={(e) => setHomeSettings({ ...homeSettings, investorTitle: e.target.value })}
+                        placeholder="Capital respaldado por activos reales."
+                        className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs font-bold text-navy focus:border-navy"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Descripción / Bajada</label>
+                      <textarea
+                        rows={2}
+                        value={homeSettings.investorDescription}
+                        onChange={(e) => setHomeSettings({ ...homeSettings, investorDescription: e.target.value })}
+                        placeholder="Estructuración de operaciones de financiamiento con garantía hipotecaria formalizada en Uruguay."
+                        className="w-full p-3 rounded-lg border border-slate-300 text-xs text-slate-700 focus:border-navy"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Texto del Botón CTA Inversor</label>
+                      <input
+                        type="text"
+                        value={homeSettings.investorCtaText}
+                        onChange={(e) => setHomeSettings({ ...homeSettings, investorCtaText: e.target.value })}
+                        placeholder="Acceder al Panel Inversor"
+                        className="w-full h-9 px-2.5 rounded-lg border border-slate-300 text-xs font-bold text-navy"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Tarjetas Inversor */}
+                  <div className="space-y-3 pt-2 border-t border-slate-100">
+                    <label className="text-xs font-bold text-navy block uppercase tracking-wider">
+                      Pilares para Inversores ({homeSettings.investorCards?.length || 0})
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      {homeSettings.investorCards?.map((card, idx) => (
+                        <div key={idx} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2 text-xs">
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Etiqueta</label>
+                            <input
+                              type="text"
+                              value={card.tag}
+                              onChange={(e) => {
+                                const updated = [...homeSettings.investorCards];
+                                updated[idx] = { ...updated[idx], tag: e.target.value };
+                                setHomeSettings({ ...homeSettings, investorCards: updated });
+                              }}
+                              className="w-full h-7 px-2 rounded border border-slate-300 text-[10px] font-mono font-bold uppercase text-navy"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Título</label>
+                            <input
+                              type="text"
+                              value={card.title}
+                              onChange={(e) => {
+                                const updated = [...homeSettings.investorCards];
+                                updated[idx] = { ...updated[idx], title: e.target.value };
+                                setHomeSettings({ ...homeSettings, investorCards: updated });
+                              }}
+                              className="w-full h-7 px-2 rounded border border-slate-300 text-xs font-bold text-navy"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Descripción</label>
+                            <textarea
+                              rows={3}
+                              value={card.description}
+                              onChange={(e) => {
+                                const updated = [...homeSettings.investorCards];
+                                updated[idx] = { ...updated[idx], description: e.target.value };
+                                setHomeSettings({ ...homeSettings, investorCards: updated });
+                              }}
+                              className="w-full p-1.5 rounded border border-slate-300 text-[10px] text-slate-700"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 8. SECCIÓN: GESTOR DE PREGUNTAS FRECUENTES (FAQ INTERACTIVO) */}
+                <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+                  <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-base font-bold text-navy flex items-center gap-2">
+                        <HelpCircle className="w-5 h-5 text-brand-green" /> Preguntas Frecuentes (FAQ) — Gestor Interactivo
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Agregá, editá, activá/desactivá y reordená las preguntas de la Home con persistencia en Supabase.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="sm"
+                      onClick={() => setShowNewFaqModal(true)}
+                      className="font-bold shrink-0"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      <span>Nueva Pregunta</span>
+                    </Button>
+                  </div>
+
+                  {/* Toast de acción FAQ */}
+                  {faqActionToast && (
+                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold flex items-center space-x-2 animate-fadeIn">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>{faqActionToast}</span>
+                    </div>
+                  )}
+
+                  {/* Tip de Variables Dinámicas */}
+                  <div className="p-3.5 rounded-xl bg-blue-50/60 border border-blue-200 text-xs text-blue-900 flex items-start space-x-2">
+                    <CheckSquare className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold">Variable dinámica en respuestas:</span> Podés incluir{' '}
+                      <code className="bg-blue-100 px-1.5 py-0.5 rounded font-mono text-[11px] font-bold text-blue-950">
+                        {'{maxFinancedPercentage}'}
+                      </code>{' '}
+                      en cualquier respuesta y el sistema la reemplazará en caliente por el porcentaje LTV configurado ({config.maxLtv}%).
+                    </div>
+                  </div>
+
+                  {/* Lista Ordenable de FAQs */}
+                  <div className="space-y-3">
+                    {faqs.length === 0 ? (
+                      <div className="p-8 text-center text-slate-400 border-2 border-dashed border-slate-200 rounded-xl">
+                        No hay preguntas frecuentes registradas. Hacé clic en "Nueva Pregunta" para crear la primera.
+                      </div>
+                    ) : (
+                      faqs.map((faq, idx) => {
+                        const isEditing = editingFaqId === faq.id;
+                        return (
+                          <div
+                            key={faq.id}
+                            className={`p-4 rounded-xl border transition-all ${
+                              faq.isActive
+                                ? 'border-slate-200 bg-white hover:border-slate-300'
+                                : 'border-slate-200 bg-slate-50/70 opacity-60'
+                            }`}
+                          >
+                            {isEditing ? (
+                              /* Modo Edición */
+                              <div className="space-y-3">
+                                <div>
+                                  <label className="text-[10px] font-bold text-slate-500 block mb-1">Pregunta</label>
+                                  <input
+                                    type="text"
+                                    defaultValue={faq.question}
+                                    id={`edit-q-${faq.id}`}
+                                    className="w-full h-9 px-3 rounded-lg border border-slate-300 text-xs font-bold text-navy"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] font-bold text-slate-500 block mb-1">Respuesta</label>
+                                  <textarea
+                                    rows={3}
+                                    defaultValue={faq.answer}
+                                    id={`edit-a-${faq.id}`}
+                                    className="w-full p-2.5 rounded-lg border border-slate-300 text-xs text-slate-700"
+                                  />
+                                </div>
+                                <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingFaqId(null)}
+                                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                                  >
+                                    Cancelar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const qVal = (document.getElementById(`edit-q-${faq.id}`) as HTMLInputElement)?.value;
+                                      const aVal = (document.getElementById(`edit-a-${faq.id}`) as HTMLTextAreaElement)?.value;
+                                      if (qVal && aVal) {
+                                        handleUpdateFaq(faq.id, { question: qVal.trim(), answer: aVal.trim() });
+                                      }
+                                    }}
+                                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-navy text-white hover:bg-slate-800"
+                                  >
+                                    Guardar Cambios
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              /* Modo Vista Normal */
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="space-y-1 min-w-0 flex-1">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-mono font-bold flex items-center justify-center shrink-0">
+                                      {idx + 1}
+                                    </span>
+                                    <h4 className="text-xs font-bold text-navy">{faq.question}</h4>
+                                    {!faq.isActive && (
+                                      <span className="text-[9px] font-bold bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">
+                                        INACTIVA
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[11px] text-slate-600 pl-7 leading-relaxed">{faq.answer}</p>
+                                </div>
+
+                                {/* Acciones: Subir, Bajar, Activar, Editar, Borrar */}
+                                <div className="flex items-center space-x-1 shrink-0">
+                                  <button
+                                    type="button"
+                                    disabled={idx === 0}
+                                    onClick={() => handleMoveFaq(faq.id, 'up')}
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-navy hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none"
+                                    title="Subir posición"
+                                  >
+                                    <ArrowUp className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={idx === faqs.length - 1}
+                                    onClick={() => handleMoveFaq(faq.id, 'down')}
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-navy hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none"
+                                    title="Bajar posición"
+                                  >
+                                    <ArrowDown className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateFaq(faq.id, { isActive: !faq.isActive })}
+                                    className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-colors ${
+                                      faq.isActive
+                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                        : 'bg-slate-100 text-slate-600 border-slate-200'
+                                    }`}
+                                    title={faq.isActive ? 'Desactivar de la Home' : 'Activar en la Home'}
+                                  >
+                                    {faq.isActive ? 'Activa' : 'Pausada'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingFaqId(faq.id)}
+                                    className="p-1.5 rounded-lg text-slate-500 hover:text-navy hover:bg-slate-100"
+                                    title="Editar pregunta"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteFaq(faq.id)}
+                                    className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50"
+                                    title="Eliminar"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* Modal para Crear Nueva FAQ */}
+            {showNewFaqModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+                <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 text-xs">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-1.5">
+                      <Plus className="w-4 h-4 text-brand-green" />
+                      <span>Nueva Pregunta Frecuente</span>
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setShowNewFaqModal(false)}
+                      className="text-slate-400 hover:text-slate-600 font-bold"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Pregunta:</label>
+                      <input
+                        type="text"
+                        value={newFaqQuestion}
+                        onChange={(e) => setNewFaqQuestion(e.target.value)}
+                        placeholder="Ej: ¿Qué porcentaje del inmueble se puede financiar?"
+                        className="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs font-bold text-navy"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Respuesta:</label>
+                      <textarea
+                        rows={4}
+                        value={newFaqAnswer}
+                        onChange={(e) => setNewFaqAnswer(e.target.value)}
+                        placeholder="Podés usar {maxFinancedPercentage} para insertar dinámicamente el LTV de la organización."
+                        className="w-full p-3 rounded-lg border border-slate-300 text-xs text-navy leading-relaxed"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setShowNewFaqModal(false)}
+                      className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCreateFaq}
+                      className="px-4 py-2 rounded-xl bg-[#102d49] hover:bg-[#173a5e] text-white font-bold"
+                    >
+                      Crear Pregunta
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 

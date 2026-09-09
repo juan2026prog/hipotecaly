@@ -19,6 +19,9 @@ import {
   Layers,
   Menu,
   X,
+  Compass,
+  ShieldCheck,
+  Award,
 } from 'lucide-react';
 import { useTenant } from '../../../contexts/TenantContext';
 import {
@@ -33,10 +36,36 @@ import {
   OrganizationHomeSettings,
   DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS,
 } from '../../../lib/organizationHomeService';
+import {
+  getOrganizationFaqs,
+  subscribeToOrganizationFaqs,
+  OrganizationFaqItem,
+  DEFAULT_ESTUDIO_NOVA_FAQS,
+  interpolateFaqAnswer,
+} from '../../../lib/organizationFaqService';
+import {
+  getTenantModules,
+  DEFAULT_MODULES_MAP,
+  TenantModuleKey,
+} from '../../../lib/tenantModulesService';
 import { OrganizationHero } from '../../../components/organization/OrganizationHero';
 import { Button } from '../../../components/ui/Button';
 import { CurrencyInput } from '../../../components/ui/CurrencyInput';
 import { WhatsAppFloatingButton } from '../../../components/whatsapp/WhatsAppFloatingButton';
+
+// Mapeo dinámico y seguro de iconos para las tarjetas de la Home
+const ICON_MAP: Record<string, React.FC<{ className?: string }>> = {
+  HomeIcon,
+  Building,
+  Trees,
+  FileSpreadsheet,
+  FileText,
+  Layers,
+  FileCheck2,
+  Compass,
+  ShieldCheck,
+  Award,
+};
 
 export const EstudioNovaPage: React.FC = () => {
   const { tenant } = useTenant();
@@ -51,14 +80,22 @@ export const EstudioNovaPage: React.FC = () => {
   const effectiveSlug = tenantSlug || tenant?.slug || 'estudio-nova';
   const orgName = tenant?.branding?.public_name || tenant?.name || 'Estudio Nova';
   const orgTagline = tenant?.branding?.tag_line || 'Financiación & inversión';
-  const supportPhone = '+598 2916 4455';
-  const supportEmail = tenant?.settings?.sender_email || 'contacto@estudionova.uy';
+  
+  // Datos institucionales únicos (DRY)
+  const supportPhone = tenant?.branding?.support_phone || '+598 2916 4455';
+  const supportEmail = tenant?.branding?.support_email || tenant?.settings?.sender_email || 'contacto@estudionova.uy';
+  const institutionalAddress = tenant?.branding?.address || 'Montevideo, Uruguay';
+  const businessHours = tenant?.branding?.business_hours || 'Lun a Vie 09:00 – 18:00 hs';
+  const footerDescription = tenant?.branding?.footer_description || 'Financiación & inversión con respaldo inmobiliario en Uruguay. Estructuración legal y notarial de operaciones.';
+
   const primaryColor = tenant?.branding?.primary_color || '#173a5e';
   const secondaryColor = tenant?.branding?.secondary_color || '#102d49';
   const accentColor = tenant?.branding?.accent_color || '#f4b43b';
 
   const [rules, setRules] = useState<TenantLendingRules>(DEFAULT_NOVA_LENDING_RULES);
   const [homeSettings, setHomeSettings] = useState<OrganizationHomeSettings>(DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS);
+  const [faqs, setFaqs] = useState<OrganizationFaqItem[]>(DEFAULT_ESTUDIO_NOVA_FAQS);
+  const [modules, setModules] = useState<Record<TenantModuleKey, boolean>>(DEFAULT_MODULES_MAP);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Estados del simulador
@@ -87,9 +124,21 @@ export const EstudioNovaPage: React.FC = () => {
       }
     });
 
+    // 3. Cargar FAQs de la Organización
+    getOrganizationFaqs(effectiveOrgId, true).then((f) => setFaqs(f));
+    const unsubscribeFaqs = subscribeToOrganizationFaqs((updatedOrgId, updatedFaqs) => {
+      if (updatedOrgId === effectiveOrgId) {
+        setFaqs(updatedFaqs.filter((f) => f.isActive));
+      }
+    });
+
+    // 4. Cargar Módulos Habilitados
+    getTenantModules(effectiveOrgId).then((m) => setModules(m));
+
     return () => {
       unsubscribeRules();
       unsubscribeHome();
+      unsubscribeFaqs();
     };
   }, [effectiveOrgId, orgName, orgTagline]);
 
@@ -128,11 +177,13 @@ export const EstudioNovaPage: React.FC = () => {
     );
   };
 
+  const isInvestorEnabled = modules.investor_portal_enabled && homeSettings.showInvestorSection;
+
   return (
     <div className="min-h-screen flex flex-col bg-white text-[#27384a] font-sans antialiased selection:bg-[#f4b43b] selection:text-[#102d49]">
       
       {/* ============================================================== */}
-      {/* 1. TOPBAR INSTITUCIONAL                                        */}
+      {/* 1. TOPBAR INSTITUCIONAL (DATOS COMPARTIDOS DRY)                */}
       {/* ============================================================== */}
       <div
         className="text-slate-200 text-xs py-2 px-4 sm:px-6 lg:px-8 border-b"
@@ -153,30 +204,34 @@ export const EstudioNovaPage: React.FC = () => {
             </a>
             <span className="hidden md:flex items-center text-slate-300">
               <MapPin className="w-3.5 h-3.5 mr-1.5" style={{ color: accentColor }} />
-              Montevideo, Uruguay
+              {institutionalAddress}
             </span>
           </div>
 
           <div className="flex items-center space-x-4 text-[11px] sm:text-xs text-slate-300">
             <span className="hidden lg:flex items-center">
               <Clock className="w-3.5 h-3.5 mr-1.5" style={{ color: accentColor }} />
-              Lun a Vie 09:00 – 18:00 hs
+              {businessHours}
             </span>
-            <Link
-              to={`/demo/${effectiveSlug}/inversor`}
-              className="flex items-center font-semibold transition-colors hover:text-white"
-              style={{ color: accentColor }}
-            >
-              <Building className="w-3.5 h-3.5 mr-1" style={{ color: accentColor }} />
-              Red de Inversores
-            </Link>
-            <Link
-              to={`/demo/${effectiveSlug}/cliente`}
-              className="flex items-center text-slate-200 hover:text-white font-medium transition-colors"
-            >
-              <User className="w-3.5 h-3.5 mr-1" style={{ color: accentColor }} />
-              Portal de clientes
-            </Link>
+            {isInvestorEnabled && (
+              <Link
+                to={`/demo/${effectiveSlug}/inversor`}
+                className="flex items-center font-semibold transition-colors hover:text-white"
+                style={{ color: accentColor }}
+              >
+                <Building className="w-3.5 h-3.5 mr-1" style={{ color: accentColor }} />
+                Red de Inversores
+              </Link>
+            )}
+            {modules.client_portal_enabled && (
+              <Link
+                to={`/demo/${effectiveSlug}/cliente`}
+                className="flex items-center text-slate-200 hover:text-white font-medium transition-colors"
+              >
+                <User className="w-3.5 h-3.5 mr-1" style={{ color: accentColor }} />
+                Portal de clientes
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -238,7 +293,7 @@ export const EstudioNovaPage: React.FC = () => {
                 CÓMO FUNCIONA
               </a>
             )}
-            {homeSettings.showInvestorSection && (
+            {isInvestorEnabled && (
               <a href="#inversionistas" className="hover:text-[#245f91] transition-colors py-2">
                 INVERSIONISTAS
               </a>
@@ -314,7 +369,7 @@ export const EstudioNovaPage: React.FC = () => {
                   CÓMO FUNCIONA
                 </a>
               )}
-              {homeSettings.showInvestorSection && (
+              {isInvestorEnabled && (
                 <a
                   href="#inversionistas"
                   onClick={() => setMobileNavOpen(false)}
@@ -341,23 +396,27 @@ export const EstudioNovaPage: React.FC = () => {
                   CONTACTO
                 </a>
               )}
-              <Link
-                to={`/demo/${effectiveSlug}/inversor`}
-                onClick={() => setMobileNavOpen(false)}
-                className="py-2 px-3 rounded-lg font-bold"
-                style={{ backgroundColor: secondaryColor, color: accentColor }}
-              >
-                RED DE INVERSORES
-              </Link>
+              {isInvestorEnabled && (
+                <Link
+                  to={`/demo/${effectiveSlug}/inversor`}
+                  onClick={() => setMobileNavOpen(false)}
+                  className="py-2 px-3 rounded-lg font-bold"
+                  style={{ backgroundColor: secondaryColor, color: accentColor }}
+                >
+                  RED DE INVERSORES
+                </Link>
+              )}
             </nav>
             <div className="pt-3 border-t border-[#dfe5ea] flex flex-col gap-2">
-              <Link
-                to={`/demo/${effectiveSlug}/simulador`}
-                onClick={() => setMobileNavOpen(false)}
-                className="w-full text-center bg-[#f5f7f9] text-[#173a5e] py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider"
-              >
-                SIMULAR AHORA
-              </Link>
+              {homeSettings.showSimulator && (
+                <Link
+                  to={`/demo/${effectiveSlug}/simulador`}
+                  onClick={() => setMobileNavOpen(false)}
+                  className="w-full text-center bg-[#f5f7f9] text-[#173a5e] py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider"
+                >
+                  SIMULAR AHORA
+                </Link>
+              )}
               <Link
                 to={`/demo/${effectiveSlug}/solicitar`}
                 onClick={() => setMobileNavOpen(false)}
@@ -429,7 +488,7 @@ export const EstudioNovaPage: React.FC = () => {
       )}
 
       {/* ============================================================== */}
-      {/* 5. INMUEBLES ADMITIDOS (SOLUCIONES)                            */}
+      {/* 5. INMUEBLES ADMITIDOS (SOLUCIONES DINÁMICAS)                  */}
       {/* ============================================================== */}
       {homeSettings.showPropertyTypes && (
         <section id="financiacion" className="py-16 sm:py-24 bg-[#f5f7f9] text-left">
@@ -437,63 +496,45 @@ export const EstudioNovaPage: React.FC = () => {
             
             <div className="text-center max-w-3xl mx-auto space-y-3">
               <span className="text-xs font-bold uppercase tracking-widest text-[#245f91] bg-white px-3 py-1 rounded-full border border-[#dfe5ea] inline-block">
-                GARANTÍAS INMOBILIARIAS
+                {homeSettings.propertyTypesEyebrow || 'GARANTÍAS INMOBILIARIAS'}
               </span>
               <h2 className="text-3xl sm:text-4xl font-serif font-bold text-[#173a5e]">
-                Inmuebles admitidos para estructuración
+                {homeSettings.propertyTypesTitle || 'Inmuebles admitidos para estructuración'}
               </h2>
               <p className="text-sm sm:text-base text-[#718096] max-w-xl mx-auto">
-                Analizamos operaciones respaldadas por diversos tipos de activos con títulos en regla y tasación técnica.
+                {homeSettings.propertyTypesDescription || 'Analizamos operaciones respaldadas por diversos tipos de activos con títulos en regla y tasación técnica.'}
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              
-              {/* Tarjeta 1: Viviendas */}
-              <div className="bg-white rounded-2xl p-8 border border-[#dfe5ea] shadow-sm hover:shadow-md transition-all space-y-4 text-left group">
-                <div className="w-12 h-12 rounded-xl bg-[#173a5e]/10 text-[#173a5e] flex items-center justify-center font-bold group-hover:bg-[#173a5e] group-hover:text-white transition-colors">
-                  <HomeIcon className="w-6 h-6" />
-                </div>
-                <h3 className="text-xl font-serif font-bold text-[#173a5e]">Viviendas</h3>
-                <p className="text-sm text-[#718096] leading-relaxed">
-                  Propiedades residenciales utilizadas como garantía: casas urbanas, apartamentos en propiedad horizontal y chalets.
-                </p>
-                <ul className="text-xs text-[#27384a] space-y-2 pt-3 border-t border-[#dfe5ea]">
-                  <li className="flex items-center">✓ Zonas consolidadas de todo el país</li>
-                  <li className="flex items-center">✓ Evaluación según estado y metraje</li>
-                </ul>
-              </div>
-
-              {/* Tarjeta 2: Locales comerciales */}
-              <div className="bg-white rounded-2xl p-8 border border-[#dfe5ea] shadow-sm hover:shadow-md transition-all space-y-4 text-left group">
-                <div className="w-12 h-12 rounded-xl bg-[#173a5e]/10 text-[#173a5e] flex items-center justify-center font-bold group-hover:bg-[#173a5e] group-hover:text-white transition-colors">
-                  <Building className="w-6 h-6" />
-                </div>
-                <h3 className="text-xl font-serif font-bold text-[#173a5e]">Locales comerciales</h3>
-                <p className="text-sm text-[#718096] leading-relaxed">
-                  Inmuebles comerciales, oficinas céntricas, depósitos industriales y unidades aptas para renta u operativa comercial.
-                </p>
-                <ul className="text-xs text-[#27384a] space-y-2 pt-3 border-t border-[#dfe5ea]">
-                  <li className="flex items-center">✓ Puntos comerciales estratégicos</li>
-                  <li className="flex items-center">✓ Análisis de flujo y tasación comercial</li>
-                </ul>
-              </div>
-
-              {/* Tarjeta 3: Campos */}
-              <div className="bg-white rounded-2xl p-8 border border-[#dfe5ea] shadow-sm hover:shadow-md transition-all space-y-4 text-left group">
-                <div className="w-12 h-12 rounded-xl bg-[#173a5e]/10 text-[#173a5e] flex items-center justify-center font-bold group-hover:bg-[#173a5e] group-hover:text-white transition-colors">
-                  <Trees className="w-6 h-6" />
-                </div>
-                <h3 className="text-xl font-serif font-bold text-[#173a5e]">Campos</h3>
-                <p className="text-sm text-[#718096] leading-relaxed">
-                  Propiedades rurales, chacras productivas y fracciones de campo con potencial productivo o de inversión.
-                </p>
-                <ul className="text-xs text-[#27384a] space-y-2 pt-3 border-t border-[#dfe5ea]">
-                  <li className="flex items-center">✓ Índice CONEAT y aptitud del suelo</li>
-                  <li className="flex items-center">✓ Estudio de antecedentes dominiales</li>
-                </ul>
-              </div>
-
+              {(homeSettings.propertyTypesItems || DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.propertyTypesItems)
+                .filter((item) => item.visible !== false)
+                .map((item) => {
+                  const IconComp = ICON_MAP[item.icon] || HomeIcon;
+                  return (
+                    <div
+                      key={item.id}
+                      className="bg-white rounded-2xl p-8 border border-[#dfe5ea] shadow-sm hover:shadow-md transition-all space-y-4 text-left group"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-[#173a5e]/10 text-[#173a5e] flex items-center justify-center font-bold group-hover:bg-[#173a5e] group-hover:text-white transition-colors">
+                        <IconComp className="w-6 h-6" />
+                      </div>
+                      <h3 className="text-xl font-serif font-bold text-[#173a5e]">{item.title}</h3>
+                      <p className="text-sm text-[#718096] leading-relaxed">
+                        {item.description}
+                      </p>
+                      {item.bullets && item.bullets.length > 0 && (
+                        <ul className="text-xs text-[#27384a] space-y-2 pt-3 border-t border-[#dfe5ea]">
+                          {item.bullets.map((b, bIdx) => (
+                            <li key={bIdx} className="flex items-center">
+                              ✓ {b}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  );
+                })}
             </div>
 
           </div>
@@ -672,7 +713,7 @@ export const EstudioNovaPage: React.FC = () => {
       )}
 
       {/* ============================================================== */}
-      {/* 7. CÓMO FUNCIONA (4 PASOS)                                     */}
+      {/* 7. CÓMO FUNCIONA (PASOS DINÁMICOS)                             */}
       {/* ============================================================== */}
       {homeSettings.showHowItWorks && (
         <section id="como-funciona" className="py-16 sm:py-24 bg-[#f5f7f9] text-left border-y border-[#dfe5ea]">
@@ -680,70 +721,39 @@ export const EstudioNovaPage: React.FC = () => {
             
             <div className="text-center max-w-3xl mx-auto space-y-3">
               <span className="text-xs font-bold uppercase tracking-widest text-[#245f91]">
-                PASO A PASO
+                {homeSettings.howItWorksEyebrow || 'PASO A PASO'}
               </span>
               <h2 className="text-3xl sm:text-4xl font-serif font-bold text-[#173a5e]">
-                Cómo funciona el proceso
+                {homeSettings.howItWorksTitle || 'Cómo funciona el proceso'}
               </h2>
               <p className="text-sm sm:text-base text-[#718096]">
-                Cuatro etapas ordenadas desde la primera simulación hasta la recepción de la propuesta definitiva.
+                {homeSettings.howItWorksDescription || 'Cuatro etapas ordenadas desde la primera simulación hasta la recepción de la propuesta definitiva.'}
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              
-              <div className="bg-white p-6 rounded-2xl border border-[#dfe5ea] shadow-sm space-y-3 text-left relative">
-                <div
-                  className="w-10 h-10 rounded-full text-white flex items-center justify-center font-serif font-bold text-base"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  1
-                </div>
-                <h4 className="text-lg font-serif font-bold text-[#173a5e]">Simulá</h4>
-                <p className="text-xs text-[#718096] leading-relaxed">
-                  Ingresá el valor del inmueble y el monto necesario para conocer las cuotas y plazos de referencia.
-                </p>
-              </div>
-
-              <div className="bg-white p-6 rounded-2xl border border-[#dfe5ea] shadow-sm space-y-3 text-left relative">
-                <div
-                  className="w-10 h-10 rounded-full text-white flex items-center justify-center font-serif font-bold text-base"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  2
-                </div>
-                <h4 className="text-lg font-serif font-bold text-[#173a5e]">Completá tu solicitud</h4>
-                <p className="text-xs text-[#718096] leading-relaxed">
-                  Cargá los datos del bien y la documentación básica en tu expediente digital protegido.
-                </p>
-              </div>
-
-              <div className="bg-white p-6 rounded-2xl border border-[#dfe5ea] shadow-sm space-y-3 text-left relative">
-                <div
-                  className="w-10 h-10 rounded-full text-white flex items-center justify-center font-serif font-bold text-base"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  3
-                </div>
-                <h4 className="text-lg font-serif font-bold text-[#173a5e]">Evaluamos</h4>
-                <p className="text-xs text-[#718096] leading-relaxed">
-                  Realizamos el análisis pericial de tasación y el estudio notarial preliminar del título.
-                </p>
-              </div>
-
-              <div className="bg-white p-6 rounded-2xl border border-[#dfe5ea] shadow-sm space-y-3 text-left relative">
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center font-serif font-black text-base"
-                  style={{ backgroundColor: accentColor, color: '#0b2238' }}
-                >
-                  4
-                </div>
-                <h4 className="text-lg font-serif font-bold text-[#173a5e]">Recibí la propuesta</h4>
-                <p className="text-xs text-[#718096] leading-relaxed">
-                  Te presentamos las condiciones formales para coordinar la firma notarial y formalización.
-                </p>
-              </div>
-
+              {(homeSettings.howItWorksSteps || DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.howItWorksSteps)
+                .filter((s) => s.visible !== false)
+                .map((stepItem, sIdx) => {
+                  const isLast = sIdx === (homeSettings.howItWorksSteps?.length || 4) - 1;
+                  return (
+                    <div key={stepItem.step} className="bg-white p-6 rounded-2xl border border-[#dfe5ea] shadow-sm space-y-3 text-left relative">
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center font-serif font-bold text-base"
+                        style={{
+                          backgroundColor: isLast ? accentColor : primaryColor,
+                          color: isLast ? '#0b2238' : '#ffffff',
+                        }}
+                      >
+                        {stepItem.step}
+                      </div>
+                      <h4 className="text-lg font-serif font-bold text-[#173a5e]">{stepItem.title}</h4>
+                      <p className="text-xs text-[#718096] leading-relaxed">
+                        {stepItem.description}
+                      </p>
+                    </div>
+                  );
+                })}
             </div>
 
           </div>
@@ -751,7 +761,7 @@ export const EstudioNovaPage: React.FC = () => {
       )}
 
       {/* ============================================================== */}
-      {/* 8. BLOQUE "UNA OPERACIÓN, TODO ORDENADO" (SPLIT)              */}
+      {/* 8. BLOQUE "UNA OPERACIÓN, TODO ORDENADO" (DINÁMICO)           */}
       {/* ============================================================== */}
       {homeSettings.showOperationSection && (
         <section className="py-16 sm:py-24 bg-white text-left">
@@ -761,7 +771,7 @@ export const EstudioNovaPage: React.FC = () => {
               <div className="lg:col-span-6 relative">
                 <div className="rounded-3xl overflow-hidden shadow-xl border border-[#dfe5ea]">
                   <img
-                    src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1000&q=80"
+                    src={homeSettings.operationImageUrl || 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1000&q=80'}
                     alt="Gestión estructurada de expedientes hipotecarios"
                     className="w-full h-80 sm:h-[420px] object-cover object-center"
                     loading="lazy"
@@ -771,57 +781,32 @@ export const EstudioNovaPage: React.FC = () => {
 
               <div className="lg:col-span-6 space-y-6">
                 <span className="text-xs font-bold uppercase tracking-widest text-[#245f91] block">
-                  UNA OPERACIÓN, TODO ORDENADO
+                  {homeSettings.operationEyebrow || 'UNA OPERACIÓN, TODO ORDENADO'}
                 </span>
                 
                 <h2 className="text-3xl sm:text-4xl font-serif font-bold text-[#173a5e] leading-tight">
-                  Información clara desde el primer paso.
+                  {homeSettings.operationTitle || 'Información clara desde el primer paso.'}
                 </h2>
 
                 <p className="text-sm sm:text-base text-[#718096] leading-relaxed">
-                  Estructuramos cada operación para que solicitantes, profesionales y escribanos cuenten con un flujo predecible y documentado.
+                  {homeSettings.operationDescription || 'Estructuramos cada operación para que solicitantes, profesionales y escribanos cuenten con un flujo predecible y documentado.'}
                 </p>
 
                 <div className="space-y-4 pt-2">
-                  <div className="flex items-start space-x-3.5">
-                    <div className="w-8 h-8 rounded-lg bg-[#173a5e]/10 text-[#173a5e] flex items-center justify-center shrink-0 mt-0.5">
-                      <FileSpreadsheet className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h5 className="font-bold text-sm text-[#173a5e]">Evaluación preliminar de la propiedad</h5>
-                      <p className="text-xs text-[#718096] mt-0.5">Cotejo de valores de mercado y análisis de relación préstamo/garantía.</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-3.5">
-                    <div className="w-8 h-8 rounded-lg bg-[#173a5e]/10 text-[#173a5e] flex items-center justify-center shrink-0 mt-0.5">
-                      <FileText className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h5 className="font-bold text-sm text-[#173a5e]">Documentación en un único expediente</h5>
-                      <p className="text-xs text-[#718096] mt-0.5">Títulos, planos, certificados y recibos organizados digitalmente.</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-3.5">
-                    <div className="w-8 h-8 rounded-lg bg-[#173a5e]/10 text-[#173a5e] flex items-center justify-center shrink-0 mt-0.5">
-                      <Layers className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h5 className="font-bold text-sm text-[#173a5e]">Seguimiento de estados</h5>
-                      <p className="text-xs text-[#718096] mt-0.5">Visualización del avance de cada etapa sin incertidumbre ni llamados innecesarios.</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-3.5">
-                    <div className="w-8 h-8 rounded-lg bg-[#173a5e]/10 text-[#173a5e] flex items-center justify-center shrink-0 mt-0.5">
-                      <FileCheck2 className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h5 className="font-bold text-sm text-[#173a5e]">Proceso preparado para validaciones y firma</h5>
-                      <p className="text-xs text-[#718096] mt-0.5">Coordinación notarial lista para la confección de escrituras e inscripciones.</p>
-                    </div>
-                  </div>
+                  {(homeSettings.operationFeatures || DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.operationFeatures).map((feat, fIdx) => {
+                    const FeatIcon = ICON_MAP[feat.icon] || FileText;
+                    return (
+                      <div key={fIdx} className="flex items-start space-x-3.5">
+                        <div className="w-8 h-8 rounded-lg bg-[#173a5e]/10 text-[#173a5e] flex items-center justify-center shrink-0 mt-0.5">
+                          <FeatIcon className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h5 className="font-bold text-sm text-[#173a5e]">{feat.title}</h5>
+                          <p className="text-xs text-[#718096] mt-0.5">{feat.description}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -831,9 +816,9 @@ export const EstudioNovaPage: React.FC = () => {
       )}
 
       {/* ============================================================== */}
-      {/* 9. INVERSIONISTAS                                              */}
+      {/* 9. INVERSIONISTAS (CONDICIONADO POR MÓDULO Y CONFIGURACIÓN)    */}
       {/* ============================================================== */}
-      {homeSettings.showInvestorSection && (
+      {isInvestorEnabled && (
         <section
           id="inversionistas"
           className="py-16 sm:py-24 text-white text-left"
@@ -843,50 +828,28 @@ export const EstudioNovaPage: React.FC = () => {
             
             <div className="text-center max-w-3xl mx-auto space-y-3">
               <span className="text-xs font-bold uppercase tracking-widest block" style={{ color: accentColor }}>
-                ÁREA DE INVERSIÓN
+                {homeSettings.investorEyebrow || 'ÁREA DE INVERSIÓN'}
               </span>
               <h2 className="text-3xl sm:text-4xl font-serif font-bold text-white">
-                Capital respaldado por activos reales.
+                {homeSettings.investorTitle || 'Capital respaldado por activos reales.'}
               </h2>
               <p className="text-sm sm:text-base text-slate-300">
-                {orgName} estructura operaciones de financiamiento con garantía hipotecaria formalizada en Uruguay.
+                {homeSettings.investorDescription?.replace('{orgName}', orgName) || `${orgName} estructura operaciones de financiamiento con garantía hipotecaria formalizada en Uruguay.`}
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              
-              <div className="p-6 rounded-2xl border border-white/10 space-y-3" style={{ backgroundColor: `${primaryColor}CC` }}>
-                <span className="text-[10px] font-bold uppercase tracking-wider block" style={{ color: accentColor }}>GARANTÍA</span>
-                <h4 className="text-base font-serif font-bold text-white">Inmueble identificado</h4>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Cada operación cuenta con una propiedad raíz determinada con títulos verificados por escribano.
-                </p>
-              </div>
-
-              <div className="p-6 rounded-2xl border border-white/10 space-y-3" style={{ backgroundColor: `${primaryColor}CC` }}>
-                <span className="text-[10px] font-bold uppercase tracking-wider block" style={{ color: accentColor }}>VALUACIÓN</span>
-                <h4 className="text-base font-serif font-bold text-white">Análisis de respaldo</h4>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Peritaje técnico para asegurar una adecuada relación entre el capital financiado y el activo.
-                </p>
-              </div>
-
-              <div className="p-6 rounded-2xl border border-white/10 space-y-3" style={{ backgroundColor: `${primaryColor}CC` }}>
-                <span className="text-[10px] font-bold uppercase tracking-wider block" style={{ color: accentColor }}>EXPEDIENTE</span>
-                <h4 className="text-base font-serif font-bold text-white">Información estructurada</h4>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Legajo completo con antecedentes del solicitante, certificados registrales y condiciones.
-                </p>
-              </div>
-
-              <div className="p-6 rounded-2xl border border-white/10 space-y-3" style={{ backgroundColor: `${primaryColor}CC` }}>
-                <span className="text-[10px] font-bold uppercase tracking-wider block" style={{ color: accentColor }}>SEGUIMIENTO</span>
-                <h4 className="text-base font-serif font-bold text-white">Proceso documentado</h4>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Trazabilidad notarial y contractual continua a lo largo de toda la vigencia de la operación.
-                </p>
-              </div>
-
+              {(homeSettings.investorCards || DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.investorCards).map((card, cIdx) => (
+                <div key={cIdx} className="p-6 rounded-2xl border border-white/10 space-y-3" style={{ backgroundColor: `${primaryColor}CC` }}>
+                  <span className="text-[10px] font-bold uppercase tracking-wider block" style={{ color: accentColor }}>
+                    {card.tag}
+                  </span>
+                  <h4 className="text-base font-serif font-bold text-white">{card.title}</h4>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    {card.description}
+                  </p>
+                </div>
+              ))}
             </div>
 
             <div className="text-center pt-2">
@@ -896,7 +859,7 @@ export const EstudioNovaPage: React.FC = () => {
                   className="font-bold shadow-lg text-xs sm:text-sm px-8 min-h-[48px]"
                   style={{ backgroundColor: accentColor, color: '#102d49' }}
                 >
-                  Acceder al Panel Inversor de {orgName} <ArrowRight className="w-4 h-4 ml-2" />
+                  {(homeSettings.investorCtaText || 'Acceder al Panel Inversor de {orgName}').replace('{orgName}', orgName)} <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </Link>
             </div>
@@ -912,7 +875,7 @@ export const EstudioNovaPage: React.FC = () => {
       )}
 
       {/* ============================================================== */}
-      {/* 10. PREGUNTAS FRECUENTES (FAQ ACORDEÓN)                        */}
+      {/* 10. PREGUNTAS FRECUENTES (FAQ ACORDEÓN DINÁMICO)               */}
       {/* ============================================================== */}
       {homeSettings.showFaq && (
         <section id="faq" className="py-16 sm:py-24 bg-white text-left border-b border-[#dfe5ea]">
@@ -928,44 +891,31 @@ export const EstudioNovaPage: React.FC = () => {
             </div>
 
             <div className="space-y-3">
-              {[
-                {
-                  q: '¿Qué porcentaje del inmueble se puede financiar?',
-                  a: `Como referencia inicial hasta el ${rules.maxFinancedPercentage}%, sujeto a la evaluación técnica del inmueble y capacidad de pago.`,
-                },
-                {
-                  q: '¿Qué propiedades pueden utilizarse como garantía?',
-                  a: 'Viviendas, locales comerciales y campos situados en el territorio nacional con títulos en condiciones de escrituración.',
-                },
-                {
-                  q: '¿Puedo iniciar una solicitud si estoy en Clearing?',
-                  a: 'Sí. El Clearing no bloquea automáticamente el inicio de la evaluación; se analiza el contexto global de la operación y el activo de garantía.',
-                },
-                {
-                  q: '¿Qué documentación de ingresos se solicita?',
-                  a: 'Recibo de sueldo o certificado de contador según corresponda a la actividad del solicitante (dependiente o independiente).',
-                },
-                {
-                  q: '¿Cómo funciona el proceso para inversionistas?',
-                  a: 'Presentación de la operación estructurada, tasación de la garantía y antecedentes legales para su debido análisis previo.',
-                },
-              ].map((item, idx) => (
-                <div key={idx} className="bg-[#f5f7f9] border border-[#dfe5ea] rounded-xl overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
-                    className="w-full p-4 sm:p-5 flex items-center justify-between text-left font-bold text-sm sm:text-base text-[#173a5e] hover:bg-[#dfe5ea]/40 transition-colors"
-                  >
-                    <span>{item.q}</span>
-                    <ChevronDown className={`w-4 h-4 text-[#245f91] shrink-0 transition-transform ${openFaq === idx ? 'rotate-180' : ''}`} />
-                  </button>
-                  {openFaq === idx && (
-                    <div className="p-4 sm:p-5 pt-0 text-xs sm:text-sm text-[#718096] border-t border-[#dfe5ea] bg-white leading-relaxed">
-                      {item.a}
-                    </div>
-                  )}
-                </div>
-              ))}
+              {faqs.map((item, idx) => {
+                const interpolatedAnswer = interpolateFaqAnswer(item.answer, {
+                  maxFinancedPercentage: rules.maxFinancedPercentage,
+                  minLoanAmount: rules.minLoanAmount,
+                  maxLoanAmount: rules.maxLoanAmount,
+                  defaultRate: rules.defaultRate,
+                });
+                return (
+                  <div key={item.id || idx} className="bg-[#f5f7f9] border border-[#dfe5ea] rounded-xl overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
+                      className="w-full p-4 sm:p-5 flex items-center justify-between text-left font-bold text-sm sm:text-base text-[#173a5e] hover:bg-[#dfe5ea]/40 transition-colors"
+                    >
+                      <span>{item.question}</span>
+                      <ChevronDown className={`w-4 h-4 text-[#245f91] shrink-0 transition-transform ${openFaq === idx ? 'rotate-180' : ''}`} />
+                    </button>
+                    {openFaq === idx && (
+                      <div className="p-4 sm:p-5 pt-0 text-xs sm:text-sm text-[#718096] border-t border-[#dfe5ea] bg-white leading-relaxed">
+                        {interpolatedAnswer}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
           </div>
@@ -973,7 +923,7 @@ export const EstudioNovaPage: React.FC = () => {
       )}
 
       {/* ============================================================== */}
-      {/* 11. CONTACTO & ACCESOS RÁPIDOS                                 */}
+      {/* 11. CONTACTO & ACCESOS RÁPIDOS (FUENTE ÚNICA DE CONTACTO)      */}
       {/* ============================================================== */}
       {homeSettings.showContact && (
         <section id="contacto" className="py-16 sm:py-20 bg-[#f5f7f9] text-left">
@@ -1002,7 +952,7 @@ export const EstudioNovaPage: React.FC = () => {
                 <span className="text-xs font-bold uppercase tracking-wider text-[#245f91] block">INVERSIONISTAS</span>
                 <h4 className="text-lg font-serif font-bold text-[#173a5e]">Estructuración con garantía</h4>
                 <p className="text-xs text-[#718096]">Información sobre expedientes con respaldo hipotecario.</p>
-                <a href="#inversionistas" className="inline-flex items-center text-xs font-bold text-[#173a5e] hover:text-[#245f91]">
+                <a href={isInvestorEnabled ? `#inversionistas` : `#contacto`} className="inline-flex items-center text-xs font-bold text-[#173a5e] hover:text-[#245f91]">
                   Ver información <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
                 </a>
               </div>
@@ -1013,7 +963,7 @@ export const EstudioNovaPage: React.FC = () => {
       )}
 
       {/* ============================================================== */}
-      {/* 12. FOOTER INSTITUCIONAL                                       */}
+      {/* 12. FOOTER INSTITUCIONAL (DATOS COMPARTIDOS DRY)               */}
       {/* ============================================================== */}
       <footer className="bg-[#0b2238] text-slate-400 text-xs py-12 border-t border-[#102d49] text-left">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -1037,7 +987,7 @@ export const EstudioNovaPage: React.FC = () => {
               <span className="text-base font-serif font-bold text-white">{orgName.toUpperCase()}</span>
             </div>
             <p className="text-slate-400 leading-relaxed">
-              Financiación & inversión con respaldo inmobiliario en Uruguay. Estructuración legal y notarial de operaciones.
+              {footerDescription}
             </p>
           </div>
 
@@ -1046,8 +996,8 @@ export const EstudioNovaPage: React.FC = () => {
             <ul className="space-y-2">
               <li>Teléfono: {supportPhone}</li>
               <li>Email: {supportEmail}</li>
-              <li>Montevideo, Uruguay</li>
-              <li>Horario: Lun a Vie 09:00 - 18:00 hs</li>
+              <li>{institutionalAddress}</li>
+              <li>Horario: {businessHours}</li>
             </ul>
           </div>
 
@@ -1057,8 +1007,8 @@ export const EstudioNovaPage: React.FC = () => {
               <li><a href="#inicio" className="hover:text-white">Inicio</a></li>
               {homeSettings.showPropertyTypes && <li><a href="#financiacion" className="hover:text-white">Financiación</a></li>}
               {homeSettings.showSimulator && <li><Link to={`/demo/${effectiveSlug}/simulador`} className="hover:text-white">Simulador en Línea</Link></li>}
-              {homeSettings.showInvestorSection && <li><Link to={`/demo/${effectiveSlug}/inversor`} className="hover:text-white">Red de Inversores</Link></li>}
-              <li><Link to={`/demo/${effectiveSlug}/cliente`} className="hover:text-white">Portal de Clientes</Link></li>
+              {isInvestorEnabled && <li><Link to={`/demo/${effectiveSlug}/inversor`} className="hover:text-white">Red de Inversores</Link></li>}
+              {modules.client_portal_enabled && <li><Link to={`/demo/${effectiveSlug}/cliente`} className="hover:text-white">Portal de Clientes</Link></li>}
               <li><Link to={`/demo/${effectiveSlug}/admin`} className="hover:text-white">Acceso Operativo (Backoffice)</Link></li>
             </ul>
           </div>

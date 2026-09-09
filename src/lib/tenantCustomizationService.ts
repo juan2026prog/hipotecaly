@@ -85,6 +85,18 @@ export interface WhiteLabelCustomization {
   syndicationModuleEnabled: boolean;
   servicingModuleEnabled: boolean;
   webhooksEnabled: boolean;
+
+  // 9. Datos Institucionales Compartidos (Subfase A)
+  supportPhone: string;
+  supportEmail: string;
+  address: string;
+  city: string;
+  country: string;
+  businessHours: string;
+  socialInstagram: string;
+  socialLinkedin: string;
+  socialFacebook: string;
+  footerDescription: string;
 }
 
 export const DEFAULT_WHITELABEL_CONFIG: WhiteLabelCustomization = {
@@ -164,6 +176,18 @@ export const DEFAULT_WHITELABEL_CONFIG: WhiteLabelCustomization = {
   syndicationModuleEnabled: true,
   servicingModuleEnabled: true,
   webhooksEnabled: true,
+
+  // 9. Datos Institucionales Compartidos (Subfase A)
+  supportPhone: '+598 2916 4455',
+  supportEmail: 'contacto@estudionova.uy',
+  address: 'Montevideo, Uruguay',
+  city: 'Montevideo',
+  country: 'Uruguay',
+  businessHours: 'Lun a Vie 09:00 – 18:00 hs',
+  socialInstagram: '',
+  socialLinkedin: '',
+  socialFacebook: '',
+  footerDescription: 'Financiación & inversión con respaldo inmobiliario en Uruguay. Estructuración legal y notarial de operaciones.',
 };
 
 const customizationCache = new Map<string, WhiteLabelCustomization>();
@@ -231,6 +255,16 @@ export async function getWhiteLabelCustomization(tenantId: string, slug?: string
           aiPrequalEnabled: modules.ai_enabled ?? true,
           syndicationModuleEnabled: true,
           servicingModuleEnabled: modules.servicing_enabled ?? true,
+          supportPhone: branding.support_phone || DEFAULT_WHITELABEL_CONFIG.supportPhone,
+          supportEmail: branding.support_email || DEFAULT_WHITELABEL_CONFIG.supportEmail,
+          address: branding.address || DEFAULT_WHITELABEL_CONFIG.address,
+          city: branding.city || DEFAULT_WHITELABEL_CONFIG.city,
+          country: branding.country || DEFAULT_WHITELABEL_CONFIG.country,
+          businessHours: branding.business_hours || DEFAULT_WHITELABEL_CONFIG.businessHours,
+          socialInstagram: branding.social_instagram || '',
+          socialLinkedin: branding.social_linkedin || '',
+          socialFacebook: branding.social_facebook || '',
+          footerDescription: branding.footer_description || DEFAULT_WHITELABEL_CONFIG.footerDescription,
         };
 
         customizationCache.set(tenantId, merged);
@@ -347,6 +381,16 @@ export async function saveWhiteLabelCustomization(
             favicon_url: config.faviconUrl,
             primary_color: config.primaryColor,
             secondary_color: config.secondaryColor,
+            support_phone: config.supportPhone,
+            support_email: config.supportEmail,
+            address: config.address,
+            city: config.city,
+            country: config.country,
+            business_hours: config.businessHours,
+            social_instagram: config.socialInstagram,
+            social_linkedin: config.socialLinkedin,
+            social_facebook: config.socialFacebook,
+            footer_description: config.footerDescription,
             updated_at: new Date().toISOString(),
           },
           { onConflict: 'organization_id' }

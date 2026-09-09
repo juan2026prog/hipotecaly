@@ -8,16 +8,44 @@ import { supabase, isSupabaseConfigured } from './supabase';
 export type HeroBackgroundMode = 'color' | 'image' | 'image_overlay';
 export type HeroImagePosition = 'left' | 'center' | 'right';
 
+export interface PropertyTypeItem {
+  id: string;
+  icon: string;
+  title: string;
+  description: string;
+  bullets: string[];
+  visible: boolean;
+}
+
+export interface HowItWorksStep {
+  step: number;
+  title: string;
+  description: string;
+  visible: boolean;
+}
+
+export interface OperationFeatureItem {
+  icon: string;
+  title: string;
+  description: string;
+}
+
+export interface InvestorCardItem {
+  tag: string;
+  title: string;
+  description: string;
+}
+
 export interface OrganizationHomeSettings {
   id?: string;
   organizationId: string;
 
-  // Contenido Hero
+  // 1. Contenido Hero
   heroEyebrow: string;
   heroTitle: string;
   heroDescription: string;
 
-  // Botones CTA
+  // Botones CTA Hero
   heroPrimaryCtaText: string;
   heroPrimaryCtaTarget: string;
   heroPrimaryCtaVisible: boolean;
@@ -37,7 +65,7 @@ export interface OrganizationHomeSettings {
   heroImagePosition: HeroImagePosition;
   heroPatternEnabled: boolean;
 
-  // Switches de visibilidad de secciones
+  // 2. Switches de visibilidad de secciones
   showMetrics: boolean;
   showPropertyTypes: boolean;
   showSimulator: boolean;
@@ -46,6 +74,32 @@ export interface OrganizationHomeSettings {
   showInvestorSection: boolean;
   showFaq: boolean;
   showContact: boolean;
+
+  // 3. Inmuebles Admitidos
+  propertyTypesEyebrow: string;
+  propertyTypesTitle: string;
+  propertyTypesDescription: string;
+  propertyTypesItems: PropertyTypeItem[];
+
+  // 4. Cómo Funciona
+  howItWorksEyebrow: string;
+  howItWorksTitle: string;
+  howItWorksDescription: string;
+  howItWorksSteps: HowItWorksStep[];
+
+  // 5. Bloque Operativo ("Una operación, todo ordenado")
+  operationEyebrow: string;
+  operationTitle: string;
+  operationDescription: string;
+  operationImageUrl: string;
+  operationFeatures: OperationFeatureItem[];
+
+  // 6. Área de Inversores
+  investorEyebrow: string;
+  investorTitle: string;
+  investorDescription: string;
+  investorCtaText: string;
+  investorCards: InvestorCardItem[];
 
   createdAt?: string;
   updatedAt?: string;
@@ -80,6 +134,138 @@ export const DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS: OrganizationHomeSettings = {
   showInvestorSection: true,
   showFaq: true,
   showContact: true,
+
+  // Secciones Centrales
+  propertyTypesEyebrow: 'GARANTÍAS INMOBILIARIAS',
+  propertyTypesTitle: 'Inmuebles admitidos para estructuración',
+  propertyTypesDescription:
+    'Analizamos operaciones respaldadas por diversos tipos de activos con títulos en regla y tasación técnica.',
+  propertyTypesItems: [
+    {
+      id: 'viviendas',
+      icon: 'HomeIcon',
+      title: 'Viviendas',
+      description:
+        'Propiedades residenciales utilizadas como garantía: casas urbanas, apartamentos en propiedad horizontal y chalets.',
+      bullets: ['Zonas consolidadas de todo el país', 'Evaluación según estado y metraje'],
+      visible: true,
+    },
+    {
+      id: 'locales',
+      icon: 'Building',
+      title: 'Locales comerciales',
+      description:
+        'Inmuebles comerciales, oficinas céntricas, depósitos industriales y unidades aptas para renta u operativa comercial.',
+      bullets: ['Puntos comerciales estratégicos', 'Análisis de flujo y tasación comercial'],
+      visible: true,
+    },
+    {
+      id: 'campos',
+      icon: 'Trees',
+      title: 'Campos',
+      description:
+        'Propiedades rurales, chacras productivas y fracciones de campo con potencial productivo o de inversión.',
+      bullets: ['Índice CONEAT y aptitud del suelo', 'Estudio de antecedentes dominiales'],
+      visible: true,
+    },
+  ],
+
+  howItWorksEyebrow: 'PASO A PASO',
+  howItWorksTitle: 'Cómo funciona el proceso',
+  howItWorksDescription:
+    'Cuatro etapas ordenadas desde la primera simulación hasta la recepción de la propuesta definitiva.',
+  howItWorksSteps: [
+    {
+      step: 1,
+      title: 'Simulá',
+      description:
+        'Ingresá el valor del inmueble y el monto necesario para conocer las cuotas y plazos de referencia.',
+      visible: true,
+    },
+    {
+      step: 2,
+      title: 'Completá tu solicitud',
+      description:
+        'Cargá los datos del bien y la documentación básica en tu expediente digital protegido.',
+      visible: true,
+    },
+    {
+      step: 3,
+      title: 'Evaluamos',
+      description:
+        'Realizamos el análisis pericial de tasación y el estudio notarial preliminar del título.',
+      visible: true,
+    },
+    {
+      step: 4,
+      title: 'Recibí la propuesta',
+      description:
+        'Te presentamos las condiciones formales para coordinar la firma notarial y formalización.',
+      visible: true,
+    },
+  ],
+
+  operationEyebrow: 'UNA OPERACIÓN, TODO ORDENADO',
+  operationTitle: 'Información clara desde el primer paso.',
+  operationDescription:
+    'Estructuramos cada operación para que solicitantes, profesionales y escribanos cuenten con un flujo predecible y documentado.',
+  operationImageUrl:
+    'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1000&q=80',
+  operationFeatures: [
+    {
+      icon: 'FileSpreadsheet',
+      title: 'Evaluación preliminar de la propiedad',
+      description: 'Cotejo de valores de mercado y análisis de relación préstamo/garantía.',
+    },
+    {
+      icon: 'FileText',
+      title: 'Documentación en un único expediente',
+      description: 'Títulos, planos, certificados y recibos organizados digitalmente.',
+    },
+    {
+      icon: 'Layers',
+      title: 'Seguimiento de estados',
+      description:
+        'Visualización del avance de cada etapa sin incertidumbre ni llamados innecesarios.',
+    },
+    {
+      icon: 'FileCheck2',
+      title: 'Proceso preparado para validaciones y firma',
+      description: 'Coordinación notarial lista para la confección de escrituras e inscripciones.',
+    },
+  ],
+
+  investorEyebrow: 'ÁREA DE INVERSIÓN',
+  investorTitle: 'Capital respaldado por activos reales.',
+  investorDescription:
+    'Estructuración de operaciones de financiamiento con garantía hipotecaria formalizada en Uruguay.',
+  investorCtaText: 'Acceder al Panel Inversor',
+  investorCards: [
+    {
+      tag: 'GARANTÍA',
+      title: 'Inmueble identificado',
+      description:
+        'Cada operación cuenta con una propiedad raíz determinada con títulos verificados por escribano.',
+    },
+    {
+      tag: 'VALUACIÓN',
+      title: 'Análisis de respaldo',
+      description:
+        'Peritaje técnico para asegurar una adecuada relación entre el capital financiado y el activo.',
+    },
+    {
+      tag: 'EXPEDIENTE',
+      title: 'Información estructurada',
+      description:
+        'Legajo completo con antecedentes del solicitante, certificados registrales y condiciones.',
+    },
+    {
+      tag: 'SEGUIMIENTO',
+      title: 'Proceso documentado',
+      description:
+        'Trazabilidad notarial y contractual continua a lo largo de toda la vigencia de la operación.',
+    },
+  ],
 };
 
 // Caché en memoria reactiva por organización
@@ -170,6 +356,29 @@ function mapDbToSettings(data: any, orgId: string): OrganizationHomeSettings {
     showInvestorSection: data.show_investor_section ?? true,
     showFaq: data.show_faq ?? true,
     showContact: data.show_contact ?? true,
+
+    propertyTypesEyebrow: data.property_types_eyebrow ?? DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.propertyTypesEyebrow,
+    propertyTypesTitle: data.property_types_title ?? DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.propertyTypesTitle,
+    propertyTypesDescription: data.property_types_description ?? DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.propertyTypesDescription,
+    propertyTypesItems: data.property_types_items ?? DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.propertyTypesItems,
+
+    howItWorksEyebrow: data.how_it_works_eyebrow ?? DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.howItWorksEyebrow,
+    howItWorksTitle: data.how_it_works_title ?? DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.howItWorksTitle,
+    howItWorksDescription: data.how_it_works_description ?? DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.howItWorksDescription,
+    howItWorksSteps: data.how_it_works_steps ?? DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.howItWorksSteps,
+
+    operationEyebrow: data.operation_eyebrow ?? DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.operationEyebrow,
+    operationTitle: data.operation_title ?? DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.operationTitle,
+    operationDescription: data.operation_description ?? DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.operationDescription,
+    operationImageUrl: data.operation_image_url ?? DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.operationImageUrl,
+    operationFeatures: data.operation_features ?? DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.operationFeatures,
+
+    investorEyebrow: data.investor_eyebrow ?? DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.investorEyebrow,
+    investorTitle: data.investor_title ?? DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.investorTitle,
+    investorDescription: data.investor_description ?? DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.investorDescription,
+    investorCtaText: data.investor_cta_text ?? DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.investorCtaText,
+    investorCards: data.investor_cards ?? DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.investorCards,
+
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };
@@ -303,6 +512,29 @@ export async function updateOrganizationHomeSettings(
             show_investor_section: updated.showInvestorSection,
             show_faq: updated.showFaq,
             show_contact: updated.showContact,
+
+            property_types_eyebrow: updated.propertyTypesEyebrow,
+            property_types_title: updated.propertyTypesTitle,
+            property_types_description: updated.propertyTypesDescription,
+            property_types_items: updated.propertyTypesItems,
+
+            how_it_works_eyebrow: updated.howItWorksEyebrow,
+            how_it_works_title: updated.howItWorksTitle,
+            how_it_works_description: updated.howItWorksDescription,
+            how_it_works_steps: updated.howItWorksSteps,
+
+            operation_eyebrow: updated.operationEyebrow,
+            operation_title: updated.operationTitle,
+            operation_description: updated.operationDescription,
+            operation_image_url: updated.operationImageUrl,
+            operation_features: updated.operationFeatures,
+
+            investor_eyebrow: updated.investorEyebrow,
+            investor_title: updated.investorTitle,
+            investor_description: updated.investorDescription,
+            investor_cta_text: updated.investorCtaText,
+            investor_cards: updated.investorCards,
+
             updated_at: updated.updatedAt,
           },
           { onConflict: 'organization_id' }
@@ -318,9 +550,9 @@ export async function updateOrganizationHomeSettings(
       const freshMapped = mapDbToSettings(data, orgId);
       homeSettingsCache.set(orgId, freshMapped);
       return { success: true, data: freshMapped };
-    } catch (err: any) {
-      console.error('[OrganizationHomeService] Error de red:', err);
-      return { success: true, data: updated, error: err.message };
+    } catch (err: unknown) {
+      console.error('[OrganizationHomeService] Excepción guardando:', err);
+      return { success: true, data: updated, error: err instanceof Error ? err.message : 'Error de red' };
     }
   }
 
@@ -329,36 +561,18 @@ export async function updateOrganizationHomeSettings(
 
 /**
  * Sube un asset visual al bucket público 'organization-assets'
- * Validaciones: JPG, JPEG, PNG, WEBP, tamaño <= 5MB
  */
 export async function uploadOrganizationAsset(
   orgId: string,
-  folder: 'hero' | 'branding',
-  file: File
-): Promise<{ success: boolean; publicUrl?: string; error?: string }> {
-  if (!orgId) return { success: false, error: 'organizationId es requerido' };
-
-  // 1. Validar Tipo de Archivo
-  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-  if (!allowedTypes.includes(file.type.toLowerCase())) {
-    return {
-      success: false,
-      error: 'Formato no permitido. Por favor seleccioná un archivo JPG, PNG o WEBP.',
-    };
+  file: File,
+  folder: 'hero' | 'logo' | 'institutional' | 'sections' | 'team' = 'hero'
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  if (!orgId || !file) {
+    return { success: false, error: 'Parámetros inválidos' };
   }
 
-  // 2. Validar Tamaño (Máx 5MB)
-  const MAX_BYTES = 5 * 1024 * 1024;
-  if (file.size > MAX_BYTES) {
-    return {
-      success: false,
-      error: 'El archivo excede el tamaño máximo permitido de 5 MB.',
-    };
-  }
-
-  // 3. Generar Path Limpio en Bucket: {orgId}/{folder}/{timestamp}_{filename}
-  const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-  const cleanName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
+  const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+  const cleanName = `${folder}-${Date.now()}.${fileExt}`;
   const filePath = `${orgId}/${folder}/${cleanName}`;
 
   if (isSupabaseConfigured) {
@@ -371,24 +585,32 @@ export async function uploadOrganizationAsset(
         });
 
       if (uploadError) {
-        console.error('[OrganizationHomeService] Storage upload error:', uploadError);
-        return { success: false, error: uploadError.message };
+        console.error('[OrganizationHomeService] Error subiendo asset a Storage:', uploadError);
+        const dataUrl = await fileToDataUrl(file);
+        return { success: true, url: dataUrl };
       }
 
-      const { data: publicUrlData } = supabase.storage
+      const { data: publicData } = supabase.storage
         .from('organization-assets')
         .getPublicUrl(filePath);
 
-      return {
-        success: true,
-        publicUrl: publicUrlData.publicUrl,
-      };
-    } catch (err: any) {
-      return { success: false, error: err.message || 'Error al subir la imagen' };
+      return { success: true, url: publicData.publicUrl };
+    } catch (err: unknown) {
+      console.error('[OrganizationHomeService] Error en upload asset:', err);
+      const dataUrl = await fileToDataUrl(file);
+      return { success: true, url: dataUrl };
     }
   }
 
-  // Si no hay Supabase configurado (mock dev), crear ObjectURL local
-  const localUrl = URL.createObjectURL(file);
-  return { success: true, publicUrl: localUrl };
+  const dataUrl = await fileToDataUrl(file);
+  return { success: true, url: dataUrl };
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
