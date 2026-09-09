@@ -1,6 +1,6 @@
 // ==============================================================================
 // HIPOTECALY: Servicio de Configuración de Home y Assets de Organización
-// Fuente de verdad en Supabase con RLS, reactividad y validación de seguridad
+// Snapshot Editorial Compuesto, Publicación Atómica, Historial Inmutable y Auditoría
 // ==============================================================================
 
 import { supabase, isSupabaseConfigured } from './supabase';
@@ -28,12 +28,54 @@ export interface OperationFeatureItem {
   icon: string;
   title: string;
   description: string;
+  breakdown?: string;
 }
 
 export interface InvestorCardItem {
   tag: string;
   title: string;
   description: string;
+}
+
+export interface CompositeBrandingData {
+  publicName: string;
+  tagline: string;
+  supportPhone: string;
+  supportEmail: string;
+  address: string;
+  businessHours: string;
+  footerDescription: string;
+  logoUrl?: string;
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  socialInstagram?: string;
+  socialLinkedin?: string;
+  socialFacebook?: string;
+}
+
+export interface CompositeFaqData {
+  id: string;
+  question: string;
+  answer: string;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface CompositeSeoData {
+  seoTitle?: string;
+  seoDescription?: string;
+  seoKeywords?: string;
+  seoOgImageUrl?: string;
+  seoCanonicalUrl?: string;
+  indexPolicy?: 'index_follow' | 'noindex_nofollow';
+}
+
+export interface OrganizationCompositeEditorialSnapshot {
+  home: Record<string, any>;
+  branding: CompositeBrandingData;
+  faqs: CompositeFaqData[];
+  seo: CompositeSeoData;
 }
 
 export interface OrganizationHomeSettings {
@@ -45,7 +87,7 @@ export interface OrganizationHomeSettings {
   versionNumber?: number;
   publishedAt?: string;
   publishedBy?: string;
-  publishedSnapshot?: Record<string, any>;
+  publishedSnapshot?: OrganizationCompositeEditorialSnapshot | Record<string, any>;
   hasUnpublishedChanges?: boolean;
 
   // 0.1. SEO y Metadatos (Fase 6)
@@ -54,6 +96,7 @@ export interface OrganizationHomeSettings {
   seoOgImageUrl?: string;
   seoCanonicalUrl?: string;
   seoKeywords?: string;
+  robotsIndex?: boolean;
 
   // 1. Contenido Hero
   heroEyebrow: string;
@@ -116,6 +159,9 @@ export interface OrganizationHomeSettings {
   investorCtaText: string;
   investorCards: InvestorCardItem[];
 
+  // 7. Snapshot Compuesto Opcional Asociado
+  compositeSnapshot?: OrganizationCompositeEditorialSnapshot;
+
   createdAt?: string;
   updatedAt?: string;
 }
@@ -128,11 +174,64 @@ export interface OrganizationHomeVersionItem {
   changelogNotes?: string;
   authorName: string;
   authorId?: string;
-  snapshot: OrganizationHomeSettings;
+  snapshot: OrganizationCompositeEditorialSnapshot | Record<string, any>;
   publishedAt: string;
   isActive: boolean;
   createdAt: string;
 }
+
+export const DEFAULT_ESTUDIO_NOVA_BRANDING_SNAPSHOT: CompositeBrandingData = {
+  publicName: 'Estudio Nova',
+  tagline: 'Financiación & inversión',
+  supportPhone: '+598 2916 4455',
+  supportEmail: 'contacto@estudionova.uy',
+  address: 'Montevideo, Uruguay',
+  businessHours: 'Lun a Vie 09:00 – 18:00 hs',
+  footerDescription:
+    'Financiación & inversión con respaldo inmobiliario en Uruguay. Estructuración legal y notarial de operaciones.',
+  logoUrl: '',
+  primaryColor: '#173a5e',
+  secondaryColor: '#102d49',
+  accentColor: '#f4b43b',
+  socialInstagram: 'https://instagram.com/estudionova.uy',
+  socialLinkedin: 'https://linkedin.com/company/estudionova-uy',
+  socialFacebook: 'https://facebook.com/estudionova.uy',
+};
+
+export const DEFAULT_ESTUDIO_NOVA_FAQS_SNAPSHOT: CompositeFaqData[] = [
+  {
+    id: 'faq-1',
+    question: '¿Qué porcentaje del valor del inmueble se puede financiar?',
+    answer:
+      'Financiamos hasta el {maxFinancedPercentage}% del valor de tasación del inmueble en garantía.',
+    sortOrder: 1,
+    isActive: true,
+  },
+  {
+    id: 'faq-2',
+    question: '¿Cuáles son los montos y plazos disponibles?',
+    answer:
+      'Monto mínimo de referencia de USD {minLoanAmount} y máximo de USD {maxLoanAmount}, con plazos de 12 a 60 meses.',
+    sortOrder: 2,
+    isActive: true,
+  },
+  {
+    id: 'faq-3',
+    question: '¿Cómo se amortiza el crédito?',
+    answer:
+      'Podés optar por cuotas de solo intereses mensuales con cancelación de capital al vencimiento, o cuotas fijas amortizables.',
+    sortOrder: 3,
+    isActive: true,
+  },
+  {
+    id: 'faq-4',
+    question: '¿Qué documentación se necesita para iniciar la evaluación?',
+    answer:
+      'Cédula de identidad, título de propiedad o certificado notarial y datos descriptivos del bien.',
+    sortOrder: 4,
+    isActive: true,
+  },
+];
 
 export const DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS: OrganizationHomeSettings = {
   organizationId: 'd0000000-0000-0000-0000-000000000001',
@@ -141,10 +240,12 @@ export const DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS: OrganizationHomeSettings = {
   publishedAt: '2026-09-09T00:00:00Z',
   hasUnpublishedChanges: false,
   seoTitle: 'Estudio Nova — Financiación & Inversión Hipotecaria en Uruguay',
-  seoDescription: 'Estructuración de operaciones de crédito con respaldo en activos inmobiliarios en Uruguay. Evaluación ágil y formalización notarial.',
+  seoDescription:
+    'Estructuración de operaciones de crédito con respaldo en activos inmobiliarios en Uruguay. Evaluación ágil y formalización notarial.',
   seoOgImageUrl: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1920&q=80',
   seoCanonicalUrl: 'https://hipotecaly.vercel.app/demo/estudio-nova',
   seoKeywords: 'créditos hipotecarios uruguay, préstamos con garantía hipotecaria montevideo, estudio nova, financiamiento inmobiliario',
+  robotsIndex: true,
   heroEyebrow: 'FINANCIACIÓN CON GARANTÍA HIPOTECARIA',
   heroTitle: 'Convertí el valor de tu inmueble en capital para avanzar.',
   heroDescription:
@@ -306,7 +407,7 @@ export const DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS: OrganizationHomeSettings = {
   ],
 };
 
-// Caché en memoria reactiva por organización
+// Caché reactiva
 const homeSettingsCache = new Map<string, OrganizationHomeSettings>();
 const listeners = new Set<(orgId: string, settings: OrganizationHomeSettings) => void>();
 
@@ -331,23 +432,19 @@ function notifyHomeListeners(orgId: string, settings: OrganizationHomeSettings) 
 
 /**
  * Sanitiza links de destino para prevenir esquemas peligrosos como javascript:, data:, vbscript:
- * Permite: anchors (#...), rutas internas (/...) o URLs completas HTTPS
  */
 export function sanitizeLinkTarget(rawTarget?: string): string {
   if (!rawTarget) return '#simulador';
   const trimmed = rawTarget.trim();
 
-  // Anchors (#seccion)
   if (trimmed.startsWith('#')) {
     return '#' + trimmed.replace(/[^a-zA-Z0-9_-]/g, '');
   }
 
-  // Rutas relativas (/ruta)
   if (trimmed.startsWith('/')) {
     return trimmed.replace(/[^\w\-/?:&=#%.]/g, '');
   }
 
-  // URLs completas seguras (HTTPS)
   if (trimmed.startsWith('https://')) {
     try {
       const url = new URL(trimmed);
@@ -355,7 +452,7 @@ export function sanitizeLinkTarget(rawTarget?: string): string {
         return url.href;
       }
     } catch {
-      // URL inválida, fallback
+      // Fallback
     }
   }
 
@@ -435,7 +532,7 @@ function mapDbToSettings(data: any, orgId: string): OrganizationHomeSettings {
 }
 
 /**
- * Convierte un objeto OrganizationHomeSettings a snapshot serializable limpio
+ * Convierte un objeto OrganizationHomeSettings a snapshot limpio de sección Home
  */
 export function createHomeSnapshot(settings: OrganizationHomeSettings): Record<string, any> {
   return {
@@ -491,19 +588,107 @@ export function createHomeSnapshot(settings: OrganizationHomeSettings): Record<s
 }
 
 /**
+ * Construye el Snapshot Editorial Compuesto (Home + Branding + FAQs + SEO)
+ */
+export function createCompositeEditorialSnapshot(
+  homeSettings: OrganizationHomeSettings,
+  brandingData?: Partial<CompositeBrandingData>,
+  faqsData?: CompositeFaqData[]
+): OrganizationCompositeEditorialSnapshot {
+  const homeSnap = createHomeSnapshot(homeSettings);
+  const brandingSnap: CompositeBrandingData = {
+    ...DEFAULT_ESTUDIO_NOVA_BRANDING_SNAPSHOT,
+    ...brandingData,
+    publicName: brandingData?.publicName || DEFAULT_ESTUDIO_NOVA_BRANDING_SNAPSHOT.publicName,
+    tagline: brandingData?.tagline || DEFAULT_ESTUDIO_NOVA_BRANDING_SNAPSHOT.tagline,
+    supportPhone: brandingData?.supportPhone || DEFAULT_ESTUDIO_NOVA_BRANDING_SNAPSHOT.supportPhone,
+    supportEmail: brandingData?.supportEmail || DEFAULT_ESTUDIO_NOVA_BRANDING_SNAPSHOT.supportEmail,
+    address: brandingData?.address || DEFAULT_ESTUDIO_NOVA_BRANDING_SNAPSHOT.address,
+    businessHours: brandingData?.businessHours || DEFAULT_ESTUDIO_NOVA_BRANDING_SNAPSHOT.businessHours,
+    footerDescription: brandingData?.footerDescription || DEFAULT_ESTUDIO_NOVA_BRANDING_SNAPSHOT.footerDescription,
+    primaryColor: brandingData?.primaryColor || DEFAULT_ESTUDIO_NOVA_BRANDING_SNAPSHOT.primaryColor,
+    secondaryColor: brandingData?.secondaryColor || DEFAULT_ESTUDIO_NOVA_BRANDING_SNAPSHOT.secondaryColor,
+    accentColor: brandingData?.accentColor || DEFAULT_ESTUDIO_NOVA_BRANDING_SNAPSHOT.accentColor,
+  };
+
+  const faqsSnap: CompositeFaqData[] = faqsData && faqsData.length > 0 ? faqsData : DEFAULT_ESTUDIO_NOVA_FAQS_SNAPSHOT;
+
+  const seoSnap: CompositeSeoData = {
+    seoTitle: homeSettings.seoTitle || `${brandingSnap.publicName} — ${brandingSnap.tagline}`,
+    seoDescription: homeSettings.seoDescription || homeSettings.heroDescription,
+    seoKeywords: homeSettings.seoKeywords || 'creditos hipotecarios uruguay, prestamos garantia inmueble',
+    seoOgImageUrl: homeSettings.seoOgImageUrl || homeSettings.heroBackgroundImageUrl,
+    seoCanonicalUrl: homeSettings.seoCanonicalUrl,
+    indexPolicy: 'index_follow',
+  };
+
+  return {
+    home: homeSnap,
+    branding: brandingSnap,
+    faqs: faqsSnap,
+    seo: seoSnap,
+  };
+}
+
+/**
+ * Registra un evento de auditoría en tenant_audit_logs
+ */
+export async function logTenantAuditEvent(
+  tenantId: string,
+  action: string,
+  beforeState?: Record<string, any>,
+  afterState?: Record<string, any>,
+  actorId?: string
+) {
+  if (!isSupabaseConfigured || !tenantId) return;
+  try {
+    let resolvedActorId = actorId;
+    if (!resolvedActorId) {
+      const { data: userData } = await supabase.auth.getUser();
+      resolvedActorId = userData.user?.id;
+    }
+
+    await supabase.from('tenant_audit_logs').insert({
+      tenant_id: tenantId,
+      actor_id: resolvedActorId || null,
+      action,
+      before_state: beforeState || null,
+      after_state: afterState || null,
+      created_at: new Date().toISOString(),
+    });
+  } catch {
+    // Audit log resiliente
+  }
+}
+
+/**
  * Obtiene la configuración de Home de una organización.
- * - Si options?.preview === true: retorna el borrador de trabajo actual (para Backoffice y Preview Mode).
- * - Si options?.preview !== true: retorna el snapshot PUBLICADO que ve el público general.
+ * - Si options?.preview === true AND autorizado: retorna el borrador de trabajo actual.
+ * - Si options?.preview !== true OR NO autorizado: retorna el snapshot PUBLICADO que ve el público general.
  */
 export async function getOrganizationHomeSettings(
   orgId: string,
-  options?: { preview?: boolean }
+  options?: {
+    preview?: boolean;
+    authorized?: boolean;
+    userRole?: string;
+    isSuperAdmin?: boolean;
+  }
 ): Promise<OrganizationHomeSettings> {
   if (!orgId) {
     return { ...DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS };
   }
 
-  const isPreview = options?.preview === true;
+  // Comprobar autorización para ver preview
+  const isAuthorizedForPreview =
+    options?.authorized === true ||
+    options?.isSuperAdmin === true ||
+    options?.userRole === 'tenant_admin' ||
+    options?.userRole === 'tenant_owner' ||
+    options?.userRole === 'super_admin';
+
+  // Si se pide preview pero no está autorizado, forzar modo público
+  const isPreview = options?.preview === true && isAuthorizedForPreview;
   const cacheKey = `${orgId}_${isPreview ? 'preview' : 'public'}`;
 
   // 1. Intentar desde Supabase
@@ -518,16 +703,20 @@ export async function getOrganizationHomeSettings(
       if (!error && data) {
         const workingDraft = mapDbToSettings(data, orgId);
 
-        // Si es público y hay snapshot publicado, consumir estrictamente el snapshot
+        // Si es público y hay snapshot publicado, consumir estrictamente el snapshot compuesto
         if (!isPreview && data.published_snapshot && typeof data.published_snapshot === 'object') {
           const snap = data.published_snapshot;
+          const homeFields = snap.home ? snap.home : snap;
+
           const publishedView: OrganizationHomeSettings = {
             ...workingDraft,
-            ...snap,
+            ...homeFields,
             status: 'published',
             versionNumber: workingDraft.versionNumber,
             publishedAt: workingDraft.publishedAt,
             hasUnpublishedChanges: workingDraft.hasUnpublishedChanges,
+            publishedSnapshot: snap,
+            compositeSnapshot: snap.home ? snap : undefined,
           };
           homeSettingsCache.set(cacheKey, publishedView);
           return publishedView;
@@ -537,7 +726,7 @@ export async function getOrganizationHomeSettings(
         return workingDraft;
       }
     } catch {
-      // Fallback si la red falla
+      // Fallback
     }
   }
 
@@ -560,13 +749,14 @@ export async function getOrganizationHomeSettings(
  */
 export async function saveHomeDraft(
   orgId: string,
-  updates: Partial<OrganizationHomeSettings>
+  updates: Partial<OrganizationHomeSettings>,
+  options?: { actorId?: string }
 ): Promise<{ success: boolean; data: OrganizationHomeSettings; error?: string }> {
   if (!orgId) {
     return { success: false, data: DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS, error: 'organizationId es requerido' };
   }
 
-  const current = await getOrganizationHomeSettings(orgId, { preview: true });
+  const current = await getOrganizationHomeSettings(orgId, { preview: true, authorized: true });
   const updated: OrganizationHomeSettings = {
     ...current,
     ...updates,
@@ -639,7 +829,7 @@ export async function saveHomeDraft(
             investor_title: updated.investorTitle,
             investor_description: updated.investorDescription,
             investor_cta_text: updated.investorCtaText,
-            investorCards: updated.investorCards,
+            investor_cards: updated.investorCards,
 
             seo_title: updated.seoTitle,
             seo_description: updated.seoDescription,
@@ -659,6 +849,15 @@ export async function saveHomeDraft(
         return { success: true, data: updated, error: error.message };
       }
 
+      // 3. Registrar auditoría de borrador guardado
+      await logTenantAuditEvent(
+        orgId,
+        'home_draft_saved',
+        { status: current.status, updatedAt: current.updatedAt },
+        { status: 'draft', updatedAt: updated.updatedAt },
+        options?.actorId
+      );
+
       const fresh = mapDbToSettings(data, orgId);
       homeSettingsCache.set(`${orgId}_preview`, fresh);
       return { success: true, data: fresh };
@@ -671,7 +870,7 @@ export async function saveHomeDraft(
 }
 
 /**
- * Publica la configuración actual como nueva versión productiva inmutable
+ * Publica la configuración actual como nueva versión productiva inmutable atómicamente
  */
 export async function publishHomeVersion(
   orgId: string,
@@ -679,21 +878,68 @@ export async function publishHomeVersion(
     changelogNotes?: string;
     authorName?: string;
     authorId?: string;
+    brandingData?: Partial<CompositeBrandingData>;
+    faqsData?: CompositeFaqData[];
   }
 ): Promise<{ success: boolean; version?: OrganizationHomeVersionItem; data?: OrganizationHomeSettings; error?: string }> {
   if (!orgId) {
     return { success: false, error: 'organizationId es requerido' };
   }
 
-  const workingSettings = await getOrganizationHomeSettings(orgId, { preview: true });
-  const snapshot = createHomeSnapshot(workingSettings);
+  const workingSettings = await getOrganizationHomeSettings(orgId, { preview: true, authorized: true });
+  const compositeSnapshot = createCompositeEditorialSnapshot(
+    workingSettings,
+    options?.brandingData,
+    options?.faqsData
+  );
 
   let newVersionNumber = (workingSettings.versionNumber || 1) + 1;
   const authorName = options?.authorName || 'Admin WhiteLabel';
 
   if (isSupabaseConfigured) {
     try {
-      // 1. Obtener última versión existente
+      let resolvedActorId = options?.authorId;
+      if (!resolvedActorId) {
+        const { data: authData } = await supabase.auth.getUser();
+        resolvedActorId = authData.user?.id;
+      }
+
+      // 1. Intentar publicación atómica por stored procedure
+      const { data: rpcRes, error: rpcError } = await supabase.rpc('publish_organization_home_version', {
+        p_organization_id: orgId,
+        p_changelog_notes: options?.changelogNotes || 'Actualización de contenidos desde el panel White-Label.',
+        p_author_name: authorName,
+        p_actor_id: resolvedActorId || null,
+        p_composite_snapshot: compositeSnapshot,
+      });
+
+      if (!rpcError && rpcRes && rpcRes.success) {
+        newVersionNumber = rpcRes.version_number;
+
+        // Refrescar settings
+        const freshSettings = await getOrganizationHomeSettings(orgId, { preview: false });
+        homeSettingsCache.set(`${orgId}_public`, freshSettings);
+        homeSettingsCache.set(`${orgId}_preview`, freshSettings);
+        notifyHomeListeners(orgId, freshSettings);
+
+        const versionItem: OrganizationHomeVersionItem = {
+          id: rpcRes.version_id,
+          organizationId: orgId,
+          versionNumber: rpcRes.version_number,
+          versionLabel: rpcRes.version_label,
+          changelogNotes: options?.changelogNotes,
+          authorName: authorName,
+          authorId: resolvedActorId,
+          snapshot: compositeSnapshot,
+          publishedAt: rpcRes.published_at,
+          isActive: true,
+          createdAt: rpcRes.published_at,
+        };
+
+        return { success: true, version: versionItem, data: freshSettings };
+      }
+
+      // Fallback manual si RPC no está disponible
       const { data: latestVer } = await supabase
         .from('organization_home_versions')
         .select('version_number')
@@ -709,14 +955,12 @@ export async function publishHomeVersion(
       const versionLabel = `Versión ${newVersionNumber}.0`;
       const changelog = options?.changelogNotes || 'Actualización de contenidos desde el panel White-Label.';
 
-      // 2. Desactivar versiones previas
       await supabase
         .from('organization_home_versions')
         .update({ is_active: false })
         .eq('organization_id', orgId);
 
-      // 3. Insertar nueva versión inmutable
-      const { data: verData, error: verError } = await supabase
+      const { data: verData } = await supabase
         .from('organization_home_versions')
         .insert({
           organization_id: orgId,
@@ -724,26 +968,21 @@ export async function publishHomeVersion(
           version_label: versionLabel,
           changelog_notes: changelog,
           author_name: authorName,
-          author_id: options?.authorId,
-          snapshot: snapshot,
+          author_id: resolvedActorId || null,
+          snapshot: compositeSnapshot,
           is_active: true,
           published_at: new Date().toISOString(),
         })
         .select()
         .single();
 
-      if (verError) {
-        console.error('[OrganizationHomeService] Error creando versión:', verError);
-      }
-
-      // 4. Actualizar organization_home_settings a PUBLISHED con el nuevo snapshot
       const { data: updatedSettingsData, error: settingsError } = await supabase
         .from('organization_home_settings')
         .update({
           status: 'published',
           version_number: newVersionNumber,
           published_at: new Date().toISOString(),
-          published_snapshot: snapshot,
+          published_snapshot: compositeSnapshot,
           has_unpublished_changes: false,
           updated_at: new Date().toISOString(),
         })
@@ -755,35 +994,46 @@ export async function publishHomeVersion(
         return { success: false, error: settingsError.message };
       }
 
+      await logTenantAuditEvent(
+        orgId,
+        'home_version_published',
+        { version: newVersionNumber - 1 },
+        { version: newVersionNumber, changelog },
+        resolvedActorId
+      );
+
       const publishedSettings = mapDbToSettings(updatedSettingsData, orgId);
+      publishedSettings.publishedSnapshot = compositeSnapshot;
       homeSettingsCache.set(`${orgId}_public`, publishedSettings);
       homeSettingsCache.set(`${orgId}_preview`, publishedSettings);
       notifyHomeListeners(orgId, publishedSettings);
 
-      const createdVersionItem: OrganizationHomeVersionItem = verData ? {
-        id: verData.id,
-        organizationId: verData.organization_id,
-        versionNumber: verData.version_number,
-        versionLabel: verData.version_label,
-        changelogNotes: verData.changelog_notes,
-        authorName: verData.author_name,
-        authorId: verData.author_id,
-        snapshot: verData.snapshot,
-        publishedAt: verData.published_at,
-        isActive: verData.is_active,
-        createdAt: verData.created_at,
-      } : {
-        id: crypto.randomUUID(),
-        organizationId: orgId,
-        versionNumber: newVersionNumber,
-        versionLabel: versionLabel,
-        changelogNotes: changelog,
-        authorName: authorName,
-        snapshot: workingSettings,
-        publishedAt: new Date().toISOString(),
-        isActive: true,
-        createdAt: new Date().toISOString(),
-      };
+      const createdVersionItem: OrganizationHomeVersionItem = verData
+        ? {
+            id: verData.id,
+            organizationId: verData.organization_id,
+            versionNumber: verData.version_number,
+            versionLabel: verData.version_label,
+            changelogNotes: verData.changelog_notes,
+            authorName: verData.author_name,
+            authorId: verData.author_id,
+            snapshot: verData.snapshot,
+            publishedAt: verData.published_at,
+            isActive: verData.is_active,
+            createdAt: verData.created_at,
+          }
+        : {
+            id: crypto.randomUUID(),
+            organizationId: orgId,
+            versionNumber: newVersionNumber,
+            versionLabel: versionLabel,
+            changelogNotes: changelog,
+            authorName: authorName,
+            snapshot: compositeSnapshot,
+            publishedAt: new Date().toISOString(),
+            isActive: true,
+            createdAt: new Date().toISOString(),
+          };
 
       return {
         success: true,
@@ -801,7 +1051,7 @@ export async function publishHomeVersion(
     status: 'published',
     versionNumber: newVersionNumber,
     publishedAt: new Date().toISOString(),
-    publishedSnapshot: snapshot,
+    publishedSnapshot: compositeSnapshot,
     hasUnpublishedChanges: false,
   };
   homeSettingsCache.set(`${orgId}_public`, publishedSettings);
@@ -849,12 +1099,12 @@ export async function getHomeVersionHistory(orgId: string): Promise<Organization
 }
 
 /**
- * Restaura una versión anterior histórica hacia el borrador actual
+ * Restaura una versión anterior histórica hacia el BORRADOR de trabajo (NO a producción inmediata)
  */
-export async function rollbackHomeVersion(
+export async function restoreHomeVersionAsDraft(
   orgId: string,
   versionId: string,
-  _options?: { authorName?: string }
+  options?: { authorName?: string; actorId?: string }
 ): Promise<{ success: boolean; data?: OrganizationHomeSettings; error?: string }> {
   if (!orgId || !versionId) {
     return { success: false, error: 'Parámetros requeridos inválidos' };
@@ -873,8 +1123,20 @@ export async function rollbackHomeVersion(
         return { success: false, error: 'Versión no encontrada' };
       }
 
-      const snapshotToRestore = ver.snapshot;
-      const res = await saveHomeDraft(orgId, snapshotToRestore);
+      const snap = ver.snapshot;
+      const homeDataToRestore = snap.home ? snap.home : snap;
+
+      // Guardar en el borrador de trabajo con status = 'draft' y has_unpublished_changes = true
+      const res = await saveHomeDraft(orgId, homeDataToRestore, { actorId: options?.actorId });
+
+      await logTenantAuditEvent(
+        orgId,
+        'home_version_restored_to_draft',
+        {},
+        { restored_version_number: ver.version_number, version_label: ver.version_label },
+        options?.actorId
+      );
+
       return res;
     } catch (err: unknown) {
       return { success: false, error: err instanceof Error ? err.message : 'Error al restaurar versión' };
@@ -882,6 +1144,17 @@ export async function rollbackHomeVersion(
   }
 
   return { success: true };
+}
+
+/**
+ * Alias de compatibilidad hacia restoreHomeVersionAsDraft
+ */
+export async function rollbackHomeVersion(
+  orgId: string,
+  versionId: string,
+  options?: { authorName?: string }
+): Promise<{ success: boolean; data?: OrganizationHomeSettings; error?: string }> {
+  return restoreHomeVersionAsDraft(orgId, versionId, options);
 }
 
 /**

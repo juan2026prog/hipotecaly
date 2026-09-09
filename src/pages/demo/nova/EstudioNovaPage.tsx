@@ -84,19 +84,6 @@ export const EstudioNovaPage: React.FC = () => {
     : 'd0000000-0000-0000-0000-000000000001';
 
   const effectiveSlug = tenantSlug || tenant?.slug || 'estudio-nova';
-  const orgName = tenant?.branding?.public_name || tenant?.name || 'Estudio Nova';
-  const orgTagline = tenant?.branding?.tag_line || 'Financiación & inversión';
-  
-  // Datos institucionales únicos (DRY)
-  const supportPhone = tenant?.branding?.support_phone || '+598 2916 4455';
-  const supportEmail = tenant?.branding?.support_email || tenant?.settings?.sender_email || 'contacto@estudionova.uy';
-  const institutionalAddress = tenant?.branding?.address || 'Montevideo, Uruguay';
-  const businessHours = tenant?.branding?.business_hours || 'Lun a Vie 09:00 – 18:00 hs';
-  const footerDescription = tenant?.branding?.footer_description || 'Financiación & inversión con respaldo inmobiliario en Uruguay. Estructuración legal y notarial de operaciones.';
-
-  const primaryColor = tenant?.branding?.primary_color || '#173a5e';
-  const secondaryColor = tenant?.branding?.secondary_color || '#102d49';
-  const accentColor = tenant?.branding?.accent_color || '#f4b43b';
 
   const [rules, setRules] = useState<TenantLendingRules>(DEFAULT_NOVA_LENDING_RULES);
   const [homeSettings, setHomeSettings] = useState<OrganizationHomeSettings>(DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS);
@@ -104,11 +91,44 @@ export const EstudioNovaPage: React.FC = () => {
   const [modules, setModules] = useState<Record<TenantModuleKey, boolean>>(DEFAULT_MODULES_MAP);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
+  // Snapshot Compuesto Editorial: en modo público se leen branding y faqs congelados en la versión
+  const compositeSnap = homeSettings.publishedSnapshot as any;
+  const snapBranding = (!isPreview && compositeSnap?.branding) ? compositeSnap.branding : null;
+  const snapFaqs = (!isPreview && compositeSnap?.faqs) ? compositeSnap.faqs : null;
+
+  const orgName = snapBranding?.publicName || tenant?.branding?.public_name || tenant?.name || 'Estudio Nova';
+  const orgTagline = snapBranding?.tagline || tenant?.branding?.tag_line || 'Financiación & inversión';
+  
+  // Datos institucionales únicos (DRY)
+  const supportPhone = snapBranding?.supportPhone || tenant?.branding?.support_phone || '+598 2916 4455';
+  const supportEmail = snapBranding?.supportEmail || tenant?.branding?.support_email || tenant?.settings?.sender_email || 'contacto@estudionova.uy';
+  const institutionalAddress = snapBranding?.address || tenant?.branding?.address || 'Montevideo, Uruguay';
+  const businessHours = snapBranding?.businessHours || tenant?.branding?.business_hours || 'Lun a Vie 09:00 – 18:00 hs';
+  const footerDescription = snapBranding?.footerDescription || tenant?.branding?.footer_description || 'Financiación & inversión con respaldo inmobiliario en Uruguay. Estructuración legal y notarial de operaciones.';
+
+  const primaryColor = snapBranding?.primaryColor || tenant?.branding?.primary_color || '#173a5e';
+  const secondaryColor = snapBranding?.secondaryColor || tenant?.branding?.secondary_color || '#102d49';
+  const accentColor = snapBranding?.accentColor || tenant?.branding?.accent_color || '#f4b43b';
+
   // Inyección dinámica de SEO / Metadatos
   useOrganizationSeo({
     settings: homeSettings,
+    branding: snapBranding || {
+      publicName: orgName,
+      tagline: orgTagline,
+      supportPhone,
+      supportEmail,
+      address: institutionalAddress,
+      businessHours,
+      footerDescription,
+      primaryColor,
+      secondaryColor,
+      accentColor,
+    },
     orgName,
     orgTagline,
+    isPreview,
+    isDemo: true,
   });
 
   // Estados del simulador
@@ -934,7 +954,7 @@ export const EstudioNovaPage: React.FC = () => {
             </div>
 
             <div className="space-y-3">
-              {faqs.map((item, idx) => {
+              {(snapFaqs && snapFaqs.length > 0 ? snapFaqs.filter((f: any) => f.isActive) : faqs).map((item: any, idx: number) => {
                 const interpolatedAnswer = interpolateFaqAnswer(item.answer, {
                   maxFinancedPercentage: rules.maxFinancedPercentage,
                   minLoanAmount: rules.minLoanAmount,

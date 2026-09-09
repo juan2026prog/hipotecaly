@@ -3547,7 +3547,7 @@ export const WhiteLabelBackofficePage: React.FC = () => {
             </div>
 
             <p className="text-slate-500 text-[11px]">
-              Esta operación restaurará los textos, apariencia, secciones y SEO exactamente como estaban en dicho snapshot y publicará una nueva versión de restauración.
+              Esta operación cargará los datos de dicho snapshot en tu <strong>Borrador de Trabajo</strong>. Podrás auditar los cambios en Modo Vista Previa y pulsar &quot;Publicar Versión&quot; cuando decidas llevarlo a producción.
             </p>
 
             <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
@@ -3568,7 +3568,7 @@ export const WhiteLabelBackofficePage: React.FC = () => {
                 className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold flex items-center space-x-1.5"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>{rollingBackHome ? 'Restaurando...' : 'Confirmar Restauración'}</span>
+                <span>{rollingBackHome ? 'Restaurando a Borrador...' : 'Restaurar a Borrador'}</span>
               </button>
             </div>
           </div>
