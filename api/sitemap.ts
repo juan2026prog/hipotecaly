@@ -45,13 +45,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? new Date(customDomainRecord.updated_at).toISOString().split('T')[0]
       : currentDate;
 
+    // Solo URLs públicas reales e indexables (sin fragmentos de anclaje #)
     urls = [
       { loc: `https://${host}/`, lastmod: domainLastMod, changefreq: 'weekly', priority: '1.0' },
-      { loc: `https://${host}/#simulador`, lastmod: domainLastMod, changefreq: 'weekly', priority: '0.9' },
-      { loc: `https://${host}/#como-funciona`, lastmod: domainLastMod, changefreq: 'monthly', priority: '0.8' },
-      { loc: `https://${host}/#inmuebles`, lastmod: domainLastMod, changefreq: 'monthly', priority: '0.8' },
-      { loc: `https://${host}/#faq`, lastmod: domainLastMod, changefreq: 'monthly', priority: '0.7' },
-      { loc: `https://${host}/#contacto`, lastmod: domainLastMod, changefreq: 'monthly', priority: '0.8' },
     ];
   } else {
     // 2. Sitemap de la plataforma HIPOTECALY + Dominios Verificados

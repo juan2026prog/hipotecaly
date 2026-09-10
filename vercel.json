@@ -6,6 +6,10 @@
   },
   "rewrites": [
     {
+      "source": "/api/domains/verify",
+      "destination": "/api/domains-verify"
+    },
+    {
       "source": "/sitemap.xml",
       "destination": "/api/sitemap"
     },
