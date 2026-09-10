@@ -58,7 +58,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const apiKey = process.env.DIDIT_API_KEY;
       const workflowId = process.env.DIDIT_WORKFLOW_ID;
-      const kycMode = process.env.KYC_MODE || 'live';
+      const kycMode = (process.env.KYC_MODE || 'sandbox').toLowerCase().trim();
 
       if (!apiKey) {
         return res.status(500).json({
@@ -202,7 +202,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             case_id: caseId || null,
             provider: 'didit',
             status: 'in_progress',
-            mode: process.env.KYC_MODE || 'live',
+            mode: (process.env.KYC_MODE || 'sandbox').toLowerCase().trim(),
           },
         });
       }
@@ -260,7 +260,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const hasDiditKey = Boolean(process.env.DIDIT_API_KEY);
       const hasDiditWorkflow = Boolean(process.env.DIDIT_WORKFLOW_ID);
       const hasDiditSecret = Boolean(process.env.DIDIT_WEBHOOK_SECRET);
-      const kycMode = (process.env.KYC_MODE || 'live').toLowerCase();
+      const kycMode = (process.env.KYC_MODE || 'sandbox').toLowerCase().trim();
       const rawWorkflow = process.env.DIDIT_WORKFLOW_ID || '';
       const workflowIdMasked = rawWorkflow
         ? (rawWorkflow.length > 8 ? `${rawWorkflow.substring(0, 4)}••••${rawWorkflow.substring(rawWorkflow.length - 4)}` : '••••••••')

@@ -35,7 +35,7 @@ export class DiditKycProvider implements KycProvider {
     this.apiKey = config.apiKey || process.env.DIDIT_API_KEY || '';
     this.workflowId = config.workflowId || process.env.DIDIT_WORKFLOW_ID || '';
     this.webhookSecret = config.webhookSecret || process.env.DIDIT_WEBHOOK_SECRET || '';
-    this.mode = config.mode || (process.env.KYC_MODE as KycMode) || 'mock';
+    this.mode = config.mode || (process.env.KYC_MODE as KycMode) || 'sandbox';
   }
 
   public async createSession(input: KycSessionInput): Promise<KycSession> {

@@ -125,10 +125,10 @@ export class KycService {
     return {
       kyc_enabled: true,
       kyc_provider: process.env.KYC_PROVIDER || 'didit',
-      kyc_mode: process.env.KYC_MODE || 'live',
+      kyc_mode: (process.env.KYC_MODE || 'sandbox').toLowerCase().trim(),
       signature_enabled: true,
       signature_provider: process.env.SIGNATURE_PROVIDER || 'firma_gub',
-      signature_mode: process.env.SIGNATURE_MODE || 'live',
+      signature_mode: (process.env.SIGNATURE_MODE || 'sandbox').toLowerCase().trim(),
       byok_enabled: false,
     };
   }
@@ -156,7 +156,7 @@ export class KycService {
       sessionId: diditRes.session_id,
       sessionUrl: diditRes.url,
       provider: 'didit',
-      mode: (process.env.KYC_MODE as any) || 'live',
+      mode: ((process.env.KYC_MODE || 'sandbox').toLowerCase().trim() as any),
       status: normalizeDiditStatus(diditRes.status || 'Created'),
       createdAt: diditRes.created_at || new Date().toISOString(),
       expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
@@ -269,7 +269,7 @@ export class KycService {
       case_id: caseId || null,
       provider: 'didit',
       status: 'in_progress',
-      mode: process.env.KYC_MODE || 'mock',
+      mode: (process.env.KYC_MODE || 'sandbox').toLowerCase().trim(),
     };
   }
 
@@ -287,7 +287,7 @@ export class KycService {
       headers['x-hmac-signature'] ||
       '';
     const secret = process.env.DIDIT_WEBHOOK_SECRET || '';
-    const mode = process.env.KYC_MODE || 'mock';
+    const mode = (process.env.KYC_MODE || 'sandbox').toLowerCase().trim();
 
     // 1. Validar HMAC X-Signature-V2 si está en modo sandbox o live
     if (mode !== 'mock') {
