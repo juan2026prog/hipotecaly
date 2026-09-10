@@ -22,6 +22,8 @@ export interface DiditConfig {
   mode?: KycMode;
 }
 
+import { demoIntegrationsGateService } from '../../../demoIntegrationsGateService';
+
 export class DiditKycProvider implements KycProvider {
   public readonly name = 'didit';
   private baseUrl: string;
@@ -39,8 +41,11 @@ export class DiditKycProvider implements KycProvider {
   }
 
   public async createSession(input: KycSessionInput): Promise<KycSession> {
-    // Modo DEMO explícito (para Estudio Nova / presentaciones)
-    if (this.mode === 'mock') {
+    const orgId = (input as any).organizationId || (input as any).tenantId || (input.metadata?.organizationId as string) || 'd0000000-0000-0000-0000-000000000001';
+    const gateCheck = await demoIntegrationsGateService.isExternalActionAllowed(orgId, 'didit_kyc');
+
+    // Si las integraciones reales están bloqueadas por Super Admin o en modo mock:
+    if (!gateCheck.allowed || this.mode === 'mock') {
       const mockId = `didit_mock_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
       return {
         id: mockId,
@@ -54,6 +59,8 @@ export class DiditKycProvider implements KycProvider {
         metadata: {
           simulated: true,
           demoKyc: true,
+          blockedReason: gateCheck.allowed ? undefined : gateCheck.reason,
+          message: 'Esta organización está en modo demostración. La verificación de identidad real está deshabilitada.',
           vendorData: input.vendorData || input.caseId,
           endUserId: input.endUserId || input.userId,
           workflowId: this.workflowId || 'default-didit-workflow',

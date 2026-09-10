@@ -29,6 +29,8 @@ export interface FirmaGubConfig extends FirmaGubClientOptions {
   systemName?: string;
 }
 
+import { demoIntegrationsGateService } from '../../../demoIntegrationsGateService';
+
 export class FirmaGubSignatureProvider implements SignatureProvider {
   public readonly name = 'firma_gub';
   private client: FirmaGubClient;
@@ -100,8 +102,11 @@ export class FirmaGubSignatureProvider implements SignatureProvider {
    * Inicia un proceso de firma en Firma.gub.uy mediante Proceso 1 (por defecto)
    */
   public async createProcess(input: SignatureProcessInput): Promise<SignatureProcess> {
-    // Si no está configurada la URL oficial de AGESIC o estamos explícitamente en mock
-    if (!this.client.isEnabled() || this.mode === 'mock') {
+    const orgId = (input as any).organizationId || (input as any).tenantId || (input.metadata?.organizationId as string) || 'd0000000-0000-0000-0000-000000000001';
+    const gateCheck = await demoIntegrationsGateService.isExternalActionAllowed(orgId, 'digital_signature');
+
+    // Si no está configurada la URL oficial de AGESIC, estamos en mock o deshabilitados por Super Admin:
+    if (!gateCheck.allowed || !this.client.isEnabled() || this.mode === 'mock') {
       const mockProcId = `firma_gub_mock_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
       const signingUrl = `/signature/return?firma_gub_session=${mockProcId}&caseId=${input.caseId}`;
 
@@ -119,7 +124,7 @@ export class FirmaGubSignatureProvider implements SignatureProvider {
         metadata: {
           simulated: true,
           providerStatus: 'WAITING_PROVIDER_CONFIGURATION',
-          note: 'AGESIC Firma.gub.uy adapter listo. Esperando configuración de endpoint oficial.',
+          note: gateCheck.allowed ? 'AGESIC Firma.gub.uy adapter listo.' : gateCheck.reason,
         },
       };
     }

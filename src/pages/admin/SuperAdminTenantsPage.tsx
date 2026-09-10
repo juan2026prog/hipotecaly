@@ -212,9 +212,20 @@ export const SuperAdminTenantsPage: React.FC = () => {
                       </td>
 
                       <td className="py-3.5 px-4">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/15 text-blue-400 border border-blue-500/20">
-                          {t.is_white_label ? 'Marca Blanca' : 'Plan Estándar'}
-                        </span>
+                        <div className="flex items-center space-x-1.5">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/15 text-blue-400 border border-blue-500/20">
+                            {t.is_white_label ? 'Marca Blanca' : 'Plan Estándar'}
+                          </span>
+                          {t.demo_mode || t.is_demo ? (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                              DEMO
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                              PROD
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       <td className="py-3.5 px-4 text-slate-200">

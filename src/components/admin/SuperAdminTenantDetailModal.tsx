@@ -10,11 +10,15 @@ import {
   ExternalLink,
   ToggleLeft,
   ToggleRight,
+  ShieldAlert,
+  AlertTriangle,
+  Lock,
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Tenant } from '../../lib/tenantService';
 import { getTenantModules, setTenantModuleEnabled, TenantModuleKey, DEFAULT_MODULES_MAP } from '../../lib/tenantModulesService';
 import { getTenantLendingRules, updateTenantLendingRules, TenantLendingRules, DEFAULT_NOVA_LENDING_RULES } from '../../lib/tenantRulesService';
+import { demoIntegrationsGateService, TenantGateState } from '../../lib/demoIntegrationsGateService';
 
 interface SuperAdminTenantDetailModalProps {
   tenant: Tenant | null;
@@ -33,10 +37,53 @@ export const SuperAdminTenantDetailModal: React.FC<SuperAdminTenantDetailModalPr
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // Gate de Integraciones Externas
+  const [gateState, setGateState] = useState<TenantGateState | null>(null);
+  const [summaryList, setSummaryList] = useState<Array<{ integration: string; name: string; statusLabel: string; isBlocked: boolean }>>([]);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingGateAction, setPendingGateAction] = useState<{ isDemo: boolean; extEnabled: boolean } | null>(null);
+
+  const loadGateState = async (tenantIdOrSlug: string) => {
+    const st = await demoIntegrationsGateService.getTenantGateState(tenantIdOrSlug);
+    setGateState(st);
+    const sum = await demoIntegrationsGateService.getIntegrationStatusSummary(tenantIdOrSlug);
+    setSummaryList(sum);
+  };
+
+  const handleGateToggle = async (targetIsDemo: boolean, targetExtEnabled: boolean) => {
+    if (targetExtEnabled || !targetIsDemo) {
+      setPendingGateAction({ isDemo: targetIsDemo, extEnabled: targetExtEnabled });
+      setShowConfirmModal(true);
+      return;
+    }
+
+    await applyGateChange(targetIsDemo, targetExtEnabled);
+  };
+
+  const applyGateChange = async (targetIsDemo: boolean, targetExtEnabled: boolean) => {
+    if (!tenant) return;
+    setIsSaving(true);
+    try {
+      await demoIntegrationsGateService.updateTenantGateState(tenant.id, targetIsDemo, targetExtEnabled, {
+        isSuperAdmin: true,
+        email: 'superadmin@hipotecaly.uy',
+      });
+      await loadGateState(tenant.id);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+      if (onUpdated) onUpdated();
+    } finally {
+      setIsSaving(false);
+      setShowConfirmModal(false);
+      setPendingGateAction(null);
+    }
+  };
+
   useEffect(() => {
     if (tenant?.id) {
       getTenantModules(tenant.id).then(setModules);
       getTenantLendingRules(tenant.id).then(setRules);
+      loadGateState(tenant.id);
     }
   }, [tenant?.id]);
 
@@ -326,21 +373,119 @@ export const SuperAdminTenantDetailModal: React.FC<SuperAdminTenantDetailModalPr
 
           {/* TAB: INTEGRACIONES */}
           {activeTab === 'integraciones' && (
-            <div className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="p-3.5 rounded-xl bg-[#071322] border border-[#152E4D] space-y-1">
-                  <div className="flex items-center justify-between">
-                    <strong className="text-slate-200">Firma Digital</strong>
-                    <span className="text-emerald-400 font-bold">🟢 Operativo</span>
+            <div className="space-y-6">
+              {/* Sección Entorno y Servicios Externos */}
+              <div className="p-4 rounded-xl bg-[#071322] border border-[#152E4D] space-y-4">
+                <div className="flex items-center justify-between border-b border-[#152E4D] pb-3">
+                  <div>
+                    <h3 className="text-sm font-extrabold text-white flex items-center space-x-2">
+                      <ShieldAlert className="w-4 h-4 text-emerald-400" />
+                      <span>Entorno y servicios externos</span>
+                    </h3>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Control centralizado de Super Admin para bloquear o permitir acciones hacia proveedores externos.
+                    </p>
                   </div>
-                  <p className="text-slate-400 text-[11px]">Firma electrónica con validez Ley N° 18.600</p>
+                  <span
+                    className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider ${
+                      gateState?.isDemo
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                        : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                    }`}
+                  >
+                    {gateState?.isDemo ? 'ENTORNO DEMO' : 'ENTORNO PRODUCCIÓN'}
+                  </span>
                 </div>
-                <div className="p-3.5 rounded-xl bg-[#071322] border border-[#152E4D] space-y-1">
-                  <div className="flex items-center justify-between">
-                    <strong className="text-slate-200">Identidad y KYC</strong>
-                    <span className="text-emerald-400 font-bold">🟢 Configurado</span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Selector Modo de Organización */}
+                  <div className="p-3 rounded-lg bg-[#09182C] border border-[#152E4D] space-y-2">
+                    <label className="text-xs font-bold text-slate-300 block">Modo de organización:</label>
+                    <div className="flex space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!gateState?.isDemo) {
+                            handleGateToggle(true, false);
+                          }
+                        }}
+                        className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-extrabold transition-all ${
+                          gateState?.isDemo
+                            ? 'bg-amber-500 text-slate-950 shadow'
+                            : 'bg-[#152E4D] text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        DEMO
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (gateState?.isDemo) {
+                            handleGateToggle(false, true);
+                          }
+                        }}
+                        className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-extrabold transition-all ${
+                          !gateState?.isDemo
+                            ? 'bg-emerald-600 text-white shadow'
+                            : 'bg-[#152E4D] text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        PRODUCCIÓN
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-slate-400 text-[11px]">Validación de identidad y Cédula de Identidad</p>
+
+                  {/* Toggle Integraciones Externas Reales */}
+                  <div className="p-3 rounded-lg bg-[#09182C] border border-[#152E4D] space-y-2">
+                    <label className="text-xs font-bold text-slate-300 block">Permitir integraciones externas reales:</label>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono font-bold text-slate-400">
+                        {gateState?.externalIntegrationsEnabled ? '🟢 HABILITADAS (ON)' : '🔴 BLOQUEADAS (OFF)'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const targetEnabled = !gateState?.externalIntegrationsEnabled;
+                          handleGateToggle(Boolean(gateState?.isDemo), targetEnabled);
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-extrabold flex items-center space-x-1.5 transition-all ${
+                          gateState?.externalIntegrationsEnabled
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                            : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                        }`}
+                      >
+                        {gateState?.externalIntegrationsEnabled ? <ToggleRight className="w-4 h-4 text-emerald-400" /> : <ToggleLeft className="w-4 h-4 text-rose-400" />}
+                        <span>{gateState?.externalIntegrationsEnabled ? 'ON' : 'OFF'}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tabla de Resumen Granular */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                  Estado Granular por Integración
+                </h4>
+                <div className="divide-y divide-[#152E4D] border border-[#152E4D] rounded-xl bg-[#071322] overflow-hidden">
+                  {summaryList.map((item) => (
+                    <div key={item.integration} className="p-3.5 flex items-center justify-between text-xs">
+                      <div className="space-y-0.5">
+                        <strong className="text-slate-200 block">{item.name}</strong>
+                        <span className="text-[11px] font-mono text-slate-400">{item.integration}</span>
+                      </div>
+                      <span
+                        className={`px-2.5 py-1 rounded-lg font-bold text-[11px] flex items-center space-x-1.5 ${
+                          item.isBlocked
+                            ? 'bg-amber-500/10 text-amber-300 border border-amber-500/30'
+                            : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                        }`}
+                      >
+                        {item.isBlocked && <Lock className="w-3 h-3 text-amber-400" />}
+                        <span>{item.statusLabel}</span>
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -390,6 +535,50 @@ export const SuperAdminTenantDetailModal: React.FC<SuperAdminTenantDetailModalPr
           </Button>
         </div>
       </div>
+
+      {/* Modal de Confirmación Fuerte para Habilitar Integraciones Reales */}
+      {showConfirmModal && pendingGateAction && (
+        <div className="fixed inset-0 z-50 bg-[#071322]/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#09182C] border border-amber-500/40 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 text-left">
+            <div className="flex items-center space-x-3 text-amber-400">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-amber-400" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-white">Habilitar Integraciones Reales</h3>
+                <span className="text-xs text-amber-300 font-mono">Confirmación Requerida por Super Admin</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed bg-[#071322] p-3.5 rounded-xl border border-[#152E4D]">
+              Estás habilitando acciones externas reales para esta organización. Podrían enviarse emails, verificaciones KYC, eventos de calendario u otras acciones a proveedores reales.
+            </p>
+
+            <div className="flex items-center justify-end space-x-3 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowConfirmModal(false);
+                  setPendingGateAction(null);
+                }}
+                className="border-[#1E3A5F] text-slate-300 text-xs font-bold"
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => applyGateChange(pendingGateAction.isDemo, pendingGateAction.extEnabled)}
+                disabled={isSaving}
+                className="bg-amber-600 hover:bg-amber-500 text-white text-xs font-extrabold"
+              >
+                {isSaving ? 'Guardando...' : 'Habilitar integraciones reales'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

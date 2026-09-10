@@ -212,6 +212,8 @@ export async function disconnectGoogleCalendar(
 /**
  * 5. Sincroniza un evento con Google Calendar API (Insert, Patch o Delete)
  */
+import { demoIntegrationsGateService } from '../demoIntegrationsGateService';
+
 export async function syncCalendarEventWithGoogleApi(params: {
   userId: string;
   organizationId: string;
@@ -234,6 +236,16 @@ export async function syncCalendarEventWithGoogleApi(params: {
   status: 'synced' | 'sync_error';
   error?: string;
 }> {
+  // Verificar si las acciones externas reales están permitidas para esta organización
+  const gateCheck = await demoIntegrationsGateService.isExternalActionAllowed(params.organizationId, 'google_calendar');
+  if (!gateCheck.allowed) {
+    // Modo demo o integraciones bloqueadas: la agenda interna de HIPOTECALY y exportación .ics siguen funcionando
+    return {
+      success: true,
+      status: 'synced',
+      googleEventId: params.googleCalendarEventId || `demo_gcal_${Date.now()}`,
+    };
+  }
   if (typeof window === 'undefined') {
     try {
       const { GoogleCalendarServerService } = await import('../../../server/calendar/googleCalendarServerService.js');

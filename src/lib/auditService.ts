@@ -290,6 +290,26 @@ export const AuditService = {
       metadata: params.metadata,
       ipAddress: params.ipAddress,
     }),
+
+  logEvent: (params: {
+    organizationId?: string;
+    action: string;
+    entityType?: string;
+    entityId?: string;
+    actorEmail?: string;
+    metadata?: Record<string, any>;
+  }) =>
+    logAuditEvent({
+      organizationId: params.organizationId,
+      userName: params.actorEmail || 'superadmin@hipotecaly.uy',
+      userRole: 'super_admin',
+      action: params.action,
+      module: params.entityType || 'integrations',
+      recordIdentifier: params.entityId || 'gate',
+      entityId: params.entityId,
+      metadata: params.metadata,
+    }),
+
   getAuditLogs,
 };
 

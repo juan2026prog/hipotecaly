@@ -50,6 +50,8 @@ export interface Tenant {
   custom_domain?: string;
   is_white_label: boolean;
   demo_mode?: boolean;
+  is_demo?: boolean;
+  external_integrations_enabled?: boolean;
 }
 
 export interface OrganizationMember {
@@ -103,6 +105,8 @@ export const DEFAULT_TENANT: Tenant = {
   },
   is_white_label: false,
   demo_mode: false,
+  is_demo: false,
+  external_integrations_enabled: true,
 };
 
 export const NOVA_TENANT: Tenant = {
@@ -141,6 +145,8 @@ export const NOVA_TENANT: Tenant = {
   custom_domain: 'estudionova.uy',
   is_white_label: true,
   demo_mode: true,
+  is_demo: true,
+  external_integrations_enabled: false,
 };
 
 export const NOT_FOUND_TENANT: Tenant = {

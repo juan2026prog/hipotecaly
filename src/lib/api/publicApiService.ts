@@ -5,6 +5,7 @@
 
 import { EnterpriseApiKeyService, ApiKeyScope } from '../../../server/enterprise/apiKeyService';
 import { EnterpriseWebhookDispatcher, WebhookEntity, DeliveryAttemptResult } from '../../../server/enterprise/webhookDispatcher';
+import { demoIntegrationsGateService } from '../demoIntegrationsGateService';
 
 export interface PublicSimulationRequest {
   propertyValueUsd: number;
@@ -166,6 +167,11 @@ export class PublicApiService {
     event: string,
     payload: any
   ): Promise<DeliveryAttemptResult[]> {
+    const gateCheck = await demoIntegrationsGateService.isExternalActionAllowed(tenantId, 'external_webhooks');
+    if (!gateCheck.allowed) {
+      console.warn(`[PublicApiService] Webhooks salientes bloqueados para el tenant ${tenantId} en modo demo.`);
+      return [];
+    }
     return await EnterpriseWebhookDispatcher.dispatchTenantEvent(tenantId, event, payload);
   }
 
