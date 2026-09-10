@@ -81,13 +81,13 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleDemoLogin = async (roleType: 'super_admin' | 'analyst' | 'borrower' | 'lender' | 'notary', targetPath: string) => {
+  const handleDemoLogin = async (roleType: 'admin' | 'analyst' | 'borrower' | 'lender' | 'notary', targetPath: string) => {
     const credentials = {
-      super_admin: { u: 'admin@hipotecaly.uy', p: 'admin123' },
-      analyst: { u: 'operador@hipotecaly.uy', p: 'demo123' },
-      borrower: { u: 'cliente@hipotecaly.uy', p: 'demo123' },
-      lender: { u: 'prestamista@hipotecaly.uy', p: 'demo123' },
-      notary: { u: 'escribano@hipotecaly.uy', p: 'demo123' },
+      admin: { u: 'admin@estudionova.uy', p: 'admin123' },
+      analyst: { u: 'operador@estudionova.uy', p: 'admin123' },
+      borrower: { u: 'cliente@estudionova.uy', p: 'admin123' },
+      lender: { u: 'inversor@estudionova.uy', p: 'admin123' },
+      notary: { u: 'escribano@estudionova.uy', p: 'admin123' },
     }[roleType];
     setLoading(true);
     setErrorMessage(null);
@@ -219,11 +219,11 @@ export const LoginPage: React.FC = () => {
           <button
             type="button"
             disabled={loading}
-            onClick={() => handleDemoLogin('borrower', '/demo/estudio-nova/cliente')}
-            className="p-2.5 rounded-xl border-2 border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-left transition-all text-xs group shadow-xs"
+            onClick={() => handleDemoLogin('admin', '/demo/estudio-nova/admin')}
+            className="p-2.5 rounded-xl border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100/80 text-left transition-colors text-xs group"
           >
-            <span className="font-bold text-emerald-950 block group-hover:text-emerald-700">👤 Portal Cliente</span>
-            <span className="text-[10px] text-emerald-800 font-mono block mt-0.5">cliente / demo123</span>
+            <span className="font-bold text-indigo-950 block group-hover:text-indigo-700">👑 Administrador</span>
+            <span className="text-[10px] text-indigo-800 font-mono block mt-0.5">admin@estudionova.uy / admin123</span>
           </button>
 
           <button
@@ -232,8 +232,28 @@ export const LoginPage: React.FC = () => {
             onClick={() => handleDemoLogin('analyst', '/demo/estudio-nova/admin')}
             className="p-2.5 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100/80 text-left transition-colors text-xs group"
           >
-            <span className="font-bold text-blue-950 block group-hover:text-blue-700">🏢 Backoffice</span>
-            <span className="text-[10px] text-blue-800 font-mono block mt-0.5">operador / demo123</span>
+            <span className="font-bold text-blue-950 block group-hover:text-blue-700">🏢 Operador</span>
+            <span className="text-[10px] text-blue-800 font-mono block mt-0.5">operador@estudionova.uy / admin123</span>
+          </button>
+
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => handleDemoLogin('borrower', '/demo/estudio-nova/cliente')}
+            className="p-2.5 rounded-xl border-2 border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-left transition-all text-xs group shadow-xs"
+          >
+            <span className="font-bold text-emerald-950 block group-hover:text-emerald-700">👤 Cliente</span>
+            <span className="text-[10px] text-emerald-800 font-mono block mt-0.5">cliente@estudionova.uy / admin123</span>
+          </button>
+
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => handleDemoLogin('lender', '/demo/estudio-nova/inversor')}
+            className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/70 hover:bg-purple-100/80 text-left transition-colors text-xs group"
+          >
+            <span className="font-bold text-purple-950 block group-hover:text-purple-700">💼 Inversor</span>
+            <span className="text-[10px] text-purple-800 font-mono block mt-0.5">inversor@estudionova.uy / admin123</span>
           </button>
 
           <button
@@ -243,27 +263,7 @@ export const LoginPage: React.FC = () => {
             className="p-2.5 rounded-xl border border-teal-300 bg-teal-50/70 hover:bg-teal-100/80 text-left transition-colors text-xs group"
           >
             <span className="font-bold text-teal-950 block group-hover:text-teal-700">📜 Escribano</span>
-            <span className="text-[10px] text-teal-800 font-mono block mt-0.5">escribano / demo123</span>
-          </button>
-
-          <button
-            type="button"
-            disabled={loading}
-            onClick={() => handleDemoLogin('lender', '/demo/estudio-nova/inversor')}
-            className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/70 hover:bg-purple-100/80 text-left transition-colors text-xs group"
-          >
-            <span className="font-bold text-purple-950 block group-hover:text-purple-700">💼 Inversores</span>
-            <span className="text-[10px] text-purple-800 font-mono block mt-0.5">prestamista / demo123</span>
-          </button>
-
-          <button
-            type="button"
-            disabled={loading}
-            onClick={() => handleDemoLogin('super_admin', '/admin')}
-            className="p-2.5 rounded-xl border border-amber-300 bg-amber-50/70 hover:bg-amber-100/80 text-left transition-colors text-xs group"
-          >
-            <span className="font-bold text-amber-950 block group-hover:text-amber-700">👑 Super Admin</span>
-            <span className="text-[10px] text-amber-800 font-mono block mt-0.5">admin / admin123</span>
+            <span className="text-[10px] text-teal-800 font-mono block mt-0.5">escribano@estudionova.uy / admin123</span>
           </button>
         </div>
       </div>
