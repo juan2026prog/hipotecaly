@@ -57,9 +57,22 @@ export interface OrganizationMember {
   user_id: string;
   email?: string;
   full_name?: string;
-  role: 'admin' | 'analyst' | 'notary' | 'viewer';
+  role: 'admin' | 'tenant_admin' | 'tenant_owner' | 'analyst' | 'operator' | 'notary' | 'viewer' | string;
   status: 'active' | 'invited' | 'disabled';
   created_at: string;
+  last_access_at?: string;
+}
+
+export interface OrganizationInvitation {
+  id: string;
+  organization_id: string;
+  email: string;
+  role: string;
+  token: string;
+  status: 'PENDING' | 'ACCEPTED' | 'EXPIRED' | 'REVOKED';
+  invited_by?: string;
+  created_at: string;
+  expires_at?: string;
 }
 
 // Fallback por defecto: HIPOTECALY Central
@@ -605,19 +618,31 @@ export async function getOrganizationMembers(organizationId: string): Promise<Or
       id: 'm1',
       organization_id: organizationId,
       user_id: 'u1',
-      email: 'admin@hipotecaly.uy',
+      email: 'admin@estudionova.uy',
       full_name: 'Ignacio Notario',
-      role: 'admin',
+      role: 'tenant_admin',
       status: 'active',
       created_at: new Date().toISOString(),
+      last_access_at: new Date().toISOString(),
     },
     {
       id: 'm2',
       organization_id: organizationId,
       user_id: 'u2',
-      email: 'analista@hipotecaly.uy',
+      email: 'valeria@estudionova.uy',
       full_name: 'Valeria Rivas',
       role: 'analyst',
+      status: 'active',
+      created_at: new Date().toISOString(),
+      last_access_at: new Date().toISOString(),
+    },
+    {
+      id: 'm3',
+      organization_id: organizationId,
+      user_id: 'u3',
+      email: 'maria@escribania.com',
+      full_name: 'Esc. María Pérez Morales',
+      role: 'notary',
       status: 'active',
       created_at: new Date().toISOString(),
     },
