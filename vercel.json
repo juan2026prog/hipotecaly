@@ -1,8 +1,24 @@
 {
   "rewrites": [
     {
-      "source": "/sitemap.xml",
-      "destination": "/api/sitemap"
+      "source": "/api/integrations/kyc/session",
+      "destination": "/api/integrations-kyc-session"
+    },
+    {
+      "source": "/api/integrations/kyc/status",
+      "destination": "/api/integrations-kyc-status"
+    },
+    {
+      "source": "/api/integrations/kyc/didit/webhook",
+      "destination": "/api/integrations-kyc-webhook"
+    },
+    {
+      "source": "/api/integrations/admin/settings",
+      "destination": "/api/integrations-admin-settings"
+    },
+    {
+      "source": "/api/domains/verify",
+      "destination": "/api/domains-verify"
     },
     {
       "source": "/robots.txt",
