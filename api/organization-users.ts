@@ -6,8 +6,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import crypto from 'crypto';
 import { supabaseAdmin } from '../server/supabase.js';
-import { requireAuth, requireTenant, requireRole } from '../server/security/authGuards.js';
-import { SecurityEventService } from '../server/security/securityEventService.js';
+import { requireAuth, requireRole } from '../server/security/authGuards.js';
 
 export function computeSHA256Server(input: string): string {
   return crypto.createHash('sha256').update(input).digest('hex');
