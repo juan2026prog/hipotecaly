@@ -1,7 +1,10 @@
 {
   "functions": {
-    "api/**": {
-      "includeFiles": "server/**"
+    "api/*.ts": {
+      "runtime": "@vercel/node"
+    },
+    "api/**/*.ts": {
+      "runtime": "@vercel/node"
     }
   },
   "rewrites": [
