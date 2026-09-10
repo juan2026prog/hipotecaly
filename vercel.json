@@ -1,24 +1,24 @@
 {
   "rewrites": [
     {
-      "source": "/api/integrations/kyc/session",
-      "destination": "/api/integrations-kyc-session"
+      "source": "/api/integrations/(.*)",
+      "destination": "/api/integrations/[...route]?route=$1"
     },
     {
-      "source": "/api/admin/:path*",
-      "destination": "/api/admin/[...route]"
+      "source": "/api/admin/(.*)",
+      "destination": "/api/admin/[...route]?route=$1"
     },
     {
-      "source": "/api/ai/:path*",
-      "destination": "/api/ai/[...route]"
+      "source": "/api/ai/(.*)",
+      "destination": "/api/ai/[...route]?route=$1"
     },
     {
-      "source": "/api/documents/:path*",
-      "destination": "/api/documents/[...route]"
+      "source": "/api/documents/(.*)",
+      "destination": "/api/documents/[...route]?route=$1"
     },
     {
-      "source": "/api/v1/:path*",
-      "destination": "/api/v1/[...route]"
+      "source": "/api/v1/(.*)",
+      "destination": "/api/v1/[...route]?route=$1"
     },
     {
       "source": "/api/domains/verify",
