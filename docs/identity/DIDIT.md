@@ -57,8 +57,16 @@ Variables de configuración en Vercel Serverless / Infraestructura Server-Side:
 
 ---
 
-## 3. Validación Criptográfica del Webhook (X-Signature-V2)
+## 3. Webhook Oficial Didit API v3 (`status.updated`) y Validación Criptográfica
 
+### Evento Oficial
+Didit API v3 emite exclusivamente el evento **`status.updated`** para notificaciones de cambio de estado y resultado KYC en el webhook:
+`/api/integrations/kyc/didit/webhook`
+
+> [!IMPORTANT]
+> **No utilizar ni suscribir eventos legados/obsoletos** como `session.updated`, `verification.completed`, `decision.approved` o `decision.declined`. Toda la lógica de decisión se extrae del campo `status` del payload en `status.updated`.
+
+### Validación Criptográfica (X-Signature-V2)
 Didit envía en cada webhook el header `X-Signature-V2` (o `x-signature-v2`), conteniendo la firma HMAC-SHA256 del cuerpo crudo (raw body) generada con `DIDIT_WEBHOOK_SECRET`.
 
 El módulo `HmacVerifier` valida la firma utilizando buffers y comparación de tiempo constante (`crypto.timingSafeEqual`) para prevenir ataques de timing:
@@ -94,18 +102,21 @@ export class HmacVerifier {
 }
 ```
 
+### Idempotencia Autoritativa en Base de Datos (DB-Driven)
+La idempotencia ante reintentos del webhook se gestiona de forma **100% autoritativa en Supabase** a través de la tabla `provider_webhook_events` (verificando `provider='didit'`, `event_id` y `payload_hash`). **No se depende de memoria volátil o caches en memoria** en entornos serverless.
+
 ---
 
-## 4. Normalización de Decisiones Didit API v3
+## 4. Normalización de Estados del Payload `status.updated`
 
-El adaptador `DiditKycProvider` mapea los estados case-sensitive de Didit a los estados provider-agnostic canónicos de SiteOS:
+Al recibir el evento `status.updated`, el webhook determina el resultado procesando el valor del atributo `status` en el payload y normalizándolo a los estados canónicos de Hipotecaly / SiteOS:
 
-| Estado Didit v3 | Estado Canónico SiteOS | Descripción |
+| Estado Didit v3 (`payload.status`) | Estado Canónico Hipotecaly | Descripción |
 | :--- | :--- | :--- |
 | `Approved` / `Verified` / `Passed` | `verified` | Verificación completada con éxito. Documento y biometría válidos. |
 | `Declined` / `Rejected` / `Failed` | `failed` | Verificación rechazada por fraude, inconsistencia o fallo biométrico. |
-| `In Review` / `Pending Review` | `pending_review` | Requiere revisión manual por parte de oficiales de cumplimiento. |
-| `Resubmitted` / `Resubmission Required` | `resubmission_required` | Se requiere que el usuario reenvíe fotos con mejor iluminación/ángulo. |
+| `In Review` / `Pending Review` | `pending_review` | Requiere revisión manual por oficiales de cumplimiento. |
+| `Resubmission Required` / `Resubmitted` | `resubmission_required` | Se requiere que el usuario reenvíe captura de documento/selfie. |
 | `Expired` | `expired` | La sesión excedió el tiempo límite de validez. |
 | `Abandoned` | `abandoned` | El usuario abandonó el flujo antes de completar la captura. |
 | `In Progress` / `Started` | `in_progress` | El usuario se encuentra capturando datos en Didit. |

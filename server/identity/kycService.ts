@@ -7,8 +7,6 @@ import { supabaseAdmin } from '../supabase.js';
 import { HmacVerifier } from './hmacVerifier.js';
 import { DiditClient } from './diditClient.js';
 
-const processedEventIdsCache = new Set<string>();
-
 export type KycStatus =
   | 'created'
   | 'in_progress'
@@ -320,38 +318,26 @@ export class KycService {
 
     const payloadHash = crypto.createHash('sha256').update(bodyStr).digest('hex');
 
-    // 2. Comprobar idempotencia
-    if (processedEventIdsCache.has(eventId)) {
-      return {
-        handled: true,
-        duplicate: true,
-        sessionId,
-        status: 'verified',
-      };
-    }
-
+    // 2. Comprobar idempotencia autoritativa en DB (provider_webhook_events)
     try {
       const { data: existingEvent } = await supabaseAdmin
         .from('provider_webhook_events')
-        .select('processed')
+        .select('processed, response_payload')
         .eq('provider', 'didit')
         .eq('event_id', eventId)
         .maybeSingle();
 
       if (existingEvent?.processed) {
-        processedEventIdsCache.add(eventId);
         return {
           handled: true,
           duplicate: true,
           sessionId,
-          status: 'verified',
+          status: (existingEvent.response_payload as any)?.status || 'verified',
         };
       }
-    } catch {
-      // Continuar
+    } catch (dbErr) {
+      console.warn('[KycService] Error consultando idempotencia en DB:', dbErr);
     }
-
-    processedEventIdsCache.add(eventId);
 
     // 3. Normalizar estado
     const rawStatus =

@@ -376,10 +376,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const payload = typeof req.body === 'object' ? req.body : JSON.parse(rawBody);
       const sessionId = payload.session_id || payload.sessionId || payload.id;
+      const eventType = payload.event || payload.action || payload.type || 'status.updated';
       const eventId = (req.headers['x-event-id'] as string) || payload.event_id || payload.id || `evt_${sessionId}_${Date.now()}`;
-      const rawStatus = (payload.status || payload.decision || payload.action || 'in_progress').toString().toLowerCase().trim();
+      
+      // Extraer el estado real contenido en el payload de status.updated
+      const rawStatus = (
+        payload.status ||
+        payload.decision ||
+        payload.workflow_status ||
+        payload.verification?.status ||
+        payload.session?.status ||
+        'in_progress'
+      ).toString().toLowerCase().trim();
 
-      // 2. Comprobar Idempotencia
+      // 2. Comprobar Idempotencia Autoritativa en DB (provider_webhook_events)
       try {
         const { data: existingEvt } = await supabaseAdmin
           .from('provider_webhook_events')
@@ -389,22 +399,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .maybeSingle();
 
         if (existingEvt?.processed) {
-          return res.status(200).json({ status: 'ok', sessionId, duplicate: true });
+          return res.status(200).json({ status: 'ok', sessionId, event: eventType, duplicate: true });
         }
       } catch {}
 
-      // 3. Mapeo Autoritativo de Estados Didit -> HIPOTECALY
+      // 3. Mapeo Autoritativo de Estados Didit v3 -> HIPOTECALY
+      // Approved → verified
+      // Declined → failed
+      // In Review → pending_review
+      // Resubmission Required → resubmission_required
+      // Expired → expired
       let mappedStatus = 'in_progress';
-      if (['approved', 'verified', 'passed', 'success', 'decision.approved'].includes(rawStatus)) {
+      if (['approved', 'verified', 'passed', 'success'].includes(rawStatus)) {
         mappedStatus = 'verified';
-      } else if (['declined', 'failed', 'rejected', 'decision.declined'].includes(rawStatus)) {
+      } else if (['declined', 'failed', 'rejected'].includes(rawStatus)) {
         mappedStatus = 'failed';
-      } else if (['in_review', 'pending_review', 'review'].includes(rawStatus)) {
+      } else if (['in review', 'in_review', 'pending review', 'pending_review', 'review'].includes(rawStatus)) {
         mappedStatus = 'pending_review';
-      } else if (['resubmission_required', 'resubmission_requested', 'resubmit'].includes(rawStatus)) {
+      } else if (['resubmission required', 'resubmission_required', 'resubmission_requested', 'resubmit', 'resubmitted'].includes(rawStatus)) {
         mappedStatus = 'resubmission_required';
       } else if (['expired'].includes(rawStatus)) {
         mappedStatus = 'expired';
+      } else if (['created', 'pending'].includes(rawStatus)) {
+        mappedStatus = 'created';
       }
 
       const nowIso = new Date().toISOString();
