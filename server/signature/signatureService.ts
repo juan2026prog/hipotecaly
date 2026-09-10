@@ -1,16 +1,64 @@
-// ==============================================================================
-// SERVER SIGNATURE: Orquestador Server-Side para Firma Digital y DOCFLOW
-// Integra Firma.gub.uy (AGESIC), Mocks, Verificación Criptográfica y Webhooks
-// ==============================================================================
-
 import crypto from 'crypto';
 import { supabaseAdmin } from '../supabase.js';
 import { FirmaGubClient } from './firmaGubClient.js';
-import { MockSignatureProvider } from '../../src/lib/siteos/signature/providers/MockSignatureProvider.js';
-import { FirmaGubSignatureProvider } from '../../src/lib/siteos/signature/providers/FirmaGubSignatureProvider.js';
-import { SignatureProcessInput, SignerConfig } from '../../src/lib/siteos/signature/types.js';
-import { normalizeFirmaGubStatus } from '../../src/lib/siteos/signature/stateMachine.js';
-import { signatureEventBus } from '../../src/lib/siteos/signature/eventBus.js';
+
+export type SignatureStatus =
+  | 'draft'
+  | 'prepared'
+  | 'pending'
+  | 'in_progress'
+  | 'partially_signed'
+  | 'signed'
+  | 'rejected'
+  | 'expired'
+  | 'cancelled';
+
+export interface SignerConfig {
+  userId?: string;
+  name: string;
+  email: string;
+  documentCountry?: string;
+  documentType?: string;
+  role?: string;
+}
+
+export interface SignatureProcessInput {
+  tenantId: string;
+  caseId: string;
+  documents: Array<{
+    documentId: string;
+    title: string;
+    sha256Original: string;
+    storagePath?: string;
+    contentBase64?: string;
+  }>;
+  signers: SignerConfig[];
+  expiresAt?: string;
+}
+
+export function normalizeFirmaGubStatus(firmaGubState: string): SignatureStatus {
+  const normalized = (firmaGubState || '').toUpperCase().trim();
+  switch (normalized) {
+    case 'INICIADO':
+    case 'PENDIENTE':
+      return 'pending';
+    case 'EN_PROCESO':
+    case 'EN_FIRMA':
+      return 'in_progress';
+    case 'FINALIZADO':
+    case 'FIRMADO':
+    case 'COMPLETO':
+      return 'signed';
+    case 'RECHAZADO':
+    case 'CANCELADO_POR_USUARIO':
+      return 'rejected';
+    case 'EXPIRADO':
+    case 'VENCIDO':
+      return 'expired';
+    default:
+      return 'in_progress';
+  }
+}
 
 export class SignatureService {
   /**

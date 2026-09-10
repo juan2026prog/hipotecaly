@@ -5,11 +5,105 @@
 import crypto from 'crypto';
 import { supabaseAdmin } from '../supabase.js';
 import { HmacVerifier } from './hmacVerifier.js';
-import { MockKycProvider } from '../../src/lib/siteos/identity/providers/MockKycProvider.js';
-import { DiditKycProvider } from '../../src/lib/siteos/identity/providers/DiditKycProvider.js';
-import { KycSessionInput, KycStatus } from '../../src/lib/siteos/identity/types.js';
-import { normalizeDiditStatus } from '../../src/lib/siteos/identity/stateMachine.js';
 import { DiditClient } from './diditClient.js';
+
+export type KycStatus =
+  | 'created'
+  | 'in_progress'
+  | 'pending_review'
+  | 'verified'
+  | 'failed'
+  | 'resubmission_required'
+  | 'expired'
+  | 'abandoned';
+
+export interface KycSessionInput {
+  tenantId: string;
+  userId?: string;
+  caseId?: string;
+  documentType?: string;
+  country?: string;
+  vendorData?: string;
+  callbackUrl?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface KycSession {
+  id: string;
+  sessionId: string;
+  sessionUrl: string;
+  provider: 'didit';
+  mode: 'live' | 'sandbox' | 'mock';
+  status: KycStatus;
+  createdAt: string;
+  expiresAt?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export function normalizeDiditStatus(diditStatus: string): KycStatus {
+  const normalized = (diditStatus || '').toLowerCase().trim();
+  switch (normalized) {
+    case 'created':
+    case 'pending':
+    case 'session.created':
+    case 'session_created':
+      return 'created';
+    case 'in progress':
+    case 'in_progress':
+    case 'started':
+    case 'submitted':
+    case 'session.in_progress':
+    case 'session_in_progress':
+    case 'session.started':
+    case 'session.submitted':
+      return 'in_progress';
+    case 'in review':
+    case 'in_review':
+    case 'pending_review':
+    case 'review':
+    case 'session.in_review':
+    case 'session_in_review':
+    case 'session.review':
+      return 'pending_review';
+    case 'approved':
+    case 'verified':
+    case 'passed':
+    case 'success':
+    case 'session.approved':
+    case 'session_approved':
+    case 'verification.approved':
+    case 'verification.completed':
+    case 'decision.approved':
+      return 'verified';
+    case 'declined':
+    case 'rejected':
+    case 'failed':
+    case 'session.declined':
+    case 'session_declined':
+    case 'session.rejected':
+    case 'verification.declined':
+    case 'decision.declined':
+      return 'failed';
+    case 'resubmitted':
+    case 'resubmission_required':
+    case 'resubmission_requested':
+    case 'resubmit':
+    case 'session.resubmitted':
+    case 'session_resubmitted':
+    case 'session.resubmission_required':
+      return 'resubmission_required';
+    case 'expired':
+    case 'session.expired':
+    case 'session_expired':
+      return 'expired';
+    case 'abandoned':
+    case 'session.abandoned':
+    case 'session_abandoned':
+      return 'abandoned';
+    default:
+      return 'in_progress';
+  }
+}
 
 export class KycService {
   /**
@@ -31,33 +125,12 @@ export class KycService {
     return {
       kyc_enabled: true,
       kyc_provider: process.env.KYC_PROVIDER || 'didit',
-      kyc_mode: process.env.KYC_MODE || 'mock',
+      kyc_mode: process.env.KYC_MODE || 'live',
       signature_enabled: true,
-      signature_provider: process.env.SIGNATURE_PROVIDER || 'mock',
-      signature_mode: process.env.SIGNATURE_MODE || 'mock',
+      signature_provider: process.env.SIGNATURE_PROVIDER || 'firma_gub',
+      signature_mode: process.env.SIGNATURE_MODE || 'live',
       byok_enabled: false,
     };
-  }
-
-  /**
-   * Resuelve el proveedor adecuado (Mock o Didit con credenciales del tenant o plataforma)
-   */
-  public static async resolveProvider(tenantId: string) {
-    const settings = await this.getTenantSettings(tenantId);
-    const providerName = (settings.kyc_provider || process.env.KYC_PROVIDER || 'didit').toLowerCase();
-    const mode = settings.kyc_mode || process.env.KYC_MODE || 'mock';
-
-    if (providerName === 'didit') {
-      return new DiditKycProvider({
-        baseUrl: process.env.DIDIT_BASE_URL,
-        apiKey: process.env.DIDIT_API_KEY,
-        workflowId: process.env.DIDIT_WORKFLOW_ID,
-        webhookSecret: process.env.DIDIT_WEBHOOK_SECRET,
-        mode: mode as any,
-      });
-    }
-
-    return new MockKycProvider();
   }
 
   /**

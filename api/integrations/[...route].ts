@@ -327,6 +327,19 @@ export default async function handler(req: any, res: any) {
       // Ignorar
     }
 
+    const hasFirmaGubApiUrl = Boolean(process.env.FIRMA_GUB_API_BASE_URL || process.env.FIRMA_GUB_BASE_URL);
+    const hasFirmaGubSignUrl = Boolean(process.env.FIRMA_GUB_SIGN_BASE_URL);
+    const apiManagerAuthMode = process.env.FIRMA_GUB_API_MANAGER_AUTH_MODE || 'none';
+    const hasApiManagerConfig =
+      apiManagerAuthMode === 'none' ||
+      (apiManagerAuthMode === 'bearer' && Boolean(process.env.FIRMA_GUB_API_MANAGER_BEARER_TOKEN || process.env.FIRMA_GUB_API_MANAGER_CLIENT_SECRET)) ||
+      (apiManagerAuthMode === 'oauth2_client_credentials' &&
+        Boolean(
+          process.env.FIRMA_GUB_API_MANAGER_TOKEN_URL &&
+            process.env.FIRMA_GUB_API_MANAGER_CLIENT_ID &&
+            process.env.FIRMA_GUB_API_MANAGER_CLIENT_SECRET
+        ));
+
     const kycConfigured = hasDiditKey && hasDiditSecret && hasDiditWorkflow;
     const modeLabel = kycMode === 'live' ? 'PRODUCCIÓN' : (kycMode === 'sandbox' ? 'SANDBOX' : 'DEMO');
 
