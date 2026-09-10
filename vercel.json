@@ -10,6 +10,10 @@
       "destination": "/api/sitemap"
     },
     {
+      "source": "/robots.txt",
+      "destination": "/api/robots"
+    },
+    {
       "source": "/((?!api/|assets/|favicon|pwa|manifest).*)/?",
       "has": [
         {

@@ -165,6 +165,20 @@ const LegacyAppRedirect: React.FC<LegacyAppRedirectProps> = ({ subpath = '', isD
   return <Navigate to={finalPath} replace />;
 };
 
+const DynamicRootRoute: React.FC = () => {
+  const { tenant } = useTenant();
+
+  // Si el host o contexto corresponde a una organización White-Label activa
+  if (tenant && tenant.id && tenant.id !== '00000000-0000-0000-0000-000000000000' && tenant.slug !== 'hipotecaly') {
+    if (tenant.slug === 'estudio-nova' || tenant.slug === 'nova') {
+      return <EstudioNovaPage />;
+    }
+    return <GenericWhiteLabelLanding />;
+  }
+
+  return <MarketplaceHome />;
+};
+
 export const App: React.FC = () => {
   return (
     <ErrorBoundary>
@@ -185,7 +199,7 @@ export const App: React.FC = () => {
               {/* ========================================================== */}
               {/* 1. RUTAS PÚBLICAS MARKETPLACE & INSTITUCIONALES           */}
               {/* ========================================================== */}
-              <Route path="/" element={<MarketplaceHome />} />
+              <Route path="/" element={<DynamicRootRoute />} />
               <Route path="/simulador" element={<SimulatorPage />} />
               <Route path="/como-funciona" element={<HowItWorksPage />} />
               <Route path="/prestamos" element={<Navigate to="/simulador" replace />} />

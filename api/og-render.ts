@@ -1,7 +1,7 @@
 // ==============================================================================
 // VERCEL SERVERLESS FUNCTION: /api/og-render
-// Pre-renderizado Server-Side de Metadatos OpenGraph, Twitter Cards, Canonical
-// y Schema.org JSON-LD para scrapers y crawlers sin JavaScript (WhatsApp, Facebook, Twitter, etc.)
+// Pre-renderizado Server-Side de Metadatos OpenGraph, Twitter Cards, Canonical,
+// Google Site Verification y Schema.org JSON-LD para scrapers y crawlers (WhatsApp, Facebook, Twitter, Googlebot, etc.)
 // ==============================================================================
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -11,23 +11,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const reqUrl = req.url || '/';
   const pathParam = (req.query.path as string) || reqUrl;
   const isPreview = reqUrl.includes('preview=true') || req.query.preview === 'true';
-  const host = req.headers.host || 'hipotecaly.vercel.app';
+  const rawHost = req.headers.host || 'hipotecaly.vercel.app';
+  const host = rawHost.split(':')[0].toLowerCase();
   const protocol = req.headers['x-forwarded-proto'] || 'https';
 
-  // 1. Detección de Organización / Tenant por ruta o slug
+  // 1. Detección de Organización / Tenant por Host Verificado o por ruta/slug
   let slug = 'estudio-nova';
+  let orgId: string | null = null;
+  let verifiedCustomDomain: string | null = null;
   const cleanPath = pathParam.split('?')[0];
 
-  const demoMatch = cleanPath.match(/^\/demo\/([^/]+)/);
-  const orgMatch = cleanPath.match(/^\/org\/([^/]+)/);
+  const isHipotecalyPlatformHost =
+    host === 'hipotecaly.vercel.app' ||
+    host === 'hipotecaly.com' ||
+    host.endsWith('.hipotecaly.app') ||
+    host === 'localhost';
 
-  if (demoMatch) {
-    slug = demoMatch[1];
-  } else if (orgMatch) {
-    slug = orgMatch[1];
+  if (!isHipotecalyPlatformHost) {
+    // Buscar si el host corresponde a un dominio personalizado verificado
+    try {
+      const { data: domainRecord } = await supabaseAdmin
+        .from('organization_domains')
+        .select('organization_id, domain')
+        .eq('domain', host)
+        .eq('is_verified', true)
+        .maybeSingle();
+
+      if (domainRecord) {
+        orgId = domainRecord.organization_id;
+        verifiedCustomDomain = domainRecord.domain;
+      }
+    } catch (err) {
+      console.error('[og-render] Error buscando dominio por host:', err);
+    }
   }
 
-  const isDemo = cleanPath.startsWith('/demo') || slug === 'estudio-nova';
+  if (!orgId) {
+    const demoMatch = cleanPath.match(/^\/demo\/([^/]+)/);
+    const orgMatch = cleanPath.match(/^\/org\/([^/]+)/);
+
+    if (demoMatch) {
+      slug = demoMatch[1];
+    } else if (orgMatch) {
+      slug = orgMatch[1];
+    }
+  }
+
+  const isDemo = !verifiedCustomDomain && (cleanPath.startsWith('/demo') || slug === 'estudio-nova');
 
   // 2. Cargar datos publicados desde Supabase (Server-side con Service Role / Admin)
   let orgName = 'Estudio Nova';
@@ -47,19 +77,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let seoDescription = heroDescription;
   let seoKeywords = 'creditos hipotecarios uruguay, prestamos con garantia inmobiliaria, estudio nova';
   let seoOgImage = heroBgImage;
-  let verifiedCustomDomain: string | null = null;
+  let googleSiteVerification: string | null = null;
 
   try {
-    // Buscar organización por slug
-    const { data: orgData } = await supabaseAdmin
-      .from('organizations')
-      .select('id, name, slug')
-      .eq('slug', slug)
-      .maybeSingle();
+    // Buscar organización por orgId o slug
+    if (!orgId) {
+      const { data: orgData } = await supabaseAdmin
+        .from('organizations')
+        .select('id, name, slug')
+        .eq('slug', slug)
+        .maybeSingle();
 
-    const orgId = orgData?.id || 'd0000000-0000-0000-0000-000000000001';
-    if (orgData?.name) {
-      orgName = orgData.name;
+      orgId = orgData?.id || 'd0000000-0000-0000-0000-000000000001';
+      if (orgData?.name) {
+        orgName = orgData.name;
+      }
+    } else {
+      const { data: orgData } = await supabaseAdmin
+        .from('organizations')
+        .select('id, name, slug')
+        .eq('id', orgId)
+        .maybeSingle();
+
+      if (orgData?.name) {
+        orgName = orgData.name;
+        slug = orgData.slug;
+      }
     }
 
     // Buscar branding
@@ -79,16 +122,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       logoUrl = brandingData.logo_url || logoUrl;
     }
 
-    // Buscar dominio verificado
-    const { data: domainData } = await supabaseAdmin
-      .from('organization_domains')
-      .select('domain')
-      .eq('organization_id', orgId)
-      .eq('is_verified', true)
-      .maybeSingle();
+    // Si aún no tenemos dominio verificado, buscarlo
+    if (!verifiedCustomDomain) {
+      const { data: domainData } = await supabaseAdmin
+        .from('organization_domains')
+        .select('domain')
+        .eq('organization_id', orgId)
+        .eq('is_verified', true)
+        .maybeSingle();
 
-    if (domainData?.domain) {
-      verifiedCustomDomain = domainData.domain;
+      if (domainData?.domain) {
+        verifiedCustomDomain = domainData.domain;
+      }
     }
 
     // Buscar configuración de Home publicada (SIEMPRE PUBLISHED, NUNCA DRAFT PARA CRAWLERS)
@@ -120,6 +165,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         seoDescription = s.seoDescription || h.seoDescription || heroDescription;
         seoKeywords = s.seoKeywords || h.seoKeywords || seoKeywords;
         seoOgImage = s.seoOgImageUrl || h.seoOgImageUrl || heroBgImage;
+        googleSiteVerification = s.googleSiteVerification || h.googleSiteVerification || null;
       } else {
         heroEyebrow = homeData.hero_eyebrow || heroEyebrow;
         heroTitle = homeData.hero_h1_title || heroTitle;
@@ -130,6 +176,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         seoDescription = homeData.seo_description || heroDescription;
         seoKeywords = homeData.seo_keywords || seoKeywords;
         seoOgImage = homeData.seo_og_image_url || heroBgImage;
+        googleSiteVerification = homeData.google_site_verification || null;
       }
     }
   } catch (err) {
@@ -198,6 +245,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   <meta name="keywords" content="${escapeHtml(seoKeywords)}" />
   <meta name="robots" content="${robotsContent}" />
   <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
+  ${googleSiteVerification ? `<meta name="google-site-verification" content="${escapeHtml(googleSiteVerification)}" />` : ''}
 
   <!-- OpenGraph (WhatsApp, Facebook, LinkedIn) -->
   <meta property="og:type" content="website" />

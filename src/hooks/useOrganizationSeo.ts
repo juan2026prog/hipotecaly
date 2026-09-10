@@ -79,6 +79,11 @@ export function useOrganizationSeo({
     }
     setMetaTag('name', 'robots', effectiveRobots);
 
+    // 5.1. Google Search Console Verification Meta Tag
+    if (settings?.googleSiteVerification?.trim()) {
+      setMetaTag('name', 'google-site-verification', settings.googleSiteVerification.trim());
+    }
+
     // 6. Canonical URL Seguro (Validación contra dominios autorizados)
     let resolvedCanonical = window.location.origin + window.location.pathname;
     if (customDomain) {

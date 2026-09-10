@@ -454,17 +454,84 @@ export async function resolveTenant(
     }
   }
 
-  // 4. Verificación por Hostname (custom domain)
+  // 4. Verificación por Hostname (custom domain verificado en organization_domains)
   const host = hostname.toLowerCase().split(':')[0]; // quitar puerto si existe
-  const allTenants = getAllRegisteredTenants();
-  for (const t of allTenants) {
-    if (t.custom_domain && t.custom_domain.toLowerCase() === host) {
-      setActiveTenantSession(t.slug);
-      return t;
+  
+  if (
+    host !== 'localhost' &&
+    host !== '127.0.0.1' &&
+    host !== 'hipotecaly.app' &&
+    host !== 'www.hipotecaly.app' &&
+    host !== 'hipotecaly.uy' &&
+    host !== 'hipotecaly.vercel.app' &&
+    !host.endsWith('.vercel.app')
+  ) {
+    if (isSupabaseConfigured) {
+      try {
+        const { data: domData } = await supabase
+          .from('organization_domains')
+          .select('organization_id, domain, is_verified')
+          .eq('domain', host)
+          .eq('is_verified', true)
+          .maybeSingle();
+
+        if (domData?.organization_id) {
+          const { data: orgData } = await supabase
+            .from('organizations')
+            .select('*, organization_branding(*), organization_settings(*)')
+            .eq('id', domData.organization_id)
+            .maybeSingle();
+
+          if (orgData) {
+            const b = Array.isArray(orgData.organization_branding)
+              ? orgData.organization_branding[0] || {}
+              : orgData.organization_branding || {};
+            const s = Array.isArray(orgData.organization_settings)
+              ? orgData.organization_settings[0] || {}
+              : orgData.organization_settings || {};
+
+            const customTenant: Tenant = {
+              id: orgData.id,
+              name: orgData.name,
+              slug: orgData.slug,
+              status: (orgData.status as any) || 'active',
+              branding: {
+                public_name: b.public_name || orgData.commercial_name || orgData.name,
+                tag_line: b.tag_line || 'Financiación & inversión',
+                primary_color: b.primary_color || '#173a5e',
+                secondary_color: b.secondary_color || '#102d49',
+                accent_color: b.accent_color || '#f4b43b',
+                logo_url: b.logo_url,
+                favicon_url: b.favicon_url,
+                powered_by_text: 'Tecnología provista por HIPOTECALY',
+                support_phone: b.support_phone || '+598 2916 4455',
+                support_email: b.support_email || 'contacto@estudionova.uy',
+                address: b.address || 'Montevideo, Uruguay',
+                city: b.city || 'Montevideo',
+                country: b.country || 'Uruguay',
+                business_hours: b.business_hours || 'Lun a Vie 09:00 – 18:00 hs',
+                social_instagram: b.social_instagram || '',
+                social_linkedin: b.social_linkedin || '',
+                social_facebook: b.social_facebook || '',
+                footer_description: b.footer_description || 'Financiación & inversión con respaldo inmobiliario en Uruguay. Estructuración legal y notarial de operaciones.',
+              },
+              settings: s.allow_borrower_portal !== undefined ? s : DEFAULT_TENANT.settings,
+              is_white_label: true,
+              demo_mode: Boolean(orgData.demo_mode),
+            };
+            registerDynamicTenant(customTenant);
+            setActiveTenantSession(customTenant.slug);
+            return customTenant;
+          }
+        }
+      } catch (err) {
+        console.error('[tenantService] Error buscando dominio verificado:', err);
+      }
     }
   }
 
   // 5. Verificación por subdominio (ej: cliente.hipotecaly.app)
+  const allTenants = getAllRegisteredTenants();
   if (host.includes('.hipotecaly.') || (host.includes('.localhost') && host !== 'localhost')) {
     const sub = host.split('.')[0];
     if (sub && sub !== 'app' && sub !== 'www') {

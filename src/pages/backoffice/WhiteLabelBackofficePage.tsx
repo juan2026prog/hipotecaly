@@ -60,7 +60,6 @@ import {
   Upload,
   Smartphone,
   Monitor,
-  Check,
   Play,
   History,
   FileCheck,
@@ -156,7 +155,6 @@ export const WhiteLabelBackofficePage: React.FC = () => {
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [showLivePreview, setShowLivePreview] = useState(true);
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
-  const [simulatedDnsChecking, setSimulatedDnsChecking] = useState(false);
 
   // Estados de Versionado y Publicación de Home (Fase 6)
   const [homeVersions, setHomeVersions] = useState<OrganizationHomeVersionItem[]>([]);
@@ -1363,93 +1361,7 @@ export const WhiteLabelBackofficePage: React.FC = () => {
             )}
 
             {/* -------------------------------------------------------- */}
-            {/* TAB 3: DOMINIO & DNS                                     */}
-            {/* -------------------------------------------------------- */}
-            {activeTab === 'domain' && (
-              <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
-                <div className="border-b border-slate-100 pb-3">
-                  <h3 className="text-base font-bold text-navy flex items-center gap-2">
-                    <Globe className="w-5 h-5 text-brand-green" /> Dominio Personalizado & Certificados SSL
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Hacé que tu plataforma opere bajo tu propio subdominio web con SSL automático.
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1">Nombre de Dominio Web Asignado</label>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="text"
-                        value={config.customDomain}
-                        onChange={(e) => setConfig({ ...config, customDomain: e.target.value })}
-                        placeholder="creditos.tuempresa.uy"
-                        className="flex-1 h-10 px-3 rounded-lg border border-slate-300 text-xs font-mono font-bold text-navy focus:border-navy"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={simulatedDnsChecking}
-                        onClick={() => {
-                          setSimulatedDnsChecking(true);
-                          setTimeout(() => {
-                            setSimulatedDnsChecking(false);
-                            setConfig({ ...config, dnsVerified: true, sslActive: true });
-                          }, 1200);
-                        }}
-                      >
-                        {simulatedDnsChecking ? 'Verificando...' : 'Verificar DNS'}
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Estado DNS & SSL */}
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                    <div>
-                      <span className="font-mono font-bold text-navy block text-sm">{config.customDomain}</span>
-                      <span className="text-slate-500">Apuntando a la infraestructura de HIPOTECALY Cloud</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
-                        <Check className="w-3.5 h-3.5 mr-1" /> DNS Verificado · SSL TLS 1.3 Activo
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Tabla de Registros DNS */}
-                  <div className="space-y-2">
-                    <span className="text-xs font-bold text-slate-700 block">Registros DNS Requeridos en tu Proveedor</span>
-                    <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
-                      <table className="w-full text-left">
-                        <thead className="bg-slate-100 text-slate-600 font-bold">
-                          <tr>
-                            <th className="p-2.5">Tipo</th>
-                            <th className="p-2.5">Host / Nombre</th>
-                            <th className="p-2.5">Destino / Valor</th>
-                            <th className="p-2.5">TTL</th>
-                            <th className="p-2.5">Estado</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
-                          <tr>
-                            <td className="p-2.5 font-bold text-navy">CNAME</td>
-                            <td className="p-2.5">creditos</td>
-                            <td className="p-2.5 text-brand-green font-bold">cname.hipotecaly.uy</td>
-                            <td className="p-2.5">3600</td>
-                            <td className="p-2.5 text-emerald-700 font-bold">Activo</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* -------------------------------------------------------- */}
-            {/* TAB 4: SITIO WEB & HOME                                  */}
+            {/* TAB: SITIO WEB & HOME                                    */}
             {/* -------------------------------------------------------- */}
             {activeTab === 'landing' && (
               <div className="space-y-6">
@@ -2568,6 +2480,74 @@ export const WhiteLabelBackofficePage: React.FC = () => {
                         placeholder="https://..."
                         className="w-full h-9 px-3 rounded-lg border border-slate-300 text-xs font-mono text-slate-700"
                       />
+                    </div>
+
+                    {/* 6. Google Search Console & Indexación */}
+                    <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-200/80 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="text-xs font-bold text-navy flex items-center gap-1.5">
+                            <Search className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Verificación de Google Search Console</span>
+                          </label>
+                          <p className="text-[11px] text-slate-600 mt-0.5">
+                            Ingresá el código de verificación del tag HTML o registro DNS proporcionado por Google.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          value={homeSettings.googleSiteVerification || ''}
+                          onChange={(e) => setHomeSettings({ ...homeSettings, googleSiteVerification: e.target.value })}
+                          placeholder="Ej: google-site-verification=abc123XYZ... o abc123XYZ..."
+                          className="w-full h-9 px-3 rounded-lg border border-slate-300 text-xs font-mono text-slate-700 focus:border-navy bg-white"
+                        />
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-slate-500">
+                          <span>
+                            Genera el tag: <code className="bg-white px-1.5 py-0.5 rounded border border-slate-200 font-mono text-[10px] text-navy">&lt;meta name="google-site-verification" content="..."&gt;</code>
+                          </span>
+                          <a
+                            href="https://search.google.com/search-console"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 font-bold inline-flex items-center gap-1"
+                          >
+                            <span>Abrir Google Search Console</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-blue-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                        <div>
+                          <span className="font-bold text-navy block">Sitemap XML y Robots.txt Dinámicos</span>
+                          <span className="text-[11px] text-slate-500">
+                            Indexación configurada para este host
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <a
+                            href="/sitemap.xml"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-2.5 py-1 bg-white border border-slate-300 hover:border-navy rounded-lg font-mono text-[11px] font-bold text-navy inline-flex items-center gap-1"
+                          >
+                            <span>/sitemap.xml</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                          <a
+                            href="/robots.txt"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-2.5 py-1 bg-white border border-slate-300 hover:border-navy rounded-lg font-mono text-[11px] font-bold text-navy inline-flex items-center gap-1"
+                          >
+                            <span>/robots.txt</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

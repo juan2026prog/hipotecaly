@@ -68,6 +68,7 @@ export interface CompositeSeoData {
   seoKeywords?: string;
   seoOgImageUrl?: string;
   seoCanonicalUrl?: string;
+  googleSiteVerification?: string;
   indexPolicy?: 'index_follow' | 'noindex_nofollow';
 }
 
@@ -96,6 +97,7 @@ export interface OrganizationHomeSettings {
   seoOgImageUrl?: string;
   seoCanonicalUrl?: string;
   seoKeywords?: string;
+  googleSiteVerification?: string;
   robotsIndex?: boolean;
 
   // 1. Contenido Hero
@@ -245,6 +247,7 @@ export const DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS: OrganizationHomeSettings = {
   seoOgImageUrl: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1920&q=80',
   seoCanonicalUrl: 'https://hipotecaly.vercel.app/demo/estudio-nova',
   seoKeywords: 'créditos hipotecarios uruguay, préstamos con garantía hipotecaria montevideo, estudio nova, financiamiento inmobiliario',
+  googleSiteVerification: '',
   robotsIndex: true,
   heroEyebrow: 'FINANCIACIÓN CON GARANTÍA HIPOTECARIA',
   heroTitle: 'Convertí el valor de tu inmueble en capital para avanzar.',
@@ -477,6 +480,7 @@ function mapDbToSettings(data: any, orgId: string): OrganizationHomeSettings {
     seoOgImageUrl: data.seo_og_image_url ?? DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.seoOgImageUrl,
     seoCanonicalUrl: data.seo_canonical_url ?? DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.seoCanonicalUrl,
     seoKeywords: data.seo_keywords ?? DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.seoKeywords,
+    googleSiteVerification: data.google_site_verification ?? data.published_snapshot?.seo?.googleSiteVerification ?? '',
 
     heroEyebrow: data.hero_eyebrow ?? DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.heroEyebrow,
     heroTitle: data.hero_title ?? DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS.heroTitle,
@@ -584,6 +588,7 @@ export function createHomeSnapshot(settings: OrganizationHomeSettings): Record<s
     seoOgImageUrl: settings.seoOgImageUrl,
     seoCanonicalUrl: settings.seoCanonicalUrl,
     seoKeywords: settings.seoKeywords,
+    googleSiteVerification: settings.googleSiteVerification,
   };
 }
 
@@ -619,6 +624,7 @@ export function createCompositeEditorialSnapshot(
     seoKeywords: homeSettings.seoKeywords || 'creditos hipotecarios uruguay, prestamos garantia inmueble',
     seoOgImageUrl: homeSettings.seoOgImageUrl || homeSettings.heroBackgroundImageUrl,
     seoCanonicalUrl: homeSettings.seoCanonicalUrl,
+    googleSiteVerification: homeSettings.googleSiteVerification,
     indexPolicy: 'index_follow',
   };
 
