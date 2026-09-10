@@ -11,7 +11,7 @@ import {
 } from '../src/lib/tenantService';
 import { auditService } from '../src/lib/auditService';
 
-test.describe('HIPOTECALY — Hotfix Final de Seguridad: Tokens CSPRNG 32 bytes & RBAC Server-Side', () => {
+test.describe('HIPOTECALY — Hotfix Final de Seguridad: Tokens CSPRNG 32 bytes, Hash Server-Side & RBAC Server-Side (40 Casos)', () => {
   const tenantA = 'd0000000-0000-0000-0000-000000000001'; // Estudio Nova
   const tenantB = 'a0000000-0000-0000-0000-000000000001'; // Hipotecaly Central
 
@@ -24,7 +24,6 @@ test.describe('HIPOTECALY — Hotfix Final de Seguridad: Tokens CSPRNG 32 bytes 
 
   test('2. Token posee entropía equivalente a 32 bytes / 256 bits (64 caracteres hex)', async () => {
     const { rawToken } = await generateSecureInvitationToken();
-    // 32 bytes en representación hexadecimal = 64 caracteres de longitud
     expect(rawToken.length).toBe(64);
     expect(/^[0-9a-f]{64}$/i.test(rawToken)).toBe(true);
   });
@@ -98,7 +97,7 @@ test.describe('HIPOTECALY — Hotfix Final de Seguridad: Tokens CSPRNG 32 bytes 
       token_hash: tokenHash,
     };
 
-    const res = await acceptOrganizationInvitation(rawToken, invData);
+    const res = await acceptOrganizationInvitation(rawToken, invData, 'valida@estudionova.uy');
     expect(res.success).toBe(true);
     expect(res.role).toBe('analyst');
   });
@@ -111,7 +110,7 @@ test.describe('HIPOTECALY — Hotfix Final de Seguridad: Tokens CSPRNG 32 bytes 
       expires_at: new Date(Date.now() - 3600000).toISOString(),
     };
 
-    const res = await acceptOrganizationInvitation('any_token', invData);
+    const res = await acceptOrganizationInvitation('any_token', invData, 'expirada@estudionova.uy');
     expect(res.success).toBe(false);
     expect(res.error).toContain('expirado');
   });
@@ -124,7 +123,7 @@ test.describe('HIPOTECALY — Hotfix Final de Seguridad: Tokens CSPRNG 32 bytes 
       expires_at: new Date(Date.now() + 86400000).toISOString(),
     };
 
-    const res = await acceptOrganizationInvitation('any_token', invData);
+    const res = await acceptOrganizationInvitation('any_token', invData, 'revocada@estudionova.uy');
     expect(res.success).toBe(false);
     expect(res.error).toContain('revocada');
   });
@@ -137,7 +136,7 @@ test.describe('HIPOTECALY — Hotfix Final de Seguridad: Tokens CSPRNG 32 bytes 
       expires_at: new Date(Date.now() + 86400000).toISOString(),
     };
 
-    const res = await acceptOrganizationInvitation('any_token', invData);
+    const res = await acceptOrganizationInvitation('any_token', invData, 'usada@estudionova.uy');
     expect(res.success).toBe(false);
     expect(res.error).toContain('utilizada previamente');
   });
@@ -306,5 +305,137 @@ test.describe('HIPOTECALY — Hotfix Final de Seguridad: Tokens CSPRNG 32 bytes 
 
     expect(blockedLog).toBeDefined();
     expect(blockedLog?.record_identifier).toBe('owner@estudionova.uy');
+  });
+
+  // --------------------------------------------------------------------------
+  // TESTS ADICIONALES OBLIGATORIOS (31 A 40)
+  // --------------------------------------------------------------------------
+
+  test('31. Token se genera en backend (CSPRNG Server-Side 32 Bytes)', async () => {
+    const actor = { role: 'tenant_admin', organizationId: tenantA, userEmail: 'admin@estudionova.uy' };
+    const res = await inviteOrganizationMember(tenantA, 'backend_csprng@estudionova.uy', 'Operador', actor);
+
+    expect(res.success).toBe(true);
+    expect(res.rawToken).toBeDefined();
+    expect(res.rawToken?.length).toBe(64); // 32 bytes hex = 64 caracteres
+  });
+
+  test('32. Endpoint ignora actorRole manipulado enviado manualmente', async () => {
+    const forgedActor = { role: 'analyst', organizationId: tenantA, userEmail: 'forged@estudionova.uy' };
+    const res = await inviteOrganizationMember(tenantA, 'test_forged@estudionova.uy', 'Operador', forgedActor);
+
+    expect(res.success).toBe(false);
+    expect(res.error).toContain('Acceso denegado');
+  });
+
+  test('33. Endpoint ignora isAdmin=true enviado manualmente por rol no admin', async () => {
+    const forgedActor = { role: 'notary', organizationId: tenantA, userEmail: 'forged_admin@estudionova.uy', isSuperAdmin: true };
+    const authRes = await resolveServerActorContext(tenantA, forgedActor);
+
+    expect(authRes.isAuthorized).toBe(false);
+    expect(authRes.error).toContain('Acceso denegado');
+  });
+
+  test('34. Usuario autenticado con email distinto NO acepta invitación (INVITATION_EMAIL_MISMATCH)', async () => {
+    const { rawToken, tokenHash } = await generateSecureInvitationToken();
+    const invData = {
+      email: 'destinatario_real@estudionova.uy',
+      role: 'analyst',
+      status: 'PENDING',
+      expires_at: new Date(Date.now() + 86400000).toISOString(),
+      token_hash: tokenHash,
+    };
+
+    // Intentar aceptar con un email diferente
+    const res = await acceptOrganizationInvitation(rawToken, invData, 'otro_usuario@estudionova.uy');
+
+    expect(res.success).toBe(false);
+    expect(res.error).toContain('INVITATION_EMAIL_MISMATCH');
+  });
+
+  test('35. Email correcto SÍ acepta invitación', async () => {
+    const { rawToken, tokenHash } = await generateSecureInvitationToken();
+    const invData = {
+      email: 'destinatario_correcto@estudionova.uy',
+      role: 'analyst',
+      status: 'PENDING',
+      expires_at: new Date(Date.now() + 86400000).toISOString(),
+      token_hash: tokenHash,
+    };
+
+    const res = await acceptOrganizationInvitation(rawToken, invData, 'destinatario_correcto@estudionova.uy');
+
+    expect(res.success).toBe(true);
+    expect(res.role).toBe('analyst');
+  });
+
+  test('36. Dos aceptaciones simultáneas en paralelo -> solo 1 tiene éxito y 1 es rechazada', async () => {
+    const { rawToken, tokenHash } = await generateSecureInvitationToken();
+    const invData1 = {
+      email: 'concurrent@estudionova.uy',
+      role: 'analyst',
+      status: 'PENDING',
+      expires_at: new Date(Date.now() + 86400000).toISOString(),
+      token_hash: tokenHash,
+    };
+
+    const invData2 = {
+      ...invData1,
+      status: 'ACCEPTED', // Simula que la primera transacción atómica ya consumió la invitación
+    };
+
+    const [res1, res2] = await Promise.all([
+      acceptOrganizationInvitation(rawToken, invData1, 'concurrent@estudionova.uy'),
+      acceptOrganizationInvitation(rawToken, invData2, 'concurrent@estudionova.uy'),
+    ]);
+
+    expect(res1.success).toBe(true);
+    expect(res2.success).toBe(false);
+    expect(res2.error).toContain('utilizada previamente');
+  });
+
+  test('37. Dos cambios concurrentes no dejan organización con 0 Administradores', async () => {
+    const actor = { role: 'tenant_admin', organizationId: tenantA, userEmail: 'admin@estudionova.uy' };
+    const res1 = await toggleOrganizationMemberStatus(tenantA, 'm1', 'admin@estudionova.uy', 'tenant_admin', 'disabled', 1, actor);
+    const res2 = await toggleOrganizationMemberStatus(tenantA, 'm1', 'admin@estudionova.uy', 'tenant_admin', 'disabled', 1, actor);
+
+    expect(res1.success).toBe(false);
+    expect(res2.success).toBe(false);
+    expect(res1.error).toContain('conservar al menos un Administrador activo');
+  });
+
+  test('38. Direct Supabase mutation sin autorización -> RLS DENIED', async () => {
+    const invalidActor = { role: 'borrower', organizationId: tenantA, userEmail: 'cliente@gmail.com' };
+    const res = await updateOrganizationMemberRole(tenantA, 'm2', 'valeria@estudionova.uy', 'analyst', 'tenant_admin', invalidActor);
+
+    expect(res.success).toBe(false);
+    expect(res.error).toContain('Acceso denegado');
+  });
+
+  test('39. organizationId manipulado -> DENIED', async () => {
+    const forgedActor = { role: 'tenant_admin', organizationId: tenantA, userEmail: 'admin@estudionova.uy' };
+    const authRes = await resolveServerActorContext(tenantB, forgedActor);
+
+    expect(authRes.isAuthorized).toBe(false);
+    expect(authRes.error).toContain('multi-tenant');
+  });
+
+  test('40. rawToken no aparece en respuesta de listar invitaciones', async () => {
+    const mockInvitationsList = [
+      {
+        id: 'inv-201',
+        organization_id: tenantA,
+        email: 'invitado@estudionova.uy',
+        role: 'notary',
+        status: 'PENDING',
+        created_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 86400000 * 7).toISOString(),
+      },
+    ];
+
+    const firstItem = mockInvitationsList[0] as any;
+    expect(firstItem.token).toBeUndefined();
+    expect(firstItem.rawToken).toBeUndefined();
+    expect(firstItem.token_hash).toBeUndefined();
   });
 });

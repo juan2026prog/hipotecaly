@@ -816,7 +816,7 @@ export async function resolveServerActorContext(
 }
 
 /**
- * Invita un nuevo usuario a la organización con validación de seguridad RBAC server-side.
+ * Invita un nuevo usuario a la organización realizando llamada server-side a /api/organization-users.
  * Administrador invitado = tenant_admin, NUNCA tenant_owner.
  */
 export async function inviteOrganizationMember(
@@ -826,55 +826,71 @@ export async function inviteOrganizationMember(
   actorContext?: ActorSecurityContext
 ): Promise<{ success: boolean; error: string | null; rawToken?: string; tokenHash?: string }> {
   try {
-    const authRes = await resolveServerActorContext(organizationId, actorContext);
-    if (!authRes.isAuthorized) {
-      return { success: false, error: authRes.error || 'Acceso denegado.' };
-    }
+    const sessionRes = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
+    const token = sessionRes?.data?.session?.access_token;
 
-    let targetTechnicalRole = role.toLowerCase();
-    if (['administrador', 'admin', 'tenant_owner', 'owner', 'tenant_admin'].includes(targetTechnicalRole)) {
-      targetTechnicalRole = 'tenant_admin';
-    } else if (['operador', 'operator', 'analyst'].includes(targetTechnicalRole)) {
-      targetTechnicalRole = 'analyst';
-    } else if (['escribano', 'notary'].includes(targetTechnicalRole)) {
-      targetTechnicalRole = 'notary';
-    }
-
-    const { rawToken, tokenHash } = await generateSecureInvitationToken();
-    const expiresAt = new Date(Date.now() + 3600000 * 24 * 7).toISOString();
-
-    try {
-      await supabase.from('organization_invitations').insert({
-        organization_id: organizationId,
-        email,
-        role: targetTechnicalRole,
-        token_hash: tokenHash,
-        expires_at: expiresAt,
-        status: 'PENDING',
-        invited_by: authRes.userEmail || 'Administrador',
-      });
-    } catch {}
-
-    await auditService.logAction({
-      organizationId,
-      userId: authRes.userId || undefined,
-      userName: authRes.userEmail || 'Administrador',
-      userRole: authRes.userRole || 'tenant_admin',
-      action: 'USER_INVITED',
-      module: 'Usuarios',
-      recordIdentifier: email,
-      newValue: targetTechnicalRole,
-      metadata: {
-        email,
-        assigned_role: targetTechnicalRole,
-        expires_at: expiresAt,
+    const apiRes = await fetch('/api/organization-users', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-    });
+      body: JSON.stringify({ action: 'invite', organizationId, email, role, actorContext }),
+    }).catch(() => null);
 
-    return { success: true, error: null, rawToken, tokenHash };
-  } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Error al enviar invitación' };
+    if (apiRes && apiRes.ok) {
+      const data = await apiRes.json();
+      return data;
+    }
+  } catch {}
+
+  // Fallback seguro a servicio local
+  const authRes = await resolveServerActorContext(organizationId, actorContext);
+  if (!authRes.isAuthorized) {
+    return { success: false, error: authRes.error || 'Acceso denegado.' };
   }
+
+  let targetTechnicalRole = role.toLowerCase();
+  if (['administrador', 'admin', 'tenant_owner', 'owner', 'tenant_admin'].includes(targetTechnicalRole)) {
+    targetTechnicalRole = 'tenant_admin';
+  } else if (['operador', 'operator', 'analyst'].includes(targetTechnicalRole)) {
+    targetTechnicalRole = 'analyst';
+  } else if (['escribano', 'notary'].includes(targetTechnicalRole)) {
+    targetTechnicalRole = 'notary';
+  }
+
+  const { rawToken, tokenHash } = await generateSecureInvitationToken();
+  const expiresAt = new Date(Date.now() + 3600000 * 24 * 7).toISOString();
+
+  try {
+    await supabase.from('organization_invitations').insert({
+      organization_id: organizationId,
+      email,
+      role: targetTechnicalRole,
+      token_hash: tokenHash,
+      expires_at: expiresAt,
+      status: 'PENDING',
+      invited_by: authRes.userEmail || 'Administrador',
+    });
+  } catch {}
+
+  await auditService.logAction({
+    organizationId,
+    userId: authRes.userId || undefined,
+    userName: authRes.userEmail || 'Administrador',
+    userRole: authRes.userRole || 'tenant_admin',
+    action: 'USER_INVITED',
+    module: 'Usuarios',
+    recordIdentifier: email,
+    newValue: targetTechnicalRole,
+    metadata: {
+      email,
+      assigned_role: targetTechnicalRole,
+      expires_at: expiresAt,
+    },
+  });
+
+  return { success: true, error: null, rawToken, tokenHash };
 }
 
 /**
@@ -888,6 +904,33 @@ export async function updateOrganizationMemberRole(
   newTechnicalRole: string,
   actorContext?: ActorSecurityContext
 ): Promise<{ success: boolean; error: string | null }> {
+  try {
+    const sessionRes = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
+    const token = sessionRes?.data?.session?.access_token;
+
+    const apiRes = await fetch('/api/organization-users', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        action: 'change-role',
+        organizationId,
+        targetMemberId,
+        targetEmail,
+        currentRole: currentTechnicalRole,
+        newRole: newTechnicalRole,
+        actorContext,
+      }),
+    }).catch(() => null);
+
+    if (apiRes && apiRes.ok) {
+      const data = await apiRes.json();
+      return data;
+    }
+  } catch {}
+
   const authRes = await resolveServerActorContext(organizationId, actorContext);
   if (!authRes.isAuthorized) {
     return { success: false, error: authRes.error || 'Acceso denegado.' };
@@ -976,6 +1019,34 @@ export async function toggleOrganizationMemberStatus(
   activeAdminsCount: number,
   actorContext?: ActorSecurityContext
 ): Promise<{ success: boolean; error: string | null }> {
+  try {
+    const sessionRes = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
+    const token = sessionRes?.data?.session?.access_token;
+
+    const apiRes = await fetch('/api/organization-users', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        action: 'toggle-status',
+        organizationId,
+        targetMemberId,
+        targetEmail,
+        currentRole: targetTechnicalRole,
+        newStatus,
+        activeAdminsCount,
+        actorContext,
+      }),
+    }).catch(() => null);
+
+    if (apiRes && apiRes.ok) {
+      const data = await apiRes.json();
+      return data;
+    }
+  } catch {}
+
   const authRes = await resolveServerActorContext(organizationId, actorContext);
   if (!authRes.isAuthorized) {
     return { success: false, error: authRes.error || 'Acceso denegado.' };
@@ -1041,6 +1112,31 @@ export async function revokeOrganizationInvitation(
   targetEmail: string,
   actorContext?: ActorSecurityContext
 ): Promise<{ success: boolean; error: string | null }> {
+  try {
+    const sessionRes = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
+    const token = sessionRes?.data?.session?.access_token;
+
+    const apiRes = await fetch('/api/organization-users', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        action: 'revoke-invitation',
+        organizationId,
+        invitationId,
+        targetEmail,
+        actorContext,
+      }),
+    }).catch(() => null);
+
+    if (apiRes && apiRes.ok) {
+      const data = await apiRes.json();
+      return data;
+    }
+  } catch {}
+
   const authRes = await resolveServerActorContext(organizationId, actorContext);
   if (!authRes.isAuthorized) {
     return { success: false, error: authRes.error || 'Acceso denegado.' };
@@ -1079,10 +1175,44 @@ export async function acceptOrganizationInvitation(
     role?: string;
     email?: string;
     token_hash?: string;
-  }
+  },
+  authenticatedUserEmail?: string
 ): Promise<{ success: boolean; error: string | null; role?: string }> {
+  try {
+    const sessionRes = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
+    const token = sessionRes?.data?.session?.access_token;
+
+    const apiRes = await fetch('/api/organization-users', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        action: 'accept-invitation',
+        receivedToken,
+        invitationData,
+      }),
+    }).catch(() => null);
+
+    if (apiRes && apiRes.ok) {
+      const data = await apiRes.json();
+      return data;
+    }
+  } catch {}
+
   if (!invitationData && !receivedToken) {
     return { success: false, error: 'Invitación no encontrada o token inválido.' };
+  }
+
+  // Validar coincidencia de email (INVITATION_EMAIL_MISMATCH)
+  if (invitationData?.email && authenticatedUserEmail) {
+    if (invitationData.email.trim().toLowerCase() !== authenticatedUserEmail.trim().toLowerCase()) {
+      return {
+        success: false,
+        error: 'INVITATION_EMAIL_MISMATCH: El correo autenticado no coincide con el destinatario de la invitación.',
+      };
+    }
   }
 
   // 1. Verificación de Expiración
