@@ -7,8 +7,109 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabaseAdmin } from '../server/supabase.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // 1. GET: Comprobación de estado del runtime y llamada real a la API de Vercel
+  if (req.method === 'GET') {
+    const vercelToken = process.env.VERCEL_TOKEN;
+    const vercelProjectId = process.env.VERCEL_PROJECT_ID;
+    const vercelTeamId = process.env.VERCEL_TEAM_ID;
+
+    const tokenConfigured = Boolean(vercelToken && vercelToken.trim().length > 0);
+    const projectIdConfigured = Boolean(vercelProjectId && vercelProjectId.trim().length > 0);
+    const teamIdConfigured = Boolean(vercelTeamId && vercelTeamId.trim().length > 0);
+
+    if (!tokenConfigured || !projectIdConfigured) {
+      return res.status(200).json({
+        configured: false,
+        vercelTokenConfigured: tokenConfigured,
+        vercelProjectIdConfigured: projectIdConfigured,
+        vercelTeamIdConfigured: teamIdConfigured,
+        projectFound: false,
+        message: 'Variables de entorno VERCEL_TOKEN o VERCEL_PROJECT_ID no configuradas en runtime server-side.',
+      });
+    }
+
+    try {
+      const teamParam = vercelTeamId ? `?teamId=${encodeURIComponent(vercelTeamId)}` : '';
+      const projectUrl = `https://api.vercel.com/v9/projects/${encodeURIComponent(vercelProjectId!)}${teamParam}`;
+
+      const projectRes = await fetch(projectUrl, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${vercelToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const httpStatus = projectRes.status;
+      const projectData = await projectRes.json().catch(() => ({}));
+
+      if (!projectRes.ok) {
+        return res.status(200).json({
+          configured: true,
+          vercelTokenConfigured: true,
+          vercelProjectIdConfigured: true,
+          vercelTeamIdConfigured: teamIdConfigured,
+          httpStatus,
+          projectFound: false,
+          error: projectData?.error?.message || `Vercel API retornó código HTTP ${httpStatus}`,
+        });
+      }
+
+      // Obtener lista de dominios asociados al proyecto desde Vercel
+      const domainsUrl = `https://api.vercel.com/v9/projects/${encodeURIComponent(vercelProjectId!)}/domains${teamParam}`;
+      const domainsRes = await fetch(domainsUrl, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${vercelToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      const domainsData = await domainsRes.json().catch(() => ({ domains: [] }));
+
+      const maskedProjectId = vercelProjectId!.length > 8
+        ? `${vercelProjectId!.substring(0, 4)}...${vercelProjectId!.substring(vercelProjectId!.length - 4)}`
+        : vercelProjectId;
+
+      const maskedAccountId = projectData?.accountId
+        ? (typeof projectData.accountId === 'string' && projectData.accountId.length > 8
+            ? `${projectData.accountId.substring(0, 4)}...${projectData.accountId.substring(projectData.accountId.length - 4)}`
+            : projectData.accountId)
+        : (vercelTeamId || 'personal');
+
+      const domainList = (domainsData?.domains || []).map((d: any) => ({
+        name: d.name,
+        verified: Boolean(d.verified),
+        apexName: d.apexName,
+        createdAt: d.createdAt,
+      }));
+
+      return res.status(200).json({
+        configured: true,
+        vercelTokenConfigured: true,
+        vercelProjectIdConfigured: true,
+        vercelTeamIdConfigured: teamIdConfigured,
+        httpStatus,
+        projectFound: true,
+        projectName: projectData?.name || 'hipotecaly',
+        projectIdMasked: maskedProjectId,
+        accountOrTeam: maskedAccountId,
+        domainsCount: domainList.length,
+        domains: domainList,
+      });
+    } catch (err: unknown) {
+      return res.status(500).json({
+        configured: true,
+        vercelTokenConfigured: true,
+        vercelProjectIdConfigured: true,
+        projectFound: false,
+        error: err instanceof Error ? err.message : 'Error inesperado al consultar Vercel API.',
+      });
+    }
+  }
+
+  // 2. POST: Verificación de un dominio específico
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed', message: 'Solo se admite POST.' });
+    return res.status(405).json({ error: 'Method Not Allowed', message: 'Solo se admiten GET o POST.' });
   }
 
   const { organizationId, domainId } = req.body || {};
@@ -72,8 +173,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 3. Consultar Vercel Domains API con credenciales reales
-    const teamParam = vercelTeamId ? `?teamId=${vercelTeamId}` : '';
-    const vercelUrl = `https://api.vercel.com/v9/projects/${vercelProjectId}/domains/${domainName}${teamParam}`;
+    const teamParam = vercelTeamId ? `?teamId=${encodeURIComponent(vercelTeamId)}` : '';
+    const vercelUrl = `https://api.vercel.com/v9/projects/${encodeURIComponent(vercelProjectId)}/domains/${encodeURIComponent(domainName)}${teamParam}`;
 
     const vercelRes = await fetch(vercelUrl, {
       method: 'GET',
