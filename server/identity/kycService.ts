@@ -93,23 +93,80 @@ export class KycService {
   }
 
   /**
-   * Consulta el estado de una verificación (soporta Didit y registros históricos)
+   * Consulta el estado de una verificación (soporta búsqueda por provider_session_id, case_id o user_id)
    */
-  public static async getStatus(sessionId: string) {
-    try {
-      const { data } = await supabaseAdmin
-        .from('identity_verifications')
-        .select('*')
-        .eq('provider_session_id', sessionId)
-        .maybeSingle();
+  public static async getStatus(
+    query: string | { sessionId?: string; caseId?: string; userId?: string }
+  ) {
+    const sessionId = typeof query === 'string' ? query : query?.sessionId;
+    const caseId = typeof query === 'object' ? query?.caseId : undefined;
+    const userId = typeof query === 'object' ? query?.userId : undefined;
 
-      if (data) return data;
+    try {
+      // 1. Si se provee sessionId, buscar primero por provider_session_id
+      if (sessionId) {
+        const { data } = await supabaseAdmin
+          .from('identity_verifications')
+          .select('*')
+          .eq('provider_session_id', sessionId)
+          .maybeSingle();
+
+        if (data) return data;
+      }
+
+      // 2. Si se provee caseId, buscar el registro más reciente de ese expediente
+      if (caseId) {
+        const { data } = await supabaseAdmin
+          .from('identity_verifications')
+          .select('*')
+          .eq('case_id', caseId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (data) return data;
+      }
+
+      // 3. Si se pasó un string único que no coincidió con provider_session_id, intentar por case_id o id
+      if (sessionId) {
+        const { data: byCase } = await supabaseAdmin
+          .from('identity_verifications')
+          .select('*')
+          .eq('case_id', sessionId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (byCase) return byCase;
+
+        const { data: byId } = await supabaseAdmin
+          .from('identity_verifications')
+          .select('*')
+          .eq('id', sessionId)
+          .maybeSingle();
+
+        if (byId) return byId;
+      }
+
+      // 4. Si se provee userId, buscar por user_id
+      if (userId) {
+        const { data } = await supabaseAdmin
+          .from('identity_verifications')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (data) return data;
+      }
     } catch {
       // Fallback
     }
 
     return {
-      provider_session_id: sessionId,
+      provider_session_id: sessionId || null,
+      case_id: caseId || null,
       provider: 'didit',
       status: 'in_progress',
       mode: process.env.KYC_MODE || 'mock',
@@ -132,8 +189,11 @@ export class KycService {
     const secret = process.env.DIDIT_WEBHOOK_SECRET || '';
     const mode = process.env.KYC_MODE || 'mock';
 
-    // 1. Validar HMAC X-Signature-V2 si está en modo test/sandbox o live y hay secreto configurado
-    if (mode !== 'mock' && secret) {
+    // 1. Validar HMAC X-Signature-V2 si está en modo sandbox o live
+    if (mode !== 'mock') {
+      if (!secret) {
+        throw new Error('DIDIT_WEBHOOK_SECRET no está configurado en el servidor.');
+      }
       const isValid = HmacVerifier.verifyHmacSha256(rawBody, signature, secret);
       if (!isValid) {
         throw new Error('Didit X-Signature-V2 verification failed');

@@ -61,14 +61,18 @@ export class DiditKycProvider implements KycProvider {
       };
     }
 
-    // En modo real/producción: si no hay API Key, arrojar error explícito
+    // En modo real/producción: si no hay API Key o Workflow ID, arrojar error explícito
     if (!this.apiKey) {
-      throw new Error('KYC_NO_CONFIGURADO: El servicio de verificación de identidad Didit no está configurado.');
+      throw new Error('KYC_NO_CONFIGURADO: DIDIT_API_KEY no está configurada.');
+    }
+
+    const workflow = this.workflowId || (input.metadata?.workflowId as string);
+    if (!workflow) {
+      throw new Error('KYC_NO_CONFIGURADO: DIDIT_WORKFLOW_ID no está configurado.');
     }
 
     // Identificador interno opaco para vendor_data (nunca PII)
     const opaqueVendorData = input.vendorData || input.caseId || `kyc_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-    const workflow = this.workflowId || (input.metadata?.workflowId as string) || 'default';
 
     const payload: Record<string, unknown> = {
       workflow_id: workflow,

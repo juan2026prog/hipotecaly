@@ -1125,8 +1125,27 @@ async function adminSystemHealthHandler(req: any, res: any) {
     }
 
     // 3. KYC (Didit) check
-    const diditKey = process.env.DIDIT_API_KEY || process.env.DIDIT_CLIENT_SECRET;
-    const kycStatus = diditKey ? 'OPERATIVO' : 'NO CONFIGURADO';
+    const hasDiditKey = Boolean(process.env.DIDIT_API_KEY);
+    const hasDiditSecret = Boolean(process.env.DIDIT_WEBHOOK_SECRET);
+    const hasDiditWorkflow = Boolean(process.env.DIDIT_WORKFLOW_ID);
+    const kycMode = process.env.KYC_MODE || 'mock';
+    const kycConfigured = hasDiditKey && hasDiditSecret && hasDiditWorkflow;
+
+    let kycStatus: 'OPERATIVO' | 'NO VERIFICADO' | 'DEMO' | 'NO CONFIGURADO' = 'NO CONFIGURADO';
+    let kycMessage = 'Credenciales pendientes en Vercel (DIDIT_API_KEY, DIDIT_WEBHOOK_SECRET, DIDIT_WORKFLOW_ID)';
+
+    if (kycConfigured) {
+      if (kycMode === 'live') {
+        kycStatus = 'OPERATIVO';
+        kycMessage = 'Didit API v3 Live (Producción)';
+      } else {
+        kycStatus = 'NO VERIFICADO';
+        kycMessage = 'Didit API v3 Sandbox (Listo para prueba)';
+      }
+    } else if (kycMode === 'mock') {
+      kycStatus = 'DEMO';
+      kycMessage = 'Modo simulación / DEMO activo';
+    }
 
     // 4. Firma Digital (Firma.gub.uy) check
     const firmaSecret = process.env.FIRMA_GUB_CLIENT_SECRET || process.env.FIRMA_GUB_API_KEY;
@@ -1188,7 +1207,7 @@ async function adminSystemHealthHandler(req: any, res: any) {
           name: 'Identidad y KYC',
           provider: 'Didit',
           status: kycStatus,
-          message: kycStatus === 'OPERATIVO' ? 'API configurada' : 'Credencial pendiente en Vercel',
+          message: kycMessage,
           dataTestId: 'service-kyc-status',
         },
         signature: {

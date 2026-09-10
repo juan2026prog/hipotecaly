@@ -26,9 +26,10 @@ export const KycVerificationCard: React.FC<KycVerificationCardProps> = ({
   const [showModal, setShowModal] = useState(false);
 
   const fetchStatus = async () => {
+    if (!caseId) return;
     try {
-      // Intentar recuperar de backend
-      const res = await fetch(`/api/integrations/kyc/status?sessionId=${caseId}`);
+      // Intentar recuperar de backend por caseId
+      const res = await fetch(`/api/integrations/kyc/status?caseId=${encodeURIComponent(caseId)}`);
       if (res.ok) {
         const json = await res.json();
         if (json.verification) {

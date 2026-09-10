@@ -29,34 +29,60 @@ export function normalizeDiditStatus(diditStatus: string): KycStatus {
   switch (normalized) {
     case 'created':
     case 'pending':
+    case 'session.created':
+    case 'session_created':
       return 'created';
     case 'in progress':
     case 'in_progress':
     case 'started':
     case 'submitted':
+    case 'session.in_progress':
+    case 'session_in_progress':
+    case 'session.started':
+    case 'session.submitted':
       return 'in_progress';
     case 'in review':
     case 'in_review':
     case 'pending_review':
     case 'review':
+    case 'session.in_review':
+    case 'session_in_review':
+    case 'session.review':
       return 'pending_review';
     case 'approved':
     case 'verified':
     case 'passed':
     case 'success':
+    case 'session.approved':
+    case 'session_approved':
+    case 'verification.approved':
+    case 'verification.completed':
+    case 'decision.approved':
       return 'verified';
     case 'declined':
     case 'rejected':
     case 'failed':
+    case 'session.declined':
+    case 'session_declined':
+    case 'session.rejected':
+    case 'verification.declined':
+    case 'decision.declined':
       return 'failed';
     case 'resubmitted':
     case 'resubmission_required':
     case 'resubmission_requested':
     case 'resubmit':
+    case 'session.resubmitted':
+    case 'session_resubmitted':
+    case 'session.resubmission_required':
       return 'resubmission_required';
     case 'expired':
+    case 'session.expired':
+    case 'session_expired':
       return 'expired';
     case 'abandoned':
+    case 'session.abandoned':
+    case 'session_abandoned':
       return 'abandoned';
     default:
       return 'in_progress';
