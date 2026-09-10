@@ -1,26 +1,13 @@
 // ==============================================================================
-// VERCEL SERVERLESS FUNCTION: /api/domains-verify
-// Verificación Server-Side Real de Dominios y SSL con Vercel API / DNS
+// VERCEL SERVERLESS FUNCTION: /api/domains
+// Verificación Server-Side Real de Dominios y SSL con Vercel API
 // ==============================================================================
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
-
-const SUPABASE_URL =
-  process.env.SUPABASE_URL ||
-  process.env.VITE_SUPABASE_URL ||
-  'https://imzljdwsrsxyccgogfck.supabase.co';
-
-const SERVICE_KEY =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.VITE_SUPABASE_ANON_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.placeholder';
-
-const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_KEY, {
-  auth: { persistSession: false },
-});
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+
   if (req.method === 'GET') {
     const vercelToken = process.env.VERCEL_TOKEN;
     const vercelProjectId = process.env.VERCEL_PROJECT_ID;

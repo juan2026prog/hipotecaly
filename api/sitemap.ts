@@ -61,7 +61,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Solo URLs públicas reales e indexables (sin fragmentos de anclaje #)
     urls = [
-      { loc: `https://${host}/`, lastmod: domainLastMod, changefreq: 'weekly', priority: '1.0' },
+      { loc: `${protocol}://${host}/`, lastmod: domainLastMod, changefreq: 'weekly', priority: '1.0' },
     ];
   } else {
     // 2. Sitemap de la plataforma HIPOTECALY + Dominios Verificados

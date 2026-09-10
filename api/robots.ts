@@ -61,7 +61,7 @@ Disallow: /admin/*
 Disallow: /api/
 Disallow: /api/*
 
-Sitemap: https://${host}/sitemap.xml
+Sitemap: ${protocol}://${host}/sitemap.xml
 `;
   } else {
     // Robots.txt para Plataforma HIPOTECALY

@@ -1,36 +1,28 @@
 {
   "rewrites": [
     {
-      "source": "/api/integrations/kyc/session",
-      "destination": "/api/integrations-kyc-session"
-    },
-    {
-      "source": "/api/integrations/kyc/status",
-      "destination": "/api/integrations-kyc-status"
-    },
-    {
-      "source": "/api/integrations/kyc/didit/webhook",
-      "destination": "/api/integrations-kyc-webhook"
-    },
-    {
-      "source": "/api/integrations/admin/settings",
-      "destination": "/api/integrations-admin-settings"
+      "source": "/api/integrations/(.*)",
+      "destination": "/api/integrations"
     },
     {
       "source": "/api/domains/verify",
-      "destination": "/api/domains-verify"
+      "destination": "/api/domains"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
     },
     {
       "source": "/robots.txt",
       "destination": "/api/robots"
     },
     {
-      "source": "/((?!api/|assets/|favicon|pwa|manifest).*)/?",
+      "source": "/((?!api/|assets/|favicon|pwa|manifest).*)",
       "has": [
         {
           "type": "header",
           "key": "user-agent",
-          "value": "(?i).*(facebookexternalhit|WhatsApp|Twitterbot|LinkedInBot|TelegramBot|Slackbot|SkypeUriPreview|Applebot|Discordbot).*"
+          "value": ".*(facebookexternalhit|WhatsApp|Twitterbot|LinkedInBot|TelegramBot|Slackbot|SkypeUriPreview|Applebot|Discordbot).*"
         }
       ],
       "destination": "/api/og-render?path=/$1"
