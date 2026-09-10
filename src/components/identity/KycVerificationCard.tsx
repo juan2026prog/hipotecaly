@@ -4,11 +4,150 @@ import {
   ShieldAlert,
   UserCheck,
   Camera,
+  RefreshCw,
+  Clock,
+  AlertTriangle,
+  XCircle,
+  ArrowRight,
 } from 'lucide-react';
 import { KycStatusBadge } from './KycStatusBadge';
 import { KycStartModal } from './KycStartModal';
 import { Button } from '../ui/Button';
 
+// ==============================================================================
+// 1. BANNER DE RECORDATORIO PERSISTENTE (No invasivo)
+// ==============================================================================
+export interface KycReminderBannerProps {
+  kycStatus?: string;
+  onStartKyc: () => void;
+  applicantName?: string;
+  className?: string;
+}
+
+export const KycReminderBanner: React.FC<KycReminderBannerProps> = ({
+  kycStatus = 'not_started',
+  onStartKyc,
+  applicantName,
+  className = '',
+}) => {
+  const norm = (kycStatus || 'not_started').toLowerCase().trim();
+
+  // Si ya está verificado, no mostramos el banner de recordatorio pendiente
+  if (norm === 'verified' || norm === 'approved') {
+    return null;
+  }
+
+  const getConfig = () => {
+    switch (norm) {
+      case 'in_progress':
+        return {
+          bg: 'bg-blue-50/90 border-blue-200 text-[#0A3A60]',
+          iconBg: 'bg-blue-100 text-blue-700',
+          icon: RefreshCw,
+          title: 'Verificación en curso',
+          desc: 'Tu sesión de verificación está iniciada. Podés completarla o reabrir el enlace.',
+          cta: 'Continuar verificación',
+        };
+      case 'pending_review':
+      case 'in_review':
+        return {
+          bg: 'bg-amber-50/90 border-amber-200 text-amber-900',
+          iconBg: 'bg-amber-100 text-amber-700',
+          icon: Clock,
+          title: 'Tu identidad está siendo revisada',
+          desc: 'Nuestro equipo y el sistema de cumplimiento están validando tus documentos.',
+          cta: null,
+        };
+      case 'failed':
+      case 'declined':
+        return {
+          bg: 'bg-rose-50/90 border-rose-200 text-rose-900',
+          iconBg: 'bg-rose-100 text-rose-700',
+          icon: XCircle,
+          title: 'No pudimos verificar tu identidad',
+          desc: 'Hubo un inconveniente con los documentos o la validación biométrica.',
+          cta: 'Intentar nuevamente',
+        };
+      case 'resubmission_required':
+        return {
+          bg: 'bg-orange-50/90 border-orange-200 text-orange-900',
+          iconBg: 'bg-orange-100 text-orange-700',
+          icon: AlertTriangle,
+          title: 'Necesitamos que repitas la verificación',
+          desc: 'Por favor reintentá la captura con mejor iluminación o documento más legible.',
+          cta: 'Reintentar',
+        };
+      case 'expired':
+        return {
+          bg: 'bg-slate-100/90 border-slate-300 text-slate-800',
+          iconBg: 'bg-slate-200 text-slate-600',
+          icon: Clock,
+          title: 'La sesión de verificación expiró',
+          desc: 'El tiempo límite de la sesión caducó.',
+          cta: 'Iniciar nueva verificación',
+        };
+      case 'not_started':
+      case 'created':
+      default:
+        return {
+          bg: 'bg-amber-50/90 border-amber-200/90 text-amber-950',
+          iconBg: 'bg-amber-100 text-amber-800',
+          icon: ShieldAlert,
+          title: 'Identidad pendiente',
+          desc: 'Necesaria antes de enviar tu solicitud.',
+          cta: 'Verificar identidad',
+        };
+    }
+  };
+
+  const config = getConfig();
+  const Icon = config.icon;
+
+  return (
+    <div
+      className={`rounded-2xl p-4 sm:p-5 border transition-all shadow-xs ${config.bg} ${className} flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left`}
+    >
+      <div className="flex items-start sm:items-center space-x-3.5">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${config.iconBg}`}>
+          <Icon className={`w-5 h-5 ${norm === 'in_progress' ? 'animate-spin-slow' : ''}`} />
+        </div>
+        <div>
+          <div className="flex items-center space-x-2">
+            <h4 className="text-sm font-bold tracking-tight text-navy">
+              {config.title}
+            </h4>
+            <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-amber-100/80 text-amber-800 border border-amber-300/60">
+              Pendiente
+            </span>
+          </div>
+          <p className="text-xs text-slate-600 mt-0.5 leading-normal">
+            {config.desc}{applicantName ? ` (${applicantName})` : ''}
+          </p>
+        </div>
+      </div>
+
+      {config.cta && (
+        <div className="flex items-center shrink-0 self-end sm:self-auto">
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={onStartKyc}
+            className="text-xs font-bold !bg-[#102d49] text-white hover:!bg-[#071a35] !rounded-xl shadow-xs"
+          >
+            <Camera className="w-3.5 h-3.5 mr-1.5 text-[#f4b43b]" />
+            {config.cta}
+            <ArrowRight className="w-3.5 h-3.5 ml-1.5 text-[#f4b43b]" />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ==============================================================================
+// 2. TARJETA COMPLETA DE VERIFICACIÓN KYC
+// ==============================================================================
 interface KycVerificationCardProps {
   caseId?: string;
   applicantName?: string;
@@ -54,6 +193,24 @@ export const KycVerificationCard: React.FC<KycVerificationCardProps> = ({
   const provider = verification?.provider || 'Didit';
   const isVerified = currentStatus === 'verified' || currentStatus === 'approved';
 
+  const getCtaLabel = () => {
+    switch (currentStatus) {
+      case 'in_progress':
+        return 'Continuar verificación';
+      case 'failed':
+      case 'declined':
+        return 'Intentar nuevamente';
+      case 'resubmission_required':
+        return 'Reintentar';
+      case 'expired':
+        return 'Iniciar nueva verificación';
+      case 'not_started':
+      case 'created':
+      default:
+        return 'Verificar identidad';
+    }
+  };
+
   return (
     <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs space-y-4 text-left">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
@@ -67,7 +224,7 @@ export const KycVerificationCard: React.FC<KycVerificationCardProps> = ({
           </div>
           <div>
             <h4 className="text-sm font-bold text-navy">
-              {isVerified ? 'Verificación de Identidad' : 'Identidad pendiente'}
+              {isVerified ? 'Identidad verificada' : 'Identidad pendiente'}
             </h4>
             <p className="text-xs text-slate-500 mt-0.5">
               {isVerified
@@ -118,15 +275,15 @@ export const KycVerificationCard: React.FC<KycVerificationCardProps> = ({
             : 'Tu solicitud se guardará como borrador hasta completar la verificación de identidad.'}
         </span>
 
-        {canInitiate && !isVerified && (
+        {canInitiate && !isVerified && currentStatus !== 'pending_review' && currentStatus !== 'in_review' && (
           <Button
             variant="primary"
             size="sm"
             onClick={() => setShowModal(true)}
-            className="text-xs font-bold !bg-[#102d49] text-white hover:!bg-[#071a35] shrink-0"
+            className="text-xs font-bold !bg-[#102d49] text-white hover:!bg-[#071a35] shrink-0 !rounded-xl"
           >
             <Camera className="w-3.5 h-3.5 mr-1.5 text-[#f4b43b]" />
-            Verificar identidad
+            {getCtaLabel()}
           </Button>
         )}
       </div>
@@ -153,3 +310,4 @@ export const KycVerificationCard: React.FC<KycVerificationCardProps> = ({
     </div>
   );
 };
+

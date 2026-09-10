@@ -35,7 +35,21 @@ export interface ClientPersonalData {
   company?: string;
   incomeType: string;
   monthlyIncome: number;
-  kycStatus: 'verified' | 'pending' | 'in_review' | 'requires_update' | 'not_started';
+  kycStatus:
+    | 'verified'
+    | 'approved'
+    | 'pending'
+    | 'in_progress'
+    | 'in_review'
+    | 'pending_review'
+    | 'failed'
+    | 'declined'
+    | 'resubmission_required'
+    | 'requires_update'
+    | 'expired'
+    | 'not_started'
+    | 'created'
+    | string;
   kycStatusLabel: string;
   kycVerifiedAt?: string;
   personalDocuments: PersonalDocumentItem[];

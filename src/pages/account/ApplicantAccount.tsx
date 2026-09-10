@@ -24,6 +24,7 @@ import {
   SavedSimulation,
 } from '../../lib/clientSimulationService';
 import { KycStartModal } from '../../components/identity/KycStartModal';
+import { KycReminderBanner } from '../../components/identity/KycVerificationCard';
 
 export const ApplicantAccount: React.FC = () => {
   const { user, borrower } = useAuth();
@@ -39,6 +40,10 @@ export const ApplicantAccount: React.FC = () => {
   const [simulations, setSimulations] = useState<SavedSimulation[]>([]);
   const [applications, setApplications] = useState<ClientApplicationDetail[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Estados del modal KYC
+  const [isKycModalOpen, setIsKycModalOpen] = useState(false);
+  const [isInitialPrompt, setIsInitialPrompt] = useState(false);
 
   // Carga unificada y consolidación de datos
   const loadData = useCallback(async () => {
@@ -96,20 +101,37 @@ export const ApplicantAccount: React.FC = () => {
     }
   };
 
-  const [initialKycPromptOpen, setInitialKycPromptOpen] = useState(false);
-
   // Evaluar despliegue automático del modal inicial de KYC
   useEffect(() => {
     if (!loading && personalData && user?.id) {
-      const isNotStarted = personalData.kycStatus === 'not_started' || (personalData as any).kycStatus === 'NOT_STARTED' || !personalData.kycStatus;
-      const postponedKey = `hipotecaly_kyc_prompt_postponed_${user.id}`;
-      const isPostponed = localStorage.getItem(postponedKey) === 'true';
+      const isNotStarted =
+        personalData.kycStatus === 'not_started' ||
+        (personalData as any).kycStatus === 'NOT_STARTED' ||
+        !personalData.kycStatus;
 
-      if (isNotStarted && !isPostponed) {
-        setInitialKycPromptOpen(true);
+      const sessionDismissedKey = `hipotecaly_kyc_prompt_session_${user.id}`;
+      const hasDismissedInSession = sessionStorage.getItem(sessionDismissedKey) === 'true';
+
+      if (isNotStarted && !hasDismissedInSession) {
+        setIsInitialPrompt(true);
+        setIsKycModalOpen(true);
       }
     }
   }, [loading, personalData, user?.id]);
+
+  const handlePostponeKyc = () => {
+    if (user?.id) {
+      const nowIso = new Date().toISOString();
+      sessionStorage.setItem(`hipotecaly_kyc_prompt_session_${user.id}`, 'true');
+      localStorage.setItem(`hipotecaly_kyc_prompt_dismissed_at_${user.id}`, nowIso);
+    }
+    setIsKycModalOpen(false);
+  };
+
+  const handleStartManualKyc = () => {
+    setIsInitialPrompt(false);
+    setIsKycModalOpen(true);
+  };
 
   if (loading || !personalData) {
     return (
@@ -130,6 +152,15 @@ export const ApplicantAccount: React.FC = () => {
         simulationsCount={simulations.length}
         applicationsCount={applications.length}
       >
+        {/* Banner Persistente de Recordatorio de Identidad (no invasivo) */}
+        <div className="mb-6">
+          <KycReminderBanner
+            kycStatus={personalData.kycStatus}
+            onStartKyc={handleStartManualKyc}
+            applicantName={`${personalData.firstName} ${personalData.lastName}`}
+          />
+        </div>
+
         {/* 1. SECCIÓN DATOS PERSONALES */}
         {activeTab === 'datos' && (
           <PersonalDataSection
@@ -161,22 +192,17 @@ export const ApplicantAccount: React.FC = () => {
         )}
       </ClientPortalShell>
 
-      {/* Modal Inicial KYC al ingresar al portal */}
+      {/* Modal KYC (Automático al entrar o Manual desde CTA) */}
       <KycStartModal
-        isOpen={initialKycPromptOpen}
-        isInitialPrompt={true}
+        isOpen={isKycModalOpen}
+        isInitialPrompt={isInitialPrompt}
         caseId="user-portal-kyc"
         userId={user?.id}
         applicantName={`${personalData.firstName} ${personalData.lastName}`}
-        onClose={() => setInitialKycPromptOpen(false)}
-        onPostpone={() => {
-          if (user?.id) {
-            localStorage.setItem(`hipotecaly_kyc_prompt_postponed_${user.id}`, 'true');
-          }
-          setInitialKycPromptOpen(false);
-        }}
+        onClose={() => setIsKycModalOpen(false)}
+        onPostpone={handlePostponeKyc}
         onSessionCreated={() => {
-          setInitialKycPromptOpen(false);
+          setIsKycModalOpen(false);
           loadData();
         }}
       />

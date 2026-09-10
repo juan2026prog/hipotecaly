@@ -211,10 +211,10 @@ export const ApplicationWizard: React.FC = () => {
         const currentStatus = data?.status || 'not_started';
         setKycStatus(currentStatus);
 
-        if (currentStatus === 'not_started') {
-          const postponedKey = `hipotecaly_kyc_prompt_postponed_${user.id}`;
-          const isPostponed = localStorage.getItem(postponedKey) === 'true';
-          if (!isPostponed) {
+        if (currentStatus === 'not_started' || currentStatus === 'created') {
+          const sessionKey = `hipotecaly_kyc_prompt_session_${user.id}`;
+          const isDismissedInSession = sessionStorage.getItem(sessionKey) === 'true';
+          if (!isDismissedInSession) {
             setIsInitialPromptOpen(true);
           }
         }
@@ -1136,7 +1136,9 @@ export const ApplicationWizard: React.FC = () => {
             onClose={() => setIsInitialPromptOpen(false)}
             onPostpone={() => {
               if (user?.id) {
-                localStorage.setItem(`hipotecaly_kyc_prompt_postponed_${user.id}`, 'true');
+                const nowIso = new Date().toISOString();
+                sessionStorage.setItem(`hipotecaly_kyc_prompt_session_${user.id}`, 'true');
+                localStorage.setItem(`hipotecaly_kyc_prompt_dismissed_at_${user.id}`, nowIso);
               }
               setIsInitialPromptOpen(false);
             }}

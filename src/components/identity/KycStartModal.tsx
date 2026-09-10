@@ -150,14 +150,16 @@ export const KycStartModal: React.FC<KycStartModalProps> = ({
             <span className="text-[10px] font-bold text-brand-green uppercase tracking-wider block">
               Validación Oficial de Identidad
             </span>
-            <h3 className="text-lg font-extrabold text-navy">Verificación de identidad</h3>
+            <h3 className="text-lg font-extrabold text-navy">
+              {step === 'prompt' ? 'Verificá tu identidad' : 'Verificación de identidad'}
+            </h3>
           </div>
         </div>
 
         {step === 'prompt' ? (
           <>
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-              Para enviar una solicitud hipotecaria necesitamos verificar tu identidad. Podés hacerlo ahora o continuar y verificarla antes del envío.
+              Para enviar una solicitud hipotecaria necesitamos verificar tu identidad. Podés hacerlo ahora o continuar y verificarla más adelante.
             </p>
 
             <div className="space-y-2.5 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs text-slate-700">

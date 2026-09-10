@@ -324,9 +324,25 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
                   Verificado
                 </span>
-              ) : data.kycStatus === 'in_review' ? (
+              ) : data.kycStatus === 'in_progress' ? (
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                  En curso
+                </span>
+              ) : data.kycStatus === 'in_review' || data.kycStatus === 'pending_review' ? (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200">
                   En revisión
+                </span>
+              ) : data.kycStatus === 'failed' || data.kycStatus === 'declined' ? (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200">
+                  No aprobada
+                </span>
+              ) : data.kycStatus === 'resubmission_required' ? (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-50 text-orange-900 border border-orange-200">
+                  Reintento
+                </span>
+              ) : data.kycStatus === 'expired' ? (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                  Expirada
                 </span>
               ) : (
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200">
@@ -339,14 +355,32 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
               <h4 className="text-base font-serif font-bold text-slate-900">
                 {data.kycStatus === 'verified'
                   ? 'Identidad Oficial Validada'
-                  : data.kycStatus === 'in_review'
-                  ? 'Verificación en Proceso'
-                  : 'Verificación Biométrica Requerida'}
+                  : data.kycStatus === 'in_progress'
+                  ? 'Verificación en curso'
+                  : data.kycStatus === 'in_review' || data.kycStatus === 'pending_review'
+                  ? 'Tu identidad está siendo revisada'
+                  : data.kycStatus === 'failed' || data.kycStatus === 'declined'
+                  ? 'No pudimos verificar tu identidad'
+                  : data.kycStatus === 'resubmission_required'
+                  ? 'Necesitamos que repitas la verificación'
+                  : data.kycStatus === 'expired'
+                  ? 'La sesión de verificación expiró'
+                  : 'Identidad pendiente'}
               </h4>
               <p className="text-xs text-slate-500 leading-relaxed">
                 {data.kycStatus === 'verified'
                   ? `Identidad y prueba de vida cotejadas conforme a estándares oficiales.${data.kycVerifiedAt ? ` Validada el ${new Date(data.kycVerifiedAt).toLocaleDateString('es-UY', { day: 'numeric', month: 'short', year: 'numeric' })}.` : ''}`
-                  : 'Para formalizar solicitudes y firmar contratos digitalmente, completá la validación de documento y biometría facial.'}
+                  : data.kycStatus === 'in_progress'
+                  ? 'Tu sesión de verificación está iniciada. Podés completarla o reabrir el enlace en Didit.'
+                  : data.kycStatus === 'in_review' || data.kycStatus === 'pending_review'
+                  ? 'Nuestro equipo y el sistema de cumplimiento están validando tus documentos.'
+                  : data.kycStatus === 'failed' || data.kycStatus === 'declined'
+                  ? 'Hubo un inconveniente con los documentos o la validación biométrica.'
+                  : data.kycStatus === 'resubmission_required'
+                  ? 'Por favor reintentá la captura con mejor iluminación o documento más legible.'
+                  : data.kycStatus === 'expired'
+                  ? 'El tiempo límite de la sesión caducó.'
+                  : 'Necesaria antes de enviar tu solicitud.'}
               </p>
             </div>
           </div>
@@ -357,6 +391,11 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
                 <CheckCircle2 className="w-4 h-4 mr-2 shrink-0" />
                 <span>Biometría y documento validados</span>
               </div>
+            ) : data.kycStatus === 'in_review' || data.kycStatus === 'pending_review' ? (
+              <div className="flex items-center text-xs font-semibold text-amber-700 bg-amber-50/70 p-3 rounded-2xl border border-amber-200/60">
+                <Clock className="w-4 h-4 mr-2 shrink-0" />
+                <span>En revisión por oficiales de cumplimiento</span>
+              </div>
             ) : (
               <Button
                 variant="primary"
@@ -365,7 +404,16 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
                 onClick={() => setKycModalOpen(true)}
                 className="!bg-[#102d49] text-white font-bold text-xs !rounded-xl"
               >
-                <Camera className="w-4 h-4 mr-2" /> Iniciar Verificación KYC
+                <Camera className="w-4 h-4 mr-2" />
+                {data.kycStatus === 'in_progress'
+                  ? 'Continuar verificación'
+                  : data.kycStatus === 'failed' || data.kycStatus === 'declined'
+                  ? 'Intentar nuevamente'
+                  : data.kycStatus === 'resubmission_required'
+                  ? 'Reintentar'
+                  : data.kycStatus === 'expired'
+                  ? 'Iniciar nueva verificación'
+                  : 'Verificar identidad'}
               </Button>
             )}
           </div>
