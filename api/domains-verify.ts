@@ -4,7 +4,21 @@
 // ==============================================================================
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin } from '../server/supabase.js';
+import { createClient } from '@supabase/supabase-js';
+
+const SUPABASE_URL =
+  process.env.SUPABASE_URL ||
+  process.env.VITE_SUPABASE_URL ||
+  'https://imzljdwsrsxyccgogfck.supabase.co';
+
+const SERVICE_KEY =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.placeholder';
+
+const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_KEY, {
+  auth: { persistSession: false },
+});
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // 1. GET: Comprobación de estado del runtime y llamada real a la API de Vercel
