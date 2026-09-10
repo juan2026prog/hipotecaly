@@ -4,7 +4,7 @@ import { KycStatus } from '../../lib/siteos/identity/types';
 
 interface KycStatusBadgeProps {
   status: KycStatus | string;
-  mode?: 'mock' | 'test' | 'live';
+  mode?: 'mock' | 'test' | 'live' | 'sandbox' | 'demo';
   size?: 'sm' | 'md' | 'lg';
 }
 
@@ -13,7 +13,7 @@ export const KycStatusBadge: React.FC<KycStatusBadgeProps> = ({
   mode = 'mock',
   size = 'md',
 }) => {
-  const norm = (status || 'created').toLowerCase();
+  const norm = (status || 'not_started').toLowerCase().trim();
 
   const getStyle = () => {
     switch (norm) {
@@ -25,18 +25,21 @@ export const KycStatusBadge: React.FC<KycStatusBadgeProps> = ({
           label: 'Identidad Verificada',
         };
       case 'pending_review':
+      case 'in_review':
         return {
           bg: 'bg-amber-50 text-amber-700 border-amber-200',
           icon: Clock,
-          label: 'En Revisión Notarial',
+          label: 'En Revisión',
         };
       case 'in_progress':
+      case 'created':
         return {
           bg: 'bg-blue-50 text-[#0A3A60] border-blue-200',
           icon: RefreshCw,
           label: 'En Proceso',
         };
       case 'resubmission_required':
+      case 'requires_update':
         return {
           bg: 'bg-orange-50 text-orange-700 border-orange-200',
           icon: AlertTriangle,
@@ -55,11 +58,12 @@ export const KycStatusBadge: React.FC<KycStatusBadgeProps> = ({
           icon: Clock,
           label: 'Sesión Expirada',
         };
+      case 'not_started':
       default:
         return {
-          bg: 'bg-slate-50 text-slate-600 border-slate-200',
+          bg: 'bg-slate-100 text-slate-700 border-slate-200',
           icon: ShieldAlert,
-          label: 'Pendiente de Verificación',
+          label: 'Identidad Pendiente',
         };
     }
   };
@@ -84,7 +88,7 @@ export const KycStatusBadge: React.FC<KycStatusBadgeProps> = ({
 
       {mode !== 'live' && (
         <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
-          {mode === 'test' ? 'TEST' : 'DEMO'}
+          {mode === 'test' || mode === 'sandbox' ? 'TEST' : 'DEMO'}
         </span>
       )}
     </div>

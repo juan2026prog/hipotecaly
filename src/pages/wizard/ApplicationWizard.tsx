@@ -17,6 +17,10 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
 import { clientSimulationService } from '../../lib/clientSimulationService';
+import { supabase } from '../../lib/supabase';
+import { KycGateModal } from '../../components/identity/KycGateModal';
+import { KycStartModal } from '../../components/identity/KycStartModal';
+import { KycVerificationCard } from '../../components/identity/KycVerificationCard';
 import {
   ArrowRight,
   ArrowLeft,
@@ -43,6 +47,12 @@ export const ApplicationWizard: React.FC = () => {
   const [savingDraft, setSavingDraft] = useState(false);
   const [draftSavedToast, setDraftSavedToast] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Estados de KYC y Modales de Gate
+  const [kycStatus, setKycStatus] = useState<string>('not_started');
+  const [isGateModalOpen, setIsGateModalOpen] = useState<boolean>(false);
+  const [isStartKycModalOpen, setIsStartKycModalOpen] = useState<boolean>(false);
+  const [isInitialPromptOpen, setIsInitialPromptOpen] = useState<boolean>(false);
 
   // Estados de origen y modalidad
   const [source, setSource] = useState<string>(isNova ? 'estudio_nova' : 'native_white_label');
@@ -185,6 +195,36 @@ export const ApplicationWizard: React.FC = () => {
     }
   }, [borrower, user, location.state, location.search]);
 
+  // Consulta y monitoreo de estado KYC del usuario
+  useEffect(() => {
+    async function checkKyc() {
+      if (!user?.id) return;
+      try {
+        const { data } = await supabase
+          .from('identity_verifications')
+          .select('status')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const currentStatus = data?.status || 'not_started';
+        setKycStatus(currentStatus);
+
+        if (currentStatus === 'not_started') {
+          const postponedKey = `hipotecaly_kyc_prompt_postponed_${user.id}`;
+          const isPostponed = localStorage.getItem(postponedKey) === 'true';
+          if (!isPostponed) {
+            setIsInitialPromptOpen(true);
+          }
+        }
+      } catch (err) {
+        console.warn('[Wizard] Error al consultar KYC:', err);
+      }
+    }
+    checkKyc();
+  }, [user?.id]);
+
   // Persistir en cada cambio de paso
   const persistStep = async (step: number) => {
     setSavingDraft(true);
@@ -221,32 +261,38 @@ export const ApplicationWizard: React.FC = () => {
         firstName,
         lastName,
         idNumber,
-        email,
         phone,
+        email,
       },
     };
 
-    const { application, property, isServerSynced: synced } = await saveApplicationDraft(payload, user?.id);
-    if (application?.id) setAppId(application.id);
-    if (application?.public_id) setPublicId(application.public_id);
-    if (property?.id) setPropertyId(property.id);
-    setIsServerSynced(synced);
-
+    const res = await saveApplicationDraft(payload, user?.id);
     setSavingDraft(false);
+
+    if (res.application) {
+      setAppId(res.application.id);
+      if (res.application.public_id) {
+        setPublicId(res.application.public_id);
+      }
+    }
+    if (res.property) {
+      setPropertyId(res.property.id);
+    }
+    setIsServerSynced(res.isServerSynced);
     setDraftSavedToast(true);
     setTimeout(() => setDraftSavedToast(false), 2500);
-    return { application, property, isServerSynced: synced };
+    return res;
   };
 
   const nextStep = async () => {
-    const next = currentStep + 1;
+    const next = Math.min(currentStep + 1, 6);
     setCurrentStep(next);
     window.scrollTo({ top: 0, behavior: 'smooth' });
     await persistStep(next);
   };
 
   const prevStep = () => {
-    const prev = Math.max(1, currentStep - 1);
+    const prev = Math.max(currentStep - 1, 1);
     setCurrentStep(prev);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -285,9 +331,39 @@ export const ApplicationWizard: React.FC = () => {
     if (!acceptTerms || !acceptPrivacy || !acceptCreditCheck) return;
     setSubmitting(true);
     setSubmitError(null);
+
+    // 1. Guardar borrador para no perder información
     const draftRes = await persistStep(6);
     const targetAppId = appId || draftRes?.application?.id;
 
+    // 2. Consultar estado autoritativo de KYC en Supabase
+    let currentKycStatus = kycStatus;
+    if (user?.id) {
+      try {
+        const { data: latestKyc } = await supabase
+          .from('identity_verifications')
+          .select('status')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (latestKyc?.status) {
+          currentKycStatus = latestKyc.status;
+          setKycStatus(latestKyc.status);
+        }
+      } catch (err) {
+        console.warn('[Wizard] Error re-verificando KYC:', err);
+      }
+    }
+
+    // 3. BLOQUEAR ENVÍO FORMAL SI KYC != verified
+    if (currentKycStatus !== 'verified' && currentKycStatus !== 'approved') {
+      setSubmitting(false);
+      setIsGateModalOpen(true);
+      return;
+    }
+
+    // 4. Si KYC está verificado, proceder con el envío formal
     if (targetAppId) {
       if (linkedSimulationId) {
         await clientSimulationService.linkSimulationToApplication(linkedSimulationId, targetAppId, publicId, user?.id);
@@ -405,6 +481,16 @@ export const ApplicationWizard: React.FC = () => {
                   <p>Tus datos son almacenados de forma cifrada y utilizados exclusivamente para la estructuración de esta operación.</p>
                 </div>
               </div>
+
+              {/* Tarjeta de Identidad Pendiente KYC */}
+              {kycStatus !== 'verified' && kycStatus !== 'approved' && (
+                <KycVerificationCard
+                  caseId={appId || publicId}
+                  applicantName={firstName ? `${firstName} ${lastName}` : undefined}
+                  applicantCi={idNumber || undefined}
+                  onStatusChange={(st) => setKycStatus(st)}
+                />
+              )}
 
             </aside>
 
@@ -1036,6 +1122,45 @@ export const ApplicationWizard: React.FC = () => {
               <span>Borrador guardado automáticamente</span>
             </div>
           )}
+
+          {/* Modal 1: Prompt Inicial al Entrar */}
+          <KycStartModal
+            isOpen={isInitialPromptOpen}
+            isInitialPrompt={true}
+            caseId={appId || publicId}
+            applicantName={firstName ? `${firstName} ${lastName}` : 'Solicitante'}
+            onClose={() => setIsInitialPromptOpen(false)}
+            onPostpone={() => {
+              if (user?.id) {
+                localStorage.setItem(`hipotecaly_kyc_prompt_postponed_${user.id}`, 'true');
+              }
+              setIsInitialPromptOpen(false);
+            }}
+            onSessionCreated={(session) => {
+              setKycStatus(session.status || 'in_progress');
+              setIsInitialPromptOpen(false);
+            }}
+          />
+
+          {/* Modal 2: Gate Bloqueante al enviar sin KYC */}
+          <KycGateModal
+            isOpen={isGateModalOpen}
+            onClose={() => setIsGateModalOpen(false)}
+            onStartKyc={() => setIsStartKycModalOpen(true)}
+            applicantName={firstName ? `${firstName} ${lastName}` : undefined}
+          />
+
+          {/* Modal 3: Inicio de Verificación KYC desde el Gate */}
+          <KycStartModal
+            isOpen={isStartKycModalOpen}
+            caseId={appId || publicId}
+            applicantName={firstName ? `${firstName} ${lastName}` : 'Solicitante'}
+            onClose={() => setIsStartKycModalOpen(false)}
+            onSessionCreated={(session) => {
+              setKycStatus(session.status || 'in_progress');
+              setIsStartKycModalOpen(false);
+            }}
+          />
 
         </div>
       </main>

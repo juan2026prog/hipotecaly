@@ -60,6 +60,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const workflowId = process.env.DIDIT_WORKFLOW_ID;
       const kycMode = (process.env.KYC_MODE || 'sandbox').toLowerCase().trim();
 
+      const isDemoModeReq = kycMode === 'mock' || kycMode === 'demo' || bodyData?.isDemo || bodyData?.mode === 'demo';
+
+      if (isDemoModeReq && (!apiKey || !workflowId)) {
+        const sessionId = `mock_kyc_${Date.now()}`;
+        const mockUrl = `/demo/kyc-simulator?session_id=${sessionId}`;
+        return res.status(200).json({
+          success: true,
+          session: {
+            id: sessionId,
+            sessionId,
+            sessionUrl: mockUrl,
+            provider: 'didit_demo',
+            mode: 'demo',
+            status: 'created',
+            createdAt: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 86400000).toISOString(),
+          },
+        });
+      }
+
       if (!apiKey) {
         return res.status(500).json({
           error: 'CONFIG_ERROR',

@@ -23,6 +23,7 @@ import {
   clientSimulationService,
   SavedSimulation,
 } from '../../lib/clientSimulationService';
+import { KycStartModal } from '../../components/identity/KycStartModal';
 
 export const ApplicantAccount: React.FC = () => {
   const { user, borrower } = useAuth();
@@ -95,6 +96,21 @@ export const ApplicantAccount: React.FC = () => {
     }
   };
 
+  const [initialKycPromptOpen, setInitialKycPromptOpen] = useState(false);
+
+  // Evaluar despliegue automático del modal inicial de KYC
+  useEffect(() => {
+    if (!loading && personalData && user?.id) {
+      const isNotStarted = personalData.kycStatus === 'not_started' || (personalData as any).kycStatus === 'NOT_STARTED' || !personalData.kycStatus;
+      const postponedKey = `hipotecaly_kyc_prompt_postponed_${user.id}`;
+      const isPostponed = localStorage.getItem(postponedKey) === 'true';
+
+      if (isNotStarted && !isPostponed) {
+        setInitialKycPromptOpen(true);
+      }
+    }
+  }, [loading, personalData, user?.id]);
+
   if (loading || !personalData) {
     return (
       <div className="min-h-screen bg-[#f5f7f9] flex items-center justify-center">
@@ -107,41 +123,63 @@ export const ApplicantAccount: React.FC = () => {
   }
 
   return (
-    <ClientPortalShell
-      activeTab={activeTab}
-      onTabChange={handleTabChange}
-      simulationsCount={simulations.length}
-      applicationsCount={applications.length}
-    >
-      {/* 1. SECCIÓN DATOS PERSONALES */}
-      {activeTab === 'datos' && (
-        <PersonalDataSection
-          data={personalData}
-          onRefresh={loadData}
-        />
-      )}
+    <>
+      <ClientPortalShell
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        simulationsCount={simulations.length}
+        applicationsCount={applications.length}
+      >
+        {/* 1. SECCIÓN DATOS PERSONALES */}
+        {activeTab === 'datos' && (
+          <PersonalDataSection
+            data={personalData}
+            onRefresh={loadData}
+          />
+        )}
 
-      {/* 2. SECCIÓN MIS SIMULACIONES */}
-      {activeTab === 'simulaciones' && (
-        <MySimulationsSection
-          simulations={simulations}
-          onRefresh={loadData}
-          onOpenApplication={(pubId) => {
-            setSelectedAppId(pubId);
-            setActiveTab('solicitudes');
-          }}
-        />
-      )}
+        {/* 2. SECCIÓN MIS SIMULACIONES */}
+        {activeTab === 'simulaciones' && (
+          <MySimulationsSection
+            simulations={simulations}
+            onRefresh={loadData}
+            onOpenApplication={(pubId) => {
+              setSelectedAppId(pubId);
+              setActiveTab('solicitudes');
+            }}
+          />
+        )}
 
-      {/* 3. SECCIÓN MIS SOLICITUDES */}
-      {activeTab === 'solicitudes' && (
-        <MyApplicationsSection
-          applications={applications}
-          selectedAppId={selectedAppId}
-          onSelectApp={setSelectedAppId}
-          onRefresh={loadData}
-        />
-      )}
-    </ClientPortalShell>
+        {/* 3. SECCIÓN MIS SOLICITUDES */}
+        {activeTab === 'solicitudes' && (
+          <MyApplicationsSection
+            applications={applications}
+            selectedAppId={selectedAppId}
+            onSelectApp={setSelectedAppId}
+            onRefresh={loadData}
+          />
+        )}
+      </ClientPortalShell>
+
+      {/* Modal Inicial KYC al ingresar al portal */}
+      <KycStartModal
+        isOpen={initialKycPromptOpen}
+        isInitialPrompt={true}
+        caseId="user-portal-kyc"
+        userId={user?.id}
+        applicantName={`${personalData.firstName} ${personalData.lastName}`}
+        onClose={() => setInitialKycPromptOpen(false)}
+        onPostpone={() => {
+          if (user?.id) {
+            localStorage.setItem(`hipotecaly_kyc_prompt_postponed_${user.id}`, 'true');
+          }
+          setInitialKycPromptOpen(false);
+        }}
+        onSessionCreated={() => {
+          setInitialKycPromptOpen(false);
+          loadData();
+        }}
+      />
+    </>
   );
 };
