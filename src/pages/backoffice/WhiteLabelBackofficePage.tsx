@@ -32,6 +32,15 @@ import {
   reorderOrganizationFaqs,
 } from '../../lib/organizationFaqService';
 import {
+  OrganizationDomain,
+  getOrganizationDomains,
+  addOrganizationDomain,
+  setPrimaryOrganizationDomain,
+  deleteOrganizationDomain,
+  requestDomainVerification,
+  normalizeDomain,
+} from '../../lib/organizationDomainService';
+import {
   Palette,
   Sliders,
   Globe,
@@ -76,6 +85,7 @@ import {
   Share2,
   Sparkles,
   AlertTriangle,
+  AlertCircle,
 } from 'lucide-react';
 import {
   getActivePolicy,
@@ -192,20 +202,29 @@ export const WhiteLabelBackofficePage: React.FC = () => {
   const [newFaqAnswer, setNewFaqAnswer] = useState('');
   const [faqActionToast, setFaqActionToast] = useState<string | null>(null);
 
+  // Estados de Dominios Personalizados (Fase 7A/7B)
+  const [orgDomains, setOrgDomains] = useState<OrganizationDomain[]>([]);
+  const [newDomainInput, setNewDomainInput] = useState('');
+  const [addingDomain, setAddingDomain] = useState(false);
+  const [verifyingDomainId, setVerifyingDomainId] = useState<string | null>(null);
+  const [domainToast, setDomainToast] = useState<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
+
   // Cargar datos del tenant
   useEffect(() => {
     async function loadData() {
       setLoading(true);
-      const [data, homeData, faqsData, versionsData] = await Promise.all([
+      const [data, homeData, faqsData, versionsData, domainsData] = await Promise.all([
         getWhiteLabelCustomization(tenant.id, tenant.slug),
         getOrganizationHomeSettings(tenant.id, { preview: true }),
         getOrganizationFaqs(tenant.id, false),
         getHomeVersionHistory(tenant.id),
+        getOrganizationDomains(tenant.id),
       ]);
       setConfig(data);
       setHomeSettings(homeData);
       setFaqs(faqsData);
       setHomeVersions(versionsData);
+      setOrgDomains(domainsData);
       setActivePolicy(getActivePolicy(tenant.id));
       setPolicyVersions(getPolicyVersions(tenant.id));
       setActiveCosts(getActiveCosts(tenant.id));
@@ -214,6 +233,96 @@ export const WhiteLabelBackofficePage: React.FC = () => {
     }
     loadData();
   }, [tenant.id, tenant.slug]);
+
+  // Manejadores de Dominios (Fase 7A/7B)
+  const handleAddDomain = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDomainInput.trim()) return;
+
+    setAddingDomain(true);
+    try {
+      const isFirst = orgDomains.length === 0;
+      const res = await addOrganizationDomain(tenant.id, newDomainInput.trim(), isFirst);
+      if (res.success && res.data) {
+        setOrgDomains((prev) => [...prev, res.data!]);
+        setNewDomainInput('');
+        setDomainToast({
+          message: `Dominio '${res.data.domain}' registrado exitosamente. Configurá los registros DNS indicados abajo.`,
+          type: 'success',
+        });
+      } else {
+        setDomainToast({
+          message: res.error || 'Error al agregar dominio.',
+          type: 'error',
+        });
+      }
+    } catch (err: any) {
+      setDomainToast({ message: err.message || 'Error inesperado.', type: 'error' });
+    } finally {
+      setAddingDomain(false);
+      setTimeout(() => setDomainToast(null), 6000);
+    }
+  };
+
+  const handleSetPrimaryDomain = async (domainId: string) => {
+    try {
+      const res = await setPrimaryOrganizationDomain(tenant.id, domainId);
+      if (res.success) {
+        const refreshed = await getOrganizationDomains(tenant.id);
+        setOrgDomains(refreshed);
+        setDomainToast({ message: 'Dominio primario actualizado correctamente.', type: 'success' });
+      } else {
+        setDomainToast({ message: res.error || 'Error al actualizar dominio primario.', type: 'error' });
+      }
+    } catch (err: any) {
+      setDomainToast({ message: err.message || 'Error inesperado.', type: 'error' });
+    } finally {
+      setTimeout(() => setDomainToast(null), 4000);
+    }
+  };
+
+  const handleDeleteDomain = async (domainId: string, domainName: string) => {
+    if (!window.confirm(`¿Estás seguro de que deseas eliminar el dominio '${domainName}'?`)) return;
+    try {
+      const res = await deleteOrganizationDomain(tenant.id, domainId, domainName);
+      if (res.success) {
+        setOrgDomains((prev) => prev.filter((d) => d.id !== domainId));
+        setDomainToast({ message: `Dominio '${domainName}' eliminado.`, type: 'success' });
+      } else {
+        setDomainToast({ message: res.error || 'Error al eliminar dominio.', type: 'error' });
+      }
+    } catch (err: any) {
+      setDomainToast({ message: err.message || 'Error inesperado.', type: 'error' });
+    } finally {
+      setTimeout(() => setDomainToast(null), 4000);
+    }
+  };
+
+  const handleVerifyDomain = async (domainId: string) => {
+    setVerifyingDomainId(domainId);
+    try {
+      const res = await requestDomainVerification(tenant.id, domainId);
+      const refreshed = await getOrganizationDomains(tenant.id);
+      setOrgDomains(refreshed);
+
+      if (res.isVerified) {
+        setDomainToast({
+          message: '¡Dominio verificado y certificado SSL activo en Vercel!',
+          type: 'success',
+        });
+      } else {
+        setDomainToast({
+          message: res.statusMessage || res.error || 'Verificación pendiente de propagación DNS en Vercel.',
+          type: 'warning',
+        });
+      }
+    } catch (err: any) {
+      setDomainToast({ message: err.message || 'Error al solicitar verificación.', type: 'error' });
+    } finally {
+      setVerifyingDomainId(null);
+      setTimeout(() => setDomainToast(null), 7000);
+    }
+  };
 
   // Manejadores de Preguntas Frecuentes (FAQ)
   const handleCreateFaq = async () => {
@@ -2722,8 +2831,213 @@ export const WhiteLabelBackofficePage: React.FC = () => {
             )}
 
             {/* -------------------------------------------------------- */}
-            {/* TAB 5: COSTOS & HONORARIOS                               */}
+            {/* TAB: DOMINIO PERSONALIZADO & SSL (FASE 7A/7B)            */}
             {/* -------------------------------------------------------- */}
+            {activeTab === 'domain' && (
+              <div className="space-y-6">
+                <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+                  <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-base font-bold text-navy flex items-center gap-2">
+                        <Globe className="w-5 h-5 text-brand-green" /> Dominios Personalizados & Certificados SSL
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Administrá los nombres de dominio oficiales para tu portal White-Label con verificación DNS y cifrado HTTPS.
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold bg-blue-100 text-blue-800 px-2.5 py-1 rounded-full border border-blue-200 shrink-0">
+                      Fuente Única: organization_domains
+                    </span>
+                  </div>
+
+                  {/* Toast de estado de dominios */}
+                  {domainToast && (
+                    <div
+                      className={`p-3.5 rounded-xl border text-xs font-bold flex items-center space-x-2 animate-fadeIn ${
+                        domainToast.type === 'success'
+                          ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                          : domainToast.type === 'warning'
+                          ? 'bg-amber-50 border-amber-200 text-amber-900'
+                          : 'bg-rose-50 border-rose-200 text-rose-800'
+                      }`}
+                    >
+                      {domainToast.type === 'success' ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      ) : domainToast.type === 'warning' ? (
+                        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                      ) : (
+                        <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                      )}
+                      <span className="flex-1">{domainToast.message}</span>
+                    </div>
+                  )}
+
+                  {/* Formulario de Agregar Dominio */}
+                  <form onSubmit={handleAddDomain} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                    <label className="text-xs font-bold text-navy block uppercase tracking-wider">
+                      Agregar Nuevo Nombre de Dominio
+                    </label>
+                    <div className="flex flex-col sm:flex-row items-center gap-3">
+                      <div className="relative flex-1 w-full">
+                        <input
+                          type="text"
+                          value={newDomainInput}
+                          onChange={(e) => setNewDomainInput(e.target.value)}
+                          placeholder="creditos.estudionova.uy o hipotecas.com.uy"
+                          className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-mono text-navy focus:border-navy focus:ring-2 focus:ring-navy/20 bg-white"
+                        />
+                      </div>
+                      <Button
+                        type="submit"
+                        disabled={addingDomain || !newDomainInput.trim()}
+                        variant="primary"
+                        size="sm"
+                        className="w-full sm:w-auto h-10 font-bold bg-[#102d49] hover:bg-[#173a5e] text-white shrink-0"
+                      >
+                        <Plus className="w-4 h-4 mr-1.5" />
+                        <span>{addingDomain ? 'Registrando...' : 'Agregar Dominio'}</span>
+                      </Button>
+                    </div>
+                    {newDomainInput.trim() && (
+                      <p className="text-[11px] text-slate-500 font-mono">
+                        Hostname normalizado: <strong>{normalizeDomain(newDomainInput).domain || 'Formato inválido'}</strong>
+                      </p>
+                    )}
+                  </form>
+
+                  {/* Lista de Dominios Registrados */}
+                  <div className="space-y-4">
+                    <h4 className="text-xs font-bold text-navy uppercase tracking-wider">
+                      Dominios de la Organización ({orgDomains.length})
+                    </h4>
+
+                    {orgDomains.length === 0 ? (
+                      <div className="p-8 text-center text-slate-400 border-2 border-dashed border-slate-200 rounded-xl text-xs">
+                        No tenés ningún dominio personalizado registrado. Agregá tu primer dominio arriba para comenzar la configuración DNS.
+                      </div>
+                    ) : (
+                      orgDomains.map((dom) => {
+                        const isVerifying = verifyingDomainId === dom.id;
+                        return (
+                          <div
+                            key={dom.id}
+                            className={`p-5 rounded-2xl border transition-all space-y-4 ${
+                              dom.isVerified
+                                ? 'bg-emerald-50/20 border-emerald-200'
+                                : 'bg-white border-slate-200 shadow-sm'
+                            }`}
+                          >
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                              <div className="space-y-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="font-mono font-bold text-sm text-navy">{dom.domain}</span>
+                                  {dom.isPrimary && (
+                                    <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                                      ⭐ DOMINIO PRINCIPAL
+                                    </span>
+                                  )}
+                                  {dom.isVerified ? (
+                                    <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-600" /> VERIFICADO
+                                    </span>
+                                  ) : (
+                                    <span className="text-[9px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 flex items-center gap-1">
+                                      <Clock className="w-3 h-3 text-amber-600" /> PENDIENTE DNS
+                                    </span>
+                                  )}
+                                  {dom.sslStatus === 'active' ? (
+                                    <span className="text-[9px] font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded-full border border-blue-200">
+                                      🔒 SSL ACTIVO
+                                    </span>
+                                  ) : (
+                                    <span className="text-[9px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                                      ⏳ SSL PENDIENTE
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] text-slate-500">
+                                  Registrado: {new Date(dom.createdAt).toLocaleDateString('es-UY')}
+                                  {dom.lastCheckedAt && ` · Última comprobación: ${new Date(dom.lastCheckedAt).toLocaleTimeString('es-UY')}`}
+                                </p>
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-2">
+                                {!dom.isVerified && (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() => handleVerifyDomain(dom.id)}
+                                    disabled={isVerifying}
+                                    className="bg-navy hover:bg-slate-800 text-white font-bold text-xs"
+                                  >
+                                    <RotateCcw className={`w-3.5 h-3.5 mr-1.5 ${isVerifying ? 'animate-spin' : ''}`} />
+                                    <span>{isVerifying ? 'Comprobando...' : 'Verificar DNS'}</span>
+                                  </Button>
+                                )}
+
+                                {!dom.isPrimary && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSetPrimaryDomain(dom.id)}
+                                    className="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:text-navy hover:bg-slate-50 text-xs font-semibold transition-colors"
+                                  >
+                                    Establecer Principal
+                                  </button>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteDomain(dom.id, dom.domain)}
+                                  className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
+                                  title="Eliminar dominio"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Instrucciones de Configuración DNS */}
+                            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2 text-xs">
+                              <span className="font-bold text-navy block text-[11px] uppercase tracking-wider">
+                                Registros DNS Requeridos en tu Proveedor (Antel, Godaddy, Cloudflare, etc.):
+                              </span>
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 font-mono text-[11px]">
+                                <div className="p-2 bg-white rounded border border-slate-200">
+                                  <span className="text-slate-400 block text-[10px]">TIPO / HOST</span>
+                                  <strong className="text-navy">CNAME · {dom.domain.split('.')[0]}</strong>
+                                  <span className="text-slate-600 block text-[10px] mt-0.5">Valor: cname.vercel-dns.com</span>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-slate-200">
+                                  <span className="text-slate-400 block text-[10px]">TIPO / HOST (Raíz alternativa)</span>
+                                  <strong className="text-navy">A · @</strong>
+                                  <span className="text-slate-600 block text-[10px] mt-0.5">Valor: 76.76.21.21</span>
+                                </div>
+                                <div className="p-2 bg-white rounded border border-slate-200">
+                                  <span className="text-slate-400 block text-[10px]">TOKEN DE VALIDACIÓN</span>
+                                  <strong className="text-navy truncate block">{dom.verificationToken}</strong>
+                                  <span className="text-slate-600 block text-[10px] mt-0.5">TXT · _hipotecaly-challenge</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* Nota de Integración Real */}
+                  <div className="p-4 rounded-xl bg-blue-50/60 border border-blue-200 text-xs text-blue-950 space-y-1">
+                    <div className="flex items-center space-x-1.5 font-bold">
+                      <Lock className="w-4 h-4 text-blue-700" />
+                      <span>Verificación Segura en Vercel Edge Server-Side</span>
+                    </div>
+                    <p className="text-[11px] text-blue-900 leading-relaxed">
+                      HIPOTECALY verifica automáticamente la propagación DNS y provisiona los certificados SSL Let&apos;s Encrypt mediante la API de Vercel. Las credenciales residen exclusivamente en el servidor y nunca son expuestas al cliente.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
             {activeTab === 'costs' && (
               <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
                 <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
