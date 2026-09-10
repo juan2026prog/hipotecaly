@@ -353,11 +353,20 @@ export async function createTenantWithOnboarding(payload: TenantOnboardingPayloa
       );
 
       if (payload.customDomain) {
+        const cleanDomain = payload.customDomain.trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0];
+        const uniqueToken = 'hp_verify_' + (typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID().replace(/-/g, '')
+          : Math.random().toString(36).substring(2) + Date.now().toString(36));
+
         await supabase.from('organization_domains').insert({
           organization_id: tenantId,
-          domain: payload.customDomain,
+          domain: cleanDomain,
           is_primary: true,
-          is_verified: true,
+          is_verified: false,
+          status: 'pending_verification',
+          ssl_status: 'pending',
+          verification_token: uniqueToken,
+          verified_at: null,
         });
       }
 
