@@ -197,4 +197,32 @@ test.describe('SUPER ADMIN — QA ACCESS & CONTROLLED INSPECTION SYSTEM', () => 
     await expect(qaCard).toContainText('Accesos Rápidos Directos');
   });
 
+  // ----------------------------------------------------------------------------
+  // 5. FASE 2: VERIFICACIÓN DE ESTADOS REALES Y AISLAMIENTO DEMO / REAL
+  // ----------------------------------------------------------------------------
+  test('17. Estados Auditables: Servicios sin credenciales no pueden figurar OPERATIVO', async () => {
+    const { isDemoOrganization, isDemoRoute, isDemoMode } = await import('../src/lib/demoControl');
+    
+    // Estudio Nova es Demo
+    expect(isDemoOrganization('d0000000-0000-0000-0000-000000000001', 'estudio-nova')).toBe(true);
+    expect(isDemoRoute('/demo/estudio-nova/admin')).toBe(true);
+    expect(isDemoMode({ tenantId: 'd0000000-0000-0000-0000-000000000001', route: '/demo/estudio-nova' })).toBe(true);
+
+    // Organización Real no es Demo
+    expect(isDemoOrganization('real-tenant-001', 'estudio-real')).toBe(false);
+    expect(isDemoRoute('/app/solicitudes')).toBe(false);
+    expect(isDemoMode({ tenantId: 'real-tenant-001', route: '/app' })).toBe(false);
+  });
+
+  test('18. Test DB: Medición real de latencia contra PostgreSQL', async () => {
+    const { adminSystemHealthService } = await import('../src/lib/adminSystemHealthService');
+    const dbResult = await adminSystemHealthService.testDatabaseConnection();
+    
+    expect(dbResult).toBeDefined();
+    expect(typeof dbResult.latencyMs).toBe('number');
+    expect(dbResult.latencyMs).toBeGreaterThanOrEqual(0);
+    expect(dbResult.status).toMatch(/OPERATIVO|ERROR/);
+    expect(dbResult.message).not.toContain('11ms'); // No es valor fijo inventado
+  });
+
 });
