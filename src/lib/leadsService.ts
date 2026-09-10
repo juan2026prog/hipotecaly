@@ -87,9 +87,36 @@ export const leadsService = {
 
   /**
    * Obtiene la lista de prospectos comerciales para el Backoffice
+   * REGLA DE SEGURIDAD: Únicamente accesible por el rol super_admin
    */
   async getLeads(): Promise<SaaSLead[]> {
     try {
+      // Control de seguridad: Verificar rol super_admin del usuario autenticado
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      let isSuper = Boolean(
+        user.app_metadata?.role === 'super_admin' ||
+        user.app_metadata?.role === 'platform_admin' ||
+        user.app_metadata?.is_super_admin
+      );
+
+      if (!isSuper) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_super_admin')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (profile?.is_super_admin) {
+          isSuper = true;
+        }
+      }
+
+      if (!isSuper) {
+        console.warn('Acceso denegado a saas_leads: El usuario no posee rol super_admin.');
+        return [];
+      }
+
       const { data, error } = await supabase
         .from('saas_leads')
         .select('*')
@@ -105,9 +132,36 @@ export const leadsService = {
 
   /**
    * Actualiza el estado comercial de un lead
+   * REGLA DE SEGURIDAD: Únicamente ejecutable por el rol super_admin
    */
   async updateLeadStatus(leadId: string, status: SaaSLead['status'], notes?: string): Promise<boolean> {
     try {
+      // Control de seguridad: Verificar rol super_admin del usuario autenticado
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return false;
+
+      let isSuper = Boolean(
+        user.app_metadata?.role === 'super_admin' ||
+        user.app_metadata?.role === 'platform_admin' ||
+        user.app_metadata?.is_super_admin
+      );
+
+      if (!isSuper) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_super_admin')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (profile?.is_super_admin) {
+          isSuper = true;
+        }
+      }
+
+      if (!isSuper) {
+        console.warn('Operación denegada en saas_leads: El usuario no posee rol super_admin.');
+        return false;
+      }
+
       const { error } = await supabase
         .from('saas_leads')
         .update({

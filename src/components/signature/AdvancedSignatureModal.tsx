@@ -150,6 +150,19 @@ export const AdvancedSignatureModal: React.FC<AdvancedSignatureModalProps> = ({
           </button>
         </div>
 
+        {/* Banner de simulación DEMO */}
+        <div className="bg-amber-500/10 border-b border-amber-500/30 p-3 flex flex-col space-y-1 text-amber-900 text-xs">
+          <div className="flex items-center space-x-2 font-bold">
+            <span className="bg-amber-500 text-white px-2 py-0.5 rounded text-[10px] uppercase font-extrabold tracking-wider">
+              DEMO / SIMULACIÓN
+            </span>
+            <span className="text-amber-900 font-bold text-xs">Modo Demostración</span>
+          </div>
+          <p className="text-[11px] text-amber-800 leading-tight">
+            Esta función se encuentra en modo demostración. No genera una firma electrónica avanzada con validez productiva.
+          </p>
+        </div>
+
         {/* Modal Body */}
         <div className="p-6 space-y-5 text-xs text-slate-700">
           {/* STEP 1: CONFIRMACIÓN Y BLOQUEO */}

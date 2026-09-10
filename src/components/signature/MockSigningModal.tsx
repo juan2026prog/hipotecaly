@@ -65,9 +65,19 @@ export const MockSigningModal: React.FC<MockSigningModalProps> = ({
         </button>
 
         {/* Banner de simulación DEMO */}
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-center space-x-2.5 text-amber-800 text-xs font-bold">
-          <Stamp className="w-4 h-4 text-amber-700 shrink-0" />
-          <span>MODO SIMULACIÓN: Documento sellado como DEMO / SIN VALIDEZ JURÍDICA</span>
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex flex-col space-y-1 text-amber-900 text-xs">
+          <div className="flex items-center space-x-2 font-bold">
+            <span className="bg-amber-500 text-white px-2 py-0.5 rounded text-[10px] uppercase font-extrabold tracking-wider">
+              DEMO / SIMULACIÓN
+            </span>
+            <span className="flex items-center space-x-1 text-amber-900 font-bold text-xs">
+              <Stamp className="w-3.5 h-3.5 text-amber-700" />
+              <span>Modo Demostración</span>
+            </span>
+          </div>
+          <p className="text-[11px] text-amber-800 leading-tight">
+            Esta función se encuentra en modo demostración. No genera una firma electrónica avanzada con validez productiva.
+          </p>
         </div>
 
         <div className="flex items-center space-x-3">
