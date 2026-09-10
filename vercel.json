@@ -9,6 +9,26 @@
   },
   "rewrites": [
     {
+      "source": "/api/integrations/:path*",
+      "destination": "/api/integrations/[...route]"
+    },
+    {
+      "source": "/api/admin/:path*",
+      "destination": "/api/admin/[...route]"
+    },
+    {
+      "source": "/api/ai/:path*",
+      "destination": "/api/ai/[...route]"
+    },
+    {
+      "source": "/api/documents/:path*",
+      "destination": "/api/documents/[...route]"
+    },
+    {
+      "source": "/api/v1/:path*",
+      "destination": "/api/v1/[...route]"
+    },
+    {
       "source": "/api/domains/verify",
       "destination": "/api/domains-verify"
     },

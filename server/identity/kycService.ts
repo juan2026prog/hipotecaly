@@ -61,27 +61,54 @@ export class KycService {
   }
 
   /**
-   * Crea una sesión de verificación KYC server-side
+   * Crea una sesión de verificación KYC server-side oficial con Didit API v3
    */
   public static async createSession(input: KycSessionInput) {
-    const provider = await this.resolveProvider(input.tenantId);
-    const session = await provider.createSession(input);
+    const client = new DiditClient();
+
+    if (!client.isConfigured()) {
+      throw new Error('DIDIT_API_KEY no está configurada en las variables de entorno del servidor.');
+    }
+
+    const vendorData = input.vendorData || (input.caseId ? `case_${input.caseId}` : `kyc_${Date.now()}`);
+
+    // Llamada HTTP real a Didit API v3 (POST https://verification.didit.me/v3/session/)
+    const diditRes = await client.createSession({
+      vendorData,
+      callbackUrl: input.callbackUrl,
+    });
+
+    const session: KycSession = {
+      id: diditRes.session_id,
+      sessionId: diditRes.session_id,
+      sessionUrl: diditRes.url,
+      provider: 'didit',
+      mode: (process.env.KYC_MODE as any) || 'live',
+      status: normalizeDiditStatus(diditRes.status || 'Created'),
+      createdAt: diditRes.created_at || new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+      metadata: {
+        vendorData,
+        workflowId: diditRes.workflow_id || process.env.DIDIT_WORKFLOW_ID,
+        diditSessionId: diditRes.session_id,
+      },
+    };
 
     const nowIso = new Date().toISOString();
 
-    // Persistir en base de datos
+    // Persistir en base de datos Supabase: identity_verifications
     try {
       await supabaseAdmin.from('identity_verifications').insert({
-        tenant_id: input.tenantId,
+        tenant_id: input.tenantId || 'a0000000-0000-0000-0000-000000000001',
         user_id: input.userId || null,
         case_id: input.caseId || null,
-        provider: session.provider,
+        provider: 'didit',
         provider_session_id: session.sessionId,
-        session_url: session.sessionUrl || null,
+        session_url: session.sessionUrl,
         mode: session.mode,
         status: session.status,
-        expires_at: session.expiresAt || null,
-        metadata: session.metadata || {},
+        expires_at: session.expiresAt,
+        metadata: session.metadata,
         created_at: nowIso,
         updated_at: nowIso,
       });

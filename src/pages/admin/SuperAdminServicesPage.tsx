@@ -19,7 +19,6 @@ import {
   Power,
   Zap,
   ExternalLink,
-  Info,
 } from 'lucide-react';
 import { SuperAdminLayout } from '../../components/admin/SuperAdminLayout';
 import { Button } from '../../components/ui/Button';
@@ -38,10 +37,24 @@ export const SuperAdminServicesPage: React.FC = () => {
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Estados para testing de KYC
-  const [testSessionId, setTestSessionId] = useState('didit-sess-demo-001');
-  const [testKycStatus, setTestKycStatus] = useState('verified');
-  const [forcingKyc, setForcingKyc] = useState(false);
+  // Estado para Diagnóstico Real de Didit KYC
+  const [kycDiagnostic, setKycDiagnostic] = useState<any>(null);
+  const [copiedWebhook, setCopiedWebhook] = useState(false);
+  const [refreshingKyc, setRefreshingKyc] = useState(false);
+
+  const loadKycDiagnostic = async () => {
+    try {
+      const res = await fetch('/api/integrations/admin/settings');
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.kyc) {
+          setKycDiagnostic(data.kyc);
+        }
+      }
+    } catch {
+      // Ignorar
+    }
+  };
 
   // Cargar estado consolidado de servicios
   const loadServicesData = async () => {
@@ -50,6 +63,7 @@ export const SuperAdminServicesPage: React.FC = () => {
       const [ai, health] = await Promise.all([
         adminAiService.getStatus().catch(() => null),
         adminSystemHealthService.getSystemHealth().catch(() => null),
+        loadKycDiagnostic(),
       ]);
       if (ai) setAiStatus(ai);
       if (health) setHealthData(health);
@@ -83,31 +97,13 @@ export const SuperAdminServicesPage: React.FC = () => {
     }
   };
 
-  const handleForceKyc = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setForcingKyc(true);
-    try {
-      const res = await fetch('/api/integrations/kyc/test-force', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: testSessionId,
-          forcedStatus: testKycStatus,
-          reason: 'Prueba de verificación controlada',
-        }),
-      });
-      if (res.ok) {
-        setToastMessage(`Estado de prueba KYC aplicado en entorno sandbox: '${testKycStatus}'.`);
-      } else {
-        setToastMessage(`Resultado de prueba aplicado.`);
-      }
-      setTimeout(() => setToastMessage(null), 3500);
-    } catch {
-      setToastMessage(`Resultado de prueba registrado.`);
-      setTimeout(() => setToastMessage(null), 3500);
-    } finally {
-      setForcingKyc(false);
-    }
+  const handleRefreshKyc = async () => {
+    setRefreshingKyc(true);
+    await loadKycDiagnostic();
+    await loadServicesData();
+    setRefreshingKyc(false);
+    setToastMessage('Diagnóstico KYC actualizado.');
+    setTimeout(() => setToastMessage(null), 3000);
   };
 
   const getServiceStatus = (serviceKey: keyof SystemHealthResponse['services']): AuditableServiceStatus => {
@@ -318,18 +314,28 @@ export const SuperAdminServicesPage: React.FC = () => {
               </div>
 
               <p className="text-xs text-slate-300 leading-relaxed">
-                Verificación biométrica y validación de cédulas de identidad uruguayas.
+                Verificación biométrica, validación documental y prueba de vida (Hosted Flow).
               </p>
 
               <div className="p-3 bg-[#071322] rounded-xl border border-[#152E4D] space-y-1.5 text-xs">
                 <div className="flex justify-between text-slate-400">
                   <span>Modo operativo:</span>
-                  <strong className="text-purple-300 font-mono">
-                    {statuses.kyc === 'OPERATIVO' ? 'Producción Didit' : 'Demostración / Sandbox'}
-                  </strong>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded font-mono ${
+                    kycDiagnostic?.mode === 'live'
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                      : kycDiagnostic?.mode === 'sandbox'
+                      ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                      : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                  }`}>
+                    {kycDiagnostic?.modeLabel || (kycDiagnostic?.mode === 'live' ? 'PRODUCCIÓN' : kycDiagnostic?.mode === 'sandbox' ? 'SANDBOX' : 'DEMO')}
+                  </span>
                 </div>
                 <div className="text-[10px] text-slate-500">
-                  {statuses.kyc === 'OPERATIVO' ? 'Credencial DIDIT_API_KEY activa' : 'Requiere configurar DIDIT_API_KEY para producción'}
+                  {kycDiagnostic?.mode === 'live'
+                    ? 'Credenciales Didit Live activas (PRODUCCIÓN)'
+                    : kycDiagnostic?.mode === 'sandbox'
+                    ? 'Credenciales Didit Sandbox activas (SANDBOX)'
+                    : 'Modo DEMO / Simulación activo'}
                 </div>
               </div>
             </div>
@@ -346,10 +352,13 @@ export const SuperAdminServicesPage: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setActiveModal('kyc')}
-                className="h-8 px-3 text-xs font-bold bg-[#152E4D] border-transparent text-emerald-400 hover:bg-[#1E3A5F]"
+                onClick={() => {
+                  loadKycDiagnostic();
+                  setActiveModal('kyc');
+                }}
+                className="h-8 px-3 text-xs font-bold bg-[#152E4D] border-transparent text-purple-300 hover:bg-[#1E3A5F]"
               >
-                <Sliders className="w-3.5 h-3.5 mr-1" /> Probar sandbox
+                <Sliders className="w-3.5 h-3.5 mr-1" /> Administrar
               </Button>
             </div>
           </div>
@@ -625,75 +634,224 @@ export const SuperAdminServicesPage: React.FC = () => {
         )}
 
         {/* ======================================================== */}
-        {/* MODAL 2: ADMINISTRAR KYC (PRUEBAS Y ESTADO)               */}
+        {/* MODAL 2: DIAGNÓSTICO REAL DE DIDIT KYC                   */}
         {/* ======================================================== */}
         {activeModal === 'kyc' && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-[#09182C] border border-[#152E4D] rounded-2xl max-w-lg w-full p-6 space-y-4 text-left shadow-2xl">
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-[#09182C] border border-[#152E4D] rounded-2xl max-w-2xl w-full p-6 space-y-5 text-left shadow-2xl max-h-[90vh] overflow-y-auto">
+              {/* Encabezado */}
               <div className="flex items-center justify-between border-b border-[#152E4D] pb-3">
-                <div className="flex items-center space-x-2.5">
-                  <ShieldCheck className="w-5 h-5 text-purple-400" />
-                  <h3 className="font-bold text-base text-white">Identidad y KYC (Didit)</h3>
+                <div className="flex items-center space-x-3">
+                  <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-base text-white">Diagnóstico y Estado de Didit KYC</h3>
+                    <p className="text-[11px] text-slate-400">Verificación Biométrica & Identidad Digital (API v3 / Hosted Flow)</p>
+                  </div>
                 </div>
-                <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-white text-lg">×</button>
+                <button
+                  onClick={() => setActiveModal(null)}
+                  className="text-slate-400 hover:text-white text-xl p-1 rounded-lg hover:bg-[#152E4D] transition"
+                >
+                  ×
+                </button>
               </div>
 
-              <form onSubmit={handleForceKyc} className="space-y-3 text-xs">
-                <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-xl text-purple-300 space-y-1">
-                  <div className="flex items-center space-x-1 font-bold">
-                    <Info className="w-3.5 h-3.5" />
-                    <span>Ambiente Sandbox de Demostración</span>
+              {/* Barra de Resumen de Estado */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="bg-[#071322] border border-[#152E4D] p-3 rounded-xl space-y-1">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Proveedor</span>
+                  <span className="text-xs font-extrabold text-white">Didit (Verification API v3)</span>
+                </div>
+                <div className="bg-[#071322] border border-[#152E4D] p-3 rounded-xl space-y-1">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Estado del Servicio</span>
+                  <div className="pt-0.5">{renderStatusBadge(statuses.kyc, 'modal-kyc-status')}</div>
+                </div>
+                <div className="bg-[#071322] border border-[#152E4D] p-3 rounded-xl space-y-1">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Ambiente / Modo</span>
+                  <span className={`inline-block text-[11px] font-bold px-2 py-0.5 rounded font-mono ${
+                    kycDiagnostic?.mode === 'live'
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                      : kycDiagnostic?.mode === 'sandbox'
+                      ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                      : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                  }`}>
+                    {kycDiagnostic?.modeLabel || (kycDiagnostic?.mode === 'live' ? 'PRODUCCIÓN' : kycDiagnostic?.mode === 'sandbox' ? 'SANDBOX' : 'DEMO')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Bloque 1: Credenciales y Seguridad Server-Side */}
+              <div className="bg-[#071322] border border-[#152E4D] rounded-xl p-4 space-y-3">
+                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Credenciales Server-Side (Zero Secret Leaks)</span>
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                  <div className="p-2.5 rounded-lg bg-[#09182C] border border-[#152E4D] space-y-1">
+                    <span className="text-[10px] text-slate-400 block font-mono">DIDIT_API_KEY</span>
+                    <span className={`font-bold text-[11px] ${kycDiagnostic?.apiKeyConfigured ? 'text-emerald-400' : 'text-slate-500'}`}>
+                      {kycDiagnostic?.apiKeyConfigured ? '✓ CONFIGURADA' : '⚪ NO CONFIGURADA'}
+                    </span>
                   </div>
-                  <p className="text-[11px] text-purple-200/80">
-                    Esta herramienta permite simular respuestas del webhook de Didit únicamente en sesiones de prueba controladas. En organizaciones de producción requiere credenciales reales.
-                  </p>
+                  <div className="p-2.5 rounded-lg bg-[#09182C] border border-[#152E4D] space-y-1">
+                    <span className="text-[10px] text-slate-400 block font-mono">DIDIT_WEBHOOK_SECRET</span>
+                    <span className={`font-bold text-[11px] ${kycDiagnostic?.secretConfigured ? 'text-emerald-400' : 'text-slate-500'}`}>
+                      {kycDiagnostic?.secretConfigured ? '✓ CONFIGURADO' : '⚪ NO CONFIGURADO'}
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-[#09182C] border border-[#152E4D] space-y-1">
+                    <span className="text-[10px] text-slate-400 block font-mono">DIDIT_WORKFLOW_ID</span>
+                    <span className={`font-bold text-[11px] ${kycDiagnostic?.workflowConfigured ? 'text-emerald-400' : 'text-slate-500'}`}>
+                      {kycDiagnostic?.workflowConfigured
+                        ? (kycDiagnostic.workflowIdMasked ? `✓ ${kycDiagnostic.workflowIdMasked}` : '✓ CONFIGURADO')
+                        : '⚪ NO CONFIGURADO'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bloque 2: Webhook y Validación Criptográfica */}
+              <div className="bg-[#071322] border border-[#152E4D] rounded-xl p-4 space-y-3">
+                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
+                  <Zap className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Webhook Receptor & Integridad</span>
+                </h4>
+                <div className="space-y-2 text-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg bg-[#09182C] border border-[#152E4D]">
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] text-slate-400 uppercase block font-bold">URL Registrada en Didit Console</span>
+                      <span className="font-mono text-emerald-300 text-[11px] break-all">
+                        {kycDiagnostic?.webhookUrl || 'https://hipotecaly.vercel.app/api/integrations/kyc/didit/webhook'}
+                      </span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(kycDiagnostic?.webhookUrl || 'https://hipotecaly.vercel.app/api/integrations/kyc/didit/webhook');
+                        setCopiedWebhook(true);
+                        setTimeout(() => setCopiedWebhook(false), 2000);
+                      }}
+                      className="bg-[#152E4D] border-transparent text-slate-300 hover:bg-[#1E3A5F] text-[10px] h-7 px-2.5 shrink-0"
+                    >
+                      {copiedWebhook ? '✓ Copiado' : 'Copiar URL'}
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="p-2.5 rounded-lg bg-[#09182C] border border-[#152E4D] space-y-1">
+                      <span className="text-[10px] text-slate-400 uppercase block font-bold">Firma Criptográfica</span>
+                      <span className="text-slate-300 text-[11px] font-mono">X-Signature-V2 (HMAC-SHA256 Timing-Safe)</span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-[#09182C] border border-[#152E4D] space-y-1">
+                      <span className="text-[10px] text-slate-400 uppercase block font-bold">Última Notificación Recibida</span>
+                      <span className="text-slate-300 text-[11px]">
+                        {kycDiagnostic?.lastWebhook?.receivedAt
+                          ? `${new Date(kycDiagnostic.lastWebhook.receivedAt).toLocaleString('es-UY')} · ${kycDiagnostic.lastWebhook.httpStatus || '200 OK'}`
+                          : 'Sin eventos recientes'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bloque 3: Métricas y Sesiones Reales */}
+              <div className="bg-[#071322] border border-[#152E4D] rounded-xl p-4 space-y-3">
+                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
+                  <span>Métricas de Verificaciones Reales</span>
+                  <span className="text-[10px] font-normal text-slate-500 font-mono">Supabase DB</span>
+                </h4>
+                
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                  <div className="p-2.5 rounded-lg bg-[#09182C] border border-[#152E4D]">
+                    <span className="text-[10px] text-slate-400 uppercase block">Total</span>
+                    <span className="text-base font-extrabold text-white">{kycDiagnostic?.stats?.total || 0}</span>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-[#09182C] border border-[#152E4D]">
+                    <span className="text-[10px] text-emerald-400 uppercase block">Aprobadas</span>
+                    <span className="text-base font-extrabold text-emerald-400">{kycDiagnostic?.stats?.verified || 0}</span>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-[#09182C] border border-[#152E4D]">
+                    <span className="text-[10px] text-amber-400 uppercase block">En Proceso</span>
+                    <span className="text-base font-extrabold text-amber-400">
+                      {(kycDiagnostic?.stats?.in_progress || 0) + (kycDiagnostic?.stats?.pending_review || 0)}
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-[#09182C] border border-[#152E4D]">
+                    <span className="text-[10px] text-rose-400 uppercase block">Rechazadas</span>
+                    <span className="text-base font-extrabold text-rose-400">{kycDiagnostic?.stats?.failed || 0}</span>
+                  </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-slate-300 font-bold block">Identificador de Sesión Demo:</label>
-                  <input
-                    type="text"
-                    value={testSessionId}
-                    onChange={(e) => setTestSessionId(e.target.value)}
-                    className="w-full p-2 bg-[#071322] border border-[#152E4D] rounded-lg text-slate-200 font-mono text-xs"
-                  />
-                </div>
+                {/* Últimas Sesiones */}
+                {kycDiagnostic?.recentSessions && kycDiagnostic.recentSessions.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Últimas Sesiones Registradas</span>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-[11px] text-slate-300">
+                        <thead>
+                          <tr className="border-b border-[#152E4D] text-slate-500 text-[10px]">
+                            <th className="py-1 text-left">Fecha</th>
+                            <th className="py-1 text-left">Session ID</th>
+                            <th className="py-1 text-left">Expediente</th>
+                            <th className="py-1 text-left">Modo</th>
+                            <th className="py-1 text-right">Estado</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {kycDiagnostic.recentSessions.map((s: any, idx: number) => (
+                            <tr key={idx} className="border-b border-[#152E4D]/50 font-mono text-[10px]">
+                              <td className="py-1 text-slate-400">{new Date(s.createdAt).toLocaleDateString('es-UY')}</td>
+                              <td className="py-1 text-slate-300">{s.providerSessionId}</td>
+                              <td className="py-1 text-slate-400">{s.caseId}</td>
+                              <td className="py-1 text-purple-300 uppercase">{s.mode}</td>
+                              <td className="py-1 text-right">
+                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                                  s.status === 'verified'
+                                    ? 'bg-emerald-500/20 text-emerald-300'
+                                    : s.status === 'failed'
+                                    ? 'bg-rose-500/20 text-rose-300'
+                                    : 'bg-amber-500/20 text-amber-300'
+                                }`}>
+                                  {s.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
 
-                <div className="space-y-1">
-                  <label className="text-slate-300 font-bold block">Resultado a Simular:</label>
-                  <select
-                    value={testKycStatus}
-                    onChange={(e) => setTestKycStatus(e.target.value)}
-                    className="w-full p-2 bg-[#071322] border border-[#152E4D] rounded-lg text-slate-200 text-xs"
-                  >
-                    <option value="verified">Verificado / Aprobado</option>
-                    <option value="failed">Rechazado</option>
-                    <option value="pending_review">En revisión manual</option>
-                  </select>
-                </div>
+              {/* Botones de Pie de Modal */}
+              <div className="pt-2 flex items-center justify-between border-t border-[#152E4D]">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefreshKyc}
+                  disabled={refreshingKyc}
+                  className="bg-[#071322] border-[#152E4D] text-purple-300 hover:bg-[#152E4D] text-xs"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${refreshingKyc ? 'animate-spin' : ''}`} />
+                  {refreshingKyc ? 'Consultando...' : 'Refrescar Diagnóstico'}
+                </Button>
 
-                <div className="pt-2 flex justify-end space-x-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setActiveModal(null)}
-                    className="bg-[#071322] border-[#152E4D] text-slate-300"
-                  >
-                    Cerrar
-                  </Button>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="sm"
-                    disabled={forcingKyc}
-                    className="bg-purple-600 hover:bg-purple-500 text-white font-bold"
-                  >
-                    <Zap className="w-3.5 h-3.5 mr-1" />
-                    {forcingKyc ? 'Aplicando...' : 'Aplicar Resultado Sandbox'}
-                  </Button>
-                </div>
-              </form>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setActiveModal(null)}
+                  className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs"
+                >
+                  Cerrar
+                </Button>
+              </div>
             </div>
           </div>
         )}

@@ -115,8 +115,14 @@ export const SuperAdminIntegrationsTab: React.FC = () => {
               </div>
             </div>
 
-            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
-              {settings?.kyc?.mode || 'SANDBOX'}
+            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded border ${
+              settings?.kyc?.mode === 'live'
+                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                : settings?.kyc?.mode === 'sandbox'
+                ? 'bg-purple-100 text-purple-800 border-purple-300'
+                : 'bg-amber-100 text-amber-800 border-amber-300'
+            }`}>
+              {settings?.kyc?.modeLabel || (settings?.kyc?.mode === 'live' ? 'PRODUCCIÓN' : settings?.kyc?.mode === 'sandbox' ? 'SANDBOX' : 'DEMO')}
             </span>
           </div>
 
@@ -136,13 +142,15 @@ export const SuperAdminIntegrationsTab: React.FC = () => {
             <div className="flex justify-between py-1.5 border-b border-slate-100">
               <span className="text-slate-500">Credenciales:</span>
               <span className="font-bold text-navy">
-                {settings?.kyc?.apiKeyConfigured ? '✓ API Key Configurada (Vault)' : 'Mock / No configurada'}
+                {settings?.kyc?.apiKeyConfigured ? '✓ API Key Configurada (Vault)' : '⚪ No configurada'}
               </span>
             </div>
             <div className="flex justify-between py-1.5">
               <span className="text-slate-500">Workflow:</span>
               <span className="font-bold text-slate-700">
-                {settings?.kyc?.workflowConfigured ? '✓ Workflow ID Asignado' : 'Default / Tenant Workflow'}
+                {settings?.kyc?.workflowConfigured
+                  ? (settings.kyc.workflowIdMasked ? `✓ ${settings.kyc.workflowIdMasked}` : '✓ Workflow ID Asignado')
+                  : '⚪ No configurado'}
               </span>
             </div>
           </div>
@@ -209,14 +217,15 @@ export const SuperAdminIntegrationsTab: React.FC = () => {
 
       </div>
 
-      {/* Herramienta de Testing y Forzado de Estados para Super Admin / QA */}
-      <div className="bg-slate-900 text-white rounded-card p-6 border border-slate-800 shadow-floating space-y-4">
-        <div className="flex items-center space-x-2 text-amber-400">
-          <Zap className="w-4 h-4" />
-          <h3 className="font-bold text-xs uppercase tracking-wider">
-            Consola QA: Forzar Resultado de Verificación KYC (Modos Mock / Sandbox)
-          </h3>
-        </div>
+      {/* Herramienta de Testing y Forzado de Estados para Super Admin / QA (Solo en Modo Demo o Presentation) */}
+      {(settings?.kyc?.mode === 'mock' || (typeof window !== 'undefined' && window.location.search.includes('presentation'))) && (
+        <div className="bg-slate-900 text-white rounded-card p-6 border border-slate-800 shadow-floating space-y-4">
+          <div className="flex items-center space-x-2 text-amber-400">
+            <Zap className="w-4 h-4" />
+            <h3 className="font-bold text-xs uppercase tracking-wider">
+              Consola QA: Forzar Resultado de Verificación KYC
+            </h3>
+          </div>
         <p className="text-xs text-slate-400 leading-relaxed">
           Permite validar el comportamiento end-to-end de la plataforma y el desbloqueo de expedientes simulando decisiones de Didit (Approved, Declined, In Review, Resubmitted, etc.) sin consumir cuotas de API real.
         </p>
@@ -281,6 +290,7 @@ export const SuperAdminIntegrationsTab: React.FC = () => {
           <p className="text-xs font-bold text-emerald-400 pt-1">{forceSuccessMsg}</p>
         )}
       </div>
+      )}
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Shield, CheckCircle2, Lock, X, ArrowRight } from 'lucide-react';
 import { Button } from '../ui/Button';
-
+import { supabase } from '../../lib/supabase';
 
 interface KycStartModalProps {
   isOpen: boolean;
@@ -32,26 +32,66 @@ export const KycStartModal: React.FC<KycStartModalProps> = ({
     setError(null);
 
     try {
+      // 1. Obtener token de sesión Supabase si existe
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      let activeUserId = userId;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+        if (!activeUserId && session?.user?.id) {
+          activeUserId = session.user.id;
+        }
+      } catch (authErr) {
+        console.warn('[KycStartModal] No se pudo obtener sesión de auth:', authErr);
+      }
+
+      // 2. Iniciar sesión KYC en el servidor
       const res = await fetch('/api/integrations/kyc/session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           caseId,
-          userId,
+          userId: activeUserId,
           documentType: 'CI',
           country: 'UY',
           vendorData: `case_${caseId || 'demo'}`,
+          consentGiven: true,
         }),
       });
 
-      const data = await res.json();
+      const contentType = res.headers.get('content-type') || '';
+
       if (!res.ok) {
-        throw new Error(data?.message || 'Error al iniciar sesión KYC');
+        let errorDetail = '';
+        if (contentType.includes('application/json')) {
+          const errJson = await res.json().catch(() => ({}));
+          errorDetail = errJson?.message || errJson?.error || `HTTP ${res.status}`;
+        } else {
+          const rawText = await res.text().catch(() => '');
+          errorDetail = rawText.slice(0, 150) || `HTTP ${res.status}`;
+        }
+
+        console.error('[KycStartModal] Error del servidor al iniciar KYC:', errorDetail);
+        throw new Error('No se pudo iniciar la verificación de identidad. Por favor, reintente en unos momentos.');
+      }
+
+      const data = contentType.includes('application/json')
+        ? await res.json()
+        : null;
+
+      if (!data?.session) {
+        throw new Error('No se recibió la sesión de verificación de identidad.');
       }
 
       onSessionCreated(data.session);
     } catch (err: any) {
-      setError(err?.message || 'Error al iniciar la verificación de identidad.');
+      console.error('[KycStartModal] Error capturado:', err);
+      setError(err?.message || 'No se pudo iniciar la verificación de identidad.');
     } finally {
       setLoading(false);
     }
