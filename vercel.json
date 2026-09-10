@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/api/integrations/kyc/session",
+      "destination": "/api/integrations-kyc-session"
+    },
+    {
       "source": "/api/admin/:path*",
       "destination": "/api/admin/[...route]"
     },
