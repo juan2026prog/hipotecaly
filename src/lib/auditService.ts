@@ -121,6 +121,10 @@ export async function logAuditEvent(params: {
   delete sanitizedMeta.secret;
   delete sanitizedMeta.jwt;
   delete sanitizedMeta.password;
+  delete sanitizedMeta.authorization;
+  delete sanitizedMeta.access_token;
+  delete sanitizedMeta.refresh_token;
+  delete sanitizedMeta.token_hash;
 
   const newLog: AuditLogEntry = {
     id: `al-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,

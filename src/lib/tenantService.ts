@@ -69,11 +69,13 @@ export interface OrganizationInvitation {
   organization_id: string;
   email: string;
   role: string;
-  token: string;
+  token_hash?: string;
+  token?: string;
   status: 'PENDING' | 'ACCEPTED' | 'EXPIRED' | 'REVOKED';
   invited_by?: string;
   created_at: string;
   expires_at?: string;
+  accepted_at?: string;
 }
 
 // Fallback por defecto: HIPOTECALY Central
@@ -680,6 +682,140 @@ export interface ActorSecurityContext {
 }
 
 /**
+ * Computa el HASH SHA-256 (hexadecimal) de una cadena dada usando Web Crypto API.
+ */
+export async function computeSHA256(input: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(input);
+  const cryptoObj = typeof window !== 'undefined' ? window.crypto : (typeof globalThis !== 'undefined' ? globalThis.crypto : undefined);
+  if (cryptoObj && cryptoObj.subtle) {
+    const hashBuffer = await cryptoObj.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hashBuffer))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+  }
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+    const char = input.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(16).padStart(64, '0');
+}
+
+/**
+ * Genera un secreto aleatorio criptográficamente seguro (CSPRNG) equivalente a 32 bytes (256 bits)
+ * y devuelve tanto el rawToken (para entrega inicial) como su SHA-256 tokenHash (para guardar en DB).
+ */
+export async function generateSecureInvitationToken(): Promise<{ rawToken: string; tokenHash: string }> {
+  const bytes = new Uint8Array(32);
+  const cryptoObj = typeof window !== 'undefined' ? window.crypto : (typeof globalThis !== 'undefined' ? globalThis.crypto : undefined);
+  if (cryptoObj && cryptoObj.getRandomValues) {
+    cryptoObj.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < 32; i++) {
+      bytes[i] = Math.floor(Math.random() * 256);
+    }
+  }
+  const rawToken = Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+  const tokenHash = await computeSHA256(rawToken);
+  return { rawToken, tokenHash };
+}
+
+/**
+ * Resuelve y valida el contexto del actor actuante a nivel de backend/servicio confiable.
+ */
+export async function resolveServerActorContext(
+  targetOrganizationId: string,
+  actorContext?: ActorSecurityContext
+): Promise<{
+  isAuthorized: boolean;
+  userRole: string;
+  organizationId: string | null;
+  userId: string | null;
+  userEmail: string | null;
+  error: string | null;
+}> {
+  let realUserId: string | null = null;
+  let realUserEmail: string | null = null;
+  let realRole: string | null = null;
+  let realOrgId: string | null = null;
+  let isSuperAdmin = false;
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      realUserId = session.user.id;
+      realUserEmail = session.user.email || null;
+      const { data: member } = await supabase
+        .from('organization_members')
+        .select('role, organization_id')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      if (member) {
+        realRole = member.role;
+        realOrgId = member.organization_id;
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_super_admin')
+        .eq('id', session.user.id)
+        .maybeSingle();
+
+      if (profile?.is_super_admin) {
+        isSuperAdmin = true;
+      }
+    }
+  } catch {}
+
+  const evaluatedRole = (realRole || actorContext?.role || 'tenant_admin').toLowerCase();
+  const evaluatedOrgId = realOrgId || actorContext?.organizationId || targetOrganizationId;
+  const superAdminFlag =
+    isSuperAdmin ||
+    (actorContext?.isSuperAdmin === true &&
+      !['analyst', 'operator', 'notary', 'borrower', 'lender', 'operador', 'escribano', 'cliente', 'inversor'].includes(evaluatedRole));
+
+  // Bloqueo incondicional de roles no administrativos
+  if (['analyst', 'operator', 'operador', 'notary', 'escribano', 'borrower', 'cliente', 'lender', 'inversor', 'viewer'].includes(evaluatedRole)) {
+    return {
+      isAuthorized: false,
+      userRole: evaluatedRole,
+      organizationId: evaluatedOrgId,
+      userId: realUserId || actorContext?.userId || null,
+      userEmail: realUserEmail || actorContext?.userEmail || null,
+      error: 'Acceso denegado: El usuario actuante no cuenta con privilegios administrativos para gestionar usuarios.',
+    };
+  }
+
+  // Aislamiento Multi-Tenant
+  if (!superAdminFlag && evaluatedOrgId && evaluatedOrgId !== targetOrganizationId) {
+    return {
+      isAuthorized: false,
+      userRole: evaluatedRole,
+      organizationId: evaluatedOrgId,
+      userId: realUserId || actorContext?.userId || null,
+      userEmail: realUserEmail || actorContext?.userEmail || null,
+      error: 'Acceso denegado: Aislamiento multi-tenant violado. No se pueden administrar usuarios de otra organización.',
+    };
+  }
+
+  const isAuthorized = superAdminFlag || ['tenant_owner', 'tenant_admin', 'admin', 'administrador'].includes(evaluatedRole);
+
+  return {
+    isAuthorized,
+    userRole: evaluatedRole,
+    organizationId: evaluatedOrgId,
+    userId: realUserId || actorContext?.userId || null,
+    userEmail: realUserEmail || actorContext?.userEmail || null,
+    error: isAuthorized ? null : 'Acceso denegado: Se requieren permisos de Administrador.',
+  };
+}
+
+/**
  * Invita un nuevo usuario a la organización con validación de seguridad RBAC server-side.
  * Administrador invitado = tenant_admin, NUNCA tenant_owner.
  */
@@ -688,36 +824,13 @@ export async function inviteOrganizationMember(
   email: string,
   role: string,
   actorContext?: ActorSecurityContext
-): Promise<{ success: boolean; error: string | null; token?: string }> {
+): Promise<{ success: boolean; error: string | null; rawToken?: string; tokenHash?: string }> {
   try {
-    // 1. Validación del Rol del Actor (Backend RBAC)
-    if (actorContext) {
-      const actorRole = actorContext.role?.toLowerCase();
-      const isAuthorized =
-        actorContext.isSuperAdmin ||
-        ['tenant_owner', 'tenant_admin', 'admin'].includes(actorRole || '');
-
-      if (!isAuthorized) {
-        return {
-          success: false,
-          error: 'Acceso denegado: Se requieren permisos de Administrador para invitar usuarios a la organización.',
-        };
-      }
-
-      // Aislamiento Multi-tenant: Actor debe pertenecer a la organización
-      if (
-        !actorContext.isSuperAdmin &&
-        actorContext.organizationId &&
-        actorContext.organizationId !== organizationId
-      ) {
-        return {
-          success: false,
-          error: 'Acceso denegado: Aislamiento multi-tenant violado. No podés administrar invitaciones de otra organización.',
-        };
-      }
+    const authRes = await resolveServerActorContext(organizationId, actorContext);
+    if (!authRes.isAuthorized) {
+      return { success: false, error: authRes.error || 'Acceso denegado.' };
     }
 
-    // 2. REGLA ESTRICTA DE OWNERSHIP: Administrador invitado = tenant_admin, NUNCA tenant_owner.
     let targetTechnicalRole = role.toLowerCase();
     if (['administrador', 'admin', 'tenant_owner', 'owner', 'tenant_admin'].includes(targetTechnicalRole)) {
       targetTechnicalRole = 'tenant_admin';
@@ -727,31 +840,26 @@ export async function inviteOrganizationMember(
       targetTechnicalRole = 'notary';
     }
 
-    // 3. Generación de Token Seguro de Alta Entropía
-    const rawToken = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 3600000 * 24 * 7).toISOString(); // 7 días
+    const { rawToken, tokenHash } = await generateSecureInvitationToken();
+    const expiresAt = new Date(Date.now() + 3600000 * 24 * 7).toISOString();
 
-    // 4. Intentar guardar en Supabase (o mock local)
     try {
       await supabase.from('organization_invitations').insert({
         organization_id: organizationId,
         email,
         role: targetTechnicalRole,
-        token: rawToken,
+        token_hash: tokenHash,
         expires_at: expiresAt,
         status: 'PENDING',
-        invited_by: actorContext?.userEmail || 'Administrador',
+        invited_by: authRes.userEmail || 'Administrador',
       });
-    } catch {
-      // Continuar con simulación en memoria si aplica
-    }
+    } catch {}
 
-    // 5. Audit Log (Garantizando NUNCA exponer rawToken en logs)
     await auditService.logAction({
       organizationId,
-      userId: actorContext?.userId,
-      userName: actorContext?.userEmail || 'Administrador',
-      userRole: actorContext?.role || 'tenant_admin',
+      userId: authRes.userId || undefined,
+      userName: authRes.userEmail || 'Administrador',
+      userRole: authRes.userRole || 'tenant_admin',
       action: 'USER_INVITED',
       module: 'Usuarios',
       recordIdentifier: email,
@@ -760,11 +868,10 @@ export async function inviteOrganizationMember(
         email,
         assigned_role: targetTechnicalRole,
         expires_at: expiresAt,
-        // NUNCA incluir token en metadatos
       },
     });
 
-    return { success: true, error: null };
+    return { success: true, error: null, rawToken, tokenHash };
   } catch (err: unknown) {
     return { success: false, error: err instanceof Error ? err.message : 'Error al enviar invitación' };
   }
@@ -781,43 +888,22 @@ export async function updateOrganizationMemberRole(
   newTechnicalRole: string,
   actorContext?: ActorSecurityContext
 ): Promise<{ success: boolean; error: string | null }> {
-  // 1. Validación de Autorización del Actor
-  if (actorContext) {
-    const actorRole = actorContext.role?.toLowerCase();
-    const isAuthorized =
-      actorContext.isSuperAdmin ||
-      ['tenant_owner', 'tenant_admin', 'admin'].includes(actorRole || '');
-
-    if (!isAuthorized) {
-      return {
-        success: false,
-        error: 'Acceso denegado: El usuario actuante no cuenta con permisos administrativos para cambiar roles.',
-      };
-    }
-
-    if (
-      !actorContext.isSuperAdmin &&
-      actorContext.organizationId &&
-      actorContext.organizationId !== organizationId
-    ) {
-      return {
-        success: false,
-        error: 'Acceso denegado: Aislamiento multi-tenant violado.',
-      };
-    }
+  const authRes = await resolveServerActorContext(organizationId, actorContext);
+  if (!authRes.isAuthorized) {
+    return { success: false, error: authRes.error || 'Acceso denegado.' };
   }
 
   const mappedNewRole = newTechnicalRole === 'Administrador' ? 'tenant_admin' : newTechnicalRole;
   const currentClean = currentTechnicalRole.toLowerCase();
   const newClean = mappedNewRole.toLowerCase();
 
-  // 2. BLINDAJE TENANT_OWNER: Un tenant_owner NO puede ser modificado ni degradado por tenant_admin
+  // BLINDAJE TENANT_OWNER
   if (currentClean === 'tenant_owner') {
     await auditService.logAction({
       organizationId,
-      userId: actorContext?.userId,
-      userName: actorContext?.userEmail || 'Administrador',
-      userRole: actorContext?.role || 'tenant_admin',
+      userId: authRes.userId || undefined,
+      userName: authRes.userEmail || 'Administrador',
+      userRole: authRes.userRole || 'tenant_admin',
       action: 'OWNERSHIP_CHANGE_ATTEMPT_BLOCKED',
       module: 'Usuarios',
       recordIdentifier: targetEmail,
@@ -832,13 +918,13 @@ export async function updateOrganizationMemberRole(
     };
   }
 
-  // 3. BLINDAJE ESCALAMIENTO A TENANT_OWNER: No se pueden asignar derechos de tenant_owner desde gestión de roles
+  // BLINDAJE ESCALAMIENTO A TENANT_OWNER
   if (newClean === 'tenant_owner' || newClean === 'owner') {
     await auditService.logAction({
       organizationId,
-      userId: actorContext?.userId,
-      userName: actorContext?.userEmail || 'Administrador',
-      userRole: actorContext?.role || 'tenant_admin',
+      userId: authRes.userId || undefined,
+      userName: authRes.userEmail || 'Administrador',
+      userRole: authRes.userRole || 'tenant_admin',
       action: 'OWNERSHIP_CHANGE_ATTEMPT_BLOCKED',
       module: 'Usuarios',
       recordIdentifier: targetEmail,
@@ -853,7 +939,6 @@ export async function updateOrganizationMemberRole(
     };
   }
 
-  // Persistir en Supabase
   try {
     await supabase
       .from('organization_members')
@@ -862,13 +947,13 @@ export async function updateOrganizationMemberRole(
       .eq('organization_id', organizationId);
   } catch {}
 
-  const actionName = (newClean === 'tenant_admin' || newClean === 'admin') ? 'ADMIN_GRANTED' : 'USER_ROLE_CHANGED';
+  const actionName = newClean === 'tenant_admin' || newClean === 'admin' ? 'ADMIN_GRANTED' : 'USER_ROLE_CHANGED';
 
   await auditService.logAction({
     organizationId,
-    userId: actorContext?.userId,
-    userName: actorContext?.userEmail || 'Administrador',
-    userRole: actorContext?.role || 'tenant_admin',
+    userId: authRes.userId || undefined,
+    userName: authRes.userEmail || 'Administrador',
+    userRole: authRes.userRole || 'tenant_admin',
     action: actionName,
     module: 'Usuarios',
     recordIdentifier: targetEmail,
@@ -891,34 +976,23 @@ export async function toggleOrganizationMemberStatus(
   activeAdminsCount: number,
   actorContext?: ActorSecurityContext
 ): Promise<{ success: boolean; error: string | null }> {
-  // 1. Autorización Actor
-  if (actorContext) {
-    const actorRole = actorContext.role?.toLowerCase();
-    const isAuthorized =
-      actorContext.isSuperAdmin ||
-      ['tenant_owner', 'tenant_admin', 'admin'].includes(actorRole || '');
-
-    if (!isAuthorized) {
-      return {
-        success: false,
-        error: 'Acceso denegado: Se requieren privilegios administrativos para modificar el acceso de usuarios.',
-      };
-    }
+  const authRes = await resolveServerActorContext(organizationId, actorContext);
+  if (!authRes.isAuthorized) {
+    return { success: false, error: authRes.error || 'Acceso denegado.' };
   }
 
-  // 2. Proteccion tenant_owner
   if (targetTechnicalRole.toLowerCase() === 'tenant_owner') {
     await auditService.logAction({
       organizationId,
-      userId: actorContext?.userId,
-      userName: actorContext?.userEmail || 'Administrador',
-      userRole: actorContext?.role || 'tenant_admin',
+      userId: authRes.userId || undefined,
+      userName: authRes.userEmail || 'Administrador',
+      userRole: authRes.userRole || 'tenant_admin',
       action: 'OWNERSHIP_CHANGE_ATTEMPT_BLOCKED',
       module: 'Usuarios',
       recordIdentifier: targetEmail,
       oldValue: 'active',
       newValue: newStatus,
-      metadata: { reason: 'Intento de desactivar al propietario principal de la organización (tenant_owner).' },
+      metadata: { reason: 'Intento de desactivar al propietario principal (tenant_owner).' },
     });
 
     return {
@@ -927,7 +1001,6 @@ export async function toggleOrganizationMemberStatus(
     };
   }
 
-  // 3. Protección Último Administrador Activo
   const isTargetAdmin = ['tenant_admin', 'tenant_owner', 'admin'].includes(targetTechnicalRole.toLowerCase());
   if (newStatus === 'disabled' && isTargetAdmin && activeAdminsCount <= 1) {
     return {
@@ -944,6 +1017,18 @@ export async function toggleOrganizationMemberStatus(
       .eq('organization_id', organizationId);
   } catch {}
 
+  await auditService.logAction({
+    organizationId,
+    userId: authRes.userId || undefined,
+    userName: authRes.userEmail || 'Administrador',
+    userRole: authRes.userRole || 'tenant_admin',
+    action: newStatus === 'disabled' ? 'USER_DEACTIVATED' : 'USER_ACTIVATED',
+    module: 'Usuarios',
+    recordIdentifier: targetEmail,
+    oldValue: newStatus === 'disabled' ? 'active' : 'disabled',
+    newValue: newStatus,
+  });
+
   return { success: true, error: null };
 }
 
@@ -956,29 +1041,9 @@ export async function revokeOrganizationInvitation(
   targetEmail: string,
   actorContext?: ActorSecurityContext
 ): Promise<{ success: boolean; error: string | null }> {
-  if (actorContext) {
-    const actorRole = actorContext.role?.toLowerCase();
-    const isAuthorized =
-      actorContext.isSuperAdmin ||
-      ['tenant_owner', 'tenant_admin', 'admin'].includes(actorRole || '');
-
-    if (!isAuthorized) {
-      return {
-        success: false,
-        error: 'Acceso denegado: Se requieren permisos administrativos para revocar invitaciones.',
-      };
-    }
-
-    if (
-      !actorContext.isSuperAdmin &&
-      actorContext.organizationId &&
-      actorContext.organizationId !== organizationId
-    ) {
-      return {
-        success: false,
-        error: 'Acceso denegado: Aislamiento multi-tenant violado. No se pueden revocar invitaciones de otra organización.',
-      };
-    }
+  const authRes = await resolveServerActorContext(organizationId, actorContext);
+  if (!authRes.isAuthorized) {
+    return { success: false, error: authRes.error || 'Acceso denegado.' };
   }
 
   try {
@@ -991,9 +1056,9 @@ export async function revokeOrganizationInvitation(
 
   await auditService.logAction({
     organizationId,
-    userId: actorContext?.userId,
-    userName: actorContext?.userEmail || 'Administrador',
-    userRole: actorContext?.role || 'tenant_admin',
+    userId: authRes.userId || undefined,
+    userName: authRes.userEmail || 'Administrador',
+    userRole: authRes.userRole || 'tenant_admin',
     action: 'INVITATION_REVOKED',
     module: 'Usuarios',
     recordIdentifier: targetEmail,
@@ -1004,18 +1069,24 @@ export async function revokeOrganizationInvitation(
 }
 
 /**
- * Procesa la aceptación de una invitación con verificación de expiración y reuso (Idempotencia).
+ * Procesa la aceptación de una invitación con verificación de expiración, SHA-256 token hash y reuso (Idempotencia).
  */
 export async function acceptOrganizationInvitation(
-  _token: string,
-  invitationData?: { expires_at?: string; status?: string; role?: string; email?: string }
+  receivedToken: string,
+  invitationData?: {
+    expires_at?: string;
+    status?: string;
+    role?: string;
+    email?: string;
+    token_hash?: string;
+  }
 ): Promise<{ success: boolean; error: string | null; role?: string }> {
-  if (!invitationData) {
+  if (!invitationData && !receivedToken) {
     return { success: false, error: 'Invitación no encontrada o token inválido.' };
   }
 
   // 1. Verificación de Expiración
-  if (invitationData.expires_at) {
+  if (invitationData?.expires_at) {
     const expires = new Date(invitationData.expires_at).getTime();
     if (Date.now() > expires) {
       return { success: false, error: 'La invitación ha expirado y ya no puede ser aceptada.' };
@@ -1023,16 +1094,24 @@ export async function acceptOrganizationInvitation(
   }
 
   // 2. Verificación de Revocación o Reuso (Idempotencia)
-  if (invitationData.status === 'REVOKED') {
+  if (invitationData?.status === 'REVOKED') {
     return { success: false, error: 'La invitación ha sido revocada.' };
   }
 
-  if (invitationData.status === 'ACCEPTED') {
+  if (invitationData?.status === 'ACCEPTED') {
     return { success: false, error: 'La invitación ya fue utilizada previamente.' };
   }
 
-  // 3. Garantía de asignación segura (NUNCA tenant_owner)
-  let assignedRole = (invitationData.role || 'analyst').toLowerCase();
+  // 3. Verificación de SHA-256 Token Hash si el hash está presente
+  if (invitationData?.token_hash && receivedToken) {
+    const computedHash = await computeSHA256(receivedToken);
+    if (computedHash !== invitationData.token_hash) {
+      return { success: false, error: 'Token de invitación inválido o alterado.' };
+    }
+  }
+
+  // 4. Garantía de asignación segura (NUNCA tenant_owner)
+  let assignedRole = (invitationData?.role || 'analyst').toLowerCase();
   if (['tenant_owner', 'owner', 'admin'].includes(assignedRole)) {
     assignedRole = 'tenant_admin';
   }
