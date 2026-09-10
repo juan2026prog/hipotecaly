@@ -113,6 +113,15 @@ export async function logAuditEvent(params: {
   metadata?: Record<string, any>;
   ipAddress?: string;
 }): Promise<AuditLogEntry> {
+  // Sanitizar metadatos para evitar persistir tokens secretos o credenciales
+  const sanitizedMeta = { ...(params.metadata || {}) };
+  delete sanitizedMeta.token;
+  delete sanitizedMeta.raw_token;
+  delete sanitizedMeta.invite_token;
+  delete sanitizedMeta.secret;
+  delete sanitizedMeta.jwt;
+  delete sanitizedMeta.password;
+
   const newLog: AuditLogEntry = {
     id: `al-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
     organization_id: params.organizationId,
@@ -126,7 +135,7 @@ export async function logAuditEvent(params: {
     application_id: params.applicationId,
     old_value: params.oldValue || null,
     new_value: params.newValue || null,
-    metadata: params.metadata || {},
+    metadata: sanitizedMeta,
     ip_address: params.ipAddress || '127.0.0.1',
     created_at: new Date().toISOString(),
   };

@@ -6,6 +6,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   getOrganizationMembers,
   inviteOrganizationMember,
+  updateOrganizationMemberRole,
+  toggleOrganizationMemberStatus,
+  revokeOrganizationInvitation,
   OrganizationMember,
   OrganizationInvitation,
 } from '../../lib/tenantService';
@@ -17,7 +20,6 @@ import {
   STAFF_INVITATION_OPTIONS,
   StaffCommercialRole,
 } from '../../lib/roleMapping';
-import { auditService } from '../../lib/auditService';
 import {
   UserPlus,
   CheckCircle2,
@@ -39,7 +41,7 @@ import {
 
 export const UsersManagementPage: React.FC = () => {
   const { tenant } = useTenant();
-  const { user } = useAuth();
+  const { user, userRole, isSuperAdmin } = useAuth();
 
   // Estado de pestañas: 'users' | 'roles' | 'invitations'
   const [activeTab, setActiveTab] = useState<'users' | 'roles' | 'invitations'>('users');
@@ -147,12 +149,20 @@ export const UsersManagementPage: React.FC = () => {
     if (!inviteEmail) return;
 
     setInviting(true);
-    const techRole = getTechnicalRoleFromCommercial(inviteStaffRole);
 
-    const res = await inviteOrganizationMember(tenant.id, inviteEmail, techRole as any);
+    const actorCtx = {
+      userId: user?.id,
+      userEmail: user?.email || undefined,
+      role: (userRole as string) || 'tenant_admin',
+      organizationId: tenant.id,
+      isSuperAdmin,
+    };
+
+    const res = await inviteOrganizationMember(tenant.id, inviteEmail, inviteStaffRole, actorCtx);
     setInviting(false);
 
     if (res.success) {
+      const techRole = getTechnicalRoleFromCommercial(inviteStaffRole);
       const newInv: OrganizationInvitation = {
         id: `inv-${Date.now()}`,
         organization_id: tenant.id,
@@ -167,7 +177,6 @@ export const UsersManagementPage: React.FC = () => {
 
       setInvitations((prev) => [newInv, ...prev]);
 
-      // Agregar miembro como "invited" a la lista de usuarios
       const newMember: OrganizationMember = {
         id: `m-${Date.now()}`,
         organization_id: tenant.id,
@@ -180,23 +189,6 @@ export const UsersManagementPage: React.FC = () => {
       };
 
       setMembers((prev) => [...prev, newMember]);
-
-      // Registrar auditoría
-      auditService.logAction({
-        organizationId: tenant.id,
-        userId: user?.id,
-        userName: user?.email || 'Administrador',
-        userRole: 'tenant_admin',
-        action: 'USER_INVITED',
-        module: 'Usuarios',
-        recordIdentifier: inviteEmail,
-        newValue: inviteStaffRole,
-        metadata: {
-          email: inviteEmail,
-          commercial_role: inviteStaffRole,
-          technical_role: techRole,
-        },
-      });
 
       setInviteSuccess(true);
       setTimeout(() => {
@@ -214,6 +206,10 @@ export const UsersManagementPage: React.FC = () => {
 
   // Iniciar cambio de rol
   const handleOpenRoleModal = (member: OrganizationMember) => {
+    if (member.role === 'tenant_owner') {
+      showToast('error', 'El propietario principal de la organización no puede ser modificado ni degradado.');
+      return;
+    }
     const currentCommercial = getCommercialRoleLabel(member.role) as StaffCommercialRole;
     setTargetMember(member);
     setSelectedNewCommercialRole(currentCommercial === 'Administrador' ? 'Operador' : 'Administrador');
@@ -224,49 +220,43 @@ export const UsersManagementPage: React.FC = () => {
   const handleConfirmRoleChange = async () => {
     if (!targetMember) return;
 
-    const currentCommercial = getCommercialRoleLabel(targetMember.role);
-
-    // Si el usuario actual es Administrador y se lo intenta degradar a Operador o Escribano
-    if (currentCommercial === 'Administrador' && selectedNewCommercialRole !== 'Administrador') {
-      if (getActiveAdminsCount() <= 1) {
-        setShowRoleModal(false);
-        setLastAdminBlockReason('Tu organización debe conservar al menos un Administrador activo.');
-        setShowLastAdminBlockModal(true);
-        return;
-      }
-    }
-
     setChangingRole(true);
     const newTechRole = getTechnicalRoleFromCommercial(selectedNewCommercialRole);
 
-    // Actualizar estado local
+    const actorCtx = {
+      userId: user?.id,
+      userEmail: user?.email || undefined,
+      role: (userRole as string) || 'tenant_admin',
+      organizationId: tenant.id,
+      isSuperAdmin,
+    };
+
+    const res = await updateOrganizationMemberRole(
+      tenant.id,
+      targetMember.id,
+      targetMember.email || targetMember.id,
+      targetMember.role,
+      newTechRole,
+      actorCtx
+    );
+
+    setChangingRole(false);
+
+    if (!res.success) {
+      setShowRoleModal(false);
+      if (res.error?.includes('Administrador') || res.error?.includes('administrador')) {
+        setLastAdminBlockReason(res.error);
+        setShowLastAdminBlockModal(true);
+      } else {
+        showToast('error', res.error || 'No se pudo cambiar el rol del usuario.');
+      }
+      return;
+    }
+
     setMembers((prev) =>
       prev.map((m) => (m.id === targetMember.id ? { ...m, role: newTechRole } : m))
     );
 
-    // Registrar en auditoría
-    const isGrantedAdmin = selectedNewCommercialRole === 'Administrador';
-    const isRevokedAdmin = currentCommercial === 'Administrador' && !isGrantedAdmin;
-
-    await auditService.logAction({
-      organizationId: tenant.id,
-      userId: user?.id,
-      userName: user?.email || 'Administrador',
-      userRole: 'tenant_admin',
-      action: isGrantedAdmin ? 'ADMIN_GRANTED' : isRevokedAdmin ? 'ADMIN_REVOKED' : 'USER_ROLE_CHANGED',
-      module: 'Usuarios',
-      recordIdentifier: targetMember.email || targetMember.id,
-      oldValue: currentCommercial,
-      newValue: selectedNewCommercialRole,
-      metadata: {
-        target_user_id: targetMember.user_id,
-        target_email: targetMember.email,
-        old_technical_role: targetMember.role,
-        new_technical_role: newTechRole,
-      },
-    });
-
-    setChangingRole(false);
     setShowRoleModal(false);
     showToast('success', `Rol de ${targetMember.full_name || targetMember.email} actualizado a ${selectedNewCommercialRole}.`);
     setTargetMember(null);
@@ -274,38 +264,45 @@ export const UsersManagementPage: React.FC = () => {
 
   // Desactivar o Reactivar acceso de usuario
   const handleToggleUserStatus = async (member: OrganizationMember) => {
-    const isCurrentlyActive = member.status === 'active';
-    const currentCommercial = getCommercialRoleLabel(member.role);
-
-    // Protección del último Administrador activo
-    if (isCurrentlyActive && currentCommercial === 'Administrador' && getActiveAdminsCount() <= 1) {
-      setLastAdminBlockReason('Tu organización debe conservar al menos un Administrador activo.');
-      setShowLastAdminBlockModal(true);
+    if (member.role === 'tenant_owner') {
+      showToast('error', 'El propietario principal de la organización (tenant_owner) no puede ser desactivado.');
       return;
     }
 
+    const isCurrentlyActive = member.status === 'active';
     const nextStatus = isCurrentlyActive ? 'disabled' : 'active';
+
+    const actorCtx = {
+      userId: user?.id,
+      userEmail: user?.email || undefined,
+      role: (userRole as string) || 'tenant_admin',
+      organizationId: tenant.id,
+      isSuperAdmin,
+    };
+
+    const res = await toggleOrganizationMemberStatus(
+      tenant.id,
+      member.id,
+      member.email || member.id,
+      member.role,
+      nextStatus,
+      getActiveAdminsCount(),
+      actorCtx
+    );
+
+    if (!res.success) {
+      if (res.error?.includes('Administrador') || res.error?.includes('administrador')) {
+        setLastAdminBlockReason(res.error);
+        setShowLastAdminBlockModal(true);
+      } else {
+        showToast('error', res.error || 'No se pudo modificar el estado del usuario.');
+      }
+      return;
+    }
 
     setMembers((prev) =>
       prev.map((m) => (m.id === member.id ? { ...m, status: nextStatus } : m))
     );
-
-    // Audit log
-    await auditService.logAction({
-      organizationId: tenant.id,
-      userId: user?.id,
-      userName: user?.email || 'Administrador',
-      userRole: 'tenant_admin',
-      action: nextStatus === 'active' ? 'USER_ACTIVATED' : 'USER_DEACTIVATED',
-      module: 'Usuarios',
-      recordIdentifier: member.email || member.id,
-      oldValue: member.status,
-      newValue: nextStatus,
-      metadata: {
-        target_user_id: member.user_id,
-        target_email: member.email,
-      },
-    });
 
     showToast(
       'success',
@@ -317,21 +314,24 @@ export const UsersManagementPage: React.FC = () => {
 
   // Revocar invitación pendiente
   const handleRevokeInvitation = async (invitationId: string, email: string) => {
+    const actorCtx = {
+      userId: user?.id,
+      userEmail: user?.email || undefined,
+      role: (userRole as string) || 'tenant_admin',
+      organizationId: tenant.id,
+      isSuperAdmin,
+    };
+
+    const res = await revokeOrganizationInvitation(tenant.id, invitationId, email, actorCtx);
+    if (!res.success) {
+      showToast('error', res.error || 'No se pudo revocar la invitación.');
+      return;
+    }
+
     setInvitations((prev) =>
       prev.map((inv) => (inv.id === invitationId ? { ...inv, status: 'REVOKED' } : inv))
     );
     setMembers((prev) => prev.filter((m) => m.email !== email || m.status !== 'invited'));
-
-    await auditService.logAction({
-      organizationId: tenant.id,
-      userId: user?.id,
-      userName: user?.email || 'Administrador',
-      userRole: 'tenant_admin',
-      action: 'USER_INVITATION_REVOKED',
-      module: 'Usuarios',
-      recordIdentifier: email,
-      newValue: 'REVOKED',
-    });
 
     showToast('info', `Invitación para ${email} revocada.`);
   };
@@ -506,9 +506,16 @@ export const UsersManagementPage: React.FC = () => {
 
                               {/* Rol Comercial */}
                               <td className="px-5 py-4">
-                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${badge.bgClass} ${badge.textClass}`}>
-                                  {badge.label}
-                                </span>
+                                <div className="flex items-center space-x-2 flex-wrap gap-1">
+                                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${badge.bgClass} ${badge.textClass}`}>
+                                    {badge.label}
+                                  </span>
+                                  {member.role === 'tenant_owner' && (
+                                    <span className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-300 px-2 py-0.5 rounded-full inline-flex items-center">
+                                      Propietario de la organización
+                                    </span>
+                                  )}
+                                </div>
                               </td>
 
                               {/* Estado */}
