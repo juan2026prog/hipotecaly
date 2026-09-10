@@ -4,6 +4,12 @@
 
 import { supabase } from './supabase';
 import { PropertyValuation } from './types';
+import {
+  isDemoMode,
+  isDemoOrganization,
+  tagDataList,
+  tagDataSource,
+} from './demoControl';
 
 function withTimeout<T>(promise: PromiseLike<T>, ms = 800): Promise<T> {
   return Promise.race([
@@ -564,10 +570,12 @@ export const DEMO_APPLICATIONS = [
  * Métricas operativas del backoffice en tiempo real
  */
 export async function getBackofficeMetrics(options?: { organizationId?: string; isDemoMode?: boolean } | boolean) {
-  const isDemo = typeof options === 'boolean' ? options : (options?.isDemoMode ?? false);
+  const isDemo = typeof options === 'boolean'
+    ? options
+    : isDemoMode({ organizationId: options?.organizationId, isDemoMode: options?.isDemoMode });
   const orgId = typeof options === 'object' ? options.organizationId : undefined;
 
-  if (isDemo && !orgId) {
+  if (isDemo && (!orgId || isDemoOrganization(orgId))) {
     return {
       newRequests: DEMO_APPLICATIONS.filter((d) => d.status === 'submitted').length,
       inAnalysis: DEMO_APPLICATIONS.filter((d) => d.status === 'info_review' || d.status === 'property_analysis' || d.status === 'evaluation').length,
@@ -598,29 +606,6 @@ export async function getBackofficeMetrics(options?: { organizationId?: string; 
     }
   } catch {
     // Si no es demo, retornar ceros sin inventar métricas
-    if (!isDemo) {
-      return {
-        newRequests: 0,
-        inAnalysis: 0,
-        waitingDocs: 0,
-        offerAvailable: 0,
-        approved: 0,
-        totalRequested: 0,
-        isDemo: false,
-      };
-    }
-  }
-
-  if (isDemo) {
-    return {
-      newRequests: DEMO_APPLICATIONS.filter((d) => d.status === 'submitted').length,
-      inAnalysis: DEMO_APPLICATIONS.filter((d) => d.status === 'info_review' || d.status === 'property_analysis' || d.status === 'evaluation').length,
-      waitingDocs: DEMO_APPLICATIONS.filter((d) => d.status === 'draft').length,
-      offerAvailable: DEMO_APPLICATIONS.filter((d) => d.status === 'offer_available').length,
-      approved: DEMO_APPLICATIONS.filter((d) => d.status === 'approved' || d.status === 'formalization').length,
-      totalRequested: DEMO_APPLICATIONS.reduce((acc, curr) => acc + (Number(curr.requested_amount) || 0), 0),
-      isDemo: true,
-    };
   }
 
   return {
@@ -646,11 +631,11 @@ export async function getApplicationsList(filters?: {
   search?: string;
   useDemoMode?: boolean;
 }) {
-  const isDemo = filters?.useDemoMode ?? false;
+  const isDemo = isDemoMode({ organizationId: filters?.organizationId, isDemoMode: filters?.useDemoMode });
   const orgId = filters?.organizationId;
 
   if (isDemo) {
-    return filterApplicationsLocally(DEMO_APPLICATIONS, filters);
+    return tagDataList(filterApplicationsLocally(DEMO_APPLICATIONS, filters), true);
   }
 
   try {
@@ -668,7 +653,7 @@ export async function getApplicationsList(filters?: {
 
     const { data, error } = await withTimeout(query);
     if (!error && data) {
-      return filterApplicationsLocally(data, filters);
+      return tagDataList(filterApplicationsLocally(data, filters), false);
     }
   } catch {
     // Error en base de datos
@@ -700,7 +685,10 @@ export async function getApplicationDetail(
   idOrPublicId: string,
   options?: { isDemoMode?: boolean; organizationId?: string }
 ) {
-  const isDemo = options?.isDemoMode ?? (idOrPublicId.includes('demo') || idOrPublicId.includes('DEMO'));
+  const isDemo = isDemoMode({ organizationId: options?.organizationId, isDemoMode: options?.isDemoMode }) ||
+    idOrPublicId.includes('demo') ||
+    idOrPublicId.includes('DEMO') ||
+    idOrPublicId.startsWith('e0000');
 
   if (isDemo) {
     const normalized = idOrPublicId.replace('2026', 'DEMO');
@@ -711,7 +699,7 @@ export async function getApplicationDetail(
         a.public_id === normalized ||
         a.public_id.replace('DEMO', '2026') === idOrPublicId
     );
-    if (found) return found;
+    if (found) return tagDataSource(found, true);
   }
 
   try {
@@ -727,7 +715,7 @@ export async function getApplicationDetail(
     const { data, error } = await withTimeout(query.maybeSingle());
 
     if (!error && data) {
-      return data;
+      return tagDataSource(data, false);
     }
   } catch {
     // Continuar a empty state legítimo

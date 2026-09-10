@@ -1,9 +1,10 @@
-// ==============================================================================
-// HIPOTECALY: Servicio de Catálogo de Prestamistas y Reglas (Fase 4)
-// ==============================================================================
-
 import { supabase } from './supabase';
 import { PropertyType } from './types';
+import {
+  isDemoMode,
+  tagDataList,
+  tagDataSource,
+} from './demoControl';
 
 export type LenderStatus = 'draft' | 'active' | 'paused' | 'inactive' | 'blocked';
 
@@ -25,6 +26,7 @@ export interface Lender {
   created_at: string;
   updated_at: string;
   rules?: LenderRules;
+  _source?: 'demo' | 'database';
 }
 
 export interface LenderRules {
@@ -43,14 +45,30 @@ export interface LenderRules {
   is_active: boolean;
 }
 
-export async function getLendersList(): Promise<{ lenders: Lender[]; error: string | null }> {
-  try {
-    const { data, error } = await supabase
-      .from('lenders')
-      .select('*, lender_rules(*)');
+export async function getLendersList(options?: {
+  organizationId?: string;
+  isDemoMode?: boolean;
+}): Promise<{ lenders: Lender[]; error: string | null }> {
+  const isDemo = isDemoMode({ organizationId: options?.organizationId, isDemoMode: options?.isDemoMode });
 
-    if (error || !data || data.length === 0) {
-      return getFallbackLenders();
+  if (isDemo) {
+    return getFallbackLenders();
+  }
+
+  try {
+    let query = supabase.from('lenders').select('*, lender_rules(*)');
+    if (options?.organizationId) {
+      query = query.eq('organization_id', options.organizationId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      return { lenders: [], error: error.message };
+    }
+
+    if (!data || data.length === 0) {
+      return { lenders: [], error: null };
     }
 
     const lenders: Lender[] = data.map((row: any) => ({
@@ -70,6 +88,7 @@ export async function getLendersList(): Promise<{ lenders: Lender[]; error: stri
       is_active: row.is_active,
       created_at: row.created_at,
       updated_at: row.updated_at,
+      _source: 'database',
       rules: row.lender_rules?.[0]
         ? {
             id: row.lender_rules[0].id,
@@ -89,24 +108,34 @@ export async function getLendersList(): Promise<{ lenders: Lender[]; error: stri
         : undefined,
     }));
 
-    return { lenders, error: null };
+    return { lenders: tagDataList(lenders, false), error: null };
   } catch (err: unknown) {
-    return getFallbackLenders();
+    return { lenders: [], error: err instanceof Error ? err.message : 'Error al consultar prestamistas' };
   }
 }
 
-export async function getLenderById(id: string): Promise<{ lender: Lender | null; error: string | null }> {
+export async function getLenderById(
+  id: string,
+  options?: { organizationId?: string; isDemoMode?: boolean }
+): Promise<{ lender: Lender | null; error: string | null }> {
+  const isDemo = isDemoMode({ organizationId: options?.organizationId, isDemoMode: options?.isDemoMode }) ||
+    id.startsWith('len-demo-');
+
+  if (isDemo) {
+    const all = getFallbackLenders();
+    const found = all.lenders.find((l) => l.id === id) || all.lenders[0] || null;
+    return { lender: found ? tagDataSource(found, true) : null, error: null };
+  }
+
   try {
     const { data, error } = await supabase
       .from('lenders')
       .select('*, lender_rules(*)')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (error || !data) {
-      const all = await getFallbackLenders();
-      const found = all.lenders.find((l) => l.id === id) || null;
-      return { lender: found, error: null };
+      return { lender: null, error: error ? error.message : null };
     }
 
     const lender: Lender = {
@@ -126,10 +155,11 @@ export async function getLenderById(id: string): Promise<{ lender: Lender | null
       is_active: data.is_active,
       created_at: data.created_at,
       updated_at: data.updated_at,
+      _source: 'database',
       rules: data.lender_rules?.[0],
     };
 
-    return { lender, error: null };
+    return { lender: tagDataSource(lender, false), error: null };
   } catch (err: unknown) {
     return { lender: null, error: err instanceof Error ? err.message : 'Error al consultar prestamista' };
   }

@@ -13,7 +13,6 @@ import {
   HardDrive,
   Sliders,
   CheckCircle2,
-  AlertTriangle,
   RefreshCw,
   Power,
   Zap,
@@ -122,49 +121,63 @@ export const SuperAdminServicesPage: React.FC = () => {
     }
   };
 
-  // Definición unificada de estados: 'operational' | 'pending' | 'error' | 'disabled'
-  const getServiceStatuses = () => {
+  // Estados permitidos: 'OPERATIVO' | 'NO CONFIGURADO' | 'ERROR' | 'DEMO' | 'NO VERIFICADO'
+  type ServiceStatus = 'OPERATIVO' | 'NO CONFIGURADO' | 'ERROR' | 'DEMO' | 'NO VERIFICADO';
+
+  const getServiceStatuses = (): Record<string, ServiceStatus> => {
     return {
-      ai: loadingAi ? 'operational' : aiStatus?.active ? 'operational' : 'disabled',
-      kyc: 'operational',
-      signature: 'pending', // Ambiente notarial de pruebas pendiente de homologación
-      docflow: 'operational',
-      email: 'operational',
-      storage: 'operational',
-    } as const;
+      ai: loadingAi
+        ? 'NO VERIFICADO'
+        : aiStatus?.configured && aiStatus?.active
+        ? 'OPERATIVO'
+        : aiStatus?.configured
+        ? 'NO VERIFICADO'
+        : 'DEMO',
+      kyc: 'DEMO', // Modo Didit Demo / Sandbox
+      signature: 'DEMO', // Modo Firma Notarial Demo
+      docflow: 'OPERATIVO', // Motor nativo DocFlow
+      email: 'DEMO', // Simulación Demo (delivery_mode=demo)
+      storage: 'OPERATIVO', // Almacenamiento Supabase
+    };
   };
 
   const statuses = getServiceStatuses();
   const serviceList = Object.values(statuses);
   const totalServices = serviceList.length;
-  const operationalCount = serviceList.filter((s) => s === 'operational').length;
+  const operationalCount = serviceList.filter((s) => s === 'OPERATIVO').length;
 
-  const renderStatusBadge = (status: 'operational' | 'pending' | 'error' | 'disabled') => {
+  const renderStatusBadge = (status: ServiceStatus) => {
     switch (status) {
-      case 'operational':
+      case 'OPERATIVO':
         return (
-          <span className="inline-flex items-center text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+          <span data-testid="status-badge-operativo" className="inline-flex items-center text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />
-            🟢 Operativo
+            🟢 OPERATIVO
           </span>
         );
-      case 'pending':
+      case 'NO CONFIGURADO':
         return (
-          <span className="inline-flex items-center text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-            <AlertTriangle className="w-3 h-3 mr-1" />
-            🟡 Configuración pendiente
+          <span data-testid="status-badge-no-configurado" className="inline-flex items-center text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+            ⚪ NO CONFIGURADO
           </span>
         );
-      case 'error':
+      case 'DEMO':
         return (
-          <span className="inline-flex items-center text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
-            🔴 Error
+          <span data-testid="status-badge-demo" className="inline-flex items-center text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mr-1.5" />
+            🟡 DEMO
           </span>
         );
-      case 'disabled':
+      case 'NO VERIFICADO':
         return (
-          <span className="inline-flex items-center text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
-            ⚫ Desactivado
+          <span data-testid="status-badge-no-verificado" className="inline-flex items-center text-[10px] font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">
+            🔘 NO VERIFICADO
+          </span>
+        );
+      case 'ERROR':
+        return (
+          <span data-testid="status-badge-error" className="inline-flex items-center text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
+            🔴 ERROR
           </span>
         );
     }
@@ -182,7 +195,7 @@ export const SuperAdminServicesPage: React.FC = () => {
                 CAPACIDADES DEL SISTEMA
               </span>
               <span className="text-slate-500">•</span>
-              <span className="text-xs text-slate-400 font-mono">SERVICIOS ACTIVOS</span>
+              <span className="text-xs text-slate-400 font-mono">ESTADO AUDITABLE</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mt-1">
               Servicios de HIPOTECALY

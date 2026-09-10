@@ -68,11 +68,11 @@ export class AiContextBuilder {
 
     // 2. Obtener prestatario
     let borrowerData: any = {
-      name: app?.applicant_name || 'Solicitante',
-      idNumber: '4.123.456-7',
-      declaredIncome: 95000,
-      email: app?.applicant_email,
-      phone: app?.applicant_phone,
+      name: app?.applicant_name || null,
+      idNumber: app?.applicant_id_number || null,
+      declaredIncome: app?.applicant_income ? Number(app.applicant_income) : null,
+      email: app?.applicant_email || null,
+      phone: app?.applicant_phone || null,
     };
 
     if (app?.borrower_id) {
@@ -85,7 +85,7 @@ export class AiContextBuilder {
         borrowerData = {
           name: `${b.first_name || ''} ${b.last_name || ''}`.trim() || borrowerData.name,
           idNumber: b.id_number || borrowerData.idNumber,
-          declaredIncome: b.declared_income || borrowerData.declaredIncome,
+          declaredIncome: b.declared_income ? Number(b.declared_income) : borrowerData.declaredIncome,
           email: b.email || borrowerData.email,
           phone: b.phone || borrowerData.phone,
         };
@@ -94,14 +94,14 @@ export class AiContextBuilder {
 
     // 3. Obtener inmueble
     let propertyData: any = {
-      department: app?.property_department || 'Montevideo',
-      locality: 'Pocitos',
-      address: 'Dirección declarada',
-      cadastralNumber: app?.property_padron || '98765',
-      propertyType: 'casa',
-      surfaceM2: 85,
-      estimatedValue: Number(app?.property_value || app?.amount * 2.5 || 125000),
-      legalStatus: 'libre_gravamenes',
+      department: app?.property_department || null,
+      locality: app?.property_city || app?.property_locality || null,
+      address: app?.property_address || null,
+      cadastralNumber: app?.property_padron || null,
+      propertyType: app?.property_type || null,
+      surfaceM2: app?.property_surface ? Number(app.property_surface) : null,
+      estimatedValue: app?.property_value ? Number(app.property_value) : null,
+      legalStatus: app?.property_legal_status || null,
     };
 
     if (app?.property_id) {
@@ -117,8 +117,8 @@ export class AiContextBuilder {
           address: p.address || propertyData.address,
           cadastralNumber: p.cadastral_number || propertyData.cadastralNumber,
           propertyType: p.property_type || propertyData.propertyType,
-          surfaceM2: p.surface_m2 || propertyData.surfaceM2,
-          estimatedValue: Number(p.estimated_value || propertyData.estimatedValue),
+          surfaceM2: p.surface_m2 ? Number(p.surface_m2) : propertyData.surfaceM2,
+          estimatedValue: p.estimated_value ? Number(p.estimated_value) : propertyData.estimatedValue,
           legalStatus: p.legal_status || propertyData.legalStatus,
         };
       }
@@ -183,10 +183,10 @@ export class AiContextBuilder {
       borrower: borrowerData,
       property: propertyData,
       loan: {
-        requestedAmount: Number(app?.amount || app?.requested_amount || 50000),
+        requestedAmount: Number(app?.amount || app?.requested_amount || 0),
         currency: app?.currency || 'USD',
-        termMonths: Number(app?.term_months || 36),
-        status: app?.status || 'submitted',
+        termMonths: Number(app?.term_months || 0),
+        status: app?.status || 'evaluation',
       },
       documents: documentsList,
       kycStatus,
@@ -212,18 +212,18 @@ CONTEXTO OFICIAL DEL EXPEDIENTE HIPOTECALY
 • Identificador de Expediente: ${context.applicationId || 'N/A'}
 • Estado del Caso: ${loan.status || 'evaluation'}
 • Monto Solicitado: ${loan.currency || 'USD'} ${(loan.requestedAmount || 0).toLocaleString('es-UY')}
-• Plazo Solicitado: ${loan.termMonths || 36} meses
-• Solicitante Declarado: ${borrower.name || 'Solicitante'} (CI: ${borrower.idNumber || 'No provista'})
-• Ingresos Declarados: UYU ${borrower.declaredIncome?.toLocaleString('es-UY') || 'No informados'}
+• Plazo Solicitado: ${loan.termMonths ? `${loan.termMonths} meses` : 'No informado'}
+• Solicitante Declarado: ${borrower.name || 'Información pendiente'} (CI: ${borrower.idNumber || 'No provista'})
+• Ingresos Declarados: ${borrower.declaredIncome ? `UYU ${borrower.declaredIncome.toLocaleString('es-UY')}` : 'No informados'}
 
 DATOS DEL INMUEBLE EN GARANTÍA:
-• Departamento: ${property.department || 'Montevideo'}
-• Localidad/Barrio: ${property.locality || 'Centro'}
-• Padrón Catastral Declarado: ${property.cadastralNumber || 'Sin número'}
+• Departamento: ${property.department || 'Información pendiente'}
+• Localidad/Barrio: ${property.locality || 'Información pendiente'}
+• Padrón Catastral Declarado: ${property.cadastralNumber || 'Sin número / No informado'}
 • Tipo de Propiedad: ${property.propertyType || 'Inmueble'}
-• Superficie Declarada: ${property.surfaceM2 || 0} m²
-• Valor Estimado Declarado: USD ${(property.estimatedValue || 0).toLocaleString('es-UY')}
-• Situación Jurídica Reportada: ${property.legalStatus || 'S/D'}
+• Superficie Declarada: ${property.surfaceM2 ? `${property.surfaceM2} m²` : 'No informada'}
+• Valor Estimado Declarado: ${property.estimatedValue ? `USD ${property.estimatedValue.toLocaleString('es-UY')}` : 'No informado'}
+• Situación Jurídica Reportada: ${property.legalStatus || 'Información pendiente'}
 
 ESTADOS DE WORKFLOW:
 • Estado KYC (Identidad): ${context.kycStatus || 'pending'}

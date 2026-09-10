@@ -34,12 +34,14 @@ export const NotaryProfilePage: React.FC = () => {
     const load = async () => {
       try {
         const p = await notaryService.getNotaryProfile(user?.id || 'u-test-notary');
-        setProfile(p);
-        setPhone(p.phone || '');
-        setProfessionalAddress(p.professional_address || '');
-        setProfessionalCity(p.professional_city || '');
-        setElectronicDomicile(p.electronic_domicile || '');
-        setUniversity(p.university || '');
+        if (p) {
+          setProfile(p);
+          setPhone(p.phone || '');
+          setProfessionalAddress(p.professional_address || '');
+          setProfessionalCity(p.professional_city || '');
+          setElectronicDomicile(p.electronic_domicile || '');
+          setUniversity(p.university || '');
+        }
       } catch {
         // Fallback
       }

@@ -143,5 +143,33 @@ export class DemoAIProvider implements AIProvider {
   }
 }
 
-// Instancia singleton por defecto
-export const defaultAiProvider: AIProvider = new DemoAIProvider();
+// Instancia singleton de proveedor demo
+export const demoAiProvider = new DemoAIProvider();
+
+/**
+ * Proveedor para organizaciones reales cuando la IA no está configurada.
+ * NUNCA inventa datos ni ejecuta heurísticas demo silenciosas.
+ */
+export class UnconfiguredAIProvider implements AIProvider {
+  public name = 'UNCONFIGURED_PROVIDER';
+
+  public async analyzeApplication(_input: ApplicationAiInput): Promise<AiAnalysisOutput> {
+    throw new Error('IA_NO_CONFIGURADA: El servicio de Inteligencia Artificial no está configurado para esta organización.');
+  }
+}
+
+export const unconfiguredAiProvider = new UnconfiguredAIProvider();
+
+/**
+ * Obtiene el proveedor de IA adecuado según el contexto.
+ * En modo demo retorna DemoAIProvider. En modo real retorna UnconfiguredAIProvider (o proveedor oficial).
+ */
+export function getAiProvider(isDemo: boolean = false): AIProvider {
+  if (isDemo) {
+    return demoAiProvider;
+  }
+  return unconfiguredAiProvider;
+}
+
+// Export default para retrocompatibilidad controlada
+export const defaultAiProvider: AIProvider = demoAiProvider;

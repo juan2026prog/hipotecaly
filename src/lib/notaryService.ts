@@ -5,6 +5,11 @@
 
 import { supabase } from './supabase';
 import {
+  isDemoMode,
+  tagDataList,
+  tagDataSource,
+} from './demoControl';
+import {
   NotaryStatus,
   NotaryProfile,
   NotaryOffice,
@@ -497,24 +502,10 @@ export const DEMO_NOTARY_OBSERVATIONS: NotaryObservation[] = [
 
 export const notaryService = {
   // 1. Obtener métricas del dashboard notarial
-  async getDashboardMetrics(userId: string, tenantId: string) {
-    try {
-      const apps = await this.getMyAssignedApplications(userId, tenantId);
-      const activeCount = apps.length;
-      const attentionRequiredCount = apps.filter(
-        (a) => a.notary_status === 'observed' || a.notary_status === 'documents_pending' || (a.open_observations_count && a.open_observations_count > 0)
-      ).length;
-      const docsPendingReview = apps.reduce((acc, curr) => acc + (curr.pending_documents_count || 0), 0);
-      const readyToSignCount = apps.filter((a) => a.notary_status === 'ready_to_sign' || a.notary_status === 'drafting').length;
+  async getDashboardMetrics(userId: string, tenantId?: string, options?: { isDemoMode?: boolean }) {
+    const isDemo = isDemoMode({ organizationId: tenantId, isDemoMode: options?.isDemoMode });
 
-      return {
-        activeApplications: activeCount,
-        requiresAttention: attentionRequiredCount,
-        documentsToReview: docsPendingReview,
-        pendingSignatures: readyToSignCount,
-        profileCompleteness: 92, // 92% verificado
-      };
-    } catch {
+    if (isDemo) {
       return {
         activeApplications: 5,
         requiresAttention: 2,
@@ -523,13 +514,65 @@ export const notaryService = {
         profileCompleteness: 92,
       };
     }
+
+    try {
+      const apps = await this.getMyAssignedApplications(userId, tenantId, undefined, undefined, { isDemoMode: false });
+      const activeCount = apps.length;
+      const attentionRequiredCount = apps.filter(
+        (a: any) => a.notary_status === 'observed' || a.notary_status === 'documents_pending' || (a.open_observations_count && a.open_observations_count > 0)
+      ).length;
+      const docsPendingReview = apps.reduce((acc: number, curr: any) => acc + (curr.pending_documents_count || 0), 0);
+      const readyToSignCount = apps.filter((a: any) => a.notary_status === 'ready_to_sign' || a.notary_status === 'drafting').length;
+
+      return {
+        activeApplications: activeCount,
+        requiresAttention: attentionRequiredCount,
+        documentsToReview: docsPendingReview,
+        pendingSignatures: readyToSignCount,
+        profileCompleteness: activeCount > 0 ? 90 : 0,
+      };
+    } catch {
+      return {
+        activeApplications: 0,
+        requiresAttention: 0,
+        documentsToReview: 0,
+        pendingSignatures: 0,
+        profileCompleteness: 0,
+      };
+    }
   },
 
   // 2. Obtener expedientes asignados al escribano con filtros
-  async getMyAssignedApplications(_userId: string, _tenantId?: string, filterStatus?: string, searchQuery?: string) {
+  async getMyAssignedApplications(
+    _userId: string,
+    tenantId?: string,
+    filterStatus?: string,
+    searchQuery?: string,
+    options?: { isDemoMode?: boolean }
+  ) {
+    const isDemo = isDemoMode({ organizationId: tenantId, isDemoMode: options?.isDemoMode });
+
+    if (isDemo) {
+      let filtered = [...DEMO_NOTARY_APPLICATIONS];
+      if (filterStatus && filterStatus !== 'all') {
+        filtered = filtered.filter((a) => a.notary_status === filterStatus);
+      }
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        filtered = filtered.filter(
+          (a) =>
+            a.public_id.toLowerCase().includes(q) ||
+            a.borrower.first_name.toLowerCase().includes(q) ||
+            a.borrower.last_name.toLowerCase().includes(q) ||
+            a.property.cadastral_number.toLowerCase().includes(q) ||
+            a.property.address.toLowerCase().includes(q)
+        );
+      }
+      return tagDataList(filtered, true);
+    }
+
     try {
-      // 1. Intentar consulta Supabase con RLS
-      const { data, error } = await supabase
+      let query = supabase
         .from('applications')
         .select(`
           id,
@@ -573,6 +616,12 @@ export const notaryService = {
         `)
         .eq('application_notaries.status', 'active');
 
+      if (tenantId) {
+        query = query.eq('organization_id', tenantId);
+      }
+
+      const { data, error } = await query;
+
       if (!error && data && data.length > 0) {
         let mapped = data.map((item: any) => ({
           id: item.id,
@@ -589,7 +638,7 @@ export const notaryService = {
           borrower: item.borrowers || { first_name: 'Cliente', last_name: '' },
           property: (item.properties && item.properties[0]) || { property_type: 'casa', department: 'Montevideo' },
           assigned_notary: item.application_notaries[0],
-          pending_documents_count: 1,
+          pending_documents_count: 0,
           open_observations_count: 0,
           next_task: 'Estudio Notarial en curso',
         }));
@@ -610,33 +659,42 @@ export const notaryService = {
           );
         }
 
-        return mapped;
+        return tagDataList(mapped, false);
       }
     } catch {
-      // Fallback a demo dataset
+      // Error silencioso en base de datos real
     }
 
-    // Fallback Mock Demo
-    let filtered = [...DEMO_NOTARY_APPLICATIONS];
-    if (filterStatus && filterStatus !== 'all') {
-      filtered = filtered.filter((a) => a.notary_status === filterStatus);
-    }
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (a) =>
-          a.public_id.toLowerCase().includes(q) ||
-          a.borrower.first_name.toLowerCase().includes(q) ||
-          a.borrower.last_name.toLowerCase().includes(q) ||
-          a.property.cadastral_number.toLowerCase().includes(q) ||
-          a.property.address.toLowerCase().includes(q)
-      );
-    }
-    return filtered;
+    // En modo real: Retornar lista vacía (Empty state legítimo)
+    return [];
   },
 
   // 3. Obtener detalle de un expediente notarial
-  async getNotaryApplicationDetail(applicationId: string, _userId?: string) {
+  async getNotaryApplicationDetail(
+    applicationId: string,
+    _userId?: string,
+    options?: { isDemoMode?: boolean; organizationId?: string }
+  ) {
+    const isDemo = isDemoMode({ organizationId: options?.organizationId, isDemoMode: options?.isDemoMode }) ||
+      applicationId.startsWith('e0000') ||
+      applicationId.includes('DEMO');
+
+    if (isDemo) {
+      const found = DEMO_NOTARY_APPLICATIONS.find((a) => a.id === applicationId || a.public_id === applicationId);
+      if (found) {
+        return tagDataSource({
+          ...found,
+          valuation: {
+            applicant_estimated_value: found.property.estimated_value,
+            preliminary_value: found.property.estimated_value * 0.95,
+            methodology: 'comparables_de_mercado',
+            confidence: 'alta',
+          },
+        }, true);
+      }
+      return tagDataSource(DEMO_NOTARY_APPLICATIONS[0], true);
+    }
+
     try {
       const { data, error } = await supabase
         .from('applications')
@@ -654,33 +712,20 @@ export const notaryService = {
         .maybeSingle();
 
       if (!error && data) {
-        return {
+        return tagDataSource({
           ...data,
           borrower: data.borrowers,
           property: data.properties?.[0] || null,
           valuation: data.property_valuations?.[0] || null,
           notary_status: data.notary_status || 'under_review',
           assigned_notary: data.application_notaries?.[0] || null,
-        };
+        }, false);
       }
     } catch {
-      // Fallback
+      // Retornar null en modo real
     }
 
-    // Buscar en dataset demo
-    const found = DEMO_NOTARY_APPLICATIONS.find((a) => a.id === applicationId || a.public_id === applicationId);
-    if (found) {
-      return {
-        ...found,
-        valuation: {
-          applicant_estimated_value: found.property.estimated_value,
-          preliminary_value: found.property.estimated_value * 0.95,
-          methodology: 'comparables_de_mercado',
-          confidence: 'alta',
-        },
-      };
-    }
-    return DEMO_NOTARY_APPLICATIONS[0];
+    return null;
   },
 
   // 4. Asignar escribano a un expediente (Admin / Mesa operativa)
@@ -731,7 +776,7 @@ export const notaryService = {
     } catch (err: any) {
       return { data: null, error: err };
     }
-    return { data: { id: 'mock-assign-id', application_id: applicationId, notary_user_id: notaryUserId }, error: null };
+    return { data: { id: 'assign-id', application_id: applicationId, notary_user_id: notaryUserId }, error: null };
   },
 
   // 5. Desasignar escribano
@@ -777,7 +822,13 @@ export const notaryService = {
   },
 
   // 7. Checklist Notarial
-  async getNotaryChecklist(applicationId: string, organizationId?: string): Promise<NotaryChecklistItem[]> {
+  async getNotaryChecklist(
+    applicationId: string,
+    organizationId?: string,
+    options?: { isDemoMode?: boolean }
+  ): Promise<NotaryChecklistItem[]> {
+    const isDemo = isDemoMode({ organizationId, isDemoMode: options?.isDemoMode }) || applicationId.startsWith('e0000');
+
     try {
       const { data, error } = await supabase
         .from('notary_checklist_items')
@@ -786,21 +837,26 @@ export const notaryService = {
         .order('sort_order', { ascending: true });
 
       if (!error && data && data.length > 0) {
-        return data as NotaryChecklistItem[];
+        return tagDataList(data as NotaryChecklistItem[], false);
       }
     } catch {
-      // Fallback
+      // Continuar a fallback según modo
     }
 
-    // Retornar checklist por defecto con IDs
-    return DEFAULT_NOTARY_CHECKLIST.map((item, index) => ({
-      id: `chk-demo-${applicationId}-${index + 1}`,
-      application_id: applicationId,
-      organization_id: organizationId || 'a0000000-0000-0000-0000-000000000001',
-      ...item,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }));
+    if (isDemo) {
+      // Retornar checklist por defecto con IDs demo
+      const demoItems = DEFAULT_NOTARY_CHECKLIST.map((item, index) => ({
+        id: `chk-demo-${applicationId}-${index + 1}`,
+        application_id: applicationId,
+        organization_id: organizationId || 'd0000000-0000-0000-0000-000000000001',
+        ...item,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
+      return tagDataList(demoItems, true);
+    }
+
+    return [];
   },
 
   async updateChecklistItem(itemId: string, status: string, comments?: string, completedBy?: string) {
@@ -824,7 +880,14 @@ export const notaryService = {
   },
 
   // 8. Observaciones Notariales Estructuradas
-  async getNotaryObservations(applicationId: string): Promise<NotaryObservation[]> {
+  async getNotaryObservations(applicationId: string, options?: { isDemoMode?: boolean }): Promise<NotaryObservation[]> {
+    const isDemo = isDemoMode({ isDemoMode: options?.isDemoMode }) || applicationId.startsWith('e0000');
+
+    if (isDemo) {
+      const demoObs = DEMO_NOTARY_OBSERVATIONS.filter((o) => o.application_id === applicationId || applicationId.startsWith('e0000'));
+      return tagDataList(demoObs, true);
+    }
+
     try {
       const { data, error } = await supabase
         .from('notary_observations')
@@ -832,14 +895,14 @@ export const notaryService = {
         .eq('application_id', applicationId)
         .order('created_at', { ascending: false });
 
-      if (!error && data && data.length > 0) {
-        return data as NotaryObservation[];
+      if (!error && data) {
+        return tagDataList(data as NotaryObservation[], false);
       }
     } catch {
       // Fallback
     }
 
-    return DEMO_NOTARY_OBSERVATIONS.filter((o) => o.application_id === applicationId || applicationId.startsWith('e0000'));
+    return [];
   },
 
   async createNotaryObservation(observation: Omit<NotaryObservation, 'id' | 'created_at' | 'updated_at'>) {
@@ -867,7 +930,7 @@ export const notaryService = {
     }
 
     const mockNew: NotaryObservation = {
-      id: `obs-demo-new-${Date.now()}`,
+      id: `obs-new-${Date.now()}`,
       ...observation,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -902,7 +965,15 @@ export const notaryService = {
   },
 
   // 9. Perfil Profesional del Escribano (Caja Notarial, Firma Digital, Estudio)
-  async getNotaryProfile(userId: string): Promise<NotaryProfile> {
+  async getNotaryProfile(userId: string, options?: { isDemoMode?: boolean; organizationId?: string }): Promise<NotaryProfile | null> {
+    const isDemo = isDemoMode({ organizationId: options?.organizationId, isDemoMode: options?.isDemoMode }) ||
+      userId === 'u-test-notary' ||
+      userId.includes('demo');
+
+    if (isDemo) {
+      return tagDataSource(DEMO_NOTARY_PROFILE, true);
+    }
+
     try {
       const { data, error } = await supabase
         .from('notary_profiles')
@@ -914,12 +985,13 @@ export const notaryService = {
         .maybeSingle();
 
       if (!error && data) {
-        return data as NotaryProfile;
+        return tagDataSource(data as NotaryProfile, false);
       }
     } catch {
       // Fallback
     }
-    return DEMO_NOTARY_PROFILE;
+
+    return null;
   },
 
   async saveNotaryProfile(userId: string, organizationId: string, profileData: Partial<NotaryProfile>) {
@@ -952,10 +1024,19 @@ export const notaryService = {
   },
 
   // 10. Validación Estricta antes de iniciar Firma Digital
-  async validateNotaryReadyForSignature(userId: string, _applicationId?: string) {
-    const profile = await this.getNotaryProfile(userId);
+  async validateNotaryReadyForSignature(userId: string, _applicationId?: string, options?: { isDemoMode?: boolean }) {
+    const profile = await this.getNotaryProfile(userId, options);
 
     const issues: string[] = [];
+
+    if (!profile) {
+      issues.push('Perfil notarial no configurado en la organización.');
+      return {
+        canSign: false,
+        issues,
+        profile: null,
+      };
+    }
 
     if (!profile.notarial_fund_affiliate_number) {
       issues.push('N.º de afiliado a Caja Notarial no configurado en tu perfil.');
@@ -981,7 +1062,41 @@ export const notaryService = {
   },
 
   // 11. Listar escribanos del tenant para asignación desde Backoffice
-  async listNotariesForTenant(tenantId: string): Promise<NotaryProfile[]> {
+  async listNotariesForTenant(tenantId: string, options?: { isDemoMode?: boolean }): Promise<NotaryProfile[]> {
+    const isDemo = isDemoMode({ organizationId: tenantId, isDemoMode: options?.isDemoMode });
+
+    if (isDemo) {
+      return tagDataList([
+        DEMO_NOTARY_PROFILE,
+        {
+          id: 'np-demo-pablo-silva',
+          user_id: 'u-test-notary-2',
+          organization_id: tenantId,
+          notary_office_id: 'no-demo-001',
+          notary_office: DEMO_NOTARY_OFFICE,
+          notarial_fund_affiliate_number: '52.140',
+          professional_status: 'verified',
+          scj_authorization_status: 'authorized',
+          professional_address: 'Rincón 487 Piso 3',
+          professional_city: 'Montevideo',
+          professional_department: 'Montevideo',
+          electronic_domicile: 'pablo.silva@notarios.org.uy',
+          university: 'Universidad Católica del Uruguay (UCU)',
+          qualification_date: '2019-06-14',
+          role_in_office: 'notary',
+          digital_signature_enabled: true,
+          digital_certificate_status: 'active',
+          full_name: 'Esc. Pablo Silva Gómez',
+          first_name: 'Pablo',
+          last_name: 'Silva Gómez',
+          email: 'pablo.silva@estudiofernandez.uy',
+          phone: '098 123 789',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ], true);
+    }
+
     try {
       const { data, error } = await supabase
         .from('notary_profiles')
@@ -992,41 +1107,13 @@ export const notaryService = {
         .eq('organization_id', tenantId);
 
       if (!error && data && data.length > 0) {
-        return data as NotaryProfile[];
+        return tagDataList(data as NotaryProfile[], false);
       }
     } catch {
       // Fallback
     }
 
-    return [
-      DEMO_NOTARY_PROFILE,
-      {
-        id: 'np-demo-pablo-silva',
-        user_id: 'u-test-notary-2',
-        organization_id: tenantId,
-        notary_office_id: 'no-demo-001',
-        notary_office: DEMO_NOTARY_OFFICE,
-        notarial_fund_affiliate_number: '52.140',
-        professional_status: 'verified',
-        scj_authorization_status: 'authorized',
-        professional_address: 'Rincón 487 Piso 3',
-        professional_city: 'Montevideo',
-        professional_department: 'Montevideo',
-        electronic_domicile: 'pablo.silva@notarios.org.uy',
-        university: 'Universidad Católica del Uruguay (UCU)',
-        qualification_date: '2019-06-14',
-        role_in_office: 'notary',
-        digital_signature_enabled: true,
-        digital_certificate_status: 'active',
-        full_name: 'Esc. Pablo Silva Gómez',
-        first_name: 'Pablo',
-        last_name: 'Silva Gómez',
-        email: 'pablo.silva@estudiofernandez.uy',
-        phone: '098 123 789',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-    ];
+    return [];
   },
 
   // 12. Helper de Auditoría Inmutable

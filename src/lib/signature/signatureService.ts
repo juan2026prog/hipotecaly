@@ -6,6 +6,9 @@
 import { supabase } from '../supabase';
 import { firmaGubProvider } from './FirmaGubProvider';
 import {
+  isDemoMode,
+} from '../demoControl';
+import {
   SignatureProcess,
   SignatureValidationResult,
   SignatureEvidence,
@@ -385,7 +388,9 @@ export const signatureService = {
   },
 
   // 5. Obtener Procesos de Firma de un Expediente
-  async getProcessesForApplication(applicationId: string): Promise<SignatureProcess[]> {
+  async getProcessesForApplication(applicationId: string, options?: { isDemoMode?: boolean }): Promise<SignatureProcess[]> {
+    const isDemo = isDemoMode({ isDemoMode: options?.isDemoMode }) || applicationId.startsWith('e0000');
+
     try {
       const { data } = await supabase
         .from('signature_processes')
@@ -393,13 +398,38 @@ export const signatureService = {
         .eq('application_id', applicationId);
       if (data && data.length > 0) return data;
     } catch {
-      // Demo fallback
+      // Fallback
     }
-    return DEMO_SIGNATURE_PROCESSES.filter((p) => p.application_id === applicationId || true).slice(0, 3);
+
+    if (isDemo) {
+      return DEMO_SIGNATURE_PROCESSES.filter((p) => p.application_id === applicationId);
+    }
+
+    return [];
   },
 
   // 6. Bandeja de Firmas Pendientes del Escribano
-  async getPendingSignaturesForNotary(_userId: string): Promise<SignatureProcess[]> {
-    return DEMO_SIGNATURE_PROCESSES;
+  async getPendingSignaturesForNotary(userId: string, options?: { isDemoMode?: boolean; organizationId?: string }): Promise<SignatureProcess[]> {
+    const isDemo = isDemoMode({ organizationId: options?.organizationId, isDemoMode: options?.isDemoMode }) ||
+      userId === 'u-test-notary' ||
+      userId.includes('demo');
+
+    if (isDemo) {
+      return DEMO_SIGNATURE_PROCESSES;
+    }
+
+    try {
+      const { data } = await supabase
+        .from('signature_processes')
+        .select('*')
+        .eq('signer_user_id', userId)
+        .eq('status', 'awaiting_signer');
+
+      if (data) return data;
+    } catch {
+      // Fallback
+    }
+
+    return [];
   },
 };

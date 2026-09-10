@@ -6,6 +6,7 @@
 import { supabase } from '../supabase';
 import { auditService } from '../auditService';
 import { syncCalendarEventWithGoogleApi } from './googleCalendarIntegration';
+import { isDemoMode } from '../demoControl';
 
 export type CalendarEventType =
   | 'signature'
@@ -212,7 +213,10 @@ class CalendarService {
   }
 
   // 1. Obtener eventos de un expediente
-  public async getEventsByApplication(applicationId: string): Promise<HipotecalyCalendarEvent[]> {
+  public async getEventsByApplication(applicationId: string, options?: { isDemoMode?: boolean; organizationId?: string }): Promise<HipotecalyCalendarEvent[]> {
+    const isDemo = isDemoMode({ organizationId: options?.organizationId, isDemoMode: options?.isDemoMode }) ||
+      applicationId.startsWith('e0000');
+
     try {
       const { data, error } = await supabase
         .from('calendar_events')
@@ -227,18 +231,24 @@ class CalendarService {
       // Fallback
     }
 
-    const local = this.getStoredLocalEvents();
-    return local.filter((e) => e.applicationId === applicationId && e.status !== 'cancelled');
+    if (isDemo) {
+      const local = this.getStoredLocalEvents();
+      return local.filter((e) => e.applicationId === applicationId && e.status !== 'cancelled');
+    }
+
+    return [];
   }
 
   // 2. Obtener evento activo de firma de un expediente
-  public async getActiveSignatureEvent(applicationId: string): Promise<HipotecalyCalendarEvent | null> {
-    const events = await this.getEventsByApplication(applicationId);
+  public async getActiveSignatureEvent(applicationId: string, options?: { isDemoMode?: boolean }): Promise<HipotecalyCalendarEvent | null> {
+    const events = await this.getEventsByApplication(applicationId, options);
     return events.find((e) => e.eventType === 'signature' && (e.status === 'scheduled' || e.status === 'rescheduled')) || null;
   }
 
   // 3. Obtener todas las firmas agendadas
-  public async getAllScheduledSignatures(): Promise<HipotecalyCalendarEvent[]> {
+  public async getAllScheduledSignatures(options?: { isDemoMode?: boolean }): Promise<HipotecalyCalendarEvent[]> {
+    const isDemo = isDemoMode({ isDemoMode: options?.isDemoMode });
+
     try {
       const { data, error } = await supabase
         .from('calendar_events')
@@ -254,12 +264,18 @@ class CalendarService {
       // Fallback
     }
 
-    const local = this.getStoredLocalEvents();
-    return local.filter((e) => e.eventType === 'signature' && (e.status === 'scheduled' || e.status === 'rescheduled'));
+    if (isDemo) {
+      const local = this.getStoredLocalEvents();
+      return local.filter((e) => e.eventType === 'signature' && (e.status === 'scheduled' || e.status === 'rescheduled'));
+    }
+
+    return [];
   }
 
   // 3.b Obtener todos los eventos de la organización
-  public async getEventsByOrganization(organizationId?: string): Promise<HipotecalyCalendarEvent[]> {
+  public async getEventsByOrganization(organizationId?: string, options?: { isDemoMode?: boolean }): Promise<HipotecalyCalendarEvent[]> {
+    const isDemo = isDemoMode({ organizationId, isDemoMode: options?.isDemoMode });
+
     try {
       let query = supabase
         .from('calendar_events')
@@ -278,11 +294,15 @@ class CalendarService {
       // Fallback
     }
 
-    const local = this.getStoredLocalEvents();
-    if (organizationId) {
-      return local.filter((e) => e.organizationId === organizationId);
+    if (isDemo) {
+      const local = this.getStoredLocalEvents();
+      if (organizationId) {
+        return local.filter((e) => e.organizationId === organizationId);
+      }
+      return local;
     }
-    return local;
+
+    return [];
   }
 
   // 4. Crear evento en la Agenda

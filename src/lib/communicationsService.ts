@@ -3,6 +3,7 @@
 // ==============================================================================
 
 import { logAuditEvent } from './auditService';
+import { isDemoMode } from './demoControl';
 
 export type CommunicationChannel = 'email' | 'whatsapp' | 'sms' | 'push';
 
@@ -31,6 +32,7 @@ export interface CommunicationLog {
   message_content: string;
   status: 'delivered' | 'sent' | 'failed' | 'pending';
   delivery_type: 'AUTOMÁTICA' | 'MANUAL';
+  delivery_mode?: 'demo' | 'live';
   sent_by_user?: string;
   error_message?: string;
   created_at: string;
@@ -254,23 +256,38 @@ export function validateTemplateVariables(text: string, allowedVariables: string
 /**
  * Obtiene el historial de comunicaciones de un expediente
  */
-export function getApplicationCommunications(applicationId: string): CommunicationLog[] {
-  return DEMO_APPLICATION_COMMUNICATIONS[applicationId] || [
-    {
-      id: `comm-${Date.now()}`,
-      application_id: applicationId,
-      channel: 'email',
-      recipient: 'cliente@ejemplo.com',
-      event_name: 'Solicitud Recibida',
-      template_code: 'solicitud_recibida',
-      template_version: 1,
-      subject: 'Solicitud recibida',
-      message_content: 'Confirmación inicial enviada al cliente.',
-      status: 'delivered',
-      delivery_type: 'AUTOMÁTICA',
-      created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-    },
-  ];
+export function getApplicationCommunications(applicationId: string, options?: { isDemoMode?: boolean }): CommunicationLog[] {
+  const isDemo = isDemoMode({ isDemoMode: options?.isDemoMode }) || applicationId.startsWith('e0000');
+
+  if (isDemo && DEMO_APPLICATION_COMMUNICATIONS[applicationId]) {
+    return DEMO_APPLICATION_COMMUNICATIONS[applicationId].map((c) => ({
+      ...c,
+      delivery_mode: 'demo',
+    }));
+  }
+
+  if (isDemo) {
+    return [
+      {
+        id: `comm-demo-${Date.now()}`,
+        application_id: applicationId,
+        channel: 'email',
+        recipient: 'cliente@estudionova.uy',
+        event_name: 'Solicitud Recibida (Demo)',
+        template_code: 'solicitud_recibida',
+        template_version: 1,
+        subject: 'Solicitud recibida (Demostración Comercial)',
+        message_content: 'Confirmación inicial simulada enviada al cliente.',
+        status: 'delivered',
+        delivery_type: 'AUTOMÁTICA',
+        delivery_mode: 'demo',
+        created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
+      },
+    ];
+  }
+
+  // En organizaciones reales: Retornar lista vacía si no hay registros
+  return [];
 }
 
 /**
@@ -289,7 +306,11 @@ export async function sendApplicationCommunication(params: {
   userName?: string;
   organizationId?: string;
   variables?: Record<string, string>;
+  isDemoMode?: boolean;
 }): Promise<CommunicationLog> {
+  const isDemo = isDemoMode({ organizationId: params.organizationId, isDemoMode: params.isDemoMode }) ||
+    params.applicationId.startsWith('e0000');
+
   const template = params.templateCode ? getCommunicationTemplates().find((t) => t.code === params.templateCode) : undefined;
   const eventName = params.eventName || template?.name || 'Notificación Operativa';
   
@@ -317,24 +338,27 @@ export async function sendApplicationCommunication(params: {
     message_content: finalContent,
     status: 'delivered',
     delivery_type: params.deliveryType,
+    delivery_mode: isDemo ? 'demo' : 'live',
     sent_by_user: user,
     created_at: new Date().toISOString(),
   };
 
-  const list = DEMO_APPLICATION_COMMUNICATIONS[params.applicationId] || [];
-  list.unshift(newComm);
-  DEMO_APPLICATION_COMMUNICATIONS[params.applicationId] = list;
+  if (isDemo) {
+    const list = DEMO_APPLICATION_COMMUNICATIONS[params.applicationId] || [];
+    list.unshift(newComm);
+    DEMO_APPLICATION_COMMUNICATIONS[params.applicationId] = list;
+  }
 
   // Registrar en auditoría
   await logAuditEvent({
     organizationId: params.organizationId,
     userName: user,
     userRole: 'operator',
-    action: `Envío de comunicación (${params.deliveryType})`,
+    action: `Envío de comunicación (${params.deliveryType} - ${isDemo ? 'DEMO' : 'PRODUCCIÓN'})`,
     module: 'Comunicaciones',
     recordIdentifier: `${params.channel.toUpperCase()} — ${params.recipient}`,
     applicationId: params.applicationId,
-    newValue: eventName,
+    newValue: isDemo ? `Simulación Demo: ${eventName}` : eventName,
   });
 
   return newComm;
