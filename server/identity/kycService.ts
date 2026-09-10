@@ -7,6 +7,8 @@ import { supabaseAdmin } from '../supabase.js';
 import { HmacVerifier } from './hmacVerifier.js';
 import { DiditClient } from './diditClient.js';
 
+const processedEventIdsCache = new Set<string>();
+
 export type KycStatus =
   | 'created'
   | 'in_progress'
@@ -60,6 +62,7 @@ export function normalizeDiditStatus(diditStatus: string): KycStatus {
     case 'in review':
     case 'in_review':
     case 'pending_review':
+    case 'pending review':
     case 'review':
     case 'session.in_review':
     case 'session_in_review':
@@ -318,6 +321,15 @@ export class KycService {
     const payloadHash = crypto.createHash('sha256').update(bodyStr).digest('hex');
 
     // 2. Comprobar idempotencia
+    if (processedEventIdsCache.has(eventId)) {
+      return {
+        handled: true,
+        duplicate: true,
+        sessionId,
+        status: 'verified',
+      };
+    }
+
     try {
       const { data: existingEvent } = await supabaseAdmin
         .from('provider_webhook_events')
@@ -327,6 +339,7 @@ export class KycService {
         .maybeSingle();
 
       if (existingEvent?.processed) {
+        processedEventIdsCache.add(eventId);
         return {
           handled: true,
           duplicate: true,
@@ -337,6 +350,8 @@ export class KycService {
     } catch {
       // Continuar
     }
+
+    processedEventIdsCache.add(eventId);
 
     // 3. Normalizar estado
     const rawStatus =

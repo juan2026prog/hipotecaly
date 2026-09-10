@@ -29,6 +29,116 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     // --------------------------------------------------------------------------
+    // 0. POST /api/integrations/applications/submit (Backend Submission Gate)
+    // --------------------------------------------------------------------------
+    if (cleanPath.includes('applications/submit') && req.method === 'POST') {
+      let bodyData = req.body;
+      if (typeof bodyData === 'string') {
+        try {
+          bodyData = JSON.parse(bodyData);
+        } catch {
+          bodyData = {};
+        }
+      }
+
+      const { applicationId, userId, caseId } = bodyData || {};
+
+      if (!applicationId) {
+        return res.status(400).json({ error: 'Falta applicationId en el body.' });
+      }
+
+      // 1. Obtener la solicitud desde PostgreSQL
+      const { data: app, error: appErr } = await supabaseAdmin
+        .from('applications')
+        .select('id, public_id, organization_id, status')
+        .eq('id', applicationId)
+        .maybeSingle();
+
+      if (appErr || !app) {
+        return res.status(404).json({ error: 'Solicitud no encontrada.' });
+      }
+
+      const isDemoOrg = app.organization_id === 'd0000000-0000-0000-0000-000000000001' || applicationId.includes('demo');
+
+      // 2. Consultar autoritativamente KYC status en identity_verifications
+      let isVerified = false;
+      const targetUserId = userId || (req.headers['x-user-id'] as string);
+
+      if (targetUserId) {
+        const { data: kycUser } = await supabaseAdmin
+          .from('identity_verifications')
+          .select('status')
+          .eq('user_id', targetUserId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (kycUser && (kycUser.status === 'verified' || kycUser.status === 'approved')) {
+          isVerified = true;
+        }
+      }
+
+      if (!isVerified && (app.public_id || caseId)) {
+        const targetCase = caseId || app.public_id;
+        const { data: kycCase } = await supabaseAdmin
+          .from('identity_verifications')
+          .select('status')
+          .eq('case_id', targetCase)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (kycCase && (kycCase.status === 'verified' || kycCase.status === 'approved')) {
+          isVerified = true;
+        }
+      }
+
+      // 3. Bloqueo Backend Gate
+      if (!isVerified && !isDemoOrg) {
+        try {
+          await supabaseAdmin.from('application_status_history').insert({
+            application_id: applicationId,
+            from_status: 'draft',
+            to_status: 'draft',
+            notes: 'ENVÍO FORMAL RECHAZADO POR SERVERLESS GATE: KYC_REQUIRED',
+          });
+        } catch {}
+
+        return res.status(403).json({
+          success: false,
+          error: 'KYC_REQUIRED',
+          code: 'KYC_REQUIRED',
+          message: 'Necesitás verificar tu identidad antes de enviar la solicitud.',
+        });
+      }
+
+      // 4. Actualización autoritativa a 'submitted'
+      const nowIso = new Date().toISOString();
+      await supabaseAdmin
+        .from('applications')
+        .update({
+          status: 'submitted',
+          submitted_at: nowIso,
+          updated_at: nowIso,
+        })
+        .eq('id', applicationId);
+
+      await supabaseAdmin.from('application_status_history').insert({
+        application_id: applicationId,
+        from_status: 'draft',
+        to_status: 'submitted',
+        notes: 'Solicitud enviada formalmente vía Serverless Gate con KYC verificado',
+      });
+
+      return res.status(200).json({
+        success: true,
+        applicationId,
+        status: 'submitted',
+        message: 'Solicitud enviada formalmente con éxito.',
+      });
+    }
+
+    // --------------------------------------------------------------------------
     // 1. POST /api/integrations/kyc/session
     // --------------------------------------------------------------------------
     if (cleanPath.includes('session') && req.method === 'POST') {
@@ -238,15 +348,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const signature =
         (req.headers['x-signature-v2'] ||
           req.headers['X-Signature-V2'] ||
-          req.headers['x-signature']) as string || '';
+          req.headers['x-signature'] ||
+          req.headers['x-hmac-signature']) as string || '';
       const secret = process.env.DIDIT_WEBHOOK_SECRET || '';
+      const kycMode = (process.env.KYC_MODE || 'sandbox').toLowerCase().trim();
 
-      if (secret && signature) {
+      // 1. Validar firma HMAC si está configurada en producción/sandbox o si viene firma
+      if (secret || (kycMode !== 'mock' && signature)) {
+        if (!secret) {
+          return res.status(500).json({ error: 'DIDIT_WEBHOOK_SECRET no está configurada.' });
+        }
+
+        if (!signature) {
+          return res.status(401).json({ error: 'Invalid HMAC signature: Signature header missing' });
+        }
+
         const hmac = crypto.createHmac('sha256', secret);
         hmac.update(rawBody);
         const calculated = hmac.digest('hex');
         const bufCalc = Buffer.from(calculated, 'hex');
         const bufSig = Buffer.from(signature, 'hex');
+
         if (bufCalc.length !== bufSig.length || !crypto.timingSafeEqual(bufCalc, bufSig)) {
           return res.status(401).json({ error: 'Invalid HMAC signature' });
         }
@@ -254,23 +376,84 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const payload = typeof req.body === 'object' ? req.body : JSON.parse(rawBody);
       const sessionId = payload.session_id || payload.sessionId || payload.id;
-      const rawStatus = payload.status || payload.decision || 'in_progress';
+      const eventId = (req.headers['x-event-id'] as string) || payload.event_id || payload.id || `evt_${sessionId}_${Date.now()}`;
+      const rawStatus = (payload.status || payload.decision || payload.action || 'in_progress').toString().toLowerCase().trim();
+
+      // 2. Comprobar Idempotencia
+      try {
+        const { data: existingEvt } = await supabaseAdmin
+          .from('provider_webhook_events')
+          .select('processed')
+          .eq('provider', 'didit')
+          .eq('event_id', eventId)
+          .maybeSingle();
+
+        if (existingEvt?.processed) {
+          return res.status(200).json({ status: 'ok', sessionId, duplicate: true });
+        }
+      } catch {}
+
+      // 3. Mapeo Autoritativo de Estados Didit -> HIPOTECALY
+      let mappedStatus = 'in_progress';
+      if (['approved', 'verified', 'passed', 'success', 'decision.approved'].includes(rawStatus)) {
+        mappedStatus = 'verified';
+      } else if (['declined', 'failed', 'rejected', 'decision.declined'].includes(rawStatus)) {
+        mappedStatus = 'failed';
+      } else if (['in_review', 'pending_review', 'review'].includes(rawStatus)) {
+        mappedStatus = 'pending_review';
+      } else if (['resubmission_required', 'resubmission_requested', 'resubmit'].includes(rawStatus)) {
+        mappedStatus = 'resubmission_required';
+      } else if (['expired'].includes(rawStatus)) {
+        mappedStatus = 'expired';
+      }
+
       const nowIso = new Date().toISOString();
 
       if (sessionId) {
+        // Actualizar registro en identity_verifications
         await supabaseAdmin
           .from('identity_verifications')
           .update({
-            status: rawStatus === 'Approved' ? 'verified' : (rawStatus === 'Declined' ? 'failed' : 'in_progress'),
+            status: mappedStatus,
             provider_status: rawStatus,
-            decision_code: payload.decision_code || null,
-            completed_at: rawStatus === 'Approved' ? nowIso : null,
+            decision_code: payload.decision_code || payload.code || null,
+            reason: payload.reason || null,
+            completed_at: mappedStatus === 'verified' ? nowIso : null,
             updated_at: nowIso,
           })
           .eq('provider_session_id', sessionId);
+
+        // Registrar auditoría omitiendo PII / fotos / biometría / secretos
+        try {
+          await supabaseAdmin.from('identity_verification_events').insert({
+            provider: 'didit',
+            event_type: `KYC_${mappedStatus.toUpperCase()}`,
+            status: mappedStatus,
+            metadata: {
+              sessionId,
+              mode: kycMode,
+              providerStatus: rawStatus,
+            },
+          });
+        } catch {}
       }
 
-      return res.status(200).json({ status: 'ok', sessionId, statusProcessed: rawStatus });
+      // Registrar evento para idempotencia
+      try {
+        await supabaseAdmin.from('provider_webhook_events').upsert(
+          {
+            provider: 'didit',
+            event_id: eventId,
+            payload_hash: crypto.createHash('sha256').update(rawBody).digest('hex'),
+            processed: true,
+            processed_at: nowIso,
+            status: 'processed',
+          },
+          { onConflict: 'provider,event_id' }
+        );
+      } catch {}
+
+      return res.status(200).json({ status: 'ok', sessionId, mappedStatus, rawStatus });
     }
 
     // --------------------------------------------------------------------------

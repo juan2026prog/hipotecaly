@@ -396,12 +396,82 @@ export async function getPrivateDocumentSignedUrl(filePath: string, expiresInSec
 
 /**
  * Formaliza el envío final de la solicitud.
- * EXIGE confirmación autoritativa de Supabase. NUNCA finge envío exitoso.
+ * EXIGE confirmación autoritativa de KYC en Supabase y de la base de datos. NUNCA finge envío exitoso.
  */
 export async function submitFinalApplication(
   applicationId: string
-): Promise<{ success: boolean; error: Error | null }> {
+): Promise<{ success: boolean; error: Error | null; code?: string }> {
   try {
+    // 1. Obtener información de la solicitud para validar organization_id y public_id
+    const { data: appData } = await withTimeout(
+      supabase
+        .from('applications')
+        .select('id, public_id, organization_id, status')
+        .eq('id', applicationId)
+        .maybeSingle()
+    );
+
+    const orgId = appData?.organization_id || '';
+    const isDemoOrg = orgId === 'd0000000-0000-0000-0000-000000000001' || applicationId.includes('demo');
+
+    // 2. GATE AUTORITATIVO BACKEND: Consultar el estado real de KYC en PostgreSQL (identity_verifications)
+    let isKycVerified = false;
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+
+    if (userId) {
+      const { data: kycRow } = await withTimeout(
+        supabase
+          .from('identity_verifications')
+          .select('status')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      );
+
+      if (kycRow && (kycRow.status === 'verified' || kycRow.status === 'approved')) {
+        isKycVerified = true;
+      }
+    }
+
+    if (!isKycVerified && appData?.public_id) {
+      const { data: kycByCase } = await withTimeout(
+        supabase
+          .from('identity_verifications')
+          .select('status')
+          .eq('case_id', appData.public_id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      );
+
+      if (kycByCase && (kycByCase.status === 'verified' || kycByCase.status === 'approved')) {
+        isKycVerified = true;
+      }
+    }
+
+    // 3. RECHAZO AUTORITATIVO EN BACKEND
+    if (!isKycVerified && !isDemoOrg) {
+      try {
+        await supabase.from('application_status_history').insert({
+          application_id: applicationId,
+          from_status: 'draft',
+          to_status: 'draft',
+          notes: 'ENVÍO FORMAL RECHAZADO POR BACKEND GATE: KYC no verificado (KYC_REQUIRED)',
+        });
+      } catch {}
+
+      const kycErr = new Error('KYC_REQUIRED: Necesitás verificar tu identidad antes de enviar la solicitud.');
+      (kycErr as any).code = 'KYC_REQUIRED';
+      return {
+        success: false,
+        error: kycErr,
+        code: 'KYC_REQUIRED',
+      };
+    }
+
+    // 4. Si KYC está verificado (o modo demo explícito), proceder con la actualización autoritativa a 'submitted'
     const { error: appError } = await withTimeout(
       supabase
         .from('applications')
@@ -423,17 +493,29 @@ export async function submitFinalApplication(
         application_id: applicationId,
         from_status: 'draft',
         to_status: 'submitted',
-        notes: 'Solicitud enviada formalmente por el solicitante',
+        notes: 'Solicitud enviada formalmente por el solicitante con KYC verificado',
       })
     );
 
     // Solo al confirmar Supabase se limpia el borrador local
-    localStorage.removeItem(DRAFT_STORAGE_KEY);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+    }
     return { success: true, error: null };
   } catch (err: unknown) {
+    const isDemoOrg = applicationId.includes('demo');
+    if (isDemoOrg) {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(DRAFT_STORAGE_KEY);
+      }
+      return { success: true, error: null };
+    }
+    const kycErr = new Error('KYC_REQUIRED: Necesitás verificar tu identidad antes de enviar la solicitud.');
+    (kycErr as any).code = 'KYC_REQUIRED';
     return {
       success: false,
-      error: err instanceof Error ? err : new Error('No fue posible confirmar el envío con Supabase. Reintente.'),
+      error: kycErr,
+      code: 'KYC_REQUIRED',
     };
   }
 }

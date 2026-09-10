@@ -368,10 +368,14 @@ export const ApplicationWizard: React.FC = () => {
       if (linkedSimulationId) {
         await clientSimulationService.linkSimulationToApplication(linkedSimulationId, targetAppId, publicId, user?.id);
       }
-      const { success, error } = await submitFinalApplication(targetAppId);
+      const { success, error, code } = await submitFinalApplication(targetAppId);
       if (success) {
         setSubmitting(false);
         navigate('/mi-cuenta', { state: { justSubmitted: true, publicId } });
+        return;
+      } else if (code === 'KYC_REQUIRED' || error?.message?.includes('KYC_REQUIRED')) {
+        setSubmitting(false);
+        setIsGateModalOpen(true);
         return;
       } else {
         navigate('/mi-cuenta', { state: { justSubmitted: true, publicId, pendingSync: true, syncError: error?.message } });
