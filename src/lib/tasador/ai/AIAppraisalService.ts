@@ -24,6 +24,26 @@ export class AIAppraisalService {
   }
 
   /**
+   * Obtiene el estado de salud y configuración del servicio de IA
+   */
+  public getHealthStatus(): {
+    enabled: boolean;
+    visionEnabled: boolean;
+    shadowMode: boolean;
+    provider: string;
+    model: string;
+  } {
+    const config = BudgetGuard.getInstance().getConfig();
+    return {
+      enabled: config.aiEnabled,
+      visionEnabled: config.visionEnabled,
+      shadowMode: true,
+      provider: 'OpenAI (server-side)',
+      model: 'gpt-4o / gpt-4o-mini',
+    };
+  }
+
+  /**
    * Ejecuta el enriquecimiento de IA sobre una tasación calculada
    * GARANTÍA DE FALLBACK: Si OpenAI o la red fallan, la tasación concluye con éxito.
    */

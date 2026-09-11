@@ -12,7 +12,9 @@ import {
   BacktestMetrics,
   CalibrationProposal,
   CalibrationRun,
+  ValidationStrategyType,
 } from './calibrationTypes';
+import { SampleSufficiencyEngine } from './SampleSufficiencyEngine';
 import { AppraisalSettingsV1, TargetPropertyInput } from '../valuation/valuationTypes';
 
 export class CalibrationEngine {
@@ -48,6 +50,9 @@ export class CalibrationEngine {
       absError: number;
       pctError: number;
       withinRange: boolean;
+      signedError: number;
+      signedPercentageError: number;
+      signedClassification: 'OVERVALUATION' | 'UNDERVALUATION' | 'EXACT_MATCH';
     }>;
   }> {
     const settings = params?.customSettings || AppraisalSettingsManager.getInstance().getSettings();
@@ -68,9 +73,20 @@ export class CalibrationEngine {
           mae: 0,
           mape: 0,
           mdape: 0,
-          bias: 0,
-          coveragePercentage: 0,
           rmse: 0,
+          meanSignedError: 0,
+          medianSignedError: 0,
+          meanSignedPercentageError: 0,
+          bias: 0,
+          overvaluationRate: 0,
+          undervaluationRate: 0,
+          coveragePercentage: 0,
+          algorithmVersion: 'v3.4-hybrid-ensemble',
+          settingsVersion: settings.version,
+          timeWindow: 'N/A',
+          validationStrategy: 'INSUFFICIENT_FOR_SPLIT',
+          maturityLevel: 'NO_DATA',
+          status: 'NO_DATA',
         },
         details: [],
       };
@@ -88,6 +104,9 @@ export class CalibrationEngine {
       absError: number;
       pctError: number;
       withinRange: boolean;
+      signedError: number;
+      signedPercentageError: number;
+      signedClassification: 'OVERVALUATION' | 'UNDERVALUATION' | 'EXACT_MATCH';
     }> = [];
 
     const absErrors: number[] = [];
@@ -147,6 +166,9 @@ export class CalibrationEngine {
       signedPctErrors.push(signedPctError);
       sumSqError += Math.pow(absError, 2);
 
+      const signedClassification: 'OVERVALUATION' | 'UNDERVALUATION' | 'EXACT_MATCH' =
+        signedError > 0 ? 'OVERVALUATION' : signedError < 0 ? 'UNDERVALUATION' : 'EXACT_MATCH';
+
       details.push({
         txId: tx.id,
         neighborhood: tx.neighborhood,
@@ -155,6 +177,9 @@ export class CalibrationEngine {
         absError: Math.round(absError),
         pctError: Number((pctError * 100).toFixed(2)),
         withinRange,
+        signedError: Math.round(signedError),
+        signedPercentageError: Number((signedPctError * 100).toFixed(2)),
+        signedClassification,
       });
     }
 
@@ -184,6 +209,18 @@ export class CalibrationEngine {
     const dates = filteredTx.map((t) => t.transactionDate).sort();
     const timeWindow = dates.length > 0 ? `${dates[0]} -> ${dates[dates.length - 1]}` : 'N/A';
 
+    const sufficiencyEngine = SampleSufficiencyEngine.getInstance();
+    const maturityLevel = sufficiencyEngine.classifyMaturity(n);
+    const validationStrategy = sufficiencyEngine.determineValidationStrategy(n);
+
+    // Bootstrap Uncertainty Estimation
+    const observations = details.map((d) => ({
+      actual: d.actualPrice,
+      predicted: d.predictedPrice,
+      withinRange: d.withinRange,
+    }));
+    const bootstrap = sufficiencyEngine.computeBootstrapIntervals(observations);
+
     return {
       metrics: {
         sampleCount: n,
@@ -193,6 +230,7 @@ export class CalibrationEngine {
         rmse: Math.round(rmse),
         meanSignedError: Math.round(meanSignedError),
         medianSignedError: Math.round(medianSignedError),
+        meanSignedPercentageError: Number(bias.toFixed(2)),
         bias: Number(bias.toFixed(2)),
         overvaluationRate: Number(overvaluationRate.toFixed(2)),
         undervaluationRate: Number(undervaluationRate.toFixed(2)),
@@ -200,7 +238,10 @@ export class CalibrationEngine {
         algorithmVersion: 'v3.4-hybrid-ensemble',
         settingsVersion: settings.version,
         timeWindow,
-        status: n >= 3 ? 'OPTIMAL' : 'INSUFFICIENT_GROUND_TRUTH',
+        validationStrategy,
+        maturityLevel,
+        bootstrap,
+        status: maturityLevel,
       },
       details,
     };
@@ -208,17 +249,21 @@ export class CalibrationEngine {
 
   /**
    * Ejecuta evaluación separada de Conjunto de Calibración (70%) vs Holdout de Validación (30%)
-   * Garantiza que ninguna transacción se use a la vez en entrenamiento y validación.
+   * Con N < minHoldoutSample, utiliza estrategia adaptativa LOOCV / K-Fold.
    */
   public async runHoldoutEvaluation(params?: {
     customSettings?: AppraisalSettingsV1;
   }): Promise<{
+    strategy: ValidationStrategyType;
     calibrationSet: { count: number; ids: string[]; metrics: BacktestMetrics };
     holdoutSet: { count: number; ids: string[]; metrics: BacktestMetrics };
     separationVerified: boolean;
+    reason: string;
   }> {
     const groundTruthService = GroundTruthService.getInstance();
     const allTx = groundTruthService.getVerifiedTransactions();
+    const sufficiencyEngine = SampleSufficiencyEngine.getInstance();
+    const strategy = sufficiencyEngine.determineValidationStrategy(allTx.length);
 
     // Ordenar cronológicamente para partición temporal
     const sortedTx = [...allTx].sort((a, b) => a.transactionDate.localeCompare(b.transactionDate));
@@ -242,7 +287,12 @@ export class CalibrationEngine {
       cutoffDate: calibTx.length > 0 ? calibTx[calibTx.length - 1].transactionDate : undefined,
     });
 
+    const reason = strategy === 'TRADITIONAL_HOLDOUT'
+      ? 'Split 70/30 estándar por tamaño de muestra suficiente (N >= 20).'
+      : `Estrategia adaptativa exploratoria (${strategy}) debido a muestra moderada (N=${allTx.length} < 20).`;
+
     return {
+      strategy,
       calibrationSet: {
         count: calibTx.length,
         ids: calibTx.map((t) => t.id),
@@ -254,6 +304,7 @@ export class CalibrationEngine {
         metrics: holdoutResult.metrics,
       },
       separationVerified: !overlap && calibTx.length > 0 && holdoutTx.length > 0,
+      reason,
     };
   }
 
@@ -263,6 +314,8 @@ export class CalibrationEngine {
   public async generateCalibrationRun(scope: string = 'GLOBAL'): Promise<CalibrationRun> {
     const settingsManager = AppraisalSettingsManager.getInstance();
     const currentSettings = settingsManager.getSettings();
+    const sufficiencyEngine = SampleSufficiencyEngine.getInstance();
+    const thresholds = sufficiencyEngine.getThresholdsConfig();
 
     // 1. Métricas Antes de la Calibración
     const beforeResult = await this.runBacktest({ customSettings: currentSettings });
@@ -272,7 +325,7 @@ export class CalibrationEngine {
     const allTx = GroundTruthService.getInstance().getVerifiedTransactions();
 
     // Validación de tamaño mínimo de muestra
-    if (allTx.length < 5) {
+    if (allTx.length < thresholds.minMetricSample) {
       const run: CalibrationRun = {
         id: runId,
         scope,
@@ -285,7 +338,7 @@ export class CalibrationEngine {
         metricsAfter: metricsBefore,
         proposals: [],
         status: 'INSUFFICIENT_DATA',
-        notes: `Muestra insuficiente (${allTx.length} transacciones verificadas). Se requieren al menos 5 para evaluar propuestas.`,
+        notes: `Muestra insuficiente (${allTx.length} transacciones verificadas). Se requieren al menos ${thresholds.minMetricSample} para evaluación exploratoria.`,
         createdAt: new Date().toISOString(),
       };
       this.runs.set(runId, run);
@@ -293,7 +346,6 @@ export class CalibrationEngine {
     }
 
     // 2. Evaluar candidato de optimización en modo shadow
-    // Ejemplo: evaluar si ajustar askingPriceAdjustment a 0.1150 o pesos de superficie reduce el MAPE
     const candidateSettings: AppraisalSettingsV1 = {
       ...currentSettings,
       askingPriceAdjustment: 0.1150,
@@ -308,9 +360,12 @@ export class CalibrationEngine {
     const afterResult = await this.runBacktest({ customSettings: candidateSettings });
     const metricsAfter = afterResult.metrics;
 
+    const proposalStrength = sufficiencyEngine.determineProposalStrength(allTx.length, thresholds);
+    const isEligibleForActivation = allTx.length >= thresholds.minActivationSample;
+
     const proposals: CalibrationProposal[] = [];
 
-    // Si mejora el MAPE o MdAPE, generar propuesta estructurada
+    // Generar propuesta estructurada con clasificación de solidez
     const proposalId = `prop-${Date.now()}-01`;
     const proposal: CalibrationProposal = {
       id: proposalId,
@@ -326,10 +381,12 @@ export class CalibrationEngine {
         weights: candidateSettings.weights,
       },
       sampleSize: allTx.length,
+      proposalStrength,
+      isEligibleForActivation,
       evidence: {
         metricsBefore,
         metricsAfter,
-        explanation: `Reducción del MAPE de ${metricsBefore.mape}% a ${metricsAfter.mape}% con cobertura del ${metricsAfter.coveragePercentage}%.`,
+        explanation: `Reducción del MAPE de ${metricsBefore.mape}% a ${metricsAfter.mape}% con cobertura del ${metricsAfter.coveragePercentage}%. Solidez de la propuesta: ${proposalStrength}.`,
       },
       expectedImpact: `Mejora de ${Math.abs(metricsBefore.mape - metricsAfter.mape).toFixed(2)}% en precisión sobre transacciones confirmadas.`,
       status: 'PENDING_REVIEW',
@@ -352,7 +409,7 @@ export class CalibrationEngine {
       metricsAfter,
       proposals,
       status: 'PENDING_APPROVAL',
-      notes: 'Propuesta de calibración generada en modo SHADOW. Requiere aprobación manual de Super Admin.',
+      notes: `Propuesta de calibración generada en modo SHADOW (${proposalStrength}). Requiere aprobación manual de Super Admin.`,
       createdAt: new Date().toISOString(),
     };
 

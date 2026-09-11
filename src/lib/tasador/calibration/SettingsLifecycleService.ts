@@ -67,6 +67,13 @@ export class SettingsLifecycleService {
       throw new Error(`La propuesta ya fue procesada con estado: ${proposal.status}`);
     }
 
+    // Validación de gobernanza estadística: prohibir activación de propuestas exploratorias con muestra insuficiente
+    if (proposal.proposalStrength === 'EXPLORATORY' || proposal.isEligibleForActivation === false) {
+      throw new Error(
+        `BLOQUEO DE GOBERNANZA: La propuesta ${proposal.id} tiene fuerza '${proposal.proposalStrength}' con muestra N=${proposal.sampleSize}. Requiere un mínimo de 75 observaciones (fuerza ACTIONABLE o STRONG) para ser activada en producción.`
+      );
+    }
+
     // 1. Marcar propuesta como aprobada
     proposal.status = 'APPROVED';
     proposal.reviewedBy = params.superAdminUserId;

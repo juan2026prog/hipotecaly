@@ -15,6 +15,7 @@ import {
   ChevronUp,
   MessageSquare,
   Award,
+  Info,
 } from 'lucide-react';
 import { CasePropertyLinkService } from '../../lib/tasador/integration/CasePropertyLinkService';
 import { CaseValuationService } from '../../lib/tasador/integration/CaseValuationService';
@@ -351,17 +352,41 @@ export const CaseTasadorSection: React.FC<CaseTasadorSectionProps> = ({
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] uppercase font-bold text-slate-400">Nivel de Confianza</span>
-                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-bold">
-                  {latestValuation.confidenceLevel}
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  latestValuation.confidenceLevel === 'HIGH'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : latestValuation.confidenceLevel === 'MEDIUM'
+                    ? 'bg-amber-100 text-amber-800'
+                    : 'bg-rose-100 text-rose-800'
+                }`}>
+                  {latestValuation.confidenceLevel === 'HIGH' ? 'Alta' : latestValuation.confidenceLevel === 'MEDIUM' ? 'Media' : 'Baja'}
                 </span>
               </div>
               <div className="text-2xl font-black text-navy">
                 {latestValuation.confidenceScore} <span className="text-xs font-normal text-slate-400">/ 100</span>
               </div>
               <div className="text-[11px] text-slate-500">
-                {latestValuation.report.effectiveComparablesUsed} comparables utilizados (12% asking aplicado).
+                {latestValuation.confidenceLevel === 'HIGH' 
+                  ? `Alta: ${latestValuation.report.effectiveComparablesUsed} comparables recientes en misma zona y calidad.`
+                  : latestValuation.confidenceLevel === 'MEDIUM'
+                  ? `Media: ${latestValuation.report.effectiveComparablesUsed} comparables con ajuste por distancia o tipología.`
+                  : `Baja: Pocos comparables disponibles (${latestValuation.report.effectiveComparablesUsed}). Requiere peritaje SAU.`}
               </div>
             </div>
+          </div>
+
+          {/* BLOQUE DE LIMITACIONES DE ESTA TASACIÓN */}
+          <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-2 text-xs">
+            <div className="flex items-center space-x-2 text-slate-700 font-bold">
+              <Info className="w-4 h-4 text-slate-500" />
+              <span>Limitaciones y consideraciones de esta estimación:</span>
+            </div>
+            <ul className="list-disc list-inside space-y-1 text-slate-500 text-[11px] pl-1">
+              <li>Valuación automatizada calculada mediante comparables de oferta pública normalizados con descuento del 12%.</li>
+              <li>No reemplaza una inspección ocular física ni un peritaje estructural/patológico formal.</li>
+              <li>El estado de conservación visual proviene de análisis automatizado en modo sombra sin afectación monetaria directa.</li>
+              <li>Sujeto a verificación notarial de titularidad, gravámenes y concordancia del padrón catastral en DNC.</li>
+            </ul>
           </div>
 
           {/* ESTADO DE IA Y FALLBACK */}

@@ -142,7 +142,20 @@ test.describe.serial('Tasador IA — E2E Fases 5 + 6: Flujo Integral de Operaci�
     const proposals = Array.from(calibEngine.proposals.values());
     const proposal = proposals[proposals.length - 1];
 
-    if (proposal.status === 'PENDING_REVIEW') {
+    if (proposal && proposal.status === 'PENDING_REVIEW') {
+      // 1. Verificar que propuesta exploratoria es bloqueada por gobernanza
+      expect(() => {
+        lifecycle.approveAndPromoteProposal({
+          proposalId: proposal.id,
+          superAdminUserId: 'super-admin-master',
+        });
+      }).toThrow(/BLOQUEO DE GOBERNANZA/);
+
+      // 2. Simular madurez de muestra N>=75 para validar la promoción y la inmutabilidad histórica
+      proposal.proposalStrength = 'ACTIONABLE';
+      proposal.isEligibleForActivation = true;
+      proposal.sampleSize = 85;
+
       lifecycle.approveAndPromoteProposal({
         proposalId: proposal.id,
         superAdminUserId: 'super-admin-master',

@@ -28,7 +28,9 @@ export class AskingDiscountAnalyzer {
         maxDiscount: 0.1200,
         standardDeviation: 0,
         baselineDifference: 0,
-        status: 'INSUFFICIENT_SAMPLE',
+        maturityLevel: 'NO_DATA',
+        usableForCalibration: false,
+        status: 'NO_DATA',
       };
     }
 
@@ -52,6 +54,7 @@ export class AskingDiscountAnalyzer {
     const standardDeviation = Math.sqrt(variance);
 
     const baselineDifference = Number((median - 0.1200).toFixed(4));
+    const maturityLevel = n >= 200 ? 'STRONG_EVIDENCE' : n >= 75 ? 'STATISTICALLY_USEFUL' : n >= 30 ? 'USABLE_WITH_CAUTION' : n >= 10 ? 'EARLY_SIGNAL' : 'INSUFFICIENT';
 
     return {
       sampleCount: n,
@@ -64,7 +67,9 @@ export class AskingDiscountAnalyzer {
       maxDiscount: Number(max.toFixed(4)),
       standardDeviation: Number(standardDeviation.toFixed(4)),
       baselineDifference,
-      status: n >= 3 ? 'SUFFICIENT' : 'INSUFFICIENT_SAMPLE',
+      maturityLevel,
+      usableForCalibration: n >= 15,
+      status: maturityLevel,
     };
   }
 

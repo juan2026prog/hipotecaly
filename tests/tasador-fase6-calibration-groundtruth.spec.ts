@@ -120,6 +120,19 @@ test.describe.serial('Tasador IA — Fase 6: Ground Truth, Calibración & Aprend
     const proposalToApprove = existingProposals.find(p => p.status === 'PENDING_REVIEW') || existingProposals[0];
 
     if (proposalToApprove.status === 'PENDING_REVIEW') {
+      // 1. Verificar que propuesta exploratoria es rechazada
+      expect(() => {
+        lifecycle.approveAndPromoteProposal({
+          proposalId: proposalToApprove.id,
+          superAdminUserId: 'super-admin-01',
+        });
+      }).toThrow(/BLOQUEO DE GOBERNANZA/);
+
+      // 2. Establecer fuerza ACTIONABLE (N>=75) para probar la promoción controlada
+      proposalToApprove.proposalStrength = 'ACTIONABLE';
+      proposalToApprove.isEligibleForActivation = true;
+      proposalToApprove.sampleSize = 80;
+
       const newVersion = lifecycle.approveAndPromoteProposal({
         proposalId: proposalToApprove.id,
         superAdminUserId: 'super-admin-01',
@@ -144,6 +157,9 @@ test.describe.serial('Tasador IA — Fase 6: Ground Truth, Calibración & Aprend
       await engine.generateCalibrationRun('GLOBAL');
       const proposals = Array.from(engine.proposals.values());
       if (proposals.length > 0 && proposals[0].status === 'PENDING_REVIEW') {
+        proposals[0].proposalStrength = 'ACTIONABLE';
+        proposals[0].isEligibleForActivation = true;
+        proposals[0].sampleSize = 80;
         lifecycle.approveAndPromoteProposal({
           proposalId: proposals[0].id,
           superAdminUserId: 'super-admin-01',

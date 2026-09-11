@@ -83,22 +83,109 @@ export interface CalibrationObservation {
   createdAt: string;
 }
 
+export type SampleMaturityLevel =
+  | 'NO_DATA'              // n = 0
+  | 'INSUFFICIENT'         // n = 1 - 9
+  | 'EARLY_SIGNAL'         // n = 10 - 29
+  | 'USABLE_WITH_CAUTION'  // n = 30 - 74
+  | 'STATISTICALLY_USEFUL' // n = 75 - 199
+  | 'STRONG_EVIDENCE';     // n >= 200
+
+export type ValidationStrategyType =
+  | 'TRADITIONAL_HOLDOUT'     // N >= 30 (70% Calibración / 30% Holdout)
+  | 'LEAVE_ONE_OUT_CV'        // 3 <= N < 30 (LOOCV Exploratorio)
+  | 'K_FOLD_CV'               // K-Fold Cross Validation exploratorio
+  | 'INSUFFICIENT_FOR_SPLIT'; // N < 3
+
+export type ProposalStrength =
+  | 'EXPLORATORY' // n < 30 (Prohibida activación en producción)
+  | 'PRELIMINARY' // 30 <= n < 75 (Requiere escrutinio profundo)
+  | 'ACTIONABLE'  // 75 <= n < 200 (Apta para aprobación Super Admin)
+  | 'STRONG';     // n >= 200 (Evidencia robusta de mercado)
+
+export type SignedErrorClassification =
+  | 'OVERVALUATION'  // predicted > actual (signed_error > 0)
+  | 'UNDERVALUATION' // predicted < actual (signed_error < 0)
+  | 'EXACT_MATCH';   // predicted == actual (signed_error == 0)
+
+export interface MaturityThresholdsConfig {
+  version: number;
+  noDataMax: number;          // 0
+  insufficientMax: number;    // 9
+  earlySignalMax: number;     // 29
+  usableWithCautionMax: number;// 74
+  statisticallyUsefulMax: number; // 199
+  // >= 200 => STRONG_EVIDENCE
+  minMetricSample: number;             // 3 (Mínimo para cálculo exploratorio)
+  minGlobalCalibrationSample: number;  // 30 (Mínimo para calibración formal)
+  minSegmentCalibrationSample: number; // 15 (Mínimo por segmento)
+  minHoldoutSample: number;            // 20 (Mínimo para split holdout tradicional)
+  minActivationSample: number;         // 75 (Mínimo para activar nueva versión en prod)
+}
+
+export const DEFAULT_MATURITY_THRESHOLDS: MaturityThresholdsConfig = {
+  version: 1,
+  noDataMax: 0,
+  insufficientMax: 9,
+  earlySignalMax: 29,
+  usableWithCautionMax: 74,
+  statisticallyUsefulMax: 199,
+  minMetricSample: 3,
+  minGlobalCalibrationSample: 30,
+  minSegmentCalibrationSample: 15,
+  minHoldoutSample: 20,
+  minActivationSample: 75,
+};
+
+export interface BootstrapConfidenceInterval {
+  metricName: string;
+  pointEstimate: number;
+  ciLow: number | null; // Percentil 2.5
+  ciHigh: number | null; // Percentil 97.5
+  confidenceLevel: number; // 0.95
+  iterations: number;
+  status: 'RELIABLE' | 'UNCERTAINTY_NOT_RELIABLE';
+}
+
+export interface MetricMetadata {
+  metricName: string;
+  value: number;
+  sampleSize: number;
+  algorithmVersion: string;
+  settingsVersion: number;
+  timeWindow: string;
+  validationStrategy: ValidationStrategyType;
+  sampleMaturity: SampleMaturityLevel;
+  generatedAt: string;
+  bootstrap?: BootstrapConfidenceInterval;
+}
+
 export interface BacktestMetrics {
   sampleCount: number;
   mae: number; // Mean Absolute Error ($)
   mape: number; // Mean Absolute Percentage Error (%)
   mdape: number; // Median Absolute Percentage Error (%)
   rmse: number; // Root Mean Squared Error ($)
-  meanSignedError?: number; // Mean Signed Error ($)
-  medianSignedError?: number; // Median Signed Error ($)
-  bias: number; // Mean Signed Percentage Error (%) (+ sobreestimación, - subestimación)
-  overvaluationRate?: number; // % de predicciones > real
-  undervaluationRate?: number; // % de predicciones < real
-  coveragePercentage: number; // % de transacciones que cayeron en el rango [low, high]
-  algorithmVersion?: string;
-  settingsVersion?: number;
-  timeWindow?: string;
-  status?: 'OPTIMAL' | 'INSUFFICIENT_GROUND_TRUTH';
+  meanSignedError: number; // Mean Signed Error ($) = sum(pred - actual) / n
+  medianSignedError: number; // Median Signed Error ($)
+  meanSignedPercentageError: number; // MSPE (%) = sum((pred - actual)/actual) / n * 100
+  bias: number; // Alias explícito de meanSignedPercentageError
+  overvaluationRate: number; // % de predicciones > real
+  undervaluationRate: number; // % de predicciones < real
+  exactMatchRate?: number;
+  coveragePercentage: number; // % de transacciones dentro del rango [low, high]
+  algorithmVersion: string;
+  settingsVersion: number;
+  timeWindow: string;
+  validationStrategy: ValidationStrategyType;
+  maturityLevel: SampleMaturityLevel;
+  bootstrap?: {
+    mape?: BootstrapConfidenceInterval;
+    mdape?: BootstrapConfidenceInterval;
+    bias?: BootstrapConfidenceInterval;
+    coverage?: BootstrapConfidenceInterval;
+  };
+  status: SampleMaturityLevel;
 }
 
 export interface AskingDiscountStats {
@@ -112,7 +199,32 @@ export interface AskingDiscountStats {
   maxDiscount: number;
   standardDeviation: number;
   baselineDifference: number; // medianDiscount - 0.1200
-  status?: 'SUFFICIENT' | 'INSUFFICIENT_SAMPLE';
+  maturityLevel: SampleMaturityLevel;
+  usableForCalibration: boolean;
+  status: SampleMaturityLevel;
+}
+
+export interface SegmentSufficiencyEvaluation {
+  segmentKey: string;
+  segmentType: 'GLOBAL' | 'DEPARTMENT' | 'CITY' | 'NEIGHBORHOOD' | 'PROPERTY_TYPE' | 'PRICE_BAND' | 'SURFACE_BAND';
+  sampleSize: number;
+  maturityLevel: SampleMaturityLevel;
+  usableForCalibration: boolean;
+  usableForReporting: boolean;
+  usableForActivation: boolean;
+  warnings: string[];
+}
+
+export interface GlobalSufficiencyReport {
+  totalSampleSize: number;
+  globalMaturity: SampleMaturityLevel;
+  thresholdsVersion: number;
+  validationStrategy: ValidationStrategyType;
+  usableForGlobalCalibration: boolean;
+  usableForGlobalActivation: boolean;
+  segments: Record<string, SegmentSufficiencyEvaluation>;
+  warnings: string[];
+  evaluatedAt: string;
 }
 
 export type CalibrationProposalStatus =
@@ -129,6 +241,8 @@ export interface CalibrationProposal {
   currentValue: any;
   proposedValue: any;
   sampleSize: number;
+  proposalStrength: ProposalStrength;
+  isEligibleForActivation: boolean;
   evidence: {
     metricsBefore: BacktestMetrics;
     metricsAfter: BacktestMetrics;
