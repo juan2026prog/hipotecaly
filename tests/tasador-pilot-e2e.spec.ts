@@ -53,10 +53,12 @@ test.describe.serial('TASADOR IA - PRUEBA PILOTO REAL END-TO-END (FASE 1 + 2)', 
 
   test('Req 02: Idempotencia estricta en re-ejecución sobre publicaciones existentes', async () => {
     const engine = IngestionEngine.getInstance();
+    const existingPayloads = Array.from(engine.snapshots.values()).map(
+      (s) => s.structuredPayload as unknown as any
+    );
 
     const secondRun = await engine.executeRun('infocasas', {
-      limit: 120,
-      department: 'montevideo',
+      customPayloads: existingPayloads,
       runType: 'REFRESH',
     });
 

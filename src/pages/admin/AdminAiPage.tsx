@@ -35,10 +35,11 @@ import {
 } from '../../lib/adminAiService';
 
 import { SuperAdminTasadorTab } from '../../components/admin/SuperAdminTasadorTab';
+import { SuperAdminTasadorValuationTab } from '../../components/admin/SuperAdminTasadorValuationTab';
 
 export const AdminAiPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'configuracion' | 'tasador' | 'modelos' | 'costos' | 'consumo' | 'memoria' | 'correcciones' | 'calidad' | 'promocionales'
+    'dashboard' | 'configuracion' | 'tasador' | 'tasador_valuation' | 'modelos' | 'costos' | 'consumo' | 'memoria' | 'correcciones' | 'calidad' | 'promocionales'
   >('configuracion');
 
   // Estado editable de modelos
@@ -328,6 +329,7 @@ export const AdminAiPage: React.FC = () => {
         <div className="flex space-x-2 overflow-x-auto pb-2 border-b border-slate-200 text-xs font-semibold">
           {[
             { id: 'configuracion', label: 'Configuración OpenAI & Vault', icon: Key },
+            { id: 'tasador_valuation', label: 'Tasador IA — Valuación & Visión', icon: Sparkles },
             { id: 'tasador', label: 'Tasador IA — Base Inmobiliaria', icon: Database },
             { id: 'dashboard', label: 'Dashboard General', icon: Layers },
             { id: 'modelos', label: 'Modelos y Perfiles', icon: Cpu },
@@ -788,6 +790,20 @@ export const AdminAiPage: React.FC = () => {
               </button>
             </div>
           </form>
+        )}
+
+        {/* SUBSECCIÓN: TASADOR IA — BASE INMOBILIARIA & PIPELINE (FASES 1 + 2) */}
+        {activeTab === 'tasador' && (
+          <div className="animate-in fade-in">
+            <SuperAdminTasadorTab />
+          </div>
+        )}
+
+        {/* SUBSECCIÓN: TASADOR IA — VALUACIÓN & VISIÓN (FASES 3 + 4) */}
+        {activeTab === 'tasador_valuation' && (
+          <div className="animate-in fade-in">
+            <SuperAdminTasadorValuationTab />
+          </div>
         )}
 
         {/* Fallback para otras pestañas */}

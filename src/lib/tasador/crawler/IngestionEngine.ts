@@ -155,7 +155,7 @@ export class IngestionEngine {
             sourceCode: raw.sourceCode,
             capturedAt: new Date().toISOString(),
             contentHash,
-            structuredPayload: raw.rawJson || (raw as unknown as Record<string, unknown>),
+            structuredPayload: (raw as unknown as Record<string, unknown>),
             parserVersion: 'v2.0-deterministic',
           };
           this.snapshots.set(listingKey, snapshotRecord);

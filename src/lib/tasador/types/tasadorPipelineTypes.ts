@@ -179,10 +179,14 @@ export interface NormalizedListing {
   sourceCode: string;
   sourceListingId: string;
   sourceListingKey?: string | null;
+  propertyMasterId?: string | null;
   originalUrl: string;
   canonicalUrl?: string | null;
+  title?: string | null;
   titleNormalized: string;
   descriptionNormalized?: string | null;
+  publicationDate?: string | null;
+  dataQualityScore?: number | null;
   operationType: OperationType;
   propertyType: PropertyTypeNormalized;
   country: string;

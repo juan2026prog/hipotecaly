@@ -48,6 +48,17 @@ export interface SourceAdapter {
   };
 }
 
+export function computeSha256Hash(payload: unknown): string {
+  const json = typeof payload === 'string' ? payload : JSON.stringify(payload);
+  let hash = 0;
+  for (let i = 0; i < json.length; i++) {
+    const char = json.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash |= 0;
+  }
+  return `sha256_${Math.abs(hash).toString(16).padStart(8, '0')}`;
+}
+
 export abstract class BaseSourceAdapter implements SourceAdapter {
   public abstract sourceCode: string;
   public abstract sourceName: string;
@@ -73,14 +84,7 @@ export abstract class BaseSourceAdapter implements SourceAdapter {
   }
 
   public computeContentHash(payload: unknown): string {
-    const json = typeof payload === 'string' ? payload : JSON.stringify(payload);
-    let hash = 0;
-    for (let i = 0; i < json.length; i++) {
-      const char = json.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash |= 0;
-    }
-    return `sha256_${Math.abs(hash).toString(16).padStart(8, '0')}`;
+    return computeSha256Hash(payload);
   }
 
   public async normalizeListing(raw: RawListingPayload): Promise<NormalizedListing> {

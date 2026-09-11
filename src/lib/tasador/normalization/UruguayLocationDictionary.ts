@@ -348,3 +348,36 @@ export function determineLocationPrecision(params: {
   }
   return 'UNKNOWN';
 }
+
+/**
+ * Determina si dos barrios uruguayos son limítrofes o comparables
+ */
+export function areNeighborhoodsAdjacent(
+  n1?: string | null,
+  n2?: string | null,
+  _dept?: string | null
+): boolean {
+  if (!n1 || !n2) return false;
+  const a = cleanText(n1);
+  const b = cleanText(n2);
+  if (a === b) return true;
+
+  const ADJACENCY_MAP: Record<string, string[]> = {
+    'pocitos': ['punta carretas', 'buceo', 'parque rodo', 'cordon', 'villa dolores', 'parque batlle'],
+    'punta carretas': ['pocitos', 'parque rodo', 'cordon'],
+    'buceo': ['pocitos', 'malvin', 'parque batlle', 'villa dolores'],
+    'malvin': ['buceo', 'punta gorda', 'malvin norte'],
+    'punta gorda': ['malvin', 'carrasco'],
+    'carrasco': ['punta gorda', 'carrasco norte', 'carrasco este'],
+    'cordon': ['centro', 'parque rodo', 'tres cruces', 'pocitos', 'palermo'],
+    'centro': ['ciudad vieja', 'barrio sur', 'cordon', 'la aguada'],
+    'parque rodo': ['punta carretas', 'pocitos', 'cordon', 'palermo'],
+    'punta del este': ['maldonado', 'la barra', 'san rafael', 'cantegril', 'playa mansa', 'playa brava'],
+    'la barra': ['punta del este', 'manantiales', 'el tesoro'],
+    'manantiales': ['la barra', 'jose ignacio'],
+  };
+
+  const adjA = ADJACENCY_MAP[a] || [];
+  return adjA.includes(b);
+}
+
