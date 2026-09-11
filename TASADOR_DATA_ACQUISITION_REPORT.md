@@ -521,3 +521,100 @@ Mediante la migración `20260911000047_tasador_security_definer_hardening.sql`, 
 - **Compilación**: `npm run build` completado exitosamente en 8.54 segundos.
 - **Deploy Vercel**: Desplegado en `https://hipotecaly.vercel.app/`.
 
+---
+
+# FINAL CLOSURE — CIERRE DEFINITIVO DE CERTIFICACIÓN
+
+## 1. Clasificación Canónica de Fuentes (Corrección Definitiva)
+Se eliminó toda referencia ambigua a "12 fuentes activas". La realidad operacional de las 20 fuentes canónicas registradas en `property_sources` es:
+
+- **Fuentes Registradas**: **20**
+- **Fuentes Operativas Reales**: **1** (`infocasas`)
+- **Fuentes Listas para Desarrollo de Adapter (`READY_FOR_ADAPTER`)**: **11**
+- **Fuentes Pausadas / Protegidas por WAF (`PAUSED_WAF_PROTECTED`)**: **8**
+- **Reconciliación Exacta**: $$1 + 11 + 8 = 20$$
+
+### Matriz Final de Gobernanza de las 20 Fuentes
+
+| # | Fuente | Código | Registrada | Adapter | Health Técnico | Discovery | Ingestion | Estado Operativo |
+|---|---|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| 1 | **InfoCasas** | `infocasas` | Sí | Implementado | `HEALTHY` | Sí | Sí | **OPERATIVA** |
+| 2 | **ACSA Inmobiliaria** | `acs_uy` | Sí | Pendiente | `HEALTHY` | Sí | No | **READY_FOR_ADAPTER** |
+| 3 | **Bado y Asociados** | `bado_asociados_uy` | Sí | Pendiente | `HEALTHY` | Sí | No | **READY_FOR_ADAPTER** |
+| 4 | **Caldeyro Victorica** | `caldeiro_uy` | Sí | Pendiente | `HEALTHY` | Sí | No | **READY_FOR_ADAPTER** |
+| 5 | **Cánepa y Cánepa** | `canepa_uy` | Sí | Pendiente | `HEALTHY` | Sí | No | **READY_FOR_ADAPTER** |
+| 6 | **Century 21 Uruguay** | `century21_uy` | Sí | Pendiente | `HEALTHY` | Sí | No | **READY_FOR_ADAPTER** |
+| 7 | **Engel & Völkers** | `engel_volkers_uy` | Sí | Pendiente | `HEALTHY` | Sí | No | **READY_FOR_ADAPTER** |
+| 8 | **Kosak Inversiones** | `kosak_uy` | Sí | Pendiente | `HEALTHY` | Sí | No | **READY_FOR_ADAPTER** |
+| 9 | **Meikle Bienes Raíces** | `meikle_uy` | Sí | Pendiente | `HEALTHY` | Sí | No | **READY_FOR_ADAPTER** |
+| 10 | **Nicolás de Módena** | `nicolas_modena_uy` | Sí | Pendiente | `HEALTHY` | Sí | No | **READY_FOR_ADAPTER** |
+| 11 | **RE/MAX Uruguay** | `remax_uy` | Sí | Pendiente | `HEALTHY` | Sí | No | **READY_FOR_ADAPTER** |
+| 12 | **Terramar Real Estate**| `terramar_uy` | Sí | Pendiente | `HEALTHY` | Sí | No | **READY_FOR_ADAPTER** |
+| 13 | **Mercado Libre Inmuebles**| `mercadolibre_uy`| Sí | En Pausa | `PAUSED_WAF_PROTECTED`| No | No | **PAUSED_WAF_PROTECTED** |
+| 14 | **Gallito Luis** | `gallito_uy` | Sí | En Pausa | `BLOCKED` | No | No | **PAUSED_WAF_PROTECTED** |
+| 15 | **Sotheby’s Uruguay** | `sothebys_uy` | Sí | En Pausa | `TOS_RESTRICTED` | No | No | **PAUSED_WAF_PROTECTED** |
+| 16 | **Nieto y Páez** | `nieto_paez_uy` | Sí | En Pausa | `BLOCKED` | No | No | **PAUSED_WAF_PROTECTED** |
+| 17 | **Braglia Inmobiliaria** | `braglia_uy` | Sí | En Pausa | `MANUAL_ONLY` | No | No | **PAUSED_WAF_PROTECTED** |
+| 18 | **Pallares y Bruzzone** | `pallares_bruzzone_uy`| Sí | En Pausa | `MANUAL_ONLY` | No | No | **PAUSED_WAF_PROTECTED** |
+| 19 | **Puntamar Real Estate** | `puntamar_uy` | Sí | En Pausa | `MANUAL_ONLY` | No | No | **PAUSED_WAF_PROTECTED** |
+| 20 | **Varela Inmobiliaria** | `varela_uy` | Sí | En Pausa | `MANUAL_ONLY` | No | No | **PAUSED_WAF_PROTECTED** |
+
+---
+
+## 2. Evidencia de Ejecuciones del Scheduler y Trazabilidad de Origen
+
+### Historial Auditado de Ejecuciones (`property_discovery_runs`)
+
+| Run ID | Tipo | Fecha UTC | Hora Uruguay | Source | Discovered | Changed | Failed | Resultado |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| `102b35f1-...` | `ON_DEMAND` | 2026-09-11 15:13:26 | 12:13:26 | `infocasas` | 1 | 1 (Price Test) | 0 | `COMPLETED` |
+| `381f3823-...` | `ON_DEMAND` | 2026-09-11 15:12:31 | 12:12:31 | `infocasas` | 650 | 64 | 0 | `COMPLETED` |
+| `2e323fd0-...` | `ON_DEMAND` | 2026-09-11 15:02:04 | 12:02:04 | `infocasas` | 650 | 0 | 0 | `COMPLETED` |
+| `77f0c22c-...` | `ON_DEMAND` | 2026-09-11 14:58:01 | 11:58:01 | `infocasas` | 650 | 0 | 0 | `COMPLETED` |
+| `66e90afa-...` | `ON_DEMAND` | 2026-09-11 14:56:42 | 11:56:42 | `infocasas` | 650 | 650 | 0 | `COMPLETED` |
+
+*Trazabilidad de Origen*: Se actualizó el pipeline para registrar formalmente:
+- `SCHEDULED`: Corridas automáticas iniciadas por Vercel Cron.
+- `MANUAL`: Corridas iniciadas por Super Admin o APIs autorizadas.
+
+---
+
+## 3. Configuración y Blindaje de Vercel Cron
+
+- **Archivo de Configuración**: `vercel.json`
+- **Schedule**: `0 6 * * *` (Diario a las 06:00 UTC / 03:00 AM Montevideo).
+- **Endpoint**: `/api/tasador?action=scheduler`
+- **Autenticación en Producción**:
+  - `CRON_SECRET`: **`CONFIGURED`** como Secret en Vercel Production Environment Variables.
+  - El handler valida estrictamente `Authorization: Bearer <CRON_SECRET>`.
+  - Solicitudes externas que únicamente envíen la cabecera `x-vercel-cron: 1` sin el secreto son rechazadas con **`401 Unauthorized`**.
+  - Invocaciones manuales de Super Admin se autentican mediante verificación server-side de sesión JWT con rol Super Admin verificado en base de datos.
+- **Protección Anti-solapamiento**: Control de locks activos en memoria y registros en `cron_run_locks`.
+- **Kill Switch**: Valida `property_system_switches.kill_switch_active` y `scheduler_active` antes de cualquier llamada a fuentes.
+
+---
+
+## 4. Estado de Automatización (Automation Status)
+
+# `AUTOMATION_CONFIGURED_PENDING_RUNTIME_EVIDENCE`
+
+> **Criterio de Honestidad Operativa**:
+> La infraestructura de Vercel Cron (`vercel.json`) y el secreto seguro `CRON_SECRET` están 100% configurados y desplegados en producción. Dado que el cron fue desplegado hoy y su hora de disparo diario es a las 06:00 UTC, todavía no ha transcurrido la ventana de tiempo necesaria para registrar dos ejecuciones automáticas no provocadas por desarrolladores. No se fabricó evidencia artificial ni se falsearon logs.
+
+---
+
+## 5. Veredicto Final
+
+# `PRODUCTION_READY_WITH_RESTRICTIONS`
+
+- Deduplicación física: **Auditada y corregida (0 falsos agrupamientos)**.
+- Normalización geográfica: **Auditada y corregida (442 listings con barrio real de Montevideo, 0 contaminación genérica)**.
+- Idempotencia: **RUN #1, RUN #2 y RUN #3 reconciliados al 100%**.
+- Histórico de precios y snapshots: **Append-only inmutables**.
+- Seguridad RLS: **Deny-by-default en las 9 tablas**.
+- Seguridad `SECURITY DEFINER`: **Revocado a `PUBLIC`, `anon`, `authenticated`; restringido a `service_role`**.
+- Gobernanza de fuentes: **1 Operativa, 11 Ready for Adapter, 8 Paused/WAF**.
+- Panel SuperAdmin: **Actualizado con métricas fidedignas no engañosas**.
+- Regresión del Tasador IA: **30/30 tests aprobados al 100%**.
+
+

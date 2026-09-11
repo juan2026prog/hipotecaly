@@ -9,6 +9,7 @@ import { SourceHealthCheck } from '../src/lib/tasador/ingestion/SourceHealthChec
 import { SourceDiscoveryService } from '../src/lib/tasador/ingestion/SourceDiscoveryService';
 import { ListingIngestionWorker } from '../src/lib/tasador/ingestion/ListingIngestionWorker';
 import { SourceSchedulerService } from '../src/lib/tasador/ingestion/SourceSchedulerService';
+import { verifySuperAdmin } from '../server/auth/superAdminGuard';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -100,6 +101,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const result = await discoveryService.runDiscovery(sourceCode, {
         limit: limit ? parseInt(limit, 10) : 50,
         department,
+        runType: 'MANUAL',
       });
 
       return res.status(200).json({ success: true, result });
@@ -118,22 +120,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 8. GET/POST: Ejecutar Ciclo de Scheduler (Trigger de Vercel Cron u orquestador)
     if ((req.method === 'GET' || req.method === 'POST') && action === 'scheduler') {
-      // Verificar autorización si CRON_SECRET está configurado en el entorno
       const cronSecret = process.env.CRON_SECRET;
-      const authHeader = req.headers['authorization'];
-      const isVercelCron = req.headers['x-vercel-cron'] === '1';
+      const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+      const bearerToken =
+        typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+          ? authHeader.slice(7).trim()
+          : null;
 
-      if (cronSecret && authHeader !== `Bearer ${cronSecret}` && !isVercelCron) {
-        // Si hay secreto definido y no coincide, denegar salvo que sea entorno de desarrollo
-        if (process.env.NODE_ENV === 'production' && !authHeader?.includes('Bearer')) {
-          return res.status(401).json({ error: 'No autorizado para ejecutar el scheduler.' });
+      let isAuthorized = false;
+      let runType: 'SCHEDULED' | 'MANUAL' = 'MANUAL';
+
+      // A. Vercel Cron oficial con Bearer token coincidente con CRON_SECRET
+      if (cronSecret && bearerToken === cronSecret) {
+        isAuthorized = true;
+        runType = 'SCHEDULED';
+      } else {
+        // B. Verificación de Super Admin para invocaciones manuales autorizadas
+        const adminAuth = await verifySuperAdmin(req);
+        if (adminAuth.authorized) {
+          isAuthorized = true;
+          runType = 'MANUAL';
+        } else if (process.env.NODE_ENV !== 'production') {
+          // Entorno de desarrollo local
+          isAuthorized = true;
+          runType = 'MANUAL';
         }
       }
 
-      const scheduler = SourceSchedulerService.getInstance();
-      const result = await scheduler.executeScheduledCycle();
+      if (!isAuthorized) {
+        return res.status(401).json({
+          error: 'No autorizado para ejecutar el scheduler. Se requiere token CRON_SECRET o credenciales válidas de Super Admin.',
+        });
+      }
 
-      return res.status(200).json({ success: true, trigger: isVercelCron ? 'VERCEL_CRON' : 'MANUAL_OR_API', result });
+      const scheduler = SourceSchedulerService.getInstance();
+      const result = await scheduler.executeScheduledCycle({ runType });
+
+      return res.status(200).json({ success: true, trigger: runType, result });
     }
 
     return res.status(400).json({ error: `Acción no soportada: ${action}` });

@@ -101,7 +101,7 @@ export class SourceDiscoveryService {
    */
   public async runDiscovery(
     sourceCode: string,
-    options?: { limit?: number; department?: string; customPayloads?: RawListingPayload[]; dryRun?: boolean }
+    options?: { limit?: number; department?: string; customPayloads?: RawListingPayload[]; dryRun?: boolean; runType?: 'SCHEDULED' | 'MANUAL' | 'ON_DEMAND' }
   ): Promise<DiscoveryRunResult> {
     const startTime = Date.now();
     const runId = `disc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -340,7 +340,7 @@ export class SourceDiscoveryService {
       await supabaseAdmin.rpc('fn_pipeline_record_discovery_run', {
         p_run: {
           source_code: sourceCode,
-          run_type: options?.dryRun ? 'MANUAL' : 'ON_DEMAND',
+          run_type: options?.runType || (options?.dryRun ? 'MANUAL' : 'ON_DEMAND'),
           status: errorsCount > 0 && rawItems.length === 0 ? 'FAILED' : 'COMPLETED',
           pages_inspected: pagesInspected,
           listings_found: rawItems.length,

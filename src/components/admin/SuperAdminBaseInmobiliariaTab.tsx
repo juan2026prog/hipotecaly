@@ -27,6 +27,9 @@ export interface BaseSummary {
   };
   sources: {
     total: number;
+    operativas?: number;
+    readyForAdapter?: number;
+    pausedWaf?: number;
     healthy: number;
     paused: number;
     blocked: number;
@@ -58,6 +61,7 @@ export interface SourceRow {
   name: string;
   domain: string;
   capability: string;
+  operational_status?: string;
   is_active: boolean;
   enabled: boolean;
   ingestion_enabled: boolean;
@@ -316,6 +320,25 @@ export const SuperAdminBaseInmobiliariaTab: React.FC = () => {
     }
   };
 
+  const getOperationalStatus = (src: SourceRow): 'OPERATIVA' | 'READY_FOR_ADAPTER' | 'PAUSED_WAF_PROTECTED' => {
+    if (src.operational_status) {
+      return src.operational_status as any;
+    }
+    if (src.code === 'infocasas') return 'OPERATIVA';
+    if (
+      src.health_status === 'BLOCKED' ||
+      src.health_status === 'TOS_RESTRICTED' ||
+      src.health_status === 'NOT_SUPPORTED' ||
+      src.health_status === 'MANUAL_ONLY' ||
+      src.health_status === 'PAUSED_WAF_PROTECTED' ||
+      src.code === 'mercadolibre_uy' ||
+      src.code === 'gallito_uy'
+    ) {
+      return 'PAUSED_WAF_PROTECTED';
+    }
+    return 'READY_FOR_ADAPTER';
+  };
+
   if (loading && !summary) {
     return (
       <div className="flex items-center justify-center p-16 text-slate-500">
@@ -443,11 +466,19 @@ export const SuperAdminBaseInmobiliariaTab: React.FC = () => {
             <h3 className="text-base font-bold text-slate-900">Registro Maestro de 20 Fuentes Canónicas</h3>
             <p className="text-xs text-slate-500 mt-0.5">Control de rate limiting, estado técnico, discovery e ingesta</p>
           </div>
-          <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
-            <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-            <span>{sources.filter((s) => s.health_status === 'HEALTHY').length} Saludables</span>
-            <span className="inline-block w-2.5 h-2.5 rounded-full bg-rose-500 ml-2"></span>
-            <span>{sources.filter((s) => s.health_status === 'BLOCKED').length} Bloqueadas</span>
+          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
+            <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+              {summary?.sources.operativas ?? sources.filter((s) => getOperationalStatus(s) === 'OPERATIVA').length} Operativa
+            </span>
+            <span className="px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 border border-blue-300 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+              {summary?.sources.readyForAdapter ?? sources.filter((s) => getOperationalStatus(s) === 'READY_FOR_ADAPTER').length} Pendientes de Adapter
+            </span>
+            <span className="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-600"></span>
+              {summary?.sources.pausedWaf ?? sources.filter((s) => getOperationalStatus(s) === 'PAUSED_WAF_PROTECTED').length} Pausadas / WAF
+            </span>
           </div>
         </div>
 
@@ -456,7 +487,8 @@ export const SuperAdminBaseInmobiliariaTab: React.FC = () => {
             <thead className="bg-slate-50 text-slate-600 text-xs font-semibold border-b border-slate-200">
               <tr>
                 <th className="py-3 px-4">Fuente</th>
-                <th className="py-3 px-4">Estado</th>
+                <th className="py-3 px-4">Rol Operativo</th>
+                <th className="py-3 px-4">Health Técnico</th>
                 <th className="py-3 px-4 text-center">Discovery</th>
                 <th className="py-3 px-4 text-center">Ingestion</th>
                 <th className="py-3 px-4">Salud & Latencia</th>
@@ -471,6 +503,23 @@ export const SuperAdminBaseInmobiliariaTab: React.FC = () => {
                   <td className="py-3 px-4">
                     <div className="font-semibold text-slate-900">{src.name}</div>
                     <div className="text-xs text-slate-400">{src.domain}</div>
+                  </td>
+                  <td className="py-3 px-4">
+                    {getOperationalStatus(src) === 'OPERATIVA' && (
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap">
+                        OPERATIVA
+                      </span>
+                    )}
+                    {getOperationalStatus(src) === 'READY_FOR_ADAPTER' && (
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
+                        READY FOR ADAPTER
+                      </span>
+                    )}
+                    {getOperationalStatus(src) === 'PAUSED_WAF_PROTECTED' && (
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
+                        PAUSED (WAF)
+                      </span>
+                    )}
                   </td>
                   <td className="py-3 px-4">
                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getHealthBadge(src.health_status)}`}>

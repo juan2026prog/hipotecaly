@@ -47,6 +47,7 @@ export class SourceSchedulerService {
     forceAll?: boolean;
     limitPerSource?: number;
     sourcesFilter?: string[];
+    runType?: 'SCHEDULED' | 'MANUAL';
   }): Promise<SchedulerRunSummary> {
     const startTime = Date.now();
     const cycleId = `cycle_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
@@ -151,6 +152,7 @@ export class SourceSchedulerService {
           // B. Discovery Incremental
           const discResult = await discoveryService.runDiscovery(source.code, {
             limit: options?.limitPerSource || 50,
+            runType: options?.runType || 'SCHEDULED',
           });
 
           sourcesExecuted++;
