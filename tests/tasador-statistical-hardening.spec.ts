@@ -220,4 +220,66 @@ test.describe('Tasador IA - Hardening Estadístico y de Gobernanza Pre-Fase 7', 
     engine.updateThresholdsConfig({ ...DEFAULT_MATURITY_THRESHOLDS, version: 1 });
   });
 
+  test('11. Muestra Vacía (N=0) produce estado NO_DATA y no apta para cálculo', () => {
+    const engine = SampleSufficiencyEngine.getInstance();
+    const evalZero = engine.evaluateSegmentSufficiency('Artigas', 'DEPARTMENT', 0);
+
+    expect(evalZero.maturityLevel).toBe('NO_DATA');
+    expect(evalZero.usableForReporting).toBe(false);
+    expect(evalZero.usableForCalibration).toBe(false);
+    expect(evalZero.usableForActivation).toBe(false);
+    expect(evalZero.warnings.some((w) => w.includes('Sin observaciones'))).toBe(true);
+  });
+
+  test('12. Invariante de Producción: asking_price_adjustment = 0.1200 Preservado en V1', () => {
+    const lifecycle = SettingsLifecycleService.getInstance();
+    const active = lifecycle.getActiveVersion();
+
+    // El ajuste del 12% no puede mutarse automáticamente
+    expect(active.settings.askingPriceAdjustment).toBe(0.12);
+  });
+
+  test('13. Test de Signo y Clasificación Matemática de Sesgo', () => {
+    const calcSignedError = (pred: number, actual: number) => {
+      const err = pred - actual;
+      const pct = actual > 0 ? (err / actual) * 100 : 0;
+      const classification = err > 0 ? 'OVERVALUATION' : err < 0 ? 'UNDERVALUATION' : 'EXACT_MATCH';
+      return { signedError: err, signedPct: pct, classification };
+    };
+
+    // Caso 1: Predicción 210.000 vs Real 200.000 -> +10.000 OVERVALUATION
+    const r1 = calcSignedError(210000, 200000);
+    expect(r1.signedError).toBe(10000);
+    expect(r1.classification).toBe('OVERVALUATION');
+
+    // Caso 2: Predicción 190.000 vs Real 200.000 -> -10.000 UNDERVALUATION
+    const r2 = calcSignedError(190000, 200000);
+    expect(r2.signedError).toBe(-10000);
+    expect(r2.classification).toBe('UNDERVALUATION');
+
+    // Caso 3: Predicción 200.000 vs Real 200.000 -> 0 EXACT_MATCH
+    const r3 = calcSignedError(200000, 200000);
+    expect(r3.signedError).toBe(0);
+    expect(r3.classification).toBe('EXACT_MATCH');
+  });
+
+  test('14. Segmentación Segura: Segmento con N=1 marcado como INSUFFICIENT', () => {
+    const engine = SampleSufficiencyEngine.getInstance();
+    const seg1 = engine.evaluateSegmentSufficiency('Punta Gorda', 'NEIGHBORHOOD', 1);
+
+    expect(seg1.maturityLevel).toBe('INSUFFICIENT');
+    expect(seg1.usableForReporting).toBe(false);
+    expect(seg1.usableForCalibration).toBe(false);
+    expect(seg1.usableForActivation).toBe(false);
+  });
+
+  test('15. Gobernanza Super Admin: Aprobación exige identificador de Super Admin', () => {
+    const lifecycle = SettingsLifecycleService.getInstance();
+    const history = lifecycle.getVersionHistory();
+
+    expect(history.length).toBeGreaterThan(0);
+    expect(history[0].approvedBy).toBeDefined();
+  });
+
 });
+

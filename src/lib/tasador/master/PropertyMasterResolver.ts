@@ -147,7 +147,9 @@ export class PropertyMasterResolver {
 
     // 3. Crear nuevo Property Master canónico
     const now = new Date().toISOString();
-    const masterId = `pm_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const masterId = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `00000000-0000-4000-8000-${Math.random().toString(16).substring(2, 14).padEnd(12, '0')}`;
 
     const newMaster: PropertyMasterEntity = {
       id: masterId,

@@ -58,18 +58,21 @@ export class InfoCasasAdapter extends BaseSourceAdapter {
   public async discoverListings(options?: DiscoverOptions): Promise<RawListingPayload[]> {
     const limit = options?.limit || 50;
     const targetDept = (options?.department || 'montevideo').toLowerCase();
-    const urlsToFetch = [
-      `${this.baseUrl}/venta/inmuebles/${targetDept}`,
-      `${this.baseUrl}/venta/inmuebles/${targetDept}/pagina2`,
-      `${this.baseUrl}/venta/inmuebles/${targetDept}/pagina3`,
-      `${this.baseUrl}/venta/apartamentos/${targetDept}`,
-      `${this.baseUrl}/venta/apartamentos/${targetDept}/pagina2`,
-      `${this.baseUrl}/venta/casas/${targetDept}`,
-      `${this.baseUrl}/venta/inmuebles/maldonado`,
-      `${this.baseUrl}/venta/inmuebles/maldonado/pagina2`,
-      `${this.baseUrl}/venta/inmuebles/canelones`,
-      `${this.baseUrl}/venta/inmuebles/canelones/pagina2`,
-    ];
+
+    // Generación dinámica de URLs para soportar discovery escalable (500 - 1000 items)
+    const departments = [targetDept, 'maldonado', 'canelones', 'colonia', 'rocha'];
+    const categories = ['inmuebles', 'apartamentos', 'casas'];
+    const maxPagesPerCategory = Math.min(15, Math.ceil(limit / 25));
+
+    const urlsToFetch: string[] = [];
+    for (const dept of departments) {
+      for (const cat of categories) {
+        urlsToFetch.push(`${this.baseUrl}/venta/${cat}/${dept}`);
+        for (let page = 2; page <= maxPagesPerCategory; page++) {
+          urlsToFetch.push(`${this.baseUrl}/venta/${cat}/${dept}/pagina${page}`);
+        }
+      }
+    }
 
     const discovered: RawListingPayload[] = [];
     const seenIds = new Set<string>();

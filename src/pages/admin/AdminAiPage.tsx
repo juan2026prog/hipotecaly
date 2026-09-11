@@ -38,6 +38,7 @@ import {
 import { SuperAdminTasadorTab } from '../../components/admin/SuperAdminTasadorTab';
 import { SuperAdminTasadorValuationTab } from '../../components/admin/SuperAdminTasadorValuationTab';
 import { SuperAdminCalibrationTab } from '../../components/admin/SuperAdminCalibrationTab';
+import { SuperAdminBaseInmobiliariaTab } from '../../components/admin/SuperAdminBaseInmobiliariaTab';
 
 export interface AdminAiPageProps {
   defaultTab?: 'dashboard' | 'configuracion' | 'tasador' | 'tasador_valuation' | 'tasador_calibration' | 'modelos' | 'costos' | 'consumo' | 'memoria' | 'correcciones' | 'calidad' | 'promocionales';
@@ -799,10 +800,10 @@ export const AdminAiPage: React.FC<AdminAiPageProps> = ({ defaultTab = 'tasador_
           </form>
         )}
 
-        {/* SUBSECCIÓN: TASADOR IA — BASE INMOBILIARIA & PIPELINE (FASES 1 + 2) */}
+        {/* SUBSECCIÓN: TASADOR IA — BASE INMOBILIARIA & CONTINUOUS INGESTION */}
         {activeTab === 'tasador' && (
           <div className="animate-in fade-in">
-            <SuperAdminTasadorTab />
+            <SuperAdminBaseInmobiliariaTab />
           </div>
         )}
 
