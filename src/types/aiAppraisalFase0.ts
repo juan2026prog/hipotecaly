@@ -1,7 +1,7 @@
 // ==============================================================================
-// HIPOTECALY AI: Tasador IA - Fase0 Expanded Domain & Data Model Types
-// Arquitectura Inmobiliaria Global, Candidatos de Deduplicación, Evidencia por Campo,
-// Hashes de Medios, Valuaciones/Comparables Preparadas y Ajuste Asking Price (12%)
+// HIPOTECALY AI: Tasador IA - Fase0 Domain & Data Model Types (18 Entidades)
+// Arquitectura Inmobiliaria Global, Deduplicación, Evidencia, Snapshots,
+// CrawlerRuns, AIUsageEvents, Ajuste Asking Price (12%) y Estados Explícitos
 // ==============================================================================
 
 export type LocationPrecision =
@@ -32,7 +32,16 @@ export type PropertyTypeEnum =
   | 'OTHER'
   | 'UNKNOWN';
 
-export type ListingStatusEnum = 'ACTIVE' | 'INACTIVE' | 'REMOVED' | 'EXPIRED' | 'RELISTED' | 'UNKNOWN';
+export type ListingStatusEnum =
+  | 'ACTIVE'
+  | 'INACTIVE'
+  | 'REMOVED'
+  | 'EXPIRED'
+  | 'RELISTED'
+  | 'UNKNOWN'
+  | 'SOLD_OR_REMOVED_UNKNOWN'
+  | 'POSSIBLE_SOLD'
+  | 'CONFIRMED_SOLD';
 
 export type PriceEventType =
   | 'FIRST_SEEN'
@@ -76,6 +85,43 @@ export interface PropertySource {
 }
 
 /**
+ * Registro de Sesiones de Crawler (Preparada pero sin ejecuciones en Fase 0)
+ */
+export interface CrawlerRun {
+  id: string;
+  sourceId: string;
+  runType: 'SCHEDULED' | 'MANUAL' | 'ON_DEMAND';
+  status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  listingsFound: number;
+  listingsCreated: number;
+  listingsUpdated: number;
+  errorsCount: number;
+  errorLog?: Record<string, unknown>[] | null;
+  createdAt: string;
+}
+
+/**
+ * Registro de Eventos de Consumo de IA (Preparada pero sin uso en Fase 0)
+ */
+export interface AIUsageEvent {
+  id: string;
+  valuationId?: string | null;
+  propertyMasterId?: string | null;
+  listingId?: string | null;
+  eventType: string;
+  modelName: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  estimatedCostUsd: number;
+  executionTimeMs?: number | null;
+  payloadSummary?: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+/**
  * Registro Maestro Canónico Deduplicado (Global Real Estate Entity)
  */
 export interface PropertyMaster {
@@ -97,7 +143,7 @@ export interface PropertyMaster {
   latitude?: number | null;
   longitude?: number | null;
   locationPrecision: LocationPrecision;
-  cadastralNumber?: string | null; // Padrón catastral
+  cadastralNumber?: string | null;
   horizontalPropertyUnit?: string | null;
   propertyType: PropertyTypeEnum | string;
   totalAreaM2?: number | null;
@@ -443,7 +489,6 @@ export interface AppraisalSettings {
   /**
    * Factor inicial configurable de diferencia entre precio publicado (asking price)
    * y precio real de venta/mercado (closing price). Default: 0.1200 (12.00%).
-   * Sujeto a calibración futura con operaciones reales.
    */
   askingPriceAdjustment: number;
   safetyMarginPercentage?: number;

@@ -1,6 +1,6 @@
 // ==============================================================================
 // HIPOTECALY AI: Configuración Definitiva de los 20 Portales Locales Uruguayos (Fase0)
-// Configuración declarativa pura con ingestion_enabled = false y sin crawlers
+// Nombres de fuentes ajustados preservando identificadores y códigos nativos intactos
 // ==============================================================================
 
 import { PropertySource } from '../types/aiAppraisalFase0';
@@ -20,7 +20,7 @@ export const TOP_20_PORTALS_CONFIG: PortalSourceSeed[] = [
     baseUrl: 'https://inmuebles.mercadolibre.com.uy',
     isActive: true,
     enabled: true,
-    ingestionEnabled: false, // Ingesta desactivada en Fase 0
+    ingestionEnabled: false,
     priority: 1,
     trustLevel: 1.0,
     rateLimitPerMinute: 60,
@@ -157,7 +157,7 @@ export const TOP_20_PORTALS_CONFIG: PortalSourceSeed[] = [
   },
   {
     code: 'caldeiro_uy',
-    name: 'Caldeiro Victorica Bienes Raíces',
+    name: 'Caldeyro Victorica Bienes Raíces', // Nombre de pantalla corregido conservando code caldeiro_uy
     domain: 'caldeyro.com',
     countryCode: 'UY',
     sourceType: 'inmobiliaria',
@@ -237,7 +237,7 @@ export const TOP_20_PORTALS_CONFIG: PortalSourceSeed[] = [
   },
   {
     code: 'nicolas_modena_uy',
-    name: 'Nicolás de Módena Inmobiliaria',
+    name: 'Nicolás de Módena Inmobiliaria', // Nombre de pantalla corregido conservando code nicolas_modena_uy
     domain: 'nicolasdemodena.com.uy',
     countryCode: 'UY',
     sourceType: 'inmobiliaria',

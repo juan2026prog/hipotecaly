@@ -1,6 +1,6 @@
 // ==============================================================================
-// HIPOTECALY AI: Servicio Ampliado de Datos del Tasador IA - Fase0
-// Arquitectura Inmobiliaria Global, Candidatos de Deduplicación, Evidencia por Campo,
+// HIPOTECALY AI: Servicio Ampliado de Datos del Tasador IA - Fase0 (18 Entidades)
+// Arquitectura Inmobiliaria Global, CrawlerRuns, AIUsageEvents, Evidencia,
 // Snapshots, Medios con Hashes, Valuaciones/Comparables Preparadas y Ajuste Asking Price (12%)
 // ==============================================================================
 
@@ -20,14 +20,18 @@ import {
   PropertyValuationComparable,
   PropertyAIFeature,
   PropertyTransaction,
+  CrawlerRun,
+  AIUsageEvent,
   AppraisalSettings,
   DeduplicationCriteria,
   DeduplicationMatchResult,
 } from '../../types/aiAppraisalFase0';
 import { TOP_20_PORTALS_CONFIG } from '../../config/top20PortalsConfig';
 
-class ExpandedInMemoryAppraisalStore {
+class HardenedInMemoryAppraisalStore {
   public sources: Map<string, PropertySource> = new Map();
+  public crawlerRuns: Map<string, CrawlerRun> = new Map();
+  public aiUsageEvents: AIUsageEvent[] = [];
   public masterProperties: Map<string, PropertyMaster> = new Map();
   public listings: Map<string, PropertyListing> = new Map();
   public priceHistory: PropertyPriceHistory[] = [];
@@ -63,7 +67,7 @@ class ExpandedInMemoryAppraisalStore {
         baseUrl: portal.baseUrl,
         isActive: portal.isActive,
         enabled: portal.enabled,
-        ingestionEnabled: false, // Ingesta desactivada en Fase 0
+        ingestionEnabled: false, // Siempre false en Fase 0
         priority: portal.priority,
         trustLevel: portal.trustLevel,
         rateLimitPerMinute: portal.rateLimitPerMinute,
@@ -102,11 +106,8 @@ class ExpandedInMemoryAppraisalStore {
 }
 
 export class AppraisalDataService {
-  private store = new ExpandedInMemoryAppraisalStore();
+  private store = new HardenedInMemoryAppraisalStore();
 
-  /**
-   * Genera el hash de deduplicación determinista (hash auxiliar, NO verdad absoluta).
-   */
   public calculateDedupHash(address: string, department: string, cadastralNumber?: string | null): string {
     const cleanAddress = (address || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const cleanDept = (department || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -120,9 +121,6 @@ export class AppraisalDataService {
     return `hash_v1_${(hash >>> 0).toString(16).padStart(8, '0')}`;
   }
 
-  /**
-   * Obtiene los Top 20 portales configurados en el sistema.
-   */
   public async getPortalSources(): Promise<PropertySource[]> {
     return Array.from(this.store.sources.values());
   }
@@ -135,8 +133,66 @@ export class AppraisalDataService {
   }
 
   /**
-   * Evalúa y busca candidatos de deduplicación sin fusiones destructivas automáticas.
+   * Registro y consulta de ejecuciones de crawler (preparado pero sin ejecuciones en Fase 0).
    */
+  public async getCrawlerRuns(): Promise<CrawlerRun[]> {
+    return Array.from(this.store.crawlerRuns.values());
+  }
+
+  public async registerCrawlerRun(data: { sourceCode: string; runType?: CrawlerRun['runType'] }): Promise<CrawlerRun> {
+    const source = await this.getPortalSourceByCode(data.sourceCode);
+    if (!source) throw new Error(`Fuente no encontrada: ${data.sourceCode}`);
+
+    const now = new Date().toISOString();
+    const id = `run_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const run: CrawlerRun = {
+      id,
+      sourceId: source.id,
+      runType: data.runType || 'SCHEDULED',
+      status: 'PENDING',
+      listingsFound: 0,
+      listingsCreated: 0,
+      listingsUpdated: 0,
+      errorsCount: 0,
+      createdAt: now,
+    };
+
+    this.store.crawlerRuns.set(id, run);
+    return run;
+  }
+
+  /**
+   * Registro y consulta de consumo de IA (preparado pero sin uso en Fase 0).
+   */
+  public async getAIUsageEvents(): Promise<AIUsageEvent[]> {
+    return this.store.aiUsageEvents;
+  }
+
+  public async registerAIUsageEvent(data: {
+    eventType: string;
+    modelName: string;
+    promptTokens?: number;
+    completionTokens?: number;
+  }): Promise<AIUsageEvent> {
+    const now = new Date().toISOString();
+    const promptTokens = data.promptTokens || 0;
+    const completionTokens = data.completionTokens || 0;
+    const totalTokens = promptTokens + completionTokens;
+    const event: AIUsageEvent = {
+      id: `ai_evt_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      eventType: data.eventType,
+      modelName: data.modelName,
+      promptTokens,
+      completionTokens,
+      totalTokens,
+      estimatedCostUsd: Number((totalTokens * 0.000002).toFixed(6)),
+      createdAt: now,
+    };
+
+    this.store.aiUsageEvents.push(event);
+    return event;
+  }
+
   public evaluateDeduplication(criteria: DeduplicationCriteria): DeduplicationMatchResult {
     const dedupHash = this.calculateDedupHash(criteria.address, criteria.department, criteria.cadastralNumber);
 
@@ -171,9 +227,6 @@ export class AppraisalDataService {
     };
   }
 
-  /**
-   * Registra un candidato de duplicación para inspección posterior.
-   */
   public async registerDuplicateCandidate(data: {
     propertyAId?: string;
     propertyBId?: string;
@@ -199,9 +252,6 @@ export class AppraisalDataService {
     return candidate;
   }
 
-  /**
-   * Crea o resuelve la propiedad maestra canónica en la base global.
-   */
   public async createOrResolveMasterProperty(data: {
     canonicalAddress: string;
     department: string;
@@ -262,9 +312,6 @@ export class AppraisalDataService {
     return master;
   }
 
-  /**
-   * Registra un listing y audita el historial inmutable de precios.
-   */
   public async registerListing(data: {
     sourceCode: string;
     externalId: string;
@@ -273,13 +320,12 @@ export class AppraisalDataService {
     description?: string;
     priceAmount: number;
     currency?: string;
+    status?: PropertyListing['status'];
     coveredSurfaceM2?: number;
     masterId?: string;
   }): Promise<{ listing: PropertyListing; priceHistoryEntry: PropertyPriceHistory }> {
     const source = await this.getPortalSourceByCode(data.sourceCode);
-    if (!source) {
-      throw new Error(`Fuente no encontrada para código: ${data.sourceCode}`);
-    }
+    if (!source) throw new Error(`Fuente no encontrada: ${data.sourceCode}`);
 
     const now = new Date().toISOString();
     const currency = data.currency || 'USD';
@@ -302,6 +348,7 @@ export class AppraisalDataService {
         currentCurrency: currency,
         priceUsd: priceUsdNormalized,
         pricePerM2: pricePerM2Usd,
+        status: data.status || existingListing.status,
         lastSeenAt: now,
         updatedAt: now,
       };
@@ -337,7 +384,7 @@ export class AppraisalDataService {
         currentCurrency: currency,
         priceUsd: priceUsdNormalized,
         pricePerM2: pricePerM2Usd,
-        status: 'ACTIVE',
+        status: data.status || 'ACTIVE',
         firstSeenAt: now,
         lastSeenAt: now,
         createdAt: now,
@@ -366,9 +413,6 @@ export class AppraisalDataService {
     return { listing, priceHistoryEntry: historyEntry };
   }
 
-  /**
-   * Registra evidencia trazable para un campo específico.
-   */
   public async registerFieldEvidence(data: {
     propertyMasterId?: string;
     listingId?: string;
@@ -397,9 +441,6 @@ export class AppraisalDataService {
     return evidence;
   }
 
-  /**
-   * Registra un medio/fotografía con hashes.
-   */
   public async registerMedia(data: {
     listingId?: string;
     masterId?: string;
@@ -428,9 +469,6 @@ export class AppraisalDataService {
     return mediaItem;
   }
 
-  /**
-   * Obtiene la historia de precios para un listing o propiedad maestra.
-   */
   public async getPriceHistory(filter: { listingId?: string; masterId?: string }): Promise<PropertyPriceHistory[]> {
     return this.store.priceHistory.filter((h) => {
       if (filter.listingId && h.listingId === filter.listingId) return true;
@@ -439,23 +477,15 @@ export class AppraisalDataService {
     });
   }
 
-  /**
-   * Obtiene los parámetros activos vigentes del Tasador IA (`asking_price_adjustment = 0.1200`).
-   */
   public async getActiveSettings(): Promise<AppraisalSettings> {
     const activeVersion = Array.from(this.store.settings.values())
       .filter((s) => s.isActive)
       .sort((a, b) => b.version - a.version)[0];
 
-    if (!activeVersion) {
-      throw new Error('No hay configuración de tasación activa registrada.');
-    }
+    if (!activeVersion) throw new Error('No hay configuración activa.');
     return activeVersion;
   }
 
-  /**
-   * Registra una nueva versión de parámetros de tasación conservando historial.
-   */
   public async createSettingsVersion(newSettings: Omit<AppraisalSettings, 'id' | 'createdAt'>): Promise<AppraisalSettings> {
     const now = new Date().toISOString();
     const id = `set_v${newSettings.version}`;
