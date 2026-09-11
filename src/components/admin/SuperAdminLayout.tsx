@@ -22,6 +22,7 @@ import {
   ChevronDown,
   Lock,
   FileCheck,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -53,6 +54,7 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
     { name: 'Inicio', href: '/superadmin', icon: Home },
     { name: 'Tenants', href: '/superadmin/tenants', icon: Users2 },
     { name: 'Leads Comerciales', href: '/superadmin/leads', icon: UserPlus },
+    { name: 'Tasador IA & Calibración', href: '/superadmin/tasador', icon: Sparkles },
     { name: 'Biblioteca de Plantillas', href: '/superadmin/documentos', icon: FileCheck },
     { name: 'Servicios', href: '/superadmin/servicios', icon: Boxes },
     { name: 'Ver como cliente', href: '/superadmin/ver-como-cliente', icon: UserCheck },

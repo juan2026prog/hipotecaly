@@ -100,6 +100,36 @@ export class GroundTruthService {
   }
 
   /**
+   * Obtiene resumen cuantitativo exacto de Ground Truth por nivel de jerarquía
+   */
+  public getGroundTruthSummary(): {
+    confirmed_transactions_total: number; // Nivel 1 (Escrituras / Cierres)
+    document_verified_total: number; // Nivel 2 (Peritajes judiciales / tasaciones)
+    professional_confirmed_total: number; // Nivel 3 (Broker / Red inmobiliaria verificada)
+    client_reported_total: number; // Nivel 4 (Reportado por cliente sin verificar - EXCLUIDO)
+    internal_platform_confirmed_total: number; // Operaciones cerradas dentro de Hipotecaly
+    total_verified_for_calibration: number; // Suma niveles 1 + 2 + 3
+    strong_calibration_levels: number[];
+  } {
+    const all = Array.from(this.transactions.values());
+    const level1 = all.filter((t) => t.groundTruthType === 'CONFIRMED_CLOSING').length;
+    const level2 = all.filter((t) => t.groundTruthType === 'DOCUMENT_VERIFIED').length;
+    const level3 = all.filter((t) => t.groundTruthType === 'BROKER_REPORTED').length;
+    const level4 = all.filter((t) => t.groundTruthType === 'CLIENT_REPORTED').length;
+    const internalPlatform = all.filter((t) => t.source.toLowerCase().includes('hipotecaly') || t.source.toLowerCase().includes('estudio nova')).length;
+
+    return {
+      confirmed_transactions_total: level1,
+      document_verified_total: level2,
+      professional_confirmed_total: level3,
+      client_reported_total: level4,
+      internal_platform_confirmed_total: internalPlatform,
+      total_verified_for_calibration: level1 + level2 + level3,
+      strong_calibration_levels: [1, 2, 3],
+    };
+  }
+
+  /**
    * Obtiene transacciones filtradas por departamento y barrio
    */
   public getTransactionsByZone(department?: string, neighborhood?: string): ConfirmedTransaction[] {

@@ -22,11 +22,13 @@ export class AskingDiscountAnalyzer {
         meanDiscount: 0.1200,
         medianDiscount: 0.1200,
         p25: 0.1200,
+        p50: 0.1200,
         p75: 0.1200,
         minDiscount: 0.1200,
         maxDiscount: 0.1200,
         standardDeviation: 0,
         baselineDifference: 0,
+        status: 'INSUFFICIENT_SAMPLE',
       };
     }
 
@@ -40,6 +42,7 @@ export class AskingDiscountAnalyzer {
         : validDiscounts[Math.floor(n / 2)];
 
     const p25 = validDiscounts[Math.floor(n * 0.25)];
+    const p50 = median;
     const p75 = validDiscounts[Math.min(n - 1, Math.floor(n * 0.75))];
     const min = validDiscounts[0];
     const max = validDiscounts[n - 1];
@@ -55,11 +58,13 @@ export class AskingDiscountAnalyzer {
       meanDiscount: Number(mean.toFixed(4)),
       medianDiscount: Number(median.toFixed(4)),
       p25: Number(p25.toFixed(4)),
+      p50: Number(p50.toFixed(4)),
       p75: Number(p75.toFixed(4)),
       minDiscount: Number(min.toFixed(4)),
       maxDiscount: Number(max.toFixed(4)),
       standardDeviation: Number(standardDeviation.toFixed(4)),
       baselineDifference,
+      status: n >= 3 ? 'SUFFICIENT' : 'INSUFFICIENT_SAMPLE',
     };
   }
 

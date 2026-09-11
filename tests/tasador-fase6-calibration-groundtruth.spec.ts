@@ -185,4 +185,86 @@ test.describe.serial('Tasador IA — Fase 6: Ground Truth, Calibración & Aprend
     expect(summary.totalCount).toBeGreaterThan(0);
     expect(summary.distribution.VALUATION_TOO_HIGH).toBeGreaterThan(0);
   });
+
+  test('8. Prueba exacta de Descuento Observado (asking = 200.000, closing = 185.000 -> 7.50%)', async () => {
+    const gtService = GroundTruthService.getInstance();
+    const tx = gtService.registerTransaction({
+      propertyMasterId: 'master-discount-test',
+      department: 'Montevideo',
+      neighborhood: 'Pocitos',
+      propertyType: 'apartamento',
+      transactionDate: '2026-03-01',
+      transactionPriceUsd: 185000,
+      askingPriceUsd: 200000,
+      groundTruthType: 'CONFIRMED_CLOSING',
+      source: 'Operación Notarial Verificada',
+    });
+
+    // Descuento exacto: (200000 - 185000) / 200000 = 0.0750 = 7.50%
+    expect(tx.observedDiscount).toBe(0.0750);
+    expect(tx.observedDiscount).not.toBe(0.1200); // NO aplica baseline arbitrario
+  });
+
+  test('9. Separación de Conjuntos CALIBRATION SET vs HOLDOUT SET sin solapamiento', async () => {
+    const engine = CalibrationEngine.getInstance();
+    const holdoutEval = await engine.runHoldoutEvaluation();
+
+    expect(holdoutEval.separationVerified).toBe(true);
+    expect(holdoutEval.calibrationSet.count).toBeGreaterThan(0);
+    expect(holdoutEval.holdoutSet.count).toBeGreaterThan(0);
+
+    // Verificar que ninguna ID está en ambos conjuntos
+    const calibIds = new Set(holdoutEval.calibrationSet.ids);
+    for (const hId of holdoutEval.holdoutSet.ids) {
+      expect(calibIds.has(hId)).toBe(false);
+    }
+  });
+
+  test('10. Feedback VALUATION_TOO_HIGH NO crea observación cuantitativa de Ground Truth fuerte', async () => {
+    const gtService = GroundTruthService.getInstance();
+    const verifiedBefore = gtService.getVerifiedTransactions().length;
+
+    const fbService = ValuationFeedbackService.getInstance();
+    await fbService.submitFeedback({
+      organizationId: 'org-test-isolation',
+      valuationId: 'val-test-fb-gt',
+      feedbackType: 'VALUATION_TOO_HIGH',
+      rating: 2,
+      comment: 'El tasador estimó 300k y para mí vale 250k.',
+      suggestedValue: 250000,
+    });
+
+    const verifiedAfter = gtService.getVerifiedTransactions().length;
+    // La cantidad de transacciones cuantitativas de Ground Truth NO cambió
+    expect(verifiedAfter).toBe(verifiedBefore);
+  });
+
+  test('11. CERO DATA LEAKAGE: Transacciones posteriores a cutoffDate son estrictamente excluidas', async () => {
+    const engine = CalibrationEngine.getInstance();
+    const resultEarly = await engine.runBacktest({ cutoffDate: '2025-11-01' });
+    const resultLate = await engine.runBacktest({ cutoffDate: '2026-03-01' });
+
+    expect(resultEarly.metrics.sampleCount).toBeLessThan(resultLate.metrics.sampleCount);
+    for (const detail of resultEarly.details) {
+      const gt = GroundTruthService.getInstance().transactions.get(detail.txId);
+      if (gt) {
+        expect(gt.transactionDate <= '2025-11-01').toBe(true);
+      }
+    }
+  });
+
+  test('12. Resumen exacto de Ground Truth con desglose de certeza', async () => {
+    const gtService = GroundTruthService.getInstance();
+    const summary = gtService.getGroundTruthSummary();
+
+    expect(summary.confirmed_transactions_total).toBeGreaterThan(0);
+    expect(summary.document_verified_total).toBeGreaterThan(0);
+    expect(summary.professional_confirmed_total).toBeGreaterThanOrEqual(0);
+    expect(summary.total_verified_for_calibration).toBe(
+      summary.confirmed_transactions_total +
+      summary.document_verified_total +
+      summary.professional_confirmed_total
+    );
+    expect(summary.strong_calibration_levels).toEqual([1, 2, 3]);
+  });
 });

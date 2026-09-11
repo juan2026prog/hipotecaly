@@ -66,6 +66,7 @@ import { SuperAdminActivityPage } from './pages/admin/SuperAdminActivityPage';
 import { SuperAdminTechnicalConfigPage } from './pages/admin/SuperAdminTechnicalConfigPage';
 import { SuperAdminAccountPage } from './pages/admin/SuperAdminAccountPage';
 import { SuperAdminDocumentsPage } from './pages/admin/SuperAdminDocumentsPage';
+import { AdminAiPage } from './pages/admin/AdminAiPage';
 import { TenantOnboardingWizardPage } from './pages/admin/TenantOnboardingWizardPage';
 import { GenericWhiteLabelLanding } from './pages/landing/GenericWhiteLabelLanding';
 import { LendersSolutionPage } from './pages/solutions/LendersSolutionPage';
@@ -340,6 +341,30 @@ export const App: React.FC = () => {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/superadmin/ia"
+                element={
+                  <ProtectedRoute requireSuperAdmin>
+                    <AdminAiPage defaultTab="configuracion" />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/superadmin/tasador"
+                element={
+                  <ProtectedRoute requireSuperAdmin>
+                    <AdminAiPage defaultTab="tasador" />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/superadmin/calibracion"
+                element={
+                  <ProtectedRoute requireSuperAdmin>
+                    <AdminAiPage defaultTab="tasador_calibration" />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* Redirecciones de compatibilidad para Super Admin (/admin/* -> /superadmin/*) */}
               <Route path="/admin" element={<Navigate to="/superadmin" replace />} />
@@ -353,10 +378,12 @@ export const App: React.FC = () => {
               <Route path="/admin/actividad" element={<Navigate to="/superadmin/actividad" replace />} />
               <Route path="/admin/configuracion" element={<Navigate to="/superadmin/configuracion" replace />} />
               <Route path="/admin/mi-cuenta" element={<Navigate to="/superadmin/mi-cuenta" replace />} />
-              <Route path="/admin/ai" element={<Navigate to="/superadmin/servicios" replace />} />
+              <Route path="/admin/ai" element={<Navigate to="/superadmin/ia" replace />} />
+              <Route path="/admin/tasador" element={<Navigate to="/superadmin/tasador" replace />} />
+              <Route path="/admin/calibracion" element={<Navigate to="/superadmin/calibracion" replace />} />
               <Route path="/admin/qa" element={<Navigate to="/superadmin/ver-como-cliente" replace />} />
               <Route path="/platform-admin" element={<Navigate to="/superadmin" replace />} />
-              <Route path="/app/ai-admin" element={<Navigate to="/superadmin/servicios" replace />} />
+              <Route path="/app/ai-admin" element={<Navigate to="/superadmin/ia" replace />} />
 
               {/* ========================================================== */}
               {/* 4. ARQUITECTURA DEMO & TENANT DINÁMICO (/demo/:tenantSlug)  */}

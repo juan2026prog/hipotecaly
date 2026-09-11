@@ -88,9 +88,17 @@ export interface BacktestMetrics {
   mae: number; // Mean Absolute Error ($)
   mape: number; // Mean Absolute Percentage Error (%)
   mdape: number; // Median Absolute Percentage Error (%)
+  rmse: number; // Root Mean Squared Error ($)
+  meanSignedError?: number; // Mean Signed Error ($)
+  medianSignedError?: number; // Median Signed Error ($)
   bias: number; // Mean Signed Percentage Error (%) (+ sobreestimación, - subestimación)
+  overvaluationRate?: number; // % de predicciones > real
+  undervaluationRate?: number; // % de predicciones < real
   coveragePercentage: number; // % de transacciones que cayeron en el rango [low, high]
-  rmse: number;
+  algorithmVersion?: string;
+  settingsVersion?: number;
+  timeWindow?: string;
+  status?: 'OPTIMAL' | 'INSUFFICIENT_GROUND_TRUTH';
 }
 
 export interface AskingDiscountStats {
@@ -98,11 +106,13 @@ export interface AskingDiscountStats {
   meanDiscount: number;
   medianDiscount: number;
   p25: number;
+  p50: number;
   p75: number;
   minDiscount: number;
   maxDiscount: number;
   standardDeviation: number;
   baselineDifference: number; // medianDiscount - 0.1200
+  status?: 'SUFFICIENT' | 'INSUFFICIENT_SAMPLE';
 }
 
 export type CalibrationProposalStatus =

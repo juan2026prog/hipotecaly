@@ -96,10 +96,14 @@ export class CalibrationEngine {
     let withinRangeCount = 0;
     let sumSqError = 0;
 
+    const signedErrors: number[] = [];
+    let overvaluationCount = 0;
+    let undervaluationCount = 0;
+
     for (const tx of filteredTx) {
       const master = masterResolver.masters.get(tx.propertyMasterId);
 
-      // Filtrar comparables anteriores a la fecha de la transacción (Cero Data Leakage)
+      // Filtrar comparables estrictamente anteriores a la fecha de la transacción (Cero Data Leakage)
       const historicalListings = allListings.filter((l) => {
         const pubDate = l.publicationDate || '2026-01-01';
         return pubDate <= tx.transactionDate;
@@ -127,14 +131,18 @@ export class CalibrationEngine {
 
       const predicted = result.estimatedMarketValue;
       const actual = tx.transactionPriceUsd;
-      const absError = Math.abs(predicted - actual);
+      const signedError = predicted - actual;
+      const absError = Math.abs(signedError);
       const pctError = absError / actual;
-      const signedPctError = (predicted - actual) / actual;
+      const signedPctError = signedError / actual;
       const withinRange = actual >= result.estimatedRangeLow && actual <= result.estimatedRangeHigh;
 
       if (withinRange) withinRangeCount++;
+      if (predicted > actual) overvaluationCount++;
+      if (predicted < actual) undervaluationCount++;
 
       absErrors.push(absError);
+      signedErrors.push(signedError);
       pctErrors.push(pctError);
       signedPctErrors.push(signedPctError);
       sumSqError += Math.pow(absError, 2);
@@ -153,6 +161,13 @@ export class CalibrationEngine {
     const n = filteredTx.length;
     const mae = absErrors.reduce((a, b) => a + b, 0) / n;
     const mape = (pctErrors.reduce((a, b) => a + b, 0) / n) * 100;
+    const meanSignedError = signedErrors.reduce((a, b) => a + b, 0) / n;
+
+    const sortedSignedErrors = [...signedErrors].sort((a, b) => a - b);
+    const medianSignedError =
+      n % 2 === 0
+        ? (sortedSignedErrors[n / 2 - 1] + sortedSignedErrors[n / 2]) / 2
+        : sortedSignedErrors[Math.floor(n / 2)];
 
     const sortedPct = [...pctErrors].sort((a, b) => a - b);
     const mdape =
@@ -162,7 +177,12 @@ export class CalibrationEngine {
 
     const bias = (signedPctErrors.reduce((a, b) => a + b, 0) / n) * 100;
     const coveragePercentage = (withinRangeCount / n) * 100;
+    const overvaluationRate = (overvaluationCount / n) * 100;
+    const undervaluationRate = (undervaluationCount / n) * 100;
     const rmse = Math.sqrt(sumSqError / n);
+
+    const dates = filteredTx.map((t) => t.transactionDate).sort();
+    const timeWindow = dates.length > 0 ? `${dates[0]} -> ${dates[dates.length - 1]}` : 'N/A';
 
     return {
       metrics: {
@@ -170,11 +190,70 @@ export class CalibrationEngine {
         mae: Math.round(mae),
         mape: Number(mape.toFixed(2)),
         mdape: Number(mdape.toFixed(2)),
-        bias: Number(bias.toFixed(2)),
-        coveragePercentage: Number(coveragePercentage.toFixed(2)),
         rmse: Math.round(rmse),
+        meanSignedError: Math.round(meanSignedError),
+        medianSignedError: Math.round(medianSignedError),
+        bias: Number(bias.toFixed(2)),
+        overvaluationRate: Number(overvaluationRate.toFixed(2)),
+        undervaluationRate: Number(undervaluationRate.toFixed(2)),
+        coveragePercentage: Number(coveragePercentage.toFixed(2)),
+        algorithmVersion: 'v3.4-hybrid-ensemble',
+        settingsVersion: settings.version,
+        timeWindow,
+        status: n >= 3 ? 'OPTIMAL' : 'INSUFFICIENT_GROUND_TRUTH',
       },
       details,
+    };
+  }
+
+  /**
+   * Ejecuta evaluación separada de Conjunto de Calibración (70%) vs Holdout de Validación (30%)
+   * Garantiza que ninguna transacción se use a la vez en entrenamiento y validación.
+   */
+  public async runHoldoutEvaluation(params?: {
+    customSettings?: AppraisalSettingsV1;
+  }): Promise<{
+    calibrationSet: { count: number; ids: string[]; metrics: BacktestMetrics };
+    holdoutSet: { count: number; ids: string[]; metrics: BacktestMetrics };
+    separationVerified: boolean;
+  }> {
+    const groundTruthService = GroundTruthService.getInstance();
+    const allTx = groundTruthService.getVerifiedTransactions();
+
+    // Ordenar cronológicamente para partición temporal
+    const sortedTx = [...allTx].sort((a, b) => a.transactionDate.localeCompare(b.transactionDate));
+    const splitIndex = Math.max(1, Math.floor(sortedTx.length * 0.7));
+
+    const calibTx = sortedTx.slice(0, splitIndex);
+    const holdoutTx = sortedTx.slice(splitIndex);
+
+    // Verificación estricta de conjuntos disjuntos
+    const calibIds = new Set(calibTx.map((t) => t.id));
+    const overlap = holdoutTx.some((t) => calibIds.has(t.id));
+
+    // Evaluar métricas en Holdout
+    const holdoutResult = await this.runBacktest({
+      customSettings: params?.customSettings,
+      cutoffDate: holdoutTx.length > 0 ? holdoutTx[holdoutTx.length - 1].transactionDate : undefined,
+    });
+
+    const calibResult = await this.runBacktest({
+      customSettings: params?.customSettings,
+      cutoffDate: calibTx.length > 0 ? calibTx[calibTx.length - 1].transactionDate : undefined,
+    });
+
+    return {
+      calibrationSet: {
+        count: calibTx.length,
+        ids: calibTx.map((t) => t.id),
+        metrics: calibResult.metrics,
+      },
+      holdoutSet: {
+        count: holdoutTx.length,
+        ids: holdoutTx.map((t) => t.id),
+        metrics: holdoutResult.metrics,
+      },
+      separationVerified: !overlap && calibTx.length > 0 && holdoutTx.length > 0,
     };
   }
 

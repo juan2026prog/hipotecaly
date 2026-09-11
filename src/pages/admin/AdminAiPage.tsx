@@ -39,10 +39,14 @@ import { SuperAdminTasadorTab } from '../../components/admin/SuperAdminTasadorTa
 import { SuperAdminTasadorValuationTab } from '../../components/admin/SuperAdminTasadorValuationTab';
 import { SuperAdminCalibrationTab } from '../../components/admin/SuperAdminCalibrationTab';
 
-export const AdminAiPage: React.FC = () => {
+export interface AdminAiPageProps {
+  defaultTab?: 'dashboard' | 'configuracion' | 'tasador' | 'tasador_valuation' | 'tasador_calibration' | 'modelos' | 'costos' | 'consumo' | 'memoria' | 'correcciones' | 'calidad' | 'promocionales';
+}
+
+export const AdminAiPage: React.FC<AdminAiPageProps> = ({ defaultTab = 'tasador_calibration' }) => {
   const [activeTab, setActiveTab] = useState<
     'dashboard' | 'configuracion' | 'tasador' | 'tasador_valuation' | 'tasador_calibration' | 'modelos' | 'costos' | 'consumo' | 'memoria' | 'correcciones' | 'calidad' | 'promocionales'
-  >('configuracion');
+  >(defaultTab);
 
   // Estado editable de modelos
   const [extractionModel, setExtractionModel] = useState(AI_MODELS.extraction);
