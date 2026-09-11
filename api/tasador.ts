@@ -4,12 +4,12 @@
 // ==============================================================================
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin } from '../server/supabase';
+import { supabaseAdmin } from '../server/supabase.js';
 import { SourceHealthCheck } from '../src/lib/tasador/ingestion/SourceHealthCheck';
 import { SourceDiscoveryService } from '../src/lib/tasador/ingestion/SourceDiscoveryService';
 import { ListingIngestionWorker } from '../src/lib/tasador/ingestion/ListingIngestionWorker';
 import { SourceSchedulerService } from '../src/lib/tasador/ingestion/SourceSchedulerService';
-import { verifySuperAdmin } from '../server/auth/superAdminGuard';
+import { verifySuperAdmin } from '../server/auth/superAdminGuard.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');

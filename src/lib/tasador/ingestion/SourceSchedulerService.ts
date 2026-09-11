@@ -7,7 +7,7 @@
 import { SourceHealthCheck } from './SourceHealthCheck';
 import { SourceDiscoveryService } from './SourceDiscoveryService';
 import { ListingIngestionWorker } from './ListingIngestionWorker';
-import { supabaseAdmin } from '../../../../server/supabase';
+import { supabaseAdmin } from '../../../../server/supabase.js';
 
 export interface SchedulerRunSummary {
   cycleId: string;

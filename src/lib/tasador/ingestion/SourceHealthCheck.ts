@@ -6,7 +6,7 @@
 
 import { AdapterRegistry } from '../adapters/AdapterRegistry';
 import { HealthCheckResult } from '../types/tasadorPipelineTypes';
-import { supabaseAdmin } from '../../../../server/supabase';
+import { supabaseAdmin } from '../../../../server/supabase.js';
 
 export interface SourceHealthReport {
   sourceCode: string;

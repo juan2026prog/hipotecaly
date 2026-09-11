@@ -8,7 +8,7 @@
 import crypto from 'crypto';
 import { AdapterRegistry } from '../adapters/AdapterRegistry';
 import { RawListingPayload } from '../types/tasadorPipelineTypes';
-import { supabaseAdmin } from '../../../../server/supabase';
+import { supabaseAdmin } from '../../../../server/supabase.js';
 
 export interface DiscoveryRunResult {
   runId: string;

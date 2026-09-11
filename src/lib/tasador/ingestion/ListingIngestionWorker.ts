@@ -12,7 +12,7 @@ import { PriceHistoryTracker } from '../price_history/PriceHistoryTracker';
 import { FieldEvidenceTracker } from '../evidence/FieldEvidenceTracker';
 import { RawListingPayload, NormalizedListing } from '../types/tasadorPipelineTypes';
 import { computeListingFingerprints } from './SourceDiscoveryService';
-import { supabaseAdmin } from '../../../../server/supabase';
+import { supabaseAdmin } from '../../../../server/supabase.js';
 
 export interface WorkerBatchResult {
   jobsClaimed: number;
