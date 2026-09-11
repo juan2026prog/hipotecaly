@@ -337,4 +337,62 @@ test.describe('TASADOR IA - FASE 0: Matriz Completa de 25 Requisitos', () => {
     expect(activeSettings.notes).toContain('asking_price_adjustment = 12.00%');
   });
 
+  // ==============================================================================
+  // RLS SECURITY HARDENING & MULTI-TENANT ISOLATION TESTS (18 TABLAS FASE 0)
+  // ==============================================================================
+
+  test('Security 01: Anon tiene 0 acceso (REVOKE ALL FROM anon) en las 18 tablas de Fase 0', () => {
+    const rlsMigrationPath = path.join(process.cwd(), 'supabase', 'migrations', '20260910000039_fase0_tasador_ia_rls_security_hardening.sql');
+    const sqlContent = fs.readFileSync(rlsMigrationPath, 'utf-8');
+
+    const f0Tables = [
+      'property_sources', 'property_master', 'property_listings', 'property_price_history',
+      'property_duplicate_candidates', 'property_photos', 'property_listing_media',
+      'property_listing_attributes', 'property_field_evidence', 'property_listing_snapshots',
+      'property_cadastral_data', 'property_valuations', 'property_valuation_versions',
+      'property_valuation_comparables', 'property_ai_features', 'property_transactions',
+      'appraisal_settings', 'crawler_runs', 'ai_usage_events'
+    ];
+
+    f0Tables.forEach((table) => {
+      expect(sqlContent).toContain(`REVOKE ALL ON public.${table} FROM anon;`);
+    });
+  });
+
+  test('Security 02: Tablas Server-side Only (crawler_runs, snapshots, catastro, ai_features, transactions, candidates, evidence) están revocadas para authenticated', () => {
+    const rlsMigrationPath = path.join(process.cwd(), 'supabase', 'migrations', '20260910000039_fase0_tasador_ia_rls_security_hardening.sql');
+    const sqlContent = fs.readFileSync(rlsMigrationPath, 'utf-8');
+
+    const serverSideOnlyTables = [
+      'property_duplicate_candidates', 'property_field_evidence', 'property_listing_snapshots',
+      'property_cadastral_data', 'property_ai_features', 'property_transactions', 'crawler_runs'
+    ];
+
+    serverSideOnlyTables.forEach((table) => {
+      expect(sqlContent).toContain(`REVOKE ALL ON public.${table} FROM authenticated;`);
+      expect(sqlContent).toContain(`CREATE POLICY "superadmin_select_${table}"`);
+      expect(sqlContent).toContain(`CREATE POLICY "service_role_all_${table}"`);
+    });
+  });
+
+  test('Security 03: Tablas Multi-Tenant (ai_usage_events y property_valuations) imponen aislamiento por organization_id con is_member_of_org', () => {
+    const rlsMigrationPath = path.join(process.cwd(), 'supabase', 'migrations', '20260910000039_fase0_tasador_ia_rls_security_hardening.sql');
+    const sqlContent = fs.readFileSync(rlsMigrationPath, 'utf-8');
+
+    expect(sqlContent).toContain('CREATE POLICY "authenticated_select_ai_usage_events"');
+    expect(sqlContent).toContain('public.is_member_of_org(organization_id)');
+
+    expect(sqlContent).toContain('CREATE POLICY "authenticated_select_property_valuations"');
+    expect(sqlContent).toContain('public.is_member_of_org(organization_id)');
+  });
+
+  test('Security 04: Control de Super Admin utiliza exclusivamente is_super_admin() sin inventar custom JWT claims', () => {
+    const rlsMigrationPath = path.join(process.cwd(), 'supabase', 'migrations', '20260910000039_fase0_tasador_ia_rls_security_hardening.sql');
+    const sqlContent = fs.readFileSync(rlsMigrationPath, 'utf-8');
+
+    expect(sqlContent).toContain('public.is_super_admin()');
+    expect(sqlContent).not.toContain('auth.jwt() ->> \'custom_claim\'');
+  });
+
 });
+
