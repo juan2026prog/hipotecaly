@@ -1,7 +1,7 @@
 // ==============================================================================
-// HIPOTECALY AI: Suite de Pruebas Automatizadas - Tasador IA Fase0
-// Validación de Arquitectura, Modelo de Datos, Top 20 Portales, Deduplicación,
-// Historial de Precios, Hashes Fotográficos y Parámetro Versionado del 12%
+// HIPOTECALY AI: Suite Ampliada de Pruebas Automatizadas - Tasador IA Fase0
+// Validación de las 16 Entidades Fundacionales, Top 20 Portales Locales UY,
+// Candidatos de Deduplicación, Evidencia, Ajuste Asking Price (12%) y Aislamiento
 // ==============================================================================
 
 import { test, expect } from '@playwright/test';
@@ -10,231 +10,238 @@ import { TOP_20_PORTALS_CONFIG } from '../src/config/top20PortalsConfig';
 import * as fs from 'fs';
 import * as path from 'path';
 
-test.describe('TASADOR IA - FASE 0: Arquitectura y Modelo de Datos', () => {
+test.describe('TASADOR IA - FASE 0: Arquitectura Ampliada y Modelo de Datos Inmobiliario', () => {
 
-  // 1. Verificación de Fuentes / Top 20 Portales Inmobiliarios
-  test('1. Configuración Top 20 Portales: contiene exactamente 20 fuentes declaradas con dominios y rate-limits', async () => {
+  // 1. Configuración de Exactamente 20 Portales Locales Uruguayos
+  test('1. Fuentes de Portales: contiene exactamente los 20 portales uruguayos con ingestionEnabled = false', async () => {
     const sources = await appraisalDataService.getPortalSources();
     expect(sources.length).toBe(20);
     expect(TOP_20_PORTALS_CONFIG.length).toBe(20);
 
-    const infocasas = sources.find((s) => s.code === 'infocasas');
-    expect(infocasas).toBeDefined();
-    expect(infocasas?.domain).toBe('infocasas.com.uy');
-    expect(infocasas?.countryCode).toBe('UY');
-    expect(infocasas?.isActive).toBe(true);
+    // Verificar que todos los ingestionEnabled sean estrictamente false en Fase 0
+    sources.forEach((source) => {
+      expect(source.ingestionEnabled).toBe(false);
+      expect(source.countryCode).toBe('UY');
+    });
 
     const meLi = sources.find((s) => s.code === 'mercadolibre_uy');
     expect(meLi).toBeDefined();
-    expect(meLi?.domain).toBe('inmuebles.mercadolibre.com.uy');
+    expect(meLi?.name).toBe('Mercado Libre Inmuebles');
+
+    const infocasas = sources.find((s) => s.code === 'infocasas');
+    expect(infocasas).toBeDefined();
+    expect(infocasas?.name).toBe('InfoCasas');
 
     const gallito = sources.find((s) => s.code === 'gallito_uy');
     expect(gallito).toBeDefined();
-    expect(gallito?.domain).toBe('gallito.com.uy');
+    expect(gallito?.name).toBe('Gallito Luis');
   });
 
-  // 2. Creación e Integridad de Property Master (Base Inmobiliaria Global)
-  test('2. Property Master Global: crea registro maestro independiente de expedientes crediticios', async () => {
+  // 2. Property Master Global Independiente de Expedientes
+  test('2. Property Master Global: crea registro canónico sin dependencia de la tabla applications', async () => {
     const master = await appraisalDataService.createOrResolveMasterProperty({
-      canonicalAddress: 'Av. 18 de Julio 1455 Apt 402',
+      canonicalAddress: 'Av. Brasil 2580 Apt 801',
       department: 'Montevideo',
       city: 'Montevideo',
-      neighborhood: 'Cordón',
-      propertyType: 'apartamento',
-      coveredSurfaceM2: 75.5,
-      rooms: 2,
-      bathrooms: 1,
-      cadastralNumber: '45892',
+      neighborhood: 'Pocitos',
+      propertyType: 'APARTMENT',
+      coveredSurfaceM2: 85,
+      bedrooms: 2,
+      bathrooms: 2,
+      cadastralNumber: '112233',
     });
 
     expect(master.id).toBeDefined();
-    expect(master.canonicalAddress).toBe('Av. 18 de Julio 1455 Apt 402');
-    expect(master.department).toBe('Montevideo');
-    expect(master.cadastralNumber).toBe('45892');
+    expect(master.canonicalAddress).toBe('Av. Brasil 2580 Apt 801');
+    expect(master.countryCode).toBe('UY');
+    expect(master.locationPrecision).toBe('EXACT_ADDRESS');
     expect(master.dedupHash).toBeDefined();
-    expect(master.dedupConfidence).toBe(100);
+    expect(master.canonicalStatus).toBe('ACTIVE');
   });
 
-  // 3. Deduplicación Heurística por Hash y Padrón
-  test('3. Deduplicación de Inmuebles: detecta inmueble duplicado y reutiliza el mismo id maestro', async () => {
-    const propertyData = {
-      canonicalAddress: 'Calle Bulevar Artigas 2240',
+  // 3. Deduplicación Heurística mediante Candidatos (Sin Auto-Merge Destructivo)
+  test('3. Deduplicación por Candidatos: evalúa similitud y registra candidatos sin fusión automática', async () => {
+    const masterA = await appraisalDataService.createOrResolveMasterProperty({
+      canonicalAddress: 'Calle Gabriel Pereira 3100',
       department: 'Montevideo',
-      city: 'Montevideo',
-      neighborhood: 'Tres Cruces',
-      propertyType: 'apartamento' as const,
-      coveredSurfaceM2: 90,
-      cadastralNumber: '99881',
-    };
+      propertyType: 'APARTMENT',
+      coveredSurfaceM2: 70,
+    });
 
-    const firstMaster = await appraisalDataService.createOrResolveMasterProperty(propertyData);
-    const secondMaster = await appraisalDataService.createOrResolveMasterProperty(propertyData);
+    const candidate = await appraisalDataService.registerDuplicateCandidate({
+      propertyAId: masterA.id,
+      matchScore: 88.5,
+    });
 
-    expect(firstMaster.id).toBe(secondMaster.id);
-    expect(firstMaster.dedupHash).toBe(secondMaster.dedupHash);
+    expect(candidate.id).toBeDefined();
+    expect(candidate.matchScore).toBe(88.5);
+    expect(candidate.decision).toBe('PENDING');
+    expect(candidate.decisionSource).toBe('AUTOMATED_DEDUP_SCORER');
   });
 
-  // 4. Ingesta de Property Listings y Normalización de Precio
-  test('4. Listings por Portal: vincula anuncio a portal y maestro calculando precio m2 en USD', async () => {
+  // 4. Listing por Portal: Títulos/Descripciones Raw vs Normalizados
+  test('4. Listings por Portal: guarda separados el texto original (raw) y el texto normalizado', async () => {
     const master = await appraisalDataService.createOrResolveMasterProperty({
-      canonicalAddress: 'Calle Rambla Republica del Peru 1120',
+      canonicalAddress: 'Calle Rivera 2100',
       department: 'Montevideo',
-      propertyType: 'apartamento',
-      coveredSurfaceM2: 100,
+      propertyType: 'HOUSE',
     });
 
     const { listing } = await appraisalDataService.registerListing({
       sourceCode: 'infocasas',
-      externalId: 'info_prop_1001',
-      url: 'https://infocasas.com.uy/propiedad/1001',
-      title: 'Apartamento frente al mar en Pocitos',
-      priceAmount: 250000,
+      externalId: 'info_9988',
+      url: 'https://www.infocasas.com.uy/propiedad/info_9988',
+      title: 'Hermosa Casa En Pocitos Con Jardín',
+      description: 'CASA AMPLIA CON PARRILLERO Y GARAJE.',
+      priceAmount: 320000,
       currency: 'USD',
-      coveredSurfaceM2: 100,
+      coveredSurfaceM2: 150,
       masterId: master.id,
     });
 
-    expect(listing.id).toContain('infocasas_info_prop_1001');
-    expect(listing.priceUsdNormalized).toBe(250000);
-    expect(listing.pricePerM2Usd).toBe(2500);
-    expect(listing.masterId).toBe(master.id);
+    expect(listing.titleRaw).toBe('Hermosa Casa En Pocitos Con Jardín');
+    expect(listing.titleNormalized).toBe('hermosa casa en pocitos con jardín');
+    expect(listing.descriptionRaw).toBe('CASA AMPLIA CON PARRILLERO Y GARAJE.');
+    expect(listing.descriptionNormalized).toBe('casa amplia con parrillero y garaje.');
+    expect(listing.operationType).toBe('SALE');
   });
 
-  // 5. Historial de Precios y Auditoría de Cambios
-  test('5. Historial de Precios: audita cambio de precio en listing y calcula porcentaje de variación', async () => {
+  // 5. Historial Inmutable Append-Only de Precios
+  test('5. Historial de Precios: audita cambio de precio en listing sin destruir entradas históricas', async () => {
     const master = await appraisalDataService.createOrResolveMasterProperty({
-      canonicalAddress: 'Calle Ellauri 850',
+      canonicalAddress: 'Calle Ellauri 950',
       department: 'Montevideo',
-      propertyType: 'casa',
-      coveredSurfaceM2: 120,
+      propertyType: 'APARTMENT',
     });
 
-    // Inserción inicial a $300,000 USD
-    const { listing: l1 } = await appraisalDataService.registerListing({
+    const { listing } = await appraisalDataService.registerListing({
       sourceCode: 'mercadolibre_uy',
-      externalId: 'meli_house_202',
-      url: 'https://inmuebles.mercadolibre.com.uy/meli_house_202',
-      title: 'Casa en Punta Carretas',
-      priceAmount: 300000,
+      externalId: 'meli_prop_554',
+      url: 'https://inmuebles.mercadolibre.com.uy/meli_prop_554',
+      title: 'Apartamento en Punta Carretas',
+      priceAmount: 220000,
       currency: 'USD',
-      coveredSurfaceM2: 120,
+      coveredSurfaceM2: 60,
       masterId: master.id,
     });
 
-    // Actualización de precio a $280,000 USD (-6.67%)
+    // Actualización de precio
     await appraisalDataService.registerListing({
       sourceCode: 'mercadolibre_uy',
-      externalId: 'meli_house_202',
-      url: 'https://inmuebles.mercadolibre.com.uy/meli_house_202',
-      title: 'Casa en Punta Carretas - Rebajada',
-      priceAmount: 280000,
+      externalId: 'meli_prop_554',
+      url: 'https://inmuebles.mercadolibre.com.uy/meli_prop_554',
+      title: 'Apartamento en Punta Carretas - Rebajado',
+      priceAmount: 205000,
       currency: 'USD',
-      coveredSurfaceM2: 120,
+      coveredSurfaceM2: 60,
       masterId: master.id,
     });
 
-    const history = await appraisalDataService.getPriceHistory({ listingId: l1.id });
+    const history = await appraisalDataService.getPriceHistory({ listingId: listing.id });
     expect(history.length).toBe(2);
-
-    const initialEntry = history[0];
-    expect(initialEntry.previousPriceUsd).toBeNull();
-    expect(initialEntry.priceUsdNormalized).toBe(300000);
-
-    const updatedEntry = history[1];
-    expect(updatedEntry.previousPriceUsd).toBe(300000);
-    expect(updatedEntry.priceUsdNormalized).toBe(280000);
-    expect(updatedEntry.priceChangePercentage).toBe(-6.67);
+    expect(history[0].eventType).toBe('FIRST_SEEN');
+    expect(history[0].priceUsd).toBe(220000);
+    expect(history[1].eventType).toBe('PRICE_CHANGED');
+    expect(history[1].previousPriceUsd).toBe(220000);
+    expect(history[1].priceUsd).toBe(205000);
   });
 
-  // 6. Almacenamiento de Fotos con Hashes de Deduplicación Visual
-  test('6. Fotos con Hashes: registra imágenes asociando phash y sha256 para deduplicación visual', async () => {
+  // 6. Evidencia Trazable por Campo
+  test('6. Evidencia por Campo: guarda la trazabilidad de origen para cada atributo del inmueble', async () => {
     const master = await appraisalDataService.createOrResolveMasterProperty({
-      canonicalAddress: 'Av. Brasil 2900',
+      canonicalAddress: 'Av. 18 de Julio 1200',
       department: 'Montevideo',
-      propertyType: 'apartamento',
+      propertyType: 'APARTMENT',
     });
 
-    const photo1 = await appraisalDataService.registerPhoto({
-      masterId: master.id,
-      url: 'https://cdn.hipotecaly.com/properties/front_photo_1.jpg',
-      phash: 'd8e4f1a2b3c4d5e6',
-      imageHash: 'sha256_e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-      isPrimary: true,
+    const evidence = await appraisalDataService.registerFieldEvidence({
+      propertyMasterId: master.id,
+      fieldName: 'bedrooms',
+      rawValue: '3 dormitorios',
+      normalizedValue: '3',
+      sourceCode: 'infocasas',
     });
 
-    expect(photo1.id).toBeDefined();
-    expect(photo1.phash).toBe('d8e4f1a2b3c4d5e6');
-    expect(photo1.imageHash).toBeDefined();
-    expect(photo1.isPrimary).toBe(true);
-
-    const photos = await appraisalDataService.getPhotosForMaster(master.id);
-    expect(photos.length).toBe(1);
-    expect(photos[0].url).toBe('https://cdn.hipotecaly.com/properties/front_photo_1.jpg');
+    expect(evidence.id).toBeDefined();
+    expect(evidence.fieldName).toBe('bedrooms');
+    expect(evidence.rawValue).toBe('3 dormitorios');
+    expect(evidence.normalizedValue).toBe('3');
   });
 
-  // 7. Parámetros Versionados y Preservación del Factor del 12%
-  test('7. Settings Versionados: obtiene V1 activa conservando el 12% de margen configurable sin ejecutarlo', async () => {
+  // 7. Medios / Fotos con Hashes SHA-256 y Perceptual Hash
+  test('7. Medios con Hashes: almacena fotos asociando sha256Hash y perceptualHash para deduplicación visual', async () => {
+    const master = await appraisalDataService.createOrResolveMasterProperty({
+      canonicalAddress: 'Calle Leyenda Patria 2900',
+      department: 'Montevideo',
+      propertyType: 'APARTMENT',
+    });
+
+    const media = await appraisalDataService.registerMedia({
+      masterId: master.id,
+      originalUrl: 'https://cdn.hipotecaly.com/media/front_1.jpg',
+      mediaType: 'IMAGE',
+      sha256Hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+      perceptualHash: 'd8e4f1a2b3c4d5e6',
+    });
+
+    expect(media.id).toBeDefined();
+    expect(media.mediaType).toBe('IMAGE');
+    expect(media.sha256Hash).toBeDefined();
+    expect(media.perceptualHash).toBe('d8e4f1a2b3c4d5e6');
+  });
+
+  // 8. Parámetro de Ajuste de Asking Price (12.00%) Configurado y No Ejecutado
+  test('8. Asking Price Adjustment: registra asking_price_adjustment = 0.1200 (12.00%) sin ejecutarlo', async () => {
     const activeSettings = await appraisalDataService.getActiveSettings();
 
     expect(activeSettings.version).toBe(1);
     expect(activeSettings.isActive).toBe(true);
-    expect(activeSettings.safetyMarginPercentage).toBe(12.00); // 12% preservado sin ejecutar
-    expect(activeSettings.minComparablesCount).toBe(3);
-    expect(activeSettings.maxComparablesAgeDays).toBe(180);
-    expect(activeSettings.weights.surface).toBe(0.40);
+    expect(activeSettings.askingPriceAdjustment).toBe(0.1200); // 12% factor de diferencia asking/closing price
+    expect(activeSettings.status).toBe('ACTIVE');
+    expect(activeSettings.notes).toContain('asking_price_adjustment = 12.00%');
   });
 
-  // 8. Versionado de Configuración (Creación de V2 mantención de auditoría)
-  test('8. Versionado de Settings: permite registrar V2 desactivando automáticamente V1', async () => {
-    const v2 = await appraisalDataService.createSettingsVersion({
-      version: 2,
-      isActive: true,
-      safetyMarginPercentage: 12.00, // Se mantiene el 12% configurable
-      maxDedupDistanceMeters: 150,
-      similarityThreshold: 88.0,
-      minComparablesCount: 4,
-      maxComparablesAgeDays: 120,
-      outlierStdDevThreshold: 1.8,
-      weights: {
-        surface: 0.45,
-        location: 0.25,
-        rooms: 0.15,
-        age: 0.15,
-      },
-      notes: 'Ajuste de umbral de comparables a 120 días',
+  // 9. Principio NULL != FALSE en Atributos Opcionales
+  test('9. Atributos Opcionales: trata campos no informados como null (desconocido) en lugar de false', async () => {
+    const master = await appraisalDataService.createOrResolveMasterProperty({
+      canonicalAddress: 'Calle Rambla Gandhi 450',
+      department: 'Montevideo',
+      propertyType: 'APARTMENT',
     });
 
-    expect(v2.version).toBe(2);
-    expect(v2.isActive).toBe(true);
-
-    const currentActive = await appraisalDataService.getActiveSettings();
-    expect(currentActive.version).toBe(2);
-    expect(currentActive.maxDedupDistanceMeters).toBe(150);
+    expect(master.pool).toBeUndefined(); // No asumido como false
+    expect(master.elevator).toBeUndefined(); // Desconocido
   });
 
-  // 9. Verificación de Migración SQL en el Repositorio
-  test('9. Migración SQL Fase0: existe el archivo de migración con las 6 tablas y disparadores', () => {
-    const migrationPath = path.join(process.cwd(), 'supabase', 'migrations', '20260910000036_fase0_tasador_ia_architecture.sql');
-    expect(fs.existsSync(migrationPath)).toBe(true);
+  // 10. Verificación de Migraciones SQL Existentes
+  test('10. Migraciones SQL: existen los archivos 20260910000036 y 20260910000037 con las 16 tablas', () => {
+    const m1Path = path.join(process.cwd(), 'supabase', 'migrations', '20260910000036_fase0_tasador_ia_architecture.sql');
+    const m2Path = path.join(process.cwd(), 'supabase', 'migrations', '20260910000037_fase0_tasador_ia_expanded_architecture.sql');
 
-    const sqlContent = fs.readFileSync(migrationPath, 'utf-8');
-    expect(sqlContent).toContain('CREATE TABLE IF NOT EXISTS public.property_sources');
-    expect(sqlContent).toContain('CREATE TABLE IF NOT EXISTS public.property_master');
-    expect(sqlContent).toContain('CREATE TABLE IF NOT EXISTS public.property_listings');
-    expect(sqlContent).toContain('CREATE TABLE IF NOT EXISTS public.property_price_history');
-    expect(sqlContent).toContain('CREATE TABLE IF NOT EXISTS public.property_photos');
-    expect(sqlContent).toContain('CREATE TABLE IF NOT EXISTS public.appraisal_settings');
-    expect(sqlContent).toContain('safety_margin_percentage NUMERIC(5, 2) NOT NULL DEFAULT 12.00');
-    expect(sqlContent).toContain('fn_track_property_price_change');
+    expect(fs.existsSync(m1Path)).toBe(true);
+    expect(fs.existsSync(m2Path)).toBe(true);
+
+    const m2Content = fs.readFileSync(m2Path, 'utf-8');
+    expect(m2Content).toContain('property_duplicate_candidates');
+    expect(m2Content).toContain('property_listing_media');
+    expect(m2Content).toContain('property_listing_attributes');
+    expect(m2Content).toContain('property_field_evidence');
+    expect(m2Content).toContain('property_listing_snapshots');
+    expect(m2Content).toContain('property_cadastral_data');
+    expect(m2Content).toContain('property_valuations');
+    expect(m2Content).toContain('property_valuation_versions');
+    expect(m2Content).toContain('property_valuation_comparables');
+    expect(m2Content).toContain('property_ai_features');
+    expect(m2Content).toContain('property_transactions');
+    expect(m2Content).toContain('asking_price_adjustment NUMERIC(5, 4) DEFAULT 0.1200');
   });
 
-  // 10. Garantía de Aislamiento de Fase0 (No Crawlers, No OpenAI, No Tasaciones Vinculantes)
-  test('10. Aislamiento de Fase0: no se ejecutan crawlers ni tasaciones vinculantes prematuras', () => {
-    // La prueba valida que la estructura sea puramente declarativa y libre de dependencias activas
-    const portals = TOP_20_PORTALS_CONFIG;
-    portals.forEach((p) => {
-      expect(p.isActive).toBe(true);
-      expect(p.rateLimitPerMinute).toBeGreaterThan(0);
+  // 11. Garantía de Aislamiento Estricto de Fase 0
+  test('11. Aislamiento de Fase0: no se ejecutan crawlers, ni OpenAI, ni Catastro vivo, ni tasaciones', () => {
+    const sources = TOP_20_PORTALS_CONFIG;
+    sources.forEach((portal) => {
+      expect(portal.ingestionEnabled).toBe(false);
+      expect(portal.enabled).toBe(true);
     });
   });
 

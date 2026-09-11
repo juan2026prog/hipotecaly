@@ -1,6 +1,7 @@
 // ==============================================================================
-// HIPOTECALY AI: Servicio de Datos del Tasador IA - Fase0
-// Arquitectura Inmobiliaria Global, Deduplicación, Historial y Settings Versionados
+// HIPOTECALY AI: Servicio Ampliado de Datos del Tasador IA - Fase0
+// Arquitectura Inmobiliaria Global, Candidatos de Deduplicación, Evidencia por Campo,
+// Snapshots, Medios con Hashes, Valuaciones/Comparables Preparadas y Ajuste Asking Price (12%)
 // ==============================================================================
 
 import {
@@ -8,22 +9,39 @@ import {
   PropertyMaster,
   PropertyListing,
   PropertyPriceHistory,
-  PropertyPhoto,
+  PropertyDuplicateCandidate,
+  PropertyMedia,
+  PropertyListingAttribute,
+  PropertyFieldEvidence,
+  PropertyListingSnapshot,
+  PropertyCadastralData,
+  PropertyValuation,
+  PropertyValuationVersion,
+  PropertyValuationComparable,
+  PropertyAIFeature,
+  PropertyTransaction,
   AppraisalSettings,
   DeduplicationCriteria,
   DeduplicationMatchResult,
 } from '../../types/aiAppraisalFase0';
 import { TOP_20_PORTALS_CONFIG } from '../../config/top20PortalsConfig';
 
-/**
- * Almacenamiento en memoria para entorno sin conexión directa a DB remota o en tests unitarios.
- */
-class InMemoryAppraisalStore {
+class ExpandedInMemoryAppraisalStore {
   public sources: Map<string, PropertySource> = new Map();
   public masterProperties: Map<string, PropertyMaster> = new Map();
   public listings: Map<string, PropertyListing> = new Map();
   public priceHistory: PropertyPriceHistory[] = [];
-  public photos: Map<string, PropertyPhoto> = new Map();
+  public duplicateCandidates: PropertyDuplicateCandidate[] = [];
+  public media: Map<string, PropertyMedia> = new Map();
+  public attributes: PropertyListingAttribute[] = [];
+  public fieldEvidences: PropertyFieldEvidence[] = [];
+  public snapshots: PropertyListingSnapshot[] = [];
+  public cadastralData: Map<string, PropertyCadastralData> = new Map();
+  public valuations: Map<string, PropertyValuation> = new Map();
+  public valuationVersions: PropertyValuationVersion[] = [];
+  public valuationComparables: PropertyValuationComparable[] = [];
+  public aiFeatures: PropertyAIFeature[] = [];
+  public transactions: PropertyTransaction[] = [];
   public settings: Map<number, AppraisalSettings> = new Map();
 
   constructor() {
@@ -41,9 +59,15 @@ class InMemoryAppraisalStore {
         name: portal.name,
         domain: portal.domain,
         countryCode: portal.countryCode,
+        sourceType: portal.sourceType,
+        baseUrl: portal.baseUrl,
         isActive: portal.isActive,
-        crawlerConfig: portal.crawlerConfig,
+        enabled: portal.enabled,
+        ingestionEnabled: false, // Ingesta desactivada en Fase 0
+        priority: portal.priority,
+        trustLevel: portal.trustLevel,
         rateLimitPerMinute: portal.rateLimitPerMinute,
+        notes: portal.notes,
         createdAt: now,
         updatedAt: now,
       });
@@ -56,7 +80,8 @@ class InMemoryAppraisalStore {
       id: 'set_v1',
       version: 1,
       isActive: true,
-      safetyMarginPercentage: 12.00, // Parámetro del 12% preservado como especifica el usuario
+      askingPriceAdjustment: 0.1200, // Factor 12.00% entre asking price y precio real de mercado
+      safetyMarginPercentage: 12.00,
       maxDedupDistanceMeters: 100,
       similarityThreshold: 85.0,
       minComparablesCount: 3,
@@ -68,25 +93,26 @@ class InMemoryAppraisalStore {
         rooms: 0.15,
         age: 0.15,
       },
-      notes: 'Configuración Inicial Versión 1 - Parámetro del 12% configurado sin ejecución prematura.',
+      status: 'ACTIVE',
+      effectiveFrom: now,
+      notes: 'V1 - asking_price_adjustment = 12.00% (Factor inicial configurable de diferencia entre asking price y precio real de venta/mercado, sujeto a calibración futura).',
       createdAt: now,
     });
   }
 }
 
 export class AppraisalDataService {
-  private store = new InMemoryAppraisalStore();
+  private store = new ExpandedInMemoryAppraisalStore();
 
   /**
-   * Genera el hash canónico de deduplicación a partir de dirección, departamento y padrón.
+   * Genera el hash de deduplicación determinista (hash auxiliar, NO verdad absoluta).
    */
   public calculateDedupHash(address: string, department: string, cadastralNumber?: string | null): string {
     const cleanAddress = (address || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const cleanDept = (department || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const cleanPadron = (cadastralNumber || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const rawKey = `${cleanAddress}|${cleanDept}|${cleanPadron}`;
-    
-    // Algoritmo de hashing djb2 determinista para entorno TS
+
     let hash = 5381;
     for (let i = 0; i < rawKey.length; i++) {
       hash = (hash * 33) ^ rawKey.charCodeAt(i);
@@ -101,9 +127,6 @@ export class AppraisalDataService {
     return Array.from(this.store.sources.values());
   }
 
-  /**
-   * Obtiene un portal por su código único.
-   */
   public async getPortalSourceByCode(code: string): Promise<PropertySource | null> {
     for (const source of this.store.sources.values()) {
       if (source.code === code) return source;
@@ -112,7 +135,7 @@ export class AppraisalDataService {
   }
 
   /**
-   * Evalúa y resuelve deduplicación de propiedad maestra (Global Master Property).
+   * Evalúa y busca candidatos de deduplicación sin fusiones destructivas automáticas.
    */
   public evaluateDeduplication(criteria: DeduplicationCriteria): DeduplicationMatchResult {
     const dedupHash = this.calculateDedupHash(criteria.address, criteria.department, criteria.cadastralNumber);
@@ -127,8 +150,7 @@ export class AppraisalDataService {
           reason: 'Coincidencia exacta por Hash Deduplicador de Dirección y Padrón',
         };
       }
-      
-      // Deduplicación heurística por Padrón registrado
+
       if (criteria.cadastralNumber && master.cadastralNumber && criteria.cadastralNumber === master.cadastralNumber) {
         return {
           isMatch: true,
@@ -150,6 +172,34 @@ export class AppraisalDataService {
   }
 
   /**
+   * Registra un candidato de duplicación para inspección posterior.
+   */
+  public async registerDuplicateCandidate(data: {
+    propertyAId?: string;
+    propertyBId?: string;
+    listingAId?: string;
+    listingBId?: string;
+    matchScore: number;
+  }): Promise<PropertyDuplicateCandidate> {
+    const now = new Date().toISOString();
+    const candidate: PropertyDuplicateCandidate = {
+      id: `cand_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      propertyAId: data.propertyAId || null,
+      propertyBId: data.propertyBId || null,
+      listingAId: data.listingAId || null,
+      listingBId: data.listingBId || null,
+      matchScore: data.matchScore,
+      decision: 'PENDING',
+      decisionSource: 'AUTOMATED_DEDUP_SCORER',
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    this.store.duplicateCandidates.push(candidate);
+    return candidate;
+  }
+
+  /**
    * Crea o resuelve la propiedad maestra canónica en la base global.
    */
   public async createOrResolveMasterProperty(data: {
@@ -157,13 +207,14 @@ export class AppraisalDataService {
     department: string;
     city?: string;
     neighborhood?: string;
+    subNeighborhood?: string;
     propertyType: PropertyMaster['propertyType'];
     coveredSurfaceM2?: number;
     uncoveredSurfaceM2?: number;
-    rooms?: number;
+    bedrooms?: number;
     bathrooms?: number;
     garages?: number;
-    yearBuilt?: number;
+    constructionYear?: number;
     cadastralNumber?: string;
   }): Promise<PropertyMaster> {
     const evalResult = this.evaluateDeduplication({
@@ -183,20 +234,26 @@ export class AppraisalDataService {
       id,
       canonicalAddress: data.canonicalAddress,
       normalizedAddress: data.canonicalAddress.trim().toLowerCase(),
+      countryCode: 'UY',
       department: data.department,
       city: data.city || data.department,
       neighborhood: data.neighborhood || null,
+      subNeighborhood: data.subNeighborhood || null,
+      locationPrecision: 'EXACT_ADDRESS',
       propertyType: data.propertyType,
       coveredSurfaceM2: data.coveredSurfaceM2 || null,
-      uncoveredSurfaceM2: data.uncoveredSurfaceM2 || 0,
-      totalSurfaceM2: (data.coveredSurfaceM2 || 0) + (data.uncoveredSurfaceM2 || 0) || null,
-      rooms: data.rooms || null,
+      uncoveredSurfaceM2: data.uncoveredSurfaceM2 || null,
+      totalAreaM2: (data.coveredSurfaceM2 || 0) + (data.uncoveredSurfaceM2 || 0) || null,
+      builtAreaM2: data.coveredSurfaceM2 || null,
+      rooms: data.bedrooms || null,
+      bedrooms: data.bedrooms || null,
       bathrooms: data.bathrooms || null,
-      garages: data.garages || 0,
-      yearBuilt: data.yearBuilt || null,
+      garages: data.garages || null,
+      constructionYear: data.constructionYear || null,
       cadastralNumber: data.cadastralNumber || null,
       dedupHash: evalResult.dedupHash,
       dedupConfidence: 100,
+      canonicalStatus: 'ACTIVE',
       createdAt: now,
       updatedAt: now,
     };
@@ -206,7 +263,7 @@ export class AppraisalDataService {
   }
 
   /**
-   * Registra un anuncio / listing importado de un portal y lo vincula al registro maestro.
+   * Registra un listing y audita el historial inmutable de precios.
    */
   public async registerListing(data: {
     sourceCode: string;
@@ -215,7 +272,7 @@ export class AppraisalDataService {
     title: string;
     description?: string;
     priceAmount: number;
-    currency?: 'USD' | 'UYU';
+    currency?: string;
     coveredSurfaceM2?: number;
     masterId?: string;
   }): Promise<{ listing: PropertyListing; priceHistoryEntry: PropertyPriceHistory }> {
@@ -226,7 +283,7 @@ export class AppraisalDataService {
 
     const now = new Date().toISOString();
     const currency = data.currency || 'USD';
-    const priceUsdNormalized = currency === 'USD' ? data.priceAmount : Math.round(data.priceAmount / 40); // 40 UYU/USD referencial
+    const priceUsdNormalized = currency === 'USD' ? data.priceAmount : Math.round(data.priceAmount / 40);
     const pricePerM2Usd = data.coveredSurfaceM2 && data.coveredSurfaceM2 > 0 ? Math.round(priceUsdNormalized / data.coveredSurfaceM2) : null;
 
     const listingId = `list_${data.sourceCode}_${data.externalId}`;
@@ -236,15 +293,15 @@ export class AppraisalDataService {
     let historyEntry: PropertyPriceHistory;
 
     if (existingListing) {
-      const prevPriceUsd = existingListing.priceUsdNormalized;
-      const changePct = prevPriceUsd > 0 ? Math.round(((priceUsdNormalized - prevPriceUsd) / prevPriceUsd) * 10000) / 100 : 0;
+      const prevPriceUsd = existingListing.priceUsd;
+      const changePct = prevPriceUsd && prevPriceUsd > 0 ? Math.round(((priceUsdNormalized - prevPriceUsd) / prevPriceUsd) * 10000) / 100 : 0;
 
       listing = {
         ...existingListing,
-        priceAmount: data.priceAmount,
-        currency,
-        priceUsdNormalized,
-        pricePerM2Usd,
+        currentPrice: data.priceAmount,
+        currentCurrency: currency,
+        priceUsd: priceUsdNormalized,
+        pricePerM2: pricePerM2Usd,
         lastSeenAt: now,
         updatedAt: now,
       };
@@ -253,13 +310,14 @@ export class AppraisalDataService {
         id: `hist_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         listingId: listing.id,
         masterId: listing.masterId,
-        priceAmount: data.priceAmount,
+        observedAt: now,
+        price: data.priceAmount,
         currency,
-        priceUsdNormalized,
-        pricePerM2Usd,
+        priceUsd: priceUsdNormalized,
+        pricePerM2: pricePerM2Usd,
         previousPriceUsd: prevPriceUsd,
         priceChangePercentage: changePct,
-        detectedAt: now,
+        eventType: 'PRICE_CHANGED',
         createdAt: now,
       };
     } else {
@@ -267,15 +325,19 @@ export class AppraisalDataService {
         id: listingId,
         masterId: data.masterId || null,
         sourceId: source.id,
-        externalId: data.externalId,
-        url: data.url,
-        title: data.title,
-        description: data.description || null,
-        priceAmount: data.priceAmount,
-        currency,
-        priceUsdNormalized,
-        pricePerM2Usd,
-        status: 'active',
+        sourceListingId: data.externalId,
+        originalUrl: data.url,
+        titleRaw: data.title,
+        titleNormalized: data.title.trim().toLowerCase(),
+        descriptionRaw: data.description || null,
+        descriptionNormalized: data.description ? data.description.trim().toLowerCase() : null,
+        operationType: 'SALE',
+        locationPrecision: 'UNKNOWN',
+        currentPrice: data.priceAmount,
+        currentCurrency: currency,
+        priceUsd: priceUsdNormalized,
+        pricePerM2: pricePerM2Usd,
+        status: 'ACTIVE',
         firstSeenAt: now,
         lastSeenAt: now,
         createdAt: now,
@@ -286,13 +348,14 @@ export class AppraisalDataService {
         id: `hist_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         listingId: listing.id,
         masterId: listing.masterId,
-        priceAmount: data.priceAmount,
+        observedAt: now,
+        price: data.priceAmount,
         currency,
-        priceUsdNormalized,
-        pricePerM2Usd,
+        priceUsd: priceUsdNormalized,
+        pricePerM2: pricePerM2Usd,
         previousPriceUsd: null,
         priceChangePercentage: 0,
-        detectedAt: now,
+        eventType: 'FIRST_SEEN',
         createdAt: now,
       };
     }
@@ -304,36 +367,69 @@ export class AppraisalDataService {
   }
 
   /**
-   * Registra una fotografía asociada a un listing/maestro con su hash visual.
+   * Registra evidencia trazable para un campo específico.
    */
-  public async registerPhoto(data: {
+  public async registerFieldEvidence(data: {
+    propertyMasterId?: string;
     listingId?: string;
-    masterId?: string;
-    url: string;
-    phash?: string;
-    imageHash?: string;
-    isPrimary?: boolean;
-  }): Promise<PropertyPhoto> {
+    fieldName: string;
+    rawValue: string;
+    normalizedValue?: string;
+    sourceCode?: string;
+  }): Promise<PropertyFieldEvidence> {
     const now = new Date().toISOString();
-    const id = `img_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-    const photo: PropertyPhoto = {
-      id,
+    const source = data.sourceCode ? await this.getPortalSourceByCode(data.sourceCode) : null;
+    const evidence: PropertyFieldEvidence = {
+      id: `evid_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      propertyMasterId: data.propertyMasterId || null,
       listingId: data.listingId || null,
-      masterId: data.masterId || null,
-      url: data.url,
-      phash: data.phash || null,
-      imageHash: data.imageHash || null,
-      isPrimary: data.isPrimary || false,
-      displayOrder: 0,
+      fieldName: data.fieldName,
+      rawValue: data.rawValue,
+      normalizedValue: data.normalizedValue || data.rawValue.trim().toLowerCase(),
+      sourceId: source ? source.id : null,
+      evidenceType: 'listing_field',
+      confidence: 100,
+      observedAt: now,
       createdAt: now,
     };
 
-    this.store.photos.set(id, photo);
-    return photo;
+    this.store.fieldEvidences.push(evidence);
+    return evidence;
   }
 
   /**
-   * Obtiene la historia completa de cambios de precio para un listing o propiedad maestra.
+   * Registra un medio/fotografía con hashes.
+   */
+  public async registerMedia(data: {
+    listingId?: string;
+    masterId?: string;
+    originalUrl: string;
+    mediaType?: PropertyMedia['mediaType'];
+    sha256Hash?: string;
+    perceptualHash?: string;
+  }): Promise<PropertyMedia> {
+    const now = new Date().toISOString();
+    const id = `med_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const mediaItem: PropertyMedia = {
+      id,
+      listingId: data.listingId || null,
+      masterId: data.masterId || null,
+      mediaType: data.mediaType || 'IMAGE',
+      originalUrl: data.originalUrl,
+      position: 0,
+      sha256Hash: data.sha256Hash || null,
+      perceptualHash: data.perceptualHash || null,
+      firstSeenAt: now,
+      lastSeenAt: now,
+      createdAt: now,
+    };
+
+    this.store.media.set(id, mediaItem);
+    return mediaItem;
+  }
+
+  /**
+   * Obtiene la historia de precios para un listing o propiedad maestra.
    */
   public async getPriceHistory(filter: { listingId?: string; masterId?: string }): Promise<PropertyPriceHistory[]> {
     return this.store.priceHistory.filter((h) => {
@@ -344,20 +440,7 @@ export class AppraisalDataService {
   }
 
   /**
-   * Obtiene la lista de fotos con hashes registradas para una propiedad maestra.
-   */
-  public async getPhotosForMaster(masterId: string): Promise<PropertyPhoto[]> {
-    const result: PropertyPhoto[] = [];
-    for (const photo of this.store.photos.values()) {
-      if (photo.masterId === masterId) {
-        result.push(photo);
-      }
-    }
-    return result;
-  }
-
-  /**
-   * Obtiene los parámetros activos vigentes del Tasador IA (respetando el parámetro del 12%).
+   * Obtiene los parámetros activos vigentes del Tasador IA (`asking_price_adjustment = 0.1200`).
    */
   public async getActiveSettings(): Promise<AppraisalSettings> {
     const activeVersion = Array.from(this.store.settings.values())
@@ -371,7 +454,7 @@ export class AppraisalDataService {
   }
 
   /**
-   * Registra una nueva versión de parámetros del Tasador IA manteniendo auditoría.
+   * Registra una nueva versión de parámetros de tasación conservando historial.
    */
   public async createSettingsVersion(newSettings: Omit<AppraisalSettings, 'id' | 'createdAt'>): Promise<AppraisalSettings> {
     const now = new Date().toISOString();
