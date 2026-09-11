@@ -1,7 +1,7 @@
 // ==============================================================================
 // HIPOTECALY AI: Suite de Pruebas Automatizadas - Tasador IA Fase0 (25 Requisitos)
 // Matriz Completa 1-a-1 de Verificación de Arquitectura, Modelo de Datos,
-// 20 Portales Locales UY, RLS, CrawlerRuns, AIUsageEvents y Parámetro del 12%
+// 20 Portales Locales UY (incluyendo ACSA), RLS, CrawlerRuns, AIUsageEvents y Parámetro del 12%
 // ==============================================================================
 
 import { test, expect } from '@playwright/test';
@@ -18,16 +18,20 @@ test.describe('TASADOR IA - FASE 0: Matriz Completa de 25 Requisitos', () => {
     expect(sources.length).toBe(20);
   });
 
-  // Requisito 2: Fuentes exactas uruguayas con nombres de pantalla corregidos
-  test('Req 02: Fuentes uruguayas exactas con nombres corregidos preservando los códigos nativos intactos', async () => {
+  // Requisito 2: Fuentes exactas uruguayas con nombres de pantalla corregidos (ACSA, Caldeyro, Nicolás de Módena)
+  test('Req 02: Fuentes uruguayas exactas con nombres corregidos (ACSA) preservando los códigos nativos intactos', async () => {
     const sources = await appraisalDataService.getPortalSources();
+    const acsa = sources.find((s) => s.code === 'acs_uy');
+    expect(acsa).toBeDefined();
+    expect(acsa?.name).toBe('ACSA Inmobiliaria'); // Nombre visible corregido a ACSA preservando code acs_uy
+
     const caldeyro = sources.find((s) => s.code === 'caldeiro_uy');
     expect(caldeyro).toBeDefined();
-    expect(caldeyro?.name).toBe('Caldeyro Victorica Bienes Raíces'); // Nombre corregido
+    expect(caldeyro?.name).toBe('Caldeyro Victorica Bienes Raíces');
 
     const nicolas = sources.find((s) => s.code === 'nicolas_modena_uy');
     expect(nicolas).toBeDefined();
-    expect(nicolas?.name).toBe('Nicolás de Módena Inmobiliaria'); // Nombre corregido
+    expect(nicolas?.name).toBe('Nicolás de Módena Inmobiliaria');
   });
 
   // Requisito 3: ingestion_enabled = false en todos los portales
@@ -224,8 +228,8 @@ test.describe('TASADOR IA - FASE 0: Matriz Completa de 25 Requisitos', () => {
       propertyType: 'APARTMENT',
     });
 
-    expect(master.pool).toBeUndefined(); // NULL representa desconocido
-    expect(master.heating).toBeUndefined(); // NULL no es false
+    expect(master.pool).toBeUndefined();
+    expect(master.heating).toBeUndefined();
   });
 
   // Requisito 15: Atributos Flexibles clave-valor
@@ -312,14 +316,16 @@ test.describe('TASADOR IA - FASE 0: Matriz Completa de 25 Requisitos', () => {
     expect(sqlContent).toContain('CREATE TABLE IF NOT EXISTS public.crawler_runs');
   });
 
-  // Requisito 24: Estructura de Consumo de IA (ai_usage_events)
-  test('Req 24: Estructura de ai_usage_events para auditoría de tokens preparada pero vacía en Fase 0', async () => {
+  // Requisito 24: Estructura de Consumo de IA (ai_usage_events) con organization_id y case_id nullables
+  test('Req 24: Estructura de ai_usage_events con organization_id y case_id nullables para costeo futuro', async () => {
     const events = await appraisalDataService.getAIUsageEvents();
     expect(events.length).toBe(0);
 
     const migrationPath = path.join(process.cwd(), 'supabase', 'migrations', '20260910000038_fase0_tasador_ia_final_hardening.sql');
     const sqlContent = fs.readFileSync(migrationPath, 'utf-8');
     expect(sqlContent).toContain('CREATE TABLE IF NOT EXISTS public.ai_usage_events');
+    expect(sqlContent).toContain('organization_id UUID');
+    expect(sqlContent).toContain('case_id UUID');
   });
 
   // Requisito 25: Settings Versionados y Parámetro asking_price_adjustment = 0.1200 (12.00%)
@@ -327,7 +333,7 @@ test.describe('TASADOR IA - FASE 0: Matriz Completa de 25 Requisitos', () => {
     const activeSettings = await appraisalDataService.getActiveSettings();
     expect(activeSettings.version).toBe(1);
     expect(activeSettings.isActive).toBe(true);
-    expect(activeSettings.askingPriceAdjustment).toBe(0.1200); // 12% factor asking/closing price
+    expect(activeSettings.askingPriceAdjustment).toBe(0.1200);
     expect(activeSettings.notes).toContain('asking_price_adjustment = 12.00%');
   });
 

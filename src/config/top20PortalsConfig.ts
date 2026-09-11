@@ -1,6 +1,6 @@
 // ==============================================================================
 // HIPOTECALY AI: Configuración Definitiva de los 20 Portales Locales Uruguayos (Fase0)
-// Nombres de fuentes ajustados preservando identificadores y códigos nativos intactos
+// Nombres de fuentes ajustados (ACSA, Caldeyro Victorica, Nicolás de Módena) conservando códigos nativos
 // ==============================================================================
 
 import { PropertySource } from '../types/aiAppraisalFase0';
@@ -109,11 +109,11 @@ export const TOP_20_PORTALS_CONFIG: PortalSourceSeed[] = [
   },
   {
     code: 'acs_uy',
-    name: 'ACS Inmobiliaria',
-    domain: 'acs.com.uy',
+    name: 'ACSA Inmobiliaria', // Nombre de pantalla corregido a ACSA preservando code acs_uy
+    domain: 'acsa.com.uy',
     countryCode: 'UY',
     sourceType: 'inmobiliaria',
-    baseUrl: 'https://www.acs.com.uy',
+    baseUrl: 'https://www.acsa.com.uy',
     isActive: true,
     enabled: true,
     ingestionEnabled: false,
@@ -121,7 +121,7 @@ export const TOP_20_PORTALS_CONFIG: PortalSourceSeed[] = [
     trustLevel: 0.85,
     rateLimitPerMinute: 20,
     category: 'operadores_locales_uy',
-    notes: 'Operador tradicional en Montevideo',
+    notes: 'Operador tradicional en Montevideo (ACSA)',
   },
   {
     code: 'kosak_uy',
@@ -157,7 +157,7 @@ export const TOP_20_PORTALS_CONFIG: PortalSourceSeed[] = [
   },
   {
     code: 'caldeiro_uy',
-    name: 'Caldeyro Victorica Bienes Raíces', // Nombre de pantalla corregido conservando code caldeiro_uy
+    name: 'Caldeyro Victorica Bienes Raíces',
     domain: 'caldeyro.com',
     countryCode: 'UY',
     sourceType: 'inmobiliaria',
@@ -237,7 +237,7 @@ export const TOP_20_PORTALS_CONFIG: PortalSourceSeed[] = [
   },
   {
     code: 'nicolas_modena_uy',
-    name: 'Nicolás de Módena Inmobiliaria', // Nombre de pantalla corregido conservando code nicolas_modena_uy
+    name: 'Nicolás de Módena Inmobiliaria',
     domain: 'nicolasdemodena.com.uy',
     countryCode: 'UY',
     sourceType: 'inmobiliaria',

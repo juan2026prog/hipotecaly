@@ -1,7 +1,7 @@
 // ==============================================================================
 // HIPOTECALY AI: Tasador IA - Fase0 Domain & Data Model Types (18 Entidades)
 // Arquitectura Inmobiliaria Global, Deduplicación, Evidencia, Snapshots,
-// CrawlerRuns, AIUsageEvents, Ajuste Asking Price (12%) y Estados Explícitos
+// CrawlerRuns, AIUsageEvents con organizationId y caseId, y Ajuste Asking Price (12%)
 // ==============================================================================
 
 export type LocationPrecision =
@@ -103,10 +103,12 @@ export interface CrawlerRun {
 }
 
 /**
- * Registro de Eventos de Consumo de IA (Preparada pero sin uso en Fase 0)
+ * Registro de Eventos de Consumo de IA (Preparada con organizationId y caseId para costeo futuro)
  */
 export interface AIUsageEvent {
   id: string;
+  organizationId?: string | null; // Id de la organización para costeo multi-tenant
+  caseId?: string | null; // Id del expediente crediticio para costeo por caso
   valuationId?: string | null;
   propertyMasterId?: string | null;
   listingId?: string | null;

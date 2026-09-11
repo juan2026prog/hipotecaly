@@ -1,7 +1,7 @@
 -- ==============================================================================
 -- MIGRACIÓN 20260910000038: Fase0 Tasador IA - Hardening Final y 18 Entidades
--- Incorporación de crawler_runs, ai_usage_events, estado SOLD_OR_REMOVED_UNKNOWN,
--- corrección de nombres de fuentes y políticas RLS explícitas reales.
+-- Incorporación de crawler_runs, ai_usage_events con organization_id y case_id,
+-- estado SOLD_OR_REMOVED_UNKNOWN, corrección de fuentes (ACSA Inmobiliaria) y RLS explícito.
 -- ==============================================================================
 
 -- 1. TABLA `crawler_runs` (PREPARADA PERO SIN EJECUCIONES ACTIVAS EN FASE 0)
@@ -20,9 +20,11 @@ CREATE TABLE IF NOT EXISTS public.crawler_runs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 2. TABLA `ai_usage_events` (PREPARADA PERO SIN USO DE IA EN FASE 0)
+-- 2. TABLA `ai_usage_events` (PREPARADA CON organization_id Y case_id NULLABLES PARA COSTEO FUTURO)
 CREATE TABLE IF NOT EXISTS public.ai_usage_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID,
+    case_id UUID,
     valuation_id UUID REFERENCES public.property_valuations(id) ON DELETE SET NULL,
     property_master_id UUID REFERENCES public.property_master(id) ON DELETE SET NULL,
     listing_id UUID REFERENCES public.property_listings(id) ON DELETE SET NULL,
@@ -37,12 +39,21 @@ CREATE TABLE IF NOT EXISTS public.ai_usage_events (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Asegurar columnas organization_id y case_id si la tabla ya existía
+ALTER TABLE public.ai_usage_events
+  ADD COLUMN IF NOT EXISTS organization_id UUID,
+  ADD COLUMN IF NOT EXISTS case_id UUID;
+
 -- 3. PERMITIR ESTADO EXPLÍCITO `SOLD_OR_REMOVED_UNKNOWN` EN `property_listings`
 ALTER TABLE public.property_listings DROP CONSTRAINT IF EXISTS property_listings_status_check;
 ALTER TABLE public.property_listings ADD CONSTRAINT property_listings_status_check
   CHECK (status IN ('ACTIVE', 'INACTIVE', 'REMOVED', 'EXPIRED', 'RELISTED', 'UNKNOWN', 'SOLD_OR_REMOVED_UNKNOWN', 'POSSIBLE_SOLD', 'CONFIRMED_SOLD', 'active', 'inactive', 'sold', 'removed'));
 
--- 4. CORRECCIÓN DE NOMBRES DE FUENTES SIN ALTERAR CÓDIGOS NI IDs
+-- 4. CORRECCIÓN DE NOMBRES DE FUENTES SIN ALTERAR CÓDIGOS NI IDs (ACS -> ACSA, Caldeyro, Nicolás de Módena)
+UPDATE public.property_sources
+SET name = 'ACSA Inmobiliaria'
+WHERE code = 'acs_uy';
+
 UPDATE public.property_sources
 SET name = 'Caldeyro Victorica Bienes Raíces'
 WHERE code = 'caldeiro_uy';
