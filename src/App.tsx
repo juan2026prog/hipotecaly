@@ -25,7 +25,10 @@ import { ApplicationDetailPage } from './pages/backoffice/ApplicationDetailPage'
 import { ClientsPage } from './pages/backoffice/ClientsPage';
 import { PropertiesPage } from './pages/backoffice/PropertiesPage';
 import { DocumentsPage } from './pages/backoffice/DocumentsPage';
-import { ValuationsPage, TasksPage, ReportsPage, AnalyticsPage, SettingsPage } from './pages/backoffice/OtherBackofficePages';
+import { TasksPage, ReportsPage, AnalyticsPage, SettingsPage } from './pages/backoffice/OtherBackofficePages';
+import { TasadorHomePage } from './pages/tasador/TasadorHomePage';
+import { TasadorNewAppraisalPage } from './pages/tasador/TasadorNewAppraisalPage';
+import { TasadorComparablesPage } from './pages/tasador/TasadorComparablesPage';
 import { AuditPage } from './pages/backoffice/AuditPage';
 import { LendersPage } from './pages/backoffice/LendersPage';
 import { LenderDetailPage } from './pages/backoffice/LenderDetailPage';
@@ -515,7 +518,29 @@ export const App: React.FC = () => {
                     allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'viewer', 'super_admin']}
                     requireTenantMatch
                   >
-                    <ValuationsPage />
+                    <TasadorHomePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/admin/tasaciones/nueva"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'viewer', 'super_admin']}
+                    requireTenantMatch
+                  >
+                    <TasadorNewAppraisalPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/admin/tasaciones/:id"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'operator', 'notary', 'viewer', 'super_admin']}
+                    requireTenantMatch
+                  >
+                    <TasadorComparablesPage />
                   </ProtectedRoute>
                 }
               />
