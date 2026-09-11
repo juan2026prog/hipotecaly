@@ -209,4 +209,51 @@ test.describe('TASADOR IA FASE 0 — RUNTIME RLS & SECURITY LOCKDOWN (19 TABLAS)
 
   });
 
+  // ----------------------------------------------------------------------------
+  // 5. CERTIFICACIÓN FINAL DE SEGURIDAD (MIGRACIÓN 20260910000041 & REMOTE SUPABASE)
+  // ----------------------------------------------------------------------------
+  test.describe('5. Certificación Final de Seguridad y Resolución de los 4 Puntos Críticos', () => {
+
+    const certMigrationPath = path.join(
+      process.cwd(),
+      'supabase',
+      'migrations',
+      '20260910000041_fase0_tasador_final_security_certification.sql'
+    );
+    let certSql = '';
+
+    test.beforeAll(() => {
+      certSql = fs.readFileSync(certMigrationPath, 'utf-8');
+    });
+
+    test('5.1. Migración 20260910000041 existe localmente y elimina las policies contradictorias superadmin_select', () => {
+      expect(certSql).toContain('DROP POLICY IF EXISTS "superadmin_select_property_sources"');
+      expect(certSql).not.toContain('CREATE POLICY "superadmin_select_property_sources" ON public.property_sources FOR SELECT TO authenticated USING (public.is_super_admin());');
+    });
+
+    test('5.2. Super Admin accede mediante servidor/API autorizada (Server-Side Privileged Path) sin dar SELECT directo a authenticated en browser', () => {
+      APPRAISAL_F0_TABLES.forEach((table) => {
+        expect(certSql).toContain(`CREATE POLICY "service_role_all_${table}" ON public.${table} FOR ALL TO service_role USING (true) WITH CHECK (true);`);
+        expect(certSql).toContain(`REVOKE ALL ON public.${table} FROM PUBLIC, anon, authenticated;`);
+      });
+    });
+
+    test('5.3. Revocación explícita de EXECUTE a PUBLIC, anon y authenticated en funciones internas (get_active_appraisal_settings, calculate_property_dedup_hash, fn_track_property_price_change)', () => {
+      expect(certSql).toContain('REVOKE ALL ON FUNCTION public.get_active_appraisal_settings() FROM PUBLIC, anon, authenticated;');
+      expect(certSql).toContain('REVOKE ALL ON FUNCTION public.calculate_property_dedup_hash(TEXT, TEXT, TEXT) FROM PUBLIC, anon, authenticated;');
+      expect(certSql).toContain('REVOKE ALL ON FUNCTION public.fn_track_property_price_change() FROM PUBLIC, anon, authenticated;');
+    });
+
+    test('5.4. Preservación y restauración de permisos en secuencias del core (application_public_seq) para no romper el módulo de expedientes', () => {
+      expect(certSql).toContain('GRANT USAGE, SELECT ON SEQUENCE public.application_public_seq TO authenticated, service_role;');
+    });
+
+    test('5.5. property_listing_media es la tabla canónica de medios y property_photos es legada', () => {
+      expect(certSql).toContain('CREATE TABLE IF NOT EXISTS public.property_listing_media');
+      expect(certSql).toContain('CREATE TABLE IF NOT EXISTS public.property_photos');
+    });
+
+  });
+
 });
+
