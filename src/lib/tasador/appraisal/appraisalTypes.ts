@@ -8,7 +8,10 @@ export type AppraisalStatus =
   | 'READY_FOR_COMPARABLES'
   | 'COMPARABLES_FOUND'
   | 'COMPARABLES_REVIEWED'
-  | 'READY_FOR_VALUATION';
+  | 'READY_FOR_VALUATION'
+  | 'VALUATED'
+  | 'REPORT_GENERATED'
+  | 'FINALIZED';
 
 export type AppraisalSetQuality = 'ALTA' | 'MEDIA' | 'BAJA';
 
@@ -191,6 +194,63 @@ export interface AppraisalDescriptiveStats {
   warnings: string[];
 }
 
+export interface AppraisalValuationRun {
+  id: string;
+  appraisalId: string;
+  organizationId: string;
+  runNumber: number;
+  createdBy?: string | null;
+  creatorEmail?: string | null;
+  engineVersion: string;
+  configurationVersion: number;
+  targetPropertySnapshot: AppraisalPropertyInput;
+  comparableSetSnapshot: AppraisalComparableItem[];
+  comparablesUsedCount: number;
+  excludedComparablesCount: number;
+  estimatedMarketValue: number;
+  estimatedPricePerM2Usd: number;
+  valueRangeMin: number;
+  valueRangeMax: number;
+  confidenceLevel: 'ALTA' | 'MEDIA' | 'BAJA';
+  methodEstimators: any[];
+  favorableFactors: string[];
+  considerationFactors: string[];
+  warnings: string[];
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface AppraisalAuditLog {
+  id: string;
+  appraisalId: string;
+  organizationId: string;
+  userId?: string | null;
+  userEmail?: string | null;
+  eventType: string;
+  description: string;
+  metadata?: Record<string, any>;
+  createdAt: string;
+}
+
+export interface AppraisalReportMetadata {
+  id: string;
+  appraisalId: string;
+  runId?: string | null;
+  organizationId: string;
+  version: number;
+  fileName: string;
+  filePath: string;
+  fileSizeBytes: number;
+  fileHashSha256: string;
+  brandingUsed?: {
+    organizationName?: string;
+    logoUrl?: string;
+    primaryColor?: string;
+  };
+  createdBy?: string | null;
+  createdAt: string;
+}
+
 export interface AppraisalRecord {
   id: string;
   organizationId: string;
@@ -205,6 +265,10 @@ export interface AppraisalRecord {
   estimatedValue?: number | null;
   valuationData?: Record<string, any>;
   comparables?: AppraisalComparableItem[];
+  currentRun?: AppraisalValuationRun;
+  runs?: AppraisalValuationRun[];
+  auditLogs?: AppraisalAuditLog[];
+  reports?: AppraisalReportMetadata[];
   createdAt: string;
   updatedAt: string;
 }

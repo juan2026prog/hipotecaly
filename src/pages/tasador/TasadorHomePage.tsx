@@ -80,6 +80,24 @@ export const TasadorHomePage: React.FC = () => {
       border: 'border-l-emerald-500',
       icon: ShieldCheck,
     },
+    VALUATED: {
+      label: 'VALUADA',
+      badge: 'bg-teal-50 text-teal-800 border-teal-200 font-bold',
+      border: 'border-l-teal-500',
+      icon: ShieldCheck,
+    },
+    REPORT_GENERATED: {
+      label: 'INFORME EMITIDO',
+      badge: 'bg-purple-50 text-purple-800 border-purple-200 font-bold',
+      border: 'border-l-purple-500',
+      icon: CheckCircle2,
+    },
+    FINALIZED: {
+      label: 'FINALIZADA',
+      badge: 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold',
+      border: 'border-l-emerald-600',
+      icon: CheckCircle2,
+    },
   };
 
   const filteredAppraisals = appraisals.filter((a) => {

@@ -7,18 +7,32 @@ import { supabase, isSupabaseConfigured } from '../../supabase';
 import {
   AppraisalRecord,
   AppraisalPropertyInput,
+  AppraisalLocation,
   AppraisalComparableItem,
   AppraisalStatus,
   AppraisalSetQuality,
   AppraisalDescriptiveStats,
   SearchComparablesFilterParams,
+  AppraisalValuationRun,
+  AppraisalAuditLog,
+  AppraisalReportMetadata,
 } from './appraisalTypes';
+import { PdfReportGenerator, ReportBrandingOptions } from '../report/PdfReportGenerator';
+import { MarketValueEngine } from '../valuation/MarketValueEngine';
+import { ValuationRangeEngine } from '../valuation/ValuationRangeEngine';
+import { ValuationConfidenceEngine } from '../valuation/ValuationConfidenceEngine';
+import { ComparableWeightEngine } from '../valuation/ComparableWeightEngine';
+import { AppraisalSettingsManager } from '../valuation/AppraisalSettingsManager';
+import { TargetPropertyInput, ScoredComparable } from '../valuation/valuationTypes';
 
 const LOCAL_APPRAISALS_KEY = 'hipotecaly_operational_appraisals_v1';
 
 export class AppraisalService {
   private static instance: AppraisalService;
   private memoryAppraisals: Map<string, AppraisalRecord> = new Map();
+  private memoryRuns: Map<string, AppraisalValuationRun[]> = new Map();
+  private memoryAuditLogs: Map<string, AppraisalAuditLog[]> = new Map();
+  private memoryReports: Map<string, AppraisalReportMetadata[]> = new Map();
 
   private constructor() {
     this.loadFromLocalStorage();
@@ -185,6 +199,29 @@ export class AppraisalService {
       return local;
     }
     return null;
+  }
+
+  /**
+   * Crea una nueva tasación
+   */
+  public async createAppraisal(params: {
+    organizationId: string;
+    propertyInput: AppraisalPropertyInput;
+    location: AppraisalLocation;
+    createdBy?: string;
+    creatorEmail?: string;
+  }): Promise<AppraisalRecord> {
+    return this.saveAppraisal({
+      organizationId: params.organizationId,
+      createdBy: params.createdBy || null,
+      creatorEmail: params.creatorEmail || null,
+      status: 'READY_FOR_COMPARABLES',
+      propertyInput: params.propertyInput,
+      location: params.location,
+      selectedComparablesCount: 0,
+      setQuality: 'MEDIA',
+      valuationData: {},
+    });
   }
 
   /**
@@ -357,7 +394,7 @@ export class AppraisalService {
     }
 
     // Fallback determinístico client-side en modo demo / offline
-    return this.searchComparablesFallback(targetProperty, filters);
+    return this.searchComparablesFallback(targetProperty, filters, (targetProperty as any).location);
   }
 
   /**
@@ -365,7 +402,8 @@ export class AppraisalService {
    */
   public searchComparablesFallback(
     target: AppraisalPropertyInput,
-    _filters?: SearchComparablesFilterParams
+    _filters?: SearchComparablesFilterParams,
+    location?: AppraisalLocation
   ): {
     candidates: AppraisalComparableItem[];
     stats: AppraisalDescriptiveStats;
@@ -373,24 +411,29 @@ export class AppraisalService {
     searchLevel: string;
     totalPoolConsidered: number;
   } {
-    const dept = target.location.department || 'Montevideo';
-    const neigh = target.location.neighborhood || 'Pocitos';
-    const targetArea = target.surfaces.totalAreaM2 || target.surfaces.builtAreaM2 || 75;
-    const targetBeds = target.layout.bedrooms;
-    const targetType = target.propertyType;
+    const loc = location || (target as any)?.location || {};
+    const dept = loc.department || 'Montevideo';
+    const neigh = loc.neighborhood || 'Pocitos';
+    const city = loc.city || dept;
+    const baseLat = typeof loc.latitude === 'number' ? loc.latitude : -34.915;
+    const baseLng = typeof loc.longitude === 'number' ? loc.longitude : -56.148;
+    const targetArea = target?.surfaces?.totalAreaM2 || target?.surfaces?.builtAreaM2 || 75;
+    const targetBeds = target?.layout?.bedrooms ?? 2;
+    const targetType = target?.propertyType || 'APARTMENT';
 
-    // Conjunto base representativo de la Base Inmobiliaria uruguaya
+    // Conjunto base representativo de la Base Inmobiliaria uruguaya (Multi-fuente)
     const baseSamples = [
       {
         id: 'comp_sim_01',
+        propertyMasterId: 'pm_pocitos_01',
         title: `${targetType.toUpperCase()} en ${neigh} impecable`,
         neighborhood: neigh,
         department: dept,
         builtAreaM2: targetArea - 2,
         totalAreaM2: targetArea,
         bedrooms: targetBeds,
-        bathrooms: target.layout.bathrooms || 1,
-        garages: target.layout.garages || 1,
+        bathrooms: target?.layout?.bathrooms || 1,
+        garages: target?.layout?.garages || 1,
         constructionYear: target.constructionYear ? target.constructionYear - 2 : 2018,
         priceUsd: Math.round(targetArea * 2550 * 0.88),
         pricePerM2Usd: 2550,
@@ -400,11 +443,12 @@ export class AppraisalService {
         comparableEligibility: 'ELIGIBLE' as const,
         dataQualityScore: 92,
         daysSincePublication: 14,
-        lat: (target.location.latitude || -34.915) + 0.002,
-        lng: (target.location.longitude || -56.148) - 0.001,
+        lat: baseLat + 0.002,
+        lng: baseLng - 0.001,
       },
       {
         id: 'comp_sim_02',
+        propertyMasterId: 'pm_pocitos_02',
         title: `${targetType.toUpperCase()} luminoso con balcón en ${neigh}`,
         neighborhood: neigh,
         department: dept,
@@ -417,89 +461,93 @@ export class AppraisalService {
         priceUsd: Math.round((targetArea + 4) * 2600 * 0.88),
         pricePerM2Usd: 2600,
         distanceMeters: 450,
-        sourceCode: 'infocasas',
-        sourceName: 'InfoCasas Uruguay',
+        sourceCode: 'remax_uy',
+        sourceName: 'RE/MAX Uruguay',
         comparableEligibility: 'ELIGIBLE' as const,
-        dataQualityScore: 88,
+        dataQualityScore: 90,
         daysSincePublication: 22,
-        lat: (target.location.latitude || -34.915) - 0.003,
-        lng: (target.location.longitude || -56.148) + 0.002,
+        lat: baseLat - 0.003,
+        lng: baseLng + 0.002,
       },
       {
         id: 'comp_sim_03',
+        propertyMasterId: 'pm_pocitos_03',
         title: `${targetType.toUpperCase()} reciclado con parrillero en ${neigh}`,
         neighborhood: neigh,
         department: dept,
         builtAreaM2: targetArea,
         totalAreaM2: targetArea + 3,
         bedrooms: targetBeds,
-        bathrooms: (target.layout.bathrooms || 1) + 1,
-        garages: target.layout.garages || 1,
+        bathrooms: (target?.layout?.bathrooms || 1) + 1,
+        garages: target?.layout?.garages || 1,
         constructionYear: 2015,
         priceUsd: Math.round(targetArea * 2500 * 0.88),
         pricePerM2Usd: 2500,
         distanceMeters: 620,
-        sourceCode: 'infocasas',
-        sourceName: 'InfoCasas Uruguay',
+        sourceCode: 'century21_uy',
+        sourceName: 'Century 21 Uruguay',
         comparableEligibility: 'ELIGIBLE' as const,
         dataQualityScore: 94,
         daysSincePublication: 8,
-        lat: (target.location.latitude || -34.915) + 0.004,
-        lng: (target.location.longitude || -56.148) + 0.003,
+        lat: baseLat + 0.004,
+        lng: baseLng + 0.003,
       },
       {
         id: 'comp_sim_04',
+        propertyMasterId: 'pm_pocitos_04',
         title: `Unidad a pasos de servicios en ${neigh}`,
         neighborhood: neigh,
         department: dept,
         builtAreaM2: Math.round(targetArea * 1.08),
         totalAreaM2: Math.round(targetArea * 1.12),
         bedrooms: targetBeds + 1,
-        bathrooms: target.layout.bathrooms || 1,
-        garages: target.layout.garages || 0,
+        bathrooms: target?.layout?.bathrooms || 1,
+        garages: target?.layout?.garages || 0,
         constructionYear: 2012,
         priceUsd: Math.round(targetArea * 1.08 * 2480 * 0.88),
         pricePerM2Usd: 2480,
         distanceMeters: 850,
-        sourceCode: 'infocasas',
-        sourceName: 'InfoCasas Uruguay',
+        sourceCode: 'kosak_uy',
+        sourceName: 'Kosak Inversiones',
         comparableEligibility: 'ELIGIBLE' as const,
-        dataQualityScore: 85,
+        dataQualityScore: 86,
         daysSincePublication: 35,
-        lat: (target.location.latitude || -34.915) - 0.006,
-        lng: (target.location.longitude || -56.148) - 0.004,
+        lat: baseLat - 0.006,
+        lng: baseLng - 0.004,
       },
       {
         id: 'comp_sim_05',
+        propertyMasterId: 'pm_pocitos_05',
         title: `Excelente planta estándar en ${neigh}`,
         neighborhood: neigh,
         department: dept,
         builtAreaM2: Math.round(targetArea * 0.94),
         totalAreaM2: Math.round(targetArea * 0.98),
         bedrooms: targetBeds,
-        bathrooms: target.layout.bathrooms || 1,
-        garages: target.layout.garages || 1,
+        bathrooms: target?.layout?.bathrooms || 1,
+        garages: target?.layout?.garages || 1,
         constructionYear: 2020,
         priceUsd: Math.round(targetArea * 0.94 * 2650 * 0.88),
         pricePerM2Usd: 2650,
         distanceMeters: 920,
-        sourceCode: 'infocasas',
-        sourceName: 'InfoCasas Uruguay',
+        sourceCode: 'acs_uy',
+        sourceName: 'ACSA Inmobiliaria',
         comparableEligibility: 'PARTIAL' as const,
-        dataQualityScore: 78,
+        dataQualityScore: 84,
         daysSincePublication: 45,
-        lat: (target.location.latitude || -34.915) + 0.007,
-        lng: (target.location.longitude || -56.148) - 0.005,
+        lat: baseLat + 0.007,
+        lng: baseLng - 0.005,
       },
       {
         id: 'comp_sim_06',
+        propertyMasterId: 'pm_pocitos_06',
         title: `Propiedad funcional en ${neigh}`,
         neighborhood: neigh,
         department: dept,
         builtAreaM2: targetArea + 8,
         totalAreaM2: targetArea + 10,
         bedrooms: targetBeds,
-        bathrooms: target.layout.bathrooms || 1,
+        bathrooms: target?.layout?.bathrooms || 1,
         garages: 0,
         constructionYear: 2014,
         priceUsd: Math.round((targetArea + 8) * 2420 * 0.88),
@@ -510,8 +558,31 @@ export class AppraisalService {
         comparableEligibility: 'ELIGIBLE' as const,
         dataQualityScore: 82,
         daysSincePublication: 60,
-        lat: (target.location.latitude || -34.915) - 0.009,
-        lng: (target.location.longitude || -56.148) + 0.006,
+        lat: baseLat - 0.009,
+        lng: baseLng + 0.006,
+      },
+      {
+        id: 'comp_sim_07_dup',
+        propertyMasterId: 'pm_pocitos_01', // Mismo inmueble que comp_sim_01 (Deduplicación Cross-Source)
+        title: `Pocitos Exclusivo 2 Dormitorios (Publicación Remax)`,
+        neighborhood: neigh,
+        department: dept,
+        builtAreaM2: targetArea - 2,
+        totalAreaM2: targetArea,
+        bedrooms: targetBeds,
+        bathrooms: target?.layout?.bathrooms || 1,
+        garages: target?.layout?.garages || 1,
+        constructionYear: target.constructionYear ? target.constructionYear - 2 : 2018,
+        priceUsd: Math.round(targetArea * 2550 * 0.88),
+        pricePerM2Usd: 2550,
+        distanceMeters: 280,
+        sourceCode: 'remax_uy',
+        sourceName: 'RE/MAX Uruguay',
+        comparableEligibility: 'ELIGIBLE' as const,
+        dataQualityScore: 89,
+        daysSincePublication: 18,
+        lat: baseLat + 0.002,
+        lng: baseLng - 0.001,
       },
     ];
 
@@ -523,8 +594,8 @@ export class AppraisalService {
       const areaRatio = s.builtAreaM2 / targetArea;
       const surfScore = Math.max(20, Math.round(100 - Math.abs(1 - areaRatio) * 150));
       const bedScore = s.bedrooms === targetBeds ? 100 : Math.max(30, 100 - Math.abs(s.bedrooms - targetBeds) * 40);
-      const bathScore = s.bathrooms === (target.layout.bathrooms || 1) ? 100 : 75;
-      const garScore = s.garages === (target.layout.garages || 0) ? 100 : 70;
+      const bathScore = s.bathrooms === (target?.layout?.bathrooms || 1) ? 100 : 75;
+      const garScore = s.garages === (target?.layout?.garages || 0) ? 100 : 70;
       const recScore = Math.max(30, 100 - s.daysSincePublication);
       const qualScore = s.dataQualityScore;
 
@@ -580,9 +651,9 @@ export class AppraisalService {
         },
         {
           factor: 'Garajes',
-          status: s.garages === (target.layout.garages || 0) ? ('match' as const) : ('miss' as const),
+          status: s.garages === (target?.layout?.garages || 0) ? ('match' as const) : ('miss' as const),
           label: s.garages > 0 ? `${s.garages} garaje(s)` : 'Sin garaje declarado',
-          detail: s.garages === (target.layout.garages || 0) ? 'Coincidencia de estacionamiento' : 'Disparidad de garaje',
+          detail: s.garages === (target?.layout?.garages || 0) ? 'Coincidencia de estacionamiento' : 'Disparidad de garaje',
           score: garScore,
           maxScore: 100,
         },
@@ -599,7 +670,7 @@ export class AppraisalService {
       return {
         id: s.id,
         appraisalId: '',
-        propertyMasterId: `master_${s.id}`,
+        propertyMasterId: s.propertyMasterId || `master_${s.id}`,
         listingId: `list_${s.id}`,
         similarityScore: finalScore,
         scoreBreakdown: {
@@ -626,7 +697,7 @@ export class AppraisalService {
           title: s.title,
           propertyType: targetType,
           department: s.department,
-          city: target.location.city || s.department,
+          city: city || s.department,
           neighborhood: s.neighborhood,
           latitude: s.lat,
           longitude: s.lng,
@@ -913,6 +984,398 @@ export class AppraisalService {
     return appraisal;
   }
 
+  /**
+   * Ejecuta el cálculo de valoración matemática certificada (Parte 3)
+   */
+  public async calculateValuation(params: {
+    appraisalId: string;
+    organizationId: string;
+    userId?: string;
+    userEmail?: string;
+    notes?: string;
+  }): Promise<{
+    run: AppraisalValuationRun;
+    appraisal: AppraisalRecord;
+  }> {
+    const appraisal = await this.getAppraisalById(params.appraisalId);
+    if (!appraisal) {
+      throw new Error(`Tasación con ID ${params.appraisalId} no encontrada.`);
+    }
+
+    const rawIncluded = (appraisal.comparables || []).filter(
+      (c) => c.selected || c.status === 'INCLUDED'
+    );
+
+    // UNIQUE PROPERTY COMPARABLE RULE:
+    // Un mismo inmueble físico (propertyMasterId) sólo puede aportar 1 única observación
+    // en el cálculo matemático final, previniendo sobreponderación o sesgos por duplicados cross-source.
+    const masterMap = new Map<string, AppraisalComparableItem>();
+    for (const comp of rawIncluded) {
+      const masterKey = comp.propertyMasterId || comp.id;
+      if (!masterMap.has(masterKey)) {
+        masterMap.set(masterKey, comp);
+      } else {
+        const current = masterMap.get(masterKey)!;
+        if ((comp.similarityScore || 0) > (current.similarityScore || 0)) {
+          masterMap.set(masterKey, comp);
+        }
+      }
+    }
+    const included = Array.from(masterMap.values());
+
+    if (included.length < 3) {
+      throw new Error(
+        `Se requiere un mínimo de 3 comparables válidos para ejecutar la valoración (N >= 3). Tras deduplicación cross-source por inmueble físico único hay ${included.length}.`
+      );
+    }
+
+    const target = appraisal.propertyInput;
+    const targetArea = target.surfaces.builtAreaM2 || target.surfaces.totalAreaM2 || 75;
+    const settings = AppraisalSettingsManager.getInstance().getSettings();
+
+    // Mapear comparables incluidos a ScoredComparable con 12% asegurado
+    const scoredComparables: ScoredComparable[] = included.map((c) => {
+      const d = c.candidateData;
+      const effectivePrice = d.adjustedPriceUsd || Math.round(d.priceUsd * 0.88);
+      return {
+        id: c.id,
+        propertyMasterId: c.propertyMasterId || `master_${c.id}`,
+        sourceListingId: d.sourceListingId || c.id,
+        sourceCode: d.sourceCode || 'infocasas',
+        originalUrl: d.originalUrl || '',
+        title: d.title,
+        propertyType: (d.propertyType as any) || 'apartamento',
+        department: d.department || appraisal.location?.department || 'Montevideo',
+        city: d.city || appraisal.location?.city || 'Montevideo',
+        neighborhood: d.neighborhood || appraisal.location?.neighborhood || 'Pocitos',
+        streetName: d.streetName || '',
+        latitude: d.latitude,
+        longitude: d.longitude,
+        builtAreaM2: d.builtAreaM2,
+        totalAreaM2: d.totalAreaM2,
+        bedrooms: d.bedrooms,
+        bathrooms: d.bathrooms,
+        garages: d.garages,
+        constructionYear: d.constructionYear,
+        rawAskingPriceUsd: d.priceUsd,
+        currency: 'USD',
+        priceEvidenceHierarchy: 'ADJUSTED_ASKING_PRICE',
+        isPriceAdjusted: true,
+        priceAdjustmentPercentage: 0.12,
+        effectivePriceUsd: effectivePrice,
+        pricePerM2Usd: Math.round(effectivePrice / d.builtAreaM2),
+        publicationDate: d.publicationDate,
+        daysSincePublication: d.daysSincePublication || 15,
+        dataQualityScore: d.dataQualityScore || 90,
+        distanceMeters: d.distanceMeters || 300,
+        isConfirmedTransaction: false,
+        similarity: {
+          locationScore: c.scoreBreakdown.locationScore,
+          propertyTypeScore: c.scoreBreakdown.propertyTypeScore,
+          surfaceScore: c.scoreBreakdown.surfaceScore,
+          bedroomsScore: c.scoreBreakdown.bedroomsScore,
+          bathroomsScore: c.scoreBreakdown.bathroomsScore,
+          garageScore: c.scoreBreakdown.garageScore,
+          ageScore: c.scoreBreakdown.ageScore || 85,
+          recencyScore: c.scoreBreakdown.recencyScore || 90,
+          dataQualityScore: c.scoreBreakdown.dataQualityScore || 90,
+          finalSimilarityScore: c.similarityScore,
+        },
+        weight: 1 / included.length,
+        isOutlier: false,
+        directAdjustmentFactor: 1.0,
+        directlyAdjustedPriceUsd: effectivePrice,
+      };
+    });
+
+    const weightedComparables = ComparableWeightEngine.computeWeights(scoredComparables);
+
+    const targetInput: TargetPropertyInput = {
+      propertyType: (target.propertyType as any) || 'apartamento',
+      department: appraisal.location?.department || 'Montevideo',
+      neighborhood: appraisal.location?.neighborhood || 'Pocitos',
+      builtAreaM2: targetArea,
+      totalAreaM2: target.surfaces.totalAreaM2,
+      bedrooms: target.layout.bedrooms,
+      bathrooms: target.layout.bathrooms,
+      garages: target.layout.garages,
+    };
+
+    // Ejecutar estimadores del motor matemático certificado
+    const mvResult = MarketValueEngine.calculate(targetInput, weightedComparables, settings);
+    const rangeResult = ValuationRangeEngine.calculateRange(
+      mvResult.estimatedMarketValue,
+      targetArea,
+      weightedComparables
+    );
+    const confResult = ValuationConfidenceEngine.evaluate(
+      weightedComparables,
+      'NEIGHBORHOOD',
+      rangeResult.dispersionCoefficient,
+      settings
+    );
+
+    // Redondeo profesional para evitar falsa precisión
+    const rawVal = mvResult.estimatedMarketValue;
+    const roundedValue = rawVal >= 100000 ? Math.round(rawVal / 1000) * 1000 : Math.round(rawVal / 500) * 500;
+    const roundedPriceM2 = Math.round(roundedValue / targetArea);
+    const roundedRangeMin = Math.round(rangeResult.estimatedRangeLow / 1000) * 1000;
+    const roundedRangeMax = Math.round(rangeResult.estimatedRangeHigh / 1000) * 1000;
+
+    // Factores determinísticos favorables
+    const favorableFactors: string[] = [];
+    if (appraisal.location?.neighborhood) {
+      favorableFactors.push(`Emplazamiento en ${appraisal.location.neighborhood} (alta demanda y liquidez sostenida)`);
+    }
+    if (target.layout.garages > 0) {
+      favorableFactors.push(`Disponibilidad de ${target.layout.garages} plaza(s) de cochera/garaje verificado`);
+    }
+    if (included.length >= 5) {
+      favorableFactors.push(`Muestra robusta y homogénea de ${included.length} comparables directos`);
+    }
+    if (rangeResult.dispersionCoefficient < 0.15) {
+      favorableFactors.push('Baja dispersión en precios unitarios por m² (< 15%)');
+    }
+    if (target.amenities?.balcony || target.amenities?.terrace) {
+      favorableFactors.push('Espacio exterior propio (balcón/terraza)');
+    }
+    if (target.amenities?.security24h) {
+      favorableFactors.push('Seguridad 24 horas y control de acceso');
+    }
+
+    // Factores determinísticos a considerar / advertencias
+    const considerationFactors: string[] = [];
+    if (included.length === 3) {
+      considerationFactors.push('Muestra en el umbral mínimo admisible (3 comparables). Monitorear nuevos ingresos.');
+    }
+    if (rangeResult.dispersionCoefficient >= 0.20) {
+      considerationFactors.push(`Dispersión de mercado del ${(rangeResult.dispersionCoefficient * 100).toFixed(1)}% en USD/m²`);
+    }
+    if (target.ageYears && target.ageYears > 20) {
+      considerationFactors.push(`Antigüedad de ${target.ageYears} años: considerar estado de áreas comunes`);
+    }
+    const withoutExactGps = included.filter((c) => !c.candidateData.latitude || !c.candidateData.longitude).length;
+    if (withoutExactGps > 0) {
+      considerationFactors.push(`${withoutExactGps} comparable(s) sin coordenadas GPS exactas verificadas`);
+    }
+
+    let finalConfidence: 'ALTA' | 'MEDIA' | 'BAJA' = 'MEDIA';
+    if (confResult.confidenceLevel === 'VERY_HIGH' || confResult.confidenceLevel === 'HIGH') {
+      finalConfidence = 'ALTA';
+    } else if (confResult.confidenceLevel === 'MEDIUM') {
+      finalConfidence = 'MEDIA';
+    } else {
+      finalConfidence = 'BAJA';
+    }
+
+    const previousRuns = this.memoryRuns.get(appraisal.id) || [];
+    const runNumber = previousRuns.length + 1;
+    const runId = `run_${appraisal.id}_${runNumber}_${Date.now()}`;
+
+    // Creación inmutable de Valuation Run con snapshot congelado
+    const run: AppraisalValuationRun = {
+      id: runId,
+      appraisalId: appraisal.id,
+      organizationId: appraisal.organizationId,
+      runNumber,
+      createdBy: params.userId || appraisal.createdBy || null,
+      creatorEmail: params.userEmail || appraisal.creatorEmail || null,
+      engineVersion: 'v1.0.0-certified',
+      configurationVersion: settings.version || 1,
+      targetPropertySnapshot: JSON.parse(JSON.stringify(target)),
+      comparableSetSnapshot: JSON.parse(JSON.stringify(appraisal.comparables || [])),
+      comparablesUsedCount: included.length,
+      excludedComparablesCount: (appraisal.comparables || []).length - included.length,
+      estimatedMarketValue: roundedValue,
+      estimatedPricePerM2Usd: roundedPriceM2,
+      valueRangeMin: roundedRangeMin,
+      valueRangeMax: roundedRangeMax,
+      confidenceLevel: finalConfidence,
+      methodEstimators: mvResult.methodEstimators,
+      favorableFactors,
+      considerationFactors,
+      warnings: confResult.warnings.map((w) => (w.includes(':') ? w.split(':')[1].trim() : w)),
+      notes: params.notes || null,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Actualizar historial de runs
+    const updatedRuns = [...previousRuns, run];
+    this.memoryRuns.set(appraisal.id, updatedRuns);
+
+    // Actualizar tasación
+    appraisal.currentRun = run;
+    appraisal.runs = updatedRuns;
+    appraisal.status = 'VALUATED';
+    appraisal.estimatedValue = roundedValue;
+    appraisal.updatedAt = new Date().toISOString();
+    this.memoryAppraisals.set(appraisal.id, appraisal);
+    this.saveToLocalStorage();
+
+    // Registrar evento de auditoría
+    await this.addAuditLog({
+      appraisalId: appraisal.id,
+      organizationId: appraisal.organizationId,
+      userId: params.userId,
+      userEmail: params.userEmail,
+      eventType: 'VALUATION_EXECUTED',
+      description: `Ejecución de valoración RUN #${runNumber} completada exitosamente. Valor estimado: USD ${roundedValue.toLocaleString('es-UY')}`,
+      metadata: { runNumber, estimatedMarketValue: roundedValue, confidenceLevel: finalConfidence },
+    });
+
+    return { run, appraisal };
+  }
+
+  /**
+   * Genera el informe técnico profesional en PDF real (Parte 3)
+   */
+  public async generateReportPdf(params: {
+    appraisalId: string;
+    organizationId: string;
+    runId?: string;
+    branding?: ReportBrandingOptions;
+    userId?: string;
+    userEmail?: string;
+  }): Promise<{
+    report: AppraisalReportMetadata;
+    pdfBytes: Uint8Array;
+  }> {
+    const appraisal = await this.getAppraisalById(params.appraisalId);
+    if (!appraisal) {
+      throw new Error(`Tasación con ID ${params.appraisalId} no encontrada.`);
+    }
+
+    const runs = this.memoryRuns.get(appraisal.id) || [];
+    const run = params.runId ? runs.find((r) => r.id === params.runId) : appraisal.currentRun || runs[runs.length - 1];
+    if (!run) {
+      throw new Error('No existe una ejecución de valoración (Valuation Run) para emitir el informe.');
+    }
+
+    const generated = await PdfReportGenerator.generateAppraisalPdf(appraisal, run, params.branding);
+
+    const existingReports = this.memoryReports.get(appraisal.id) || [];
+    const reportVersion = existingReports.length + 1;
+    const reportId = `rep_${appraisal.id}_v${reportVersion}_${Date.now()}`;
+
+    const report: AppraisalReportMetadata = {
+      id: reportId,
+      appraisalId: appraisal.id,
+      runId: run.id,
+      organizationId: appraisal.organizationId,
+      version: reportVersion,
+      fileName: generated.fileName,
+      filePath: `appraisals/${appraisal.organizationId}/${generated.fileName}`,
+      fileSizeBytes: generated.fileSizeBytes,
+      fileHashSha256: generated.fileHashSha256,
+      brandingUsed: {
+        organizationName: params.branding?.organizationName || 'HIPOTECALY',
+        primaryColor: params.branding?.primaryColorHex || '#102d49',
+      },
+      createdBy: params.userId || appraisal.createdBy || null,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedReports = [...existingReports, report];
+    this.memoryReports.set(appraisal.id, updatedReports);
+
+    appraisal.reports = updatedReports;
+    appraisal.status = 'REPORT_GENERATED';
+    appraisal.updatedAt = new Date().toISOString();
+    this.memoryAppraisals.set(appraisal.id, appraisal);
+    this.saveToLocalStorage();
+
+    // Registrar en auditoría
+    await this.addAuditLog({
+      appraisalId: appraisal.id,
+      organizationId: appraisal.organizationId,
+      userId: params.userId,
+      userEmail: params.userEmail,
+      eventType: 'REPORT_GENERATED',
+      description: `Informe técnico PDF v${reportVersion} generado (${(generated.fileSizeBytes / 1024).toFixed(1)} KB). Hash SHA-256: ${generated.fileHashSha256.substring(0, 16)}...`,
+      metadata: { reportVersion, fileHashSha256: generated.fileHashSha256, fileSizeBytes: generated.fileSizeBytes },
+    });
+
+    return { report, pdfBytes: generated.pdfBytes };
+  }
+
+  /**
+   * Cierra formalmente la tasación (Parte 3)
+   */
+  public async finalizeAppraisal(params: {
+    appraisalId: string;
+    organizationId: string;
+    userId?: string;
+    userEmail?: string;
+  }): Promise<AppraisalRecord> {
+    const appraisal = await this.getAppraisalById(params.appraisalId);
+    if (!appraisal) {
+      throw new Error(`Tasación con ID ${params.appraisalId} no encontrada.`);
+    }
+
+    if (!appraisal.currentRun && (!appraisal.runs || appraisal.runs.length === 0)) {
+      throw new Error('No es posible finalizar una tasación sin una ejecución de valoración completada.');
+    }
+
+    appraisal.status = 'FINALIZED';
+    appraisal.updatedAt = new Date().toISOString();
+    this.memoryAppraisals.set(appraisal.id, appraisal);
+    this.saveToLocalStorage();
+
+    await this.addAuditLog({
+      appraisalId: appraisal.id,
+      organizationId: appraisal.organizationId,
+      userId: params.userId,
+      userEmail: params.userEmail,
+      eventType: 'APPRAISAL_FINALIZED',
+      description: 'Tasación finalizada y archivada formalmente por el analista.',
+    });
+
+    return appraisal;
+  }
+
+  /**
+   * Registra un evento de auditoría
+   */
+  public async addAuditLog(params: {
+    appraisalId: string;
+    organizationId: string;
+    userId?: string | null;
+    userEmail?: string | null;
+    eventType: string;
+    description: string;
+    metadata?: Record<string, any>;
+  }): Promise<AppraisalAuditLog> {
+    const log: AppraisalAuditLog = {
+      id: `log_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      appraisalId: params.appraisalId,
+      organizationId: params.organizationId,
+      userId: params.userId || null,
+      userEmail: params.userEmail || null,
+      eventType: params.eventType,
+      description: params.description,
+      metadata: params.metadata || {},
+      createdAt: new Date().toISOString(),
+    };
+
+    const existing = this.memoryAuditLogs.get(params.appraisalId) || [];
+    existing.push(log);
+    this.memoryAuditLogs.set(params.appraisalId, existing);
+
+    return log;
+  }
+
+  public getValuationRuns(appraisalId: string): AppraisalValuationRun[] {
+    return this.memoryRuns.get(appraisalId) || [];
+  }
+
+  public getAuditLogs(appraisalId: string): AppraisalAuditLog[] {
+    return this.memoryAuditLogs.get(appraisalId) || [];
+  }
+
+  public getReports(appraisalId: string): AppraisalReportMetadata[] {
+    return this.memoryReports.get(appraisalId) || [];
+  }
+
   // ============================================================================
   // MÉTODOS ESTÁTICOS DE CONVENIENCIA
   // ============================================================================
@@ -975,6 +1438,48 @@ export class AppraisalService {
     comparableId: string
   ): Promise<AppraisalRecord | null> {
     return AppraisalService.getInstance().includeComparable(appraisalId, comparableId);
+  }
+
+  public static async calculateValuation(params: {
+    appraisalId: string;
+    organizationId: string;
+    userId?: string;
+    userEmail?: string;
+    notes?: string;
+  }) {
+    return AppraisalService.getInstance().calculateValuation(params);
+  }
+
+  public static async generateReportPdf(params: {
+    appraisalId: string;
+    organizationId: string;
+    runId?: string;
+    branding?: ReportBrandingOptions;
+    userId?: string;
+    userEmail?: string;
+  }) {
+    return AppraisalService.getInstance().generateReportPdf(params);
+  }
+
+  public static async finalizeAppraisal(params: {
+    appraisalId: string;
+    organizationId: string;
+    userId?: string;
+    userEmail?: string;
+  }) {
+    return AppraisalService.getInstance().finalizeAppraisal(params);
+  }
+
+  public static getValuationRuns(appraisalId: string) {
+    return AppraisalService.getInstance().getValuationRuns(appraisalId);
+  }
+
+  public static getAuditLogs(appraisalId: string) {
+    return AppraisalService.getInstance().getAuditLogs(appraisalId);
+  }
+
+  public static getReports(appraisalId: string) {
+    return AppraisalService.getInstance().getReports(appraisalId);
   }
 }
 
