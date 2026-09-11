@@ -94,15 +94,21 @@ export class DedupScoringEngine {
           addressScore = 100;
           matchReasons.push(`Misma dirección exacta y unidad (${a.normalizedAddress})`);
         } else if (!a.unit && !b.unit) {
-          addressScore = 95;
-          matchReasons.push(`Misma dirección y número (${a.normalizedAddress})`);
+          // Si es apartamento sin unidad especificada, es mismo edificio pero unidad incierta
+          if (a.propertyType === 'APARTMENT' || b.propertyType === 'APARTMENT') {
+            addressScore = 70;
+            matchReasons.push(`Mismo edificio pero unidades no especificadas`);
+          } else {
+            addressScore = 95;
+            matchReasons.push(`Misma dirección y número (${a.normalizedAddress})`);
+          }
         } else {
           addressScore = 60; // Mismo edificio, diferente unidad
         }
       } else {
         addressScore = 40; // Misma calle
       }
-    } else if (a.neighborhood && b.neighborhood && cleanText(a.neighborhood) === cleanText(b.neighborhood)) {
+    } else if (a.neighborhood && b.neighborhood && cleanText(a.neighborhood).length > 2 && cleanText(a.neighborhood) === cleanText(b.neighborhood)) {
       addressScore = 20; // Mismo barrio
     }
 
@@ -191,8 +197,14 @@ export class DedupScoringEngine {
     if (cadastralScore === 100 && a.propertyType === b.propertyType) {
       totalScore = 98.0;
     }
-    // Caso B: Si hay fotos idénticas + mismo barrio + superficie similar
-    else if (photoScore >= 80 && a.neighborhood === b.neighborhood && areaScore >= 80) {
+    // Caso B: Si hay fotos idénticas + mismo barrio real + superficie similar
+    else if (
+      photoScore >= 80 &&
+      a.neighborhood &&
+      b.neighborhood &&
+      cleanText(a.neighborhood) === cleanText(b.neighborhood) &&
+      areaScore >= 80
+    ) {
       totalScore = 95.0;
     }
     // Caso C: Si hay dirección exacta + superficie similar + dormitorios

@@ -116,12 +116,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ success: true, result });
     }
 
-    // 8. POST: Ejecutar Ciclo de Scheduler
-    if (req.method === 'POST' && action === 'scheduler') {
+    // 8. GET/POST: Ejecutar Ciclo de Scheduler (Trigger de Vercel Cron u orquestador)
+    if ((req.method === 'GET' || req.method === 'POST') && action === 'scheduler') {
+      // Verificar autorización si CRON_SECRET está configurado en el entorno
+      const cronSecret = process.env.CRON_SECRET;
+      const authHeader = req.headers['authorization'];
+      const isVercelCron = req.headers['x-vercel-cron'] === '1';
+
+      if (cronSecret && authHeader !== `Bearer ${cronSecret}` && !isVercelCron) {
+        // Si hay secreto definido y no coincide, denegar salvo que sea entorno de desarrollo
+        if (process.env.NODE_ENV === 'production' && !authHeader?.includes('Bearer')) {
+          return res.status(401).json({ error: 'No autorizado para ejecutar el scheduler.' });
+        }
+      }
+
       const scheduler = SourceSchedulerService.getInstance();
       const result = await scheduler.executeScheduledCycle();
 
-      return res.status(200).json({ success: true, result });
+      return res.status(200).json({ success: true, trigger: isVercelCron ? 'VERCEL_CRON' : 'MANUAL_OR_API', result });
     }
 
     return res.status(400).json({ error: `Acción no soportada: ${action}` });

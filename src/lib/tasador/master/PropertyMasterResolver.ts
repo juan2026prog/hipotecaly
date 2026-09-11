@@ -80,12 +80,40 @@ export class PropertyMasterResolver {
   public calculateDedupHash(
     normalizedAddress: string,
     department: string,
-    cadastralNumber?: string | null
+    cadastralNumber?: string | null,
+    options?: {
+      streetName?: string | null;
+      streetNumber?: string | null;
+      unit?: string | null;
+      propertyType?: string | null;
+      uniqueKey?: string | null;
+    }
   ): string {
     const cleanAddr = cleanText(normalizedAddress);
     const cleanDept = cleanText(department);
     const cleanPadron = cleanText(cadastralNumber);
-    const rawKey = `${cleanAddr}|${cleanDept}|${cleanPadron}`;
+
+    // Determinar si la dirección tiene especificidad suficiente para deducir identidad física:
+    // 1. Padrón catastral no vacío
+    const hasPadron = cleanPadron.length >= 3;
+    // 2. Calle + número de puerta
+    const hasStreetNumber = Boolean(
+      options?.streetName &&
+      options?.streetNumber &&
+      cleanText(options.streetName).length >= 3 &&
+      cleanText(options.streetNumber).length >= 1
+    );
+    // 3. Si es apartamento, requiere además número de unidad (a menos que tenga padrón específico)
+    const isApartment = options?.propertyType === 'APARTMENT' || options?.propertyType === 'apartamento';
+    const isSpecificUnit = !isApartment || Boolean(options?.unit && cleanText(options.unit).length >= 1);
+
+    const isSpecific = hasPadron || (hasStreetNumber && isSpecificUnit);
+
+    // Si la dirección es genérica (ej. sólo 'Montevideo', o calle sin número, o edificio sin apto),
+    // NUNCA debe compartir hash con otras publicaciones.
+    const rawKey = isSpecific
+      ? `${cleanAddr}|${cleanDept}|${cleanPadron}|${options?.unit ? cleanText(options.unit) : ''}`
+      : `unique_${cleanDept}_${cleanText(options?.uniqueKey || Math.random().toString(36).substring(2, 10))}`;
 
     let hash = 5381;
     for (let i = 0; i < rawKey.length; i++) {
@@ -99,17 +127,25 @@ export class PropertyMasterResolver {
     isNew: boolean;
     confidence: number;
   } {
+    const uniqueKey = listing.sourceListingKey || listing.sourceListingId;
     const dedupHash = this.calculateDedupHash(
       listing.normalizedAddress,
       listing.department,
-      listing.cadastralNumber
+      listing.cadastralNumber,
+      {
+        streetName: listing.streetName,
+        streetNumber: listing.streetNumber,
+        unit: listing.unit,
+        propertyType: listing.propertyType,
+        uniqueKey,
+      }
     );
 
-    // 1. Buscar coincidencia exacta por hash deduplicador
+    // 1. Buscar coincidencia exacta por hash deduplicador (solo para direcciones específicas)
     for (const master of this.masterStore.values()) {
       if (master.dedupHash === dedupHash && master.propertyType === listing.propertyType) {
-        if (!master.listingIds.includes(listing.sourceListingKey || listing.sourceListingId)) {
-          master.listingIds.push(listing.sourceListingKey || listing.sourceListingId);
+        if (!master.listingIds.includes(uniqueKey)) {
+          master.listingIds.push(uniqueKey);
           master.updatedAt = new Date().toISOString();
         }
         return { master, isNew: false, confidence: 98 };
@@ -117,28 +153,63 @@ export class PropertyMasterResolver {
     }
 
     // 2. Buscar si hay coincidencia de muy alta confianza (>= 95) con un master existente
+    // NOTA: mockListingFromMaster contiene EXCLUSIVAMENTE datos propios del master, sin heredar fotos ni textos del listing candidato.
     for (const master of this.masterStore.values()) {
-      // Comparar listing con atributos del master
       const mockListingFromMaster: NormalizedListing = {
-        ...listing,
-        normalizedAddress: master.normalizedAddress,
+        sourceCode: 'master',
+        sourceListingId: master.id,
+        sourceListingKey: `master_${master.id}`,
+        canonicalUrl: '',
+        originalUrl: '',
+        title: '',
+        titleNormalized: '',
+        descriptionNormalized: '',
+        operationType: 'SALE',
+        propertyType: master.propertyType,
+        country: 'Uruguay',
+        countryCode: 'UY',
         department: master.department,
+        city: master.city,
         neighborhood: master.neighborhood,
+        subNeighborhood: master.subNeighborhood,
+        normalizedAddress: master.normalizedAddress,
         streetName: master.streetName,
         streetNumber: master.streetNumber,
         unit: master.unit,
+        floor: master.floor,
+        postalCode: master.postalCode,
         latitude: master.latitude,
         longitude: master.longitude,
-        builtAreaM2: master.builtAreaM2,
-        totalAreaM2: master.totalAreaM2,
-        bedrooms: master.bedrooms,
+        locationPrecision: master.locationPrecision,
         cadastralNumber: master.cadastralNumber,
+        horizontalPropertyUnit: master.horizontalPropertyUnit,
+        totalAreaM2: master.totalAreaM2,
+        builtAreaM2: master.builtAreaM2,
+        currentPrice: 0,
+        currentCurrency: 'USD',
+        priceUsd: 0,
+        priceUyu: 0,
+        pricePerM2Usd: 0,
+        bedrooms: master.bedrooms,
+        bathrooms: master.bathrooms,
+        toilets: master.toilets,
+        garages: master.garages,
+        parkingSpaces: master.parkingSpaces,
+        propertyFloor: master.propertyFloor,
+        constructionYear: master.constructionYear,
+        approximateAge: master.approximateAge,
+        condition: master.condition,
+        orientation: master.orientation,
+        media: [], // No heredar fotos del candidato para evitar 100% photo match artificial
+        amenities: master.amenities || {},
+        fieldEvidence: {},
+        rawPayload: {} as any,
       };
 
       const breakdown = DedupScoringEngine.compareListings(listing, mockListingFromMaster);
       if (breakdown.totalScore >= 95.0) {
-        if (!master.listingIds.includes(listing.sourceListingKey || listing.sourceListingId)) {
-          master.listingIds.push(listing.sourceListingKey || listing.sourceListingId);
+        if (!master.listingIds.includes(uniqueKey)) {
+          master.listingIds.push(uniqueKey);
           master.updatedAt = new Date().toISOString();
         }
         return { master, isNew: false, confidence: breakdown.totalScore };

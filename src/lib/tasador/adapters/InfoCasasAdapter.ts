@@ -176,12 +176,14 @@ export class InfoCasasAdapter extends BaseSourceAdapter {
     const landArea = item.m2Terrain || null;
 
     // Ubicación
-    const department = item.estate?.name || item.estate_name || 'Montevideo';
-    const neighborhood = item.neighborhood?.name || item.neighborhood_name || null;
-    const street = item.street || item.address || null;
+    const department = item.locations?.state?.[0]?.name || item.estate?.name || item.estate_name || 'Montevideo';
+    const neighborhood = item.locations?.neighbourhood?.[0]?.name || item.neighborhood?.name || item.neighborhood_name || null;
+    const street = item.address || item.street || null;
     const streetNumber = item.street_number || null;
-    const lat = item.lat ? parseFloat(item.lat) : null;
-    const lng = item.lng ? parseFloat(item.lng) : null;
+    const rawLat = item.latitude ?? item.lat;
+    const rawLng = item.longitude ?? item.lng;
+    const lat = rawLat != null && rawLat !== '' ? parseFloat(rawLat) : null;
+    const lng = rawLng != null && rawLng !== '' ? parseFloat(rawLng) : null;
 
     // Medios
     const mediaRaw: RawMediaItem[] = [];
@@ -279,11 +281,11 @@ export class InfoCasasAdapter extends BaseSourceAdapter {
       descriptionRaw: parent.notes || parent.description || '',
       currentPriceRaw: typeof price === 'number' ? price : parseFloat(price) || null,
       currencyRaw: currency,
-      departmentRaw: parent.estate?.name || 'Montevideo',
-      neighborhoodRaw: parent.neighborhood?.name || null,
-      streetNameRaw: parent.street || null,
-      latitudeRaw: parent.lat ? parseFloat(parent.lat) : null,
-      longitudeRaw: parent.lng ? parseFloat(parent.lng) : null,
+      departmentRaw: parent.locations?.state?.[0]?.name || parent.estate?.name || parent.estate_name || 'Montevideo',
+      neighborhoodRaw: parent.locations?.neighbourhood?.[0]?.name || parent.neighborhood?.name || parent.neighborhood_name || null,
+      streetNameRaw: parent.address || parent.street || null,
+      latitudeRaw: parent.latitude ? parseFloat(parent.latitude) : (parent.lat ? parseFloat(parent.lat) : null),
+      longitudeRaw: parent.longitude ? parseFloat(parent.longitude) : (parent.lng ? parseFloat(parent.lng) : null),
       propertyTypeRaw: sub.property_type?.name || parent.property_type?.name || 'Apartamento',
       operationTypeRaw: 'Venta',
       totalAreaM2Raw: typeof totalArea === 'number' ? totalArea : parseFloat(totalArea) || null,

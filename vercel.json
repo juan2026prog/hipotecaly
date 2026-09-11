@@ -1,4 +1,10 @@
 {
+  "crons": [
+    {
+      "path": "/api/tasador?action=scheduler",
+      "schedule": "0 */4 * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/integrations/(.*)",
