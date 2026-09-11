@@ -34,9 +34,11 @@ import {
   HealthCheckResponse,
 } from '../../lib/adminAiService';
 
+import { SuperAdminTasadorTab } from '../../components/admin/SuperAdminTasadorTab';
+
 export const AdminAiPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'configuracion' | 'modelos' | 'costos' | 'consumo' | 'memoria' | 'correcciones' | 'calidad' | 'promocionales'
+    'dashboard' | 'configuracion' | 'tasador' | 'modelos' | 'costos' | 'consumo' | 'memoria' | 'correcciones' | 'calidad' | 'promocionales'
   >('configuracion');
 
   // Estado editable de modelos
@@ -326,6 +328,7 @@ export const AdminAiPage: React.FC = () => {
         <div className="flex space-x-2 overflow-x-auto pb-2 border-b border-slate-200 text-xs font-semibold">
           {[
             { id: 'configuracion', label: 'Configuración OpenAI & Vault', icon: Key },
+            { id: 'tasador', label: 'Tasador IA — Base Inmobiliaria', icon: Database },
             { id: 'dashboard', label: 'Dashboard General', icon: Layers },
             { id: 'modelos', label: 'Modelos y Perfiles', icon: Cpu },
             { id: 'costos', label: 'Costos y Tarifas', icon: DollarSign },
@@ -679,6 +682,11 @@ export const AdminAiPage: React.FC = () => {
             )}
           </div>
         )}
+
+        {/* ---------------------------------------------------------------------- */}
+        {/* SUBSECCIÓN: TASADOR IA — BASE INMOBILIARIA Y OBSERVABILIDAD            */}
+        {/* ---------------------------------------------------------------------- */}
+        {activeTab === 'tasador' && <SuperAdminTasadorTab />}
 
         {/* ---------------------------------------------------------------------- */}
         {/* SUBSECCIÓN 1: DASHBOARD GENERAL                                        */}
