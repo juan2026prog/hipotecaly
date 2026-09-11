@@ -231,12 +231,19 @@ test.describe('Tasador IA - Hardening Estadístico y de Gobernanza Pre-Fase 7', 
     expect(evalZero.warnings.some((w) => w.includes('Sin observaciones'))).toBe(true);
   });
 
-  test('12. Invariante de Producción: asking_price_adjustment = 0.1200 Preservado en V1', () => {
+  test('12. Invariante de Producción y Versionado: asking_price_adjustment = 0.0850 en V2 y 0.1200 en V1', () => {
     const lifecycle = SettingsLifecycleService.getInstance();
     const active = lifecycle.getActiveVersion();
+    const history = lifecycle.getVersionHistory();
 
-    // El ajuste del 12% no puede mutarse automáticamente
-    expect(active.settings.askingPriceAdjustment).toBe(0.12);
+    // Versión activa actual en producción: V2 (8.5%)
+    expect(active.version).toBe(2);
+    expect(active.settings.askingPriceAdjustment).toBe(0.085);
+
+    // Versión histórica V1 preservada con 12%
+    const v1 = history.find((v) => v.version === 1);
+    expect(v1).toBeDefined();
+    expect(v1?.settings.askingPriceAdjustment).toBe(0.12);
   });
 
   test('13. Test de Signo y Clasificación Matemática de Sesgo', () => {

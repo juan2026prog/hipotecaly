@@ -118,21 +118,42 @@ test.describe.serial('TASADOR IA - FILTROS DE COMPARABLES Y REGLA DEL 12% (FASE 
     },
   ];
 
-  test('Req 01: Regla del 12%: asking_price_adjustment aplicado EXACTAMENTE UNA VEZ sobre asking prices', () => {
-    const result = ComparableCandidateFinder.findCandidates(
+  test('Req 01: Regla del factor de oferta: asking_price_adjustment aplicado EXACTAMENTE UNA VEZ sobre asking prices (12% en V1 y 8.5% en V2)', () => {
+    // 1. Verificación sobre V1 histórica (12.00%)
+    const resultV1 = ComparableCandidateFinder.findCandidates(
       targetApartment,
       sampleListings,
       DEFAULT_APPRAISAL_SETTINGS_V1
     );
 
-    const askingComp = result.candidates.find((c) => c.sourceCode === 'infocasas');
-    expect(askingComp).toBeDefined();
-    expect(askingComp?.rawAskingPriceUsd).toBe(200000);
-    expect(askingComp?.isPriceAdjusted).toBe(true);
-    expect(askingComp?.priceAdjustmentPercentage).toBe(12.0);
+    const askingCompV1 = resultV1.candidates.find((c) => c.sourceCode === 'infocasas');
+    expect(askingCompV1).toBeDefined();
+    expect(askingCompV1?.rawAskingPriceUsd).toBe(200000);
+    expect(askingCompV1?.isPriceAdjusted).toBe(true);
+    expect(askingCompV1?.priceAdjustmentPercentage).toBe(12.0);
     // 200.000 * (1 - 0.12) = 176.000
-    expect(askingComp?.effectivePriceUsd).toBe(176000);
-    expect(askingComp?.priceEvidenceHierarchy).toBe('ADJUSTED_ASKING_PRICE');
+    expect(askingCompV1?.effectivePriceUsd).toBe(176000);
+    expect(askingCompV1?.priceEvidenceHierarchy).toBe('ADJUSTED_ASKING_PRICE');
+
+    // 2. Verificación sobre V2 activa (8.50%)
+    const resultV2 = ComparableCandidateFinder.findCandidates(
+      targetApartment,
+      sampleListings,
+      {
+        ...DEFAULT_APPRAISAL_SETTINGS_V1,
+        version: 2,
+        askingPriceAdjustment: 0.085,
+      }
+    );
+
+    const askingCompV2 = resultV2.candidates.find((c) => c.sourceCode === 'infocasas');
+    expect(askingCompV2).toBeDefined();
+    expect(askingCompV2?.rawAskingPriceUsd).toBe(200000);
+    expect(askingCompV2?.isPriceAdjusted).toBe(true);
+    expect(askingCompV2?.priceAdjustmentPercentage).toBe(8.5);
+    // 200.000 * (1 - 0.085) = 183.000
+    expect(askingCompV2?.effectivePriceUsd).toBe(183000);
+    expect(askingCompV2?.priceEvidenceHierarchy).toBe('ADJUSTED_ASKING_PRICE');
   });
 
   test('Req 02: Transacción real confirmada NO recibe 12% de descuento (precio intacto)', () => {

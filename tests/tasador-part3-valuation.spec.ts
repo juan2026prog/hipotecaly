@@ -90,8 +90,8 @@ test.describe('Tasador IA - Parte 3: Valoración Final, Expediente Inmutable e I
       bathrooms: 1,
       garages: 1,
       pricePerM2Usd: Math.round(priceUsd / m2),
-      adjustedPriceUsd: Math.round(priceUsd * 0.88), // -12% asking price adjustment
-      adjustedPricePerM2Usd: Math.round((priceUsd * 0.88) / m2),
+      adjustedPriceUsd: Math.round(priceUsd * 0.915), // -8.5% asking price adjustment (V2)
+      adjustedPricePerM2Usd: Math.round((priceUsd * 0.915) / m2),
       similarityScore: 88,
       sourceCode: 'INFOCASAS',
       sourceName: 'InfoCasas Uruguay',

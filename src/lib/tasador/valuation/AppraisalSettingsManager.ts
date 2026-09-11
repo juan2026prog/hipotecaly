@@ -1,13 +1,14 @@
 // ==============================================================================
-// HIPOTECALY TASADOR IA - GESTOR DE CONFIGURACIÓN VERSIONADA (FASE 3)
-// Configuración de Pesos, Factores y Parámetro del 12% (asking_price_adjustment)
+// HIPOTECALY TASADOR IA - GESTOR DE CONFIGURACIÓN VERSIONADA (FASE 3 & RECALIBRACIÓN)
+// Configuración de Pesos, Factores y Parámetro Versionado (asking_price_adjustment)
+// V1 = 12.00% (Histórico Preservado) | V2 = 8.50% (Activo Certificado)
 // ==============================================================================
 
 import { AppraisalSettingsV1 } from './valuationTypes';
 
 export const DEFAULT_APPRAISAL_SETTINGS_V1: AppraisalSettingsV1 = {
   version: 1,
-  askingPriceAdjustment: 0.1200, // 12.00% exacto para asking prices
+  askingPriceAdjustment: 0.1200, // 12.00% exacto histórico para V1
   minComparables: 3,
   targetComparables: 10,
   maxComparables: 30,
@@ -48,9 +49,15 @@ export const DEFAULT_APPRAISAL_SETTINGS_V1: AppraisalSettingsV1 = {
   },
 };
 
+export const DEFAULT_APPRAISAL_SETTINGS_V2: AppraisalSettingsV1 = {
+  ...DEFAULT_APPRAISAL_SETTINGS_V1,
+  version: 2,
+  askingPriceAdjustment: 0.0850, // 8.50% exacto para V2 (Ajuste certificado)
+};
+
 export class AppraisalSettingsManager {
   private static instance: AppraisalSettingsManager;
-  private currentSettings: AppraisalSettingsV1 = { ...DEFAULT_APPRAISAL_SETTINGS_V1 };
+  private currentSettings: AppraisalSettingsV1 = { ...DEFAULT_APPRAISAL_SETTINGS_V2 };
 
   private constructor() {}
 
@@ -75,6 +82,14 @@ export class AppraisalSettingsManager {
   }
 
   public resetToDefault(): void {
-    this.currentSettings = { ...DEFAULT_APPRAISAL_SETTINGS_V1 };
+    this.currentSettings = { ...DEFAULT_APPRAISAL_SETTINGS_V2 };
+  }
+
+  public resetToVersion(version: 1 | 2): void {
+    if (version === 1) {
+      this.currentSettings = { ...DEFAULT_APPRAISAL_SETTINGS_V1 };
+    } else {
+      this.currentSettings = { ...DEFAULT_APPRAISAL_SETTINGS_V2 };
+    }
   }
 }

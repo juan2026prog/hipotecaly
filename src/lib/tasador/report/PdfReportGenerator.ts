@@ -223,10 +223,13 @@ export class PdfReportGenerator {
     p3 += `1 1 1 rg\n`;
     p3 += `BT /F2 10 Tf 40 822 Td (${sanitizeText(orgName.toUpperCase())} | MUESTRA DE COMPARABLES INMOBILIARIOS) Tj ET\n`;
 
+    const askingDiscountPct = valuationRun.configurationVersion === 1 ? '12.00%' : '8.50%';
+    const askingDiscountLabel = valuationRun.configurationVersion === 1 ? '(-12%)' : '(-8.5%)';
+
     p3 += `0.1 0.15 0.2 rg\n`;
     p3 += `BT /F2 13 Tf 40 770 Td (COMPARABLES PARTICIPANTES EN LA VALORACION (N = ${includedComps.length})) Tj ET\n`;
     p3 += `0.3 0.35 0.4 rg\n`;
-    p3 += `BT /F1 9 Tf 40 755 Td (Todos los inmuebles de oferta publica aplican el factor estandar de negociacion del -12.00% sobre asking price.) Tj ET\n`;
+    p3 += `BT /F1 9 Tf 40 755 Td (Todos los inmuebles de oferta publica aplican el factor estandar de negociacion del -${askingDiscountPct} sobre asking price.) Tj ET\n`;
 
     // Encabezado de la Tabla
     p3 += `0.92 0.94 0.96 rg 40 720 515 22 re f\n`;
@@ -235,7 +238,7 @@ export class PdfReportGenerator {
     p3 += `BT /F2 8 Tf 120 728 Td (UBICACION / DISTANCIA) Tj ET\n`;
     p3 += `BT /F2 8 Tf 240 728 Td (M2 / DORM) Tj ET\n`;
     p3 += `BT /F2 8 Tf 310 728 Td (P. LISTA) Tj ET\n`;
-    p3 += `BT /F2 8 Tf 380 728 Td (P. AJUSTADO (-12%)) Tj ET\n`;
+    p3 += `BT /F2 8 Tf 380 728 Td (P. AJUSTADO ${askingDiscountLabel}) Tj ET\n`;
     p3 += `BT /F2 8 Tf 470 728 Td (USD/M2) Tj ET\n`;
     p3 += `BT /F2 8 Tf 520 728 Td (SCORE) Tj ET\n`;
 
@@ -342,7 +345,7 @@ export class PdfReportGenerator {
     p4 += `0.85 0.88 0.9 rg 0.5 w 40 370 515 125 re S\n`;
     p4 += `0.2 0.25 0.3 rg\n`;
     p4 += `BT /F2 8 Tf 50 475 Td (Motor de Valuacion:) Tj /F1 8 Tf 160 475 Td (${sanitizeText(valuationRun.engineVersion)} (Certificado para Produccion)) Tj ET\n`;
-    p4 += `BT /F2 8 Tf 50 460 Td (Version de Config:) Tj /F1 8 Tf 160 460 Td (Configuracion Version ${valuationRun.configurationVersion} | Asking Price Adjustment: 12.00%) Tj ET\n`;
+    p4 += `BT /F2 8 Tf 50 460 Td (Version de Config:) Tj /F1 8 Tf 160 460 Td (Configuracion Version ${valuationRun.configurationVersion} | Asking Price Adjustment: ${valuationRun.configurationVersion === 1 ? '12.00%' : '8.50%'}) Tj ET\n`;
     p4 += `BT /F2 8 Tf 50 445 Td (Identificador de Run:) Tj /F1 8 Tf 160 445 Td (${sanitizeText(valuationRun.id)}) Tj ET\n`;
     p4 += `BT /F2 8 Tf 50 430 Td (Timestamp de Emision:) Tj /F1 8 Tf 160 430 Td (${valuationRun.createdAt}) Tj ET\n`;
     p4 += `BT /F2 8 Tf 50 415 Td (Analista Responsable:) Tj /F1 8 Tf 160 415 Td (${sanitizeText(valuationRun.creatorEmail || valuationRun.createdBy || 'Sistema de Tasacion Automatizada')}) Tj ET\n`;

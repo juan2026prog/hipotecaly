@@ -3425,9 +3425,7 @@ async function handler(req, res) {
               continue;
             }
 
-            const itemArea = Number(master.covered_surface_m2 || master.total_surface_m2 || 70);
-            const itemPrice = Number(item.price_usd_normalized || item.price_amount || 150000);
-            const adjustedPrice = Math.round(itemPrice * 0.88); // 12% regla certificada
+            const adjustedPrice = Math.round(itemPrice * 0.915); // 8.5% regla recalibrada V2
 
             // Distancia GPS
             let distMeters = null;
@@ -3646,7 +3644,7 @@ async function handler(req, res) {
 
         for (let i = 0; i < sampleSupplements.length; i++) {
           const s = sampleSupplements[i];
-          const adjusted = Math.round(s.price * 0.88);
+          const adjusted = Math.round(s.price * 0.915);
           candidates.push({
             id: `cand_real_pool_${i + 1}`,
             appraisalId: "",
@@ -3773,9 +3771,9 @@ async function handler(req, res) {
 
       const targetArea = targetProperty.surfaces?.builtAreaM2 || targetProperty.surfaces?.totalAreaM2 || 75;
 
-      // 1. Estimadores Estadísticos Robustos Certificados
-      const effectivePrices = included.map((c) => c.candidateData.adjustedPriceUsd || Math.round(c.candidateData.priceUsd * 0.88));
-      const m2Prices = included.map((c) => Math.round((c.candidateData.adjustedPriceUsd || (c.candidateData.priceUsd * 0.88)) / (c.candidateData.builtAreaM2 || 75)));
+      // 1. Estimadores Estadísticos Robustos Certificados (Ajuste 8.5% V2)
+      const effectivePrices = included.map((c) => c.candidateData.adjustedPriceUsd || Math.round(c.candidateData.priceUsd * 0.915));
+      const m2Prices = included.map((c) => Math.round((c.candidateData.adjustedPriceUsd || (c.candidateData.priceUsd * 0.915)) / (c.candidateData.builtAreaM2 || 75)));
 
       // Mediana ponderada
       const sortedPrices = [...effectivePrices].sort((a, b) => a - b);
@@ -3795,7 +3793,7 @@ async function handler(req, res) {
 
       // Ajuste Directo de Coeficientes
       const directVal = Math.round(included.reduce((acc, c) => {
-        const p = c.candidateData.adjustedPriceUsd || Math.round(c.candidateData.priceUsd * 0.88);
+        const p = c.candidateData.adjustedPriceUsd || Math.round(c.candidateData.priceUsd * 0.915);
         return acc + p;
       }, 0) / included.length);
 
@@ -3854,7 +3852,7 @@ async function handler(req, res) {
         createdBy: userId || null,
         creatorEmail: userEmail || null,
         engineVersion: "v1.0.0-certified",
-        configurationVersion: 1,
+        configurationVersion: 2,
         targetPropertySnapshot: targetProperty,
         comparableSetSnapshot: comparables,
         comparablesUsedCount: included.length,

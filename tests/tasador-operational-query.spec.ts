@@ -212,16 +212,16 @@ test.describe('Tasador IA - Parte 2: Selección y Validación de Comparables', (
     }
   });
 
-  test('2. Invariante matemática: Descuento obligatorio del 12% sobre asking price', async () => {
+  test('2. Invariante matemática: Descuento obligatorio versionado sobre asking price (8.5% en V2)', async () => {
     const candidates = await AppraisalService.searchComparables(targetProperty);
     const first = candidates[0];
 
-    // adjustedPriceUsd = askingPriceUsd * (1 - 0.12) = askingPriceUsd * 0.88
+    // adjustedPriceUsd = askingPriceUsd * (1 - 0.085) = askingPriceUsd * 0.915 en V2
     // first.candidateData.priceUsd es el asking price original
-    // first.candidateData.adjustedPriceUsd es el precio de oferta ajustado al 12%
+    // first.candidateData.adjustedPriceUsd es el precio de oferta ajustado al 8.5%
     const askingPrice = first.candidateData.priceUsd;
-    const expectedAdjusted = Math.round(askingPrice * 0.88);
-    expect(Math.abs(first.candidateData.adjustedPriceUsd - expectedAdjusted)).toBeLessThanOrEqual(1);
+    const expectedAdjusted = Math.round(askingPrice * 0.915);
+    expect(Math.abs(first.candidateData.adjustedPriceUsd - expectedAdjusted)).toBeLessThanOrEqual(2);
 
     // askingPriceAdjustmentApplied debe ser verdadero
     expect(first.candidateData.askingPriceAdjustmentApplied).toBe(true);

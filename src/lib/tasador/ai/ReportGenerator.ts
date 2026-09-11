@@ -36,11 +36,12 @@ export class ReportGenerator {
       `normalizadas y deduplicadas de mercado.`;
 
     // 2. Contexto de Mercado
+    const adjPctStr = valuation.askingPriceAdjustmentPercentage ? `${(valuation.askingPriceAdjustmentPercentage * 100).toFixed(2)}%` : '8.50%';
     const marketContextExplanation =
       `El análisis de comparables en el segmento ${target.propertyType} dentro del área de influencia ` +
       `(${valuation.geographicSearchLevel === 'IMMEDIATE' ? 'zona inmediata < 800m' : target.neighborhood || target.department}) ` +
       `indica un comportamiento de precios unitarios con mediana representativa en torno a los ${valM2Str}. ` +
-      `Se aplicó el factor de ajuste de ofertaasking_price_adjustment (12.00%) exactamente una vez sobre las publicaciones de portal ` +
+      `Se aplicó el factor de ajuste de oferta asking_price_adjustment (${adjPctStr}) exactamente una vez sobre las publicaciones de portal ` +
       `para aproximar el valor a condiciones probables de cierre de mercado.`;
 
     // 3. Fortalezas de la Propiedad

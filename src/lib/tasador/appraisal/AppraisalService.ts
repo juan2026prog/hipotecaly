@@ -421,6 +421,10 @@ export class AppraisalService {
     const targetBeds = target?.layout?.bedrooms ?? 2;
     const targetType = target?.propertyType || 'APARTMENT';
 
+    const settings = AppraisalSettingsManager.getInstance().getSettings();
+    const adjFactor = settings.askingPriceAdjustment ?? 0.085;
+    const askingMultiplier = 1 - adjFactor;
+
     // Conjunto base representativo de la Base Inmobiliaria uruguaya (Multi-fuente)
     const baseSamples = [
       {
@@ -435,7 +439,7 @@ export class AppraisalService {
         bathrooms: target?.layout?.bathrooms || 1,
         garages: target?.layout?.garages || 1,
         constructionYear: target.constructionYear ? target.constructionYear - 2 : 2018,
-        priceUsd: Math.round(targetArea * 2550 * 0.88),
+        priceUsd: Math.round(targetArea * 2550 * askingMultiplier),
         pricePerM2Usd: 2550,
         distanceMeters: 280,
         sourceCode: 'infocasas',
@@ -458,7 +462,7 @@ export class AppraisalService {
         bathrooms: target.layout.bathrooms || 1,
         garages: Math.max(0, (target.layout.garages || 0) - 1),
         constructionYear: target.constructionYear || 2019,
-        priceUsd: Math.round((targetArea + 4) * 2600 * 0.88),
+        priceUsd: Math.round((targetArea + 4) * 2600 * askingMultiplier),
         pricePerM2Usd: 2600,
         distanceMeters: 450,
         sourceCode: 'remax_uy',
@@ -481,7 +485,7 @@ export class AppraisalService {
         bathrooms: (target?.layout?.bathrooms || 1) + 1,
         garages: target?.layout?.garages || 1,
         constructionYear: 2015,
-        priceUsd: Math.round(targetArea * 2500 * 0.88),
+        priceUsd: Math.round(targetArea * 2500 * askingMultiplier),
         pricePerM2Usd: 2500,
         distanceMeters: 620,
         sourceCode: 'century21_uy',
@@ -504,7 +508,7 @@ export class AppraisalService {
         bathrooms: target?.layout?.bathrooms || 1,
         garages: target?.layout?.garages || 0,
         constructionYear: 2012,
-        priceUsd: Math.round(targetArea * 1.08 * 2480 * 0.88),
+        priceUsd: Math.round(targetArea * 1.08 * 2480 * askingMultiplier),
         pricePerM2Usd: 2480,
         distanceMeters: 850,
         sourceCode: 'kosak_uy',
@@ -527,7 +531,7 @@ export class AppraisalService {
         bathrooms: target?.layout?.bathrooms || 1,
         garages: target?.layout?.garages || 1,
         constructionYear: 2020,
-        priceUsd: Math.round(targetArea * 0.94 * 2650 * 0.88),
+        priceUsd: Math.round(targetArea * 0.94 * 2650 * askingMultiplier),
         pricePerM2Usd: 2650,
         distanceMeters: 920,
         sourceCode: 'acs_uy',
@@ -550,7 +554,7 @@ export class AppraisalService {
         bathrooms: target?.layout?.bathrooms || 1,
         garages: 0,
         constructionYear: 2014,
-        priceUsd: Math.round((targetArea + 8) * 2420 * 0.88),
+        priceUsd: Math.round((targetArea + 8) * 2420 * askingMultiplier),
         pricePerM2Usd: 2420,
         distanceMeters: 1150,
         sourceCode: 'infocasas',
@@ -573,7 +577,7 @@ export class AppraisalService {
         bathrooms: target?.layout?.bathrooms || 1,
         garages: target?.layout?.garages || 1,
         constructionYear: target.constructionYear ? target.constructionYear - 2 : 2018,
-        priceUsd: Math.round(targetArea * 2550 * 0.88),
+        priceUsd: Math.round(targetArea * 2550 * askingMultiplier),
         pricePerM2Usd: 2550,
         distanceMeters: 280,
         sourceCode: 'remax_uy',
@@ -707,9 +711,9 @@ export class AppraisalService {
           bathrooms: s.bathrooms,
           garages: s.garages,
           constructionYear: s.constructionYear,
-          priceUsd: Math.round(s.priceUsd / 0.88), // Asking price original
+          priceUsd: Math.round(s.priceUsd / askingMultiplier), // Asking price original
           pricePerM2Usd: s.pricePerM2Usd,
-          adjustedPriceUsd: s.priceUsd, // Precio con el 12% aplicado
+          adjustedPriceUsd: s.priceUsd, // Precio con el factor de oferta aplicado
           askingPriceAdjustmentApplied: true,
           publicationDate: new Date(Date.now() - s.daysSincePublication * 86400000).toISOString(),
           daysSincePublication: s.daysSincePublication,
@@ -1032,11 +1036,12 @@ export class AppraisalService {
     const target = appraisal.propertyInput;
     const targetArea = target.surfaces.builtAreaM2 || target.surfaces.totalAreaM2 || 75;
     const settings = AppraisalSettingsManager.getInstance().getSettings();
+    const adjFactor = settings.askingPriceAdjustment ?? 0.0850;
 
-    // Mapear comparables incluidos a ScoredComparable con 12% asegurado
+    // Mapear comparables incluidos a ScoredComparable con ajuste versionado asegurado
     const scoredComparables: ScoredComparable[] = included.map((c) => {
       const d = c.candidateData;
-      const effectivePrice = d.adjustedPriceUsd || Math.round(d.priceUsd * 0.88);
+      const effectivePrice = d.adjustedPriceUsd || Math.round(d.priceUsd * (1 - adjFactor));
       return {
         id: c.id,
         propertyMasterId: c.propertyMasterId || `master_${c.id}`,
@@ -1061,7 +1066,7 @@ export class AppraisalService {
         currency: 'USD',
         priceEvidenceHierarchy: 'ADJUSTED_ASKING_PRICE',
         isPriceAdjusted: true,
-        priceAdjustmentPercentage: 0.12,
+        priceAdjustmentPercentage: adjFactor,
         effectivePriceUsd: effectivePrice,
         pricePerM2Usd: Math.round(effectivePrice / d.builtAreaM2),
         publicationDate: d.publicationDate,

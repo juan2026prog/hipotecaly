@@ -135,7 +135,7 @@ export const SuperAdminTasadorValuationTab: React.FC = () => {
           </span>
         </div>
         <span className="hidden md:inline-block bg-emerald-900/60 px-2 py-0.5 rounded text-[10px] font-mono border border-emerald-700/50">
-          asking_price_adj = 0.1200
+          asking_price_adj = 0.0850 (V2)
         </span>
       </div>
 

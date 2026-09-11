@@ -26,6 +26,7 @@ import {
   Terminal,
   Play,
   Sliders,
+  TrendingDown,
 } from 'lucide-react';
 import { AI_MODELS } from '../../lib/ai/types';
 import {
@@ -39,14 +40,15 @@ import { SuperAdminTasadorTab } from '../../components/admin/SuperAdminTasadorTa
 import { SuperAdminTasadorValuationTab } from '../../components/admin/SuperAdminTasadorValuationTab';
 import { SuperAdminCalibrationTab } from '../../components/admin/SuperAdminCalibrationTab';
 import { SuperAdminBaseInmobiliariaTab } from '../../components/admin/SuperAdminBaseInmobiliariaTab';
+import { SuperAdminTransactionIntelligenceTab } from '../../components/admin/SuperAdminTransactionIntelligenceTab';
 
 export interface AdminAiPageProps {
-  defaultTab?: 'dashboard' | 'configuracion' | 'tasador' | 'tasador_valuation' | 'tasador_calibration' | 'modelos' | 'costos' | 'consumo' | 'memoria' | 'correcciones' | 'calidad' | 'promocionales';
+  defaultTab?: 'dashboard' | 'configuracion' | 'tasador' | 'tasador_valuation' | 'tasador_calibration' | 'transaction_intelligence' | 'modelos' | 'costos' | 'consumo' | 'memoria' | 'correcciones' | 'calidad' | 'promocionales';
 }
 
-export const AdminAiPage: React.FC<AdminAiPageProps> = ({ defaultTab = 'tasador_calibration' }) => {
+export const AdminAiPage: React.FC<AdminAiPageProps> = ({ defaultTab = 'transaction_intelligence' }) => {
   const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'configuracion' | 'tasador' | 'tasador_valuation' | 'tasador_calibration' | 'modelos' | 'costos' | 'consumo' | 'memoria' | 'correcciones' | 'calidad' | 'promocionales'
+    'dashboard' | 'configuracion' | 'tasador' | 'tasador_valuation' | 'tasador_calibration' | 'transaction_intelligence' | 'modelos' | 'costos' | 'consumo' | 'memoria' | 'correcciones' | 'calidad' | 'promocionales'
   >(defaultTab);
 
   // Estado editable de modelos
@@ -335,10 +337,11 @@ export const AdminAiPage: React.FC<AdminAiPageProps> = ({ defaultTab = 'tasador_
         {/* Barra de Subsecciones */}
         <div className="flex space-x-2 overflow-x-auto pb-2 border-b border-slate-200 text-xs font-semibold">
           {[
-            { id: 'configuracion', label: 'Configuración OpenAI & Vault', icon: Key },
+            { id: 'transaction_intelligence', label: 'Transaction Intelligence (Closed Sales)', icon: TrendingDown },
             { id: 'tasador_calibration', label: 'Tasador IA — Calibración & Ground Truth', icon: Sliders },
             { id: 'tasador_valuation', label: 'Tasador IA — Valuación & Visión', icon: Sparkles },
             { id: 'tasador', label: 'Tasador IA — Base Inmobiliaria', icon: Database },
+            { id: 'configuracion', label: 'Configuración OpenAI & Vault', icon: Key },
             { id: 'dashboard', label: 'Dashboard General', icon: Layers },
             { id: 'modelos', label: 'Modelos y Perfiles', icon: Cpu },
             { id: 'costos', label: 'Costos y Tarifas', icon: DollarSign },
@@ -798,6 +801,13 @@ export const AdminAiPage: React.FC<AdminAiPageProps> = ({ defaultTab = 'tasador_
               </button>
             </div>
           </form>
+        )}
+
+        {/* SUBSECCIÓN: TRANSACTION INTELLIGENCE — CLOSED SALES DATA */}
+        {activeTab === 'transaction_intelligence' && (
+          <div className="animate-in fade-in">
+            <SuperAdminTransactionIntelligenceTab />
+          </div>
         )}
 
         {/* SUBSECCIÓN: TASADOR IA — BASE INMOBILIARIA & CONTINUOUS INGESTION */}

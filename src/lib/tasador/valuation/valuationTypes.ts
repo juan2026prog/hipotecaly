@@ -41,7 +41,7 @@ export interface ComparableRecencyBucket {
 
 export interface AppraisalSettingsV1 {
   version: number;
-  askingPriceAdjustment: number; // 0.1200 (12.00%)
+  askingPriceAdjustment: number; // 0.0850 (8.50% en V2) / 0.1200 (12.00% en V1)
   minComparables: number;        // Mínimo requerido (e.g. 3)
   targetComparables: number;     // Objetivo ideal (e.g. 8 - 15)
   maxComparables: number;        // Límite superior (e.g. 30)

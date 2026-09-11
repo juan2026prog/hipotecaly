@@ -25,16 +25,32 @@ export class SettingsLifecycleService {
   }
 
   private initVersionHistory(): void {
-    const currentSettings = AppraisalSettingsManager.getInstance().getSettings();
+    const manager = AppraisalSettingsManager.getInstance();
+    const currentSettings = manager.getSettings();
     this.versionHistory.push({
       version: 1,
-      settings: currentSettings,
-      status: 'ACTIVE',
+      settings: {
+        ...currentSettings,
+        version: 1,
+        askingPriceAdjustment: 0.1200,
+      },
+      status: 'DEPRECATED',
       effectiveFrom: '2026-01-01T00:00:00.000Z',
-      effectiveTo: null,
+      effectiveTo: '2026-09-11T00:00:00.000Z',
       approvedBy: 'system-init',
       approvedAt: '2026-01-01T00:00:00.000Z',
       changeSummary: 'Versión inicial V1 con baseline asking_price_adjustment = 0.1200 (12.00%).',
+      calibrationRunId: null,
+    });
+    this.versionHistory.push({
+      version: 2,
+      settings: currentSettings,
+      status: 'ACTIVE',
+      effectiveFrom: '2026-09-11T00:00:00.000Z',
+      effectiveTo: null,
+      approvedBy: 'superadmin-recalibration',
+      approvedAt: '2026-09-11T00:00:00.000Z',
+      changeSummary: 'Versión V2 con recalibración asking_price_adjustment = 0.0850 (8.50%). Motivo: Business recalibration pending empirical closed-sales calibration.',
       calibrationRunId: null,
     });
   }
