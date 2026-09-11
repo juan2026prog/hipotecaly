@@ -395,4 +395,69 @@ test.describe('Tasador IA - Parte 4: Expansión Multi-Fuente y Certificación E2
     expect(logTypes).toContain('REPORT_GENERATED');
     expect(logTypes).toContain('APPRAISAL_FINALIZED');
   });
+
+  test('5. Wave 1 Expansion: Descubrimiento e Ingesta Real de las 4 Fuentes Operativas', async () => {
+    const sources = ['remax_uy', 'century21_uy', 'acs_uy', 'kosak_uy'];
+
+    for (const src of sources) {
+      const adapter = registry.getAdapter(src);
+      expect(adapter).toBeDefined();
+
+      const health = await adapter!.healthCheck();
+      expect(health.status).toBe(200);
+
+      const items = await adapter!.discoverListings({ limit: 10, department: 'montevideo' });
+      expect(items.length).toBeGreaterThan(0);
+
+      for (const item of items) {
+        expect(item.sourceCode).toBe(src);
+        expect(item.currentPriceRaw).toBeGreaterThan(50000);
+        expect(item.currencyRaw).toBe('USD');
+        expect(item.totalAreaM2Raw).toBeGreaterThan(20);
+        expect(item.departmentRaw).toBeDefined();
+        expect(item.neighborhoodRaw).toBeDefined();
+      }
+    }
+  });
+
+  test('6. Wave 1 Cross-Source Deduplication: Detección Real de Inmuebles Multi-Portal y Cero False Merges', async () => {
+    // Inmueble físico real publicado en múltiples inmobiliarias: Av. Brasil 2650, Apto 402, Pocitos
+    const remaxListing = await registry.getAdapter('remax_uy')!.fetchListing('rmx_pocitos_101');
+    const c21Listing = await registry.getAdapter('century21_uy')!.fetchListing('c21_pocitos_201');
+    const acsaListing = await registry.getAdapter('acs_uy')!.fetchListing('acs_pocitos_301');
+    const kosakListing = await registry.getAdapter('kosak_uy')!.fetchListing('ksk_pocitos_401');
+
+    expect(remaxListing).toBeDefined();
+    expect(c21Listing).toBeDefined();
+    expect(acsaListing).toBeDefined();
+    expect(kosakListing).toBeDefined();
+
+    // Normalización
+    const normRemax = await registry.getAdapter('remax_uy')!.normalizeListing(remaxListing!);
+    const normC21 = await registry.getAdapter('century21_uy')!.normalizeListing(c21Listing!);
+    const normAcsa = await registry.getAdapter('acs_uy')!.normalizeListing(acsaListing!);
+    const normKosak = await registry.getAdapter('kosak_uy')!.normalizeListing(kosakListing!);
+
+    // Deduplicación y resolución de master
+    const masterResolver = service['masterResolver'] || (await import('../src/lib/tasador/master/PropertyMasterResolver')).PropertyMasterResolver.getInstance();
+    const res1 = masterResolver.resolveMaster(normRemax);
+    const res2 = masterResolver.resolveMaster(normC21);
+    const res3 = masterResolver.resolveMaster(normAcsa);
+    const res4 = masterResolver.resolveMaster(normKosak);
+
+    // Los 4 listings deben confluir en el MISMO property_master (TRUE_DUPLICATE cluster)
+    expect(res1.master.id).toBe(res2.master.id);
+    expect(res2.master.id).toBe(res3.master.id);
+    expect(res3.master.id).toBe(res4.master.id);
+    expect(res1.master.listingIds.length).toBeGreaterThanOrEqual(4);
+
+    // Inmueble independiente no debe fusionarse (CERO FALSE MERGES)
+    const independentListing = await registry.getAdapter('remax_uy')!.fetchListing('rmx_cordon_103');
+    const normIndep = await registry.getAdapter('remax_uy')!.normalizeListing(independentListing!);
+    const resIndep = masterResolver.resolveMaster(normIndep);
+
+    expect(resIndep.master.id).not.toBe(res1.master.id);
+    expect(resIndep.isNew).toBe(true);
+  });
 });
+

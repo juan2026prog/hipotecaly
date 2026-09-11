@@ -113,7 +113,7 @@ export class IngestionEngine {
         bedrooms: 3,
         bathrooms: 2,
         garages: 1,
-        source: 'mercadolibre_uy',
+        source: 'remax_uy',
         date: '2025-11-20',
       },
       {
@@ -130,7 +130,7 @@ export class IngestionEngine {
         bedrooms: 3,
         bathrooms: 2,
         garages: 1,
-        source: 'gallito_uy',
+        source: 'century21_uy',
         date: '2025-12-05',
       },
       {
@@ -164,7 +164,7 @@ export class IngestionEngine {
         bedrooms: 1,
         bathrooms: 1,
         garages: 0,
-        source: 'mercadolibre_uy',
+        source: 'acs_uy',
         date: '2025-10-15',
       },
       {
@@ -181,7 +181,7 @@ export class IngestionEngine {
         bedrooms: 2,
         bathrooms: 1,
         garages: 0,
-        source: 'gallito_uy',
+        source: 'kosak_uy',
         date: '2025-09-20',
       },
       {
@@ -232,7 +232,7 @@ export class IngestionEngine {
         bedrooms: 2,
         bathrooms: 2,
         garages: 1,
-        source: 'mercadolibre_uy',
+        source: 'kosak_uy',
         date: '2025-12-15',
       },
       {
@@ -249,7 +249,7 @@ export class IngestionEngine {
         bedrooms: 3,
         bathrooms: 3,
         garages: 2,
-        source: 'sothebys_uy',
+        source: 'century21_uy',
         date: '2025-11-05',
       },
     ];

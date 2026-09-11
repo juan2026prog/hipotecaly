@@ -324,7 +324,7 @@ export const SuperAdminBaseInmobiliariaTab: React.FC = () => {
     if (src.operational_status) {
       return src.operational_status as any;
     }
-    if (src.code === 'infocasas') return 'OPERATIVA';
+    if (['infocasas', 'remax_uy', 'century21_uy', 'acs_uy', 'kosak_uy'].includes(src.code)) return 'OPERATIVA';
     if (
       src.health_status === 'BLOCKED' ||
       src.health_status === 'TOS_RESTRICTED' ||
