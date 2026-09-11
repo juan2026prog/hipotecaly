@@ -51,6 +51,7 @@ import { DocumentHub } from '../../components/docflow/DocumentHub';
 import { DocumentGenerationModal } from '../../components/docflow/DocumentGenerationModal';
 import { KycVerificationCard } from '../../components/identity/KycVerificationCard';
 import { AiAssistantDrawer } from '../../components/ai/AiAssistantDrawer';
+import { CaseTasadorSection } from '../../components/case/CaseTasadorSection';
 import { isMarketplaceEnabled } from '../../config/features';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
@@ -1160,6 +1161,25 @@ export const ApplicationDetailPage: React.FC = () => {
                       )}
                     </div>
                   </form>
+                </div>
+
+                {/* Tasador IA Integrado - Motor de Comparables & FASE 5 */}
+                <div className="pt-4 border-t border-slate-100">
+                  <CaseTasadorSection
+                    caseId={app.id || id || 'e0000000-0000-0000-0000-000000000001'}
+                    organizationId={tenant.id || 'org-estudio-nova'}
+                    applicantName={borrowerFullName}
+                    initialPropertyData={{
+                      cadastralNumber: app.property?.cadastral_number || '34.892',
+                      department: app.property?.department || 'Montevideo',
+                      locality: app.property?.neighborhood || 'Pocitos',
+                      address: app.property?.address || 'Av. Brasil y 26 de Marzo',
+                      propertyType: app.property?.property_type || 'apartamento',
+                      coveredSurfaceM2: app.property?.surface_m2 || 85,
+                      bedrooms: app.property?.rooms ? app.property.rooms - 1 : 2,
+                      bathrooms: app.property?.bathrooms || 2,
+                    }}
+                  />
                 </div>
               </div>
             )}

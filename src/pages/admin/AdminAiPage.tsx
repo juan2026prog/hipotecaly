@@ -25,6 +25,7 @@ import {
   XCircle,
   Terminal,
   Play,
+  Sliders,
 } from 'lucide-react';
 import { AI_MODELS } from '../../lib/ai/types';
 import {
@@ -36,10 +37,11 @@ import {
 
 import { SuperAdminTasadorTab } from '../../components/admin/SuperAdminTasadorTab';
 import { SuperAdminTasadorValuationTab } from '../../components/admin/SuperAdminTasadorValuationTab';
+import { SuperAdminCalibrationTab } from '../../components/admin/SuperAdminCalibrationTab';
 
 export const AdminAiPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'configuracion' | 'tasador' | 'tasador_valuation' | 'modelos' | 'costos' | 'consumo' | 'memoria' | 'correcciones' | 'calidad' | 'promocionales'
+    'dashboard' | 'configuracion' | 'tasador' | 'tasador_valuation' | 'tasador_calibration' | 'modelos' | 'costos' | 'consumo' | 'memoria' | 'correcciones' | 'calidad' | 'promocionales'
   >('configuracion');
 
   // Estado editable de modelos
@@ -329,6 +331,7 @@ export const AdminAiPage: React.FC = () => {
         <div className="flex space-x-2 overflow-x-auto pb-2 border-b border-slate-200 text-xs font-semibold">
           {[
             { id: 'configuracion', label: 'Configuración OpenAI & Vault', icon: Key },
+            { id: 'tasador_calibration', label: 'Tasador IA — Calibración & Ground Truth', icon: Sliders },
             { id: 'tasador_valuation', label: 'Tasador IA — Valuación & Visión', icon: Sparkles },
             { id: 'tasador', label: 'Tasador IA — Base Inmobiliaria', icon: Database },
             { id: 'dashboard', label: 'Dashboard General', icon: Layers },
@@ -803,6 +806,13 @@ export const AdminAiPage: React.FC = () => {
         {activeTab === 'tasador_valuation' && (
           <div className="animate-in fade-in">
             <SuperAdminTasadorValuationTab />
+          </div>
+        )}
+
+        {/* SUBSECCIÓN: TASADOR IA — CALIBRACIÓN & GROUND TRUTH (FASE 6) */}
+        {activeTab === 'tasador_calibration' && (
+          <div className="animate-in fade-in">
+            <SuperAdminCalibrationTab />
           </div>
         )}
 

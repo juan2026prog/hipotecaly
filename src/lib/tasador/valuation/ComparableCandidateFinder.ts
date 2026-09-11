@@ -14,6 +14,23 @@ import { NormalizedListing } from '../types/tasadorPipelineTypes';
 import { calculateHaversineDistanceMeters } from '../deduplication/DedupScoringEngine';
 import { areNeighborhoodsAdjacent } from '../normalization/UruguayLocationDictionary';
 
+export function normalizeComparablePropertyType(pt?: string): string {
+  if (!pt) return 'APARTMENT';
+  const u = pt.trim().toUpperCase();
+  if (u === 'APARTAMENTO' || u === 'APARTMENT' || u === 'APTO' || u === 'DEPARTAMENTO') return 'APARTMENT';
+  if (u === 'CASA' || u === 'HOUSE' || u === 'CHALET') return 'HOUSE';
+  if (u === 'TERRENO' || u === 'LAND' || u === 'LOTE' || u === 'SOLAR') return 'LAND';
+  if (u === 'LOCAL' || u === 'COMMERCIAL' || u === 'COMERCIAL') return 'COMMERCIAL';
+  if (u === 'OFICINA' || u === 'OFFICE') return 'OFFICE';
+  if (u === 'PH' || u === 'PROPIEDAD_HORIZONTAL') return 'PH';
+  return u;
+}
+
+export function isMatchingPropertyType(a?: string, b?: string): boolean {
+  if (!a || !b) return true;
+  return normalizeComparablePropertyType(a) === normalizeComparablePropertyType(b);
+}
+
 export interface CandidateFinderResult {
   candidates: ComparableCandidate[];
   geographicLevel: GeographicSearchLevel;
@@ -148,7 +165,7 @@ export class ComparableCandidateFinder {
     let reason = 'Búsqueda en zona inmediata por proximidad geográfica (< 800m)';
 
     let filtered = allCandidates.filter((c) => {
-      if (c.propertyType !== target.propertyType) return false;
+      if (!isMatchingPropertyType(c.propertyType, target.propertyType)) return false;
       if (c.department.toLowerCase() !== target.department.toLowerCase()) return false;
       return (
         c.distanceMeters !== null &&
@@ -163,7 +180,7 @@ export class ComparableCandidateFinder {
       searchRadius = 2500;
       reason = `Ampliación a todo el barrio ${target.neighborhood} por insuficiencia de comparables inmediatos`;
       filtered = allCandidates.filter((c) => {
-        if (c.propertyType !== target.propertyType) return false;
+        if (!isMatchingPropertyType(c.propertyType, target.propertyType)) return false;
         if (c.department.toLowerCase() !== target.department.toLowerCase()) return false;
         return (
           c.neighborhood &&
@@ -178,7 +195,7 @@ export class ComparableCandidateFinder {
       searchRadius = 5000;
       reason = `Ampliación a barrios limítrofes/comparables de ${target.neighborhood}`;
       filtered = allCandidates.filter((c) => {
-        if (c.propertyType !== target.propertyType) return false;
+        if (!isMatchingPropertyType(c.propertyType, target.propertyType)) return false;
         if (c.department.toLowerCase() !== target.department.toLowerCase()) return false;
         return (
           (c.neighborhood &&
@@ -194,7 +211,7 @@ export class ComparableCandidateFinder {
       searchRadius = 15000;
       reason = `Ampliación a toda la localidad ${target.city}`;
       filtered = allCandidates.filter((c) => {
-        if (c.propertyType !== target.propertyType) return false;
+        if (!isMatchingPropertyType(c.propertyType, target.propertyType)) return false;
         if (c.department.toLowerCase() !== target.department.toLowerCase()) return false;
         return c.city && c.city.toLowerCase() === (target.city || '').toLowerCase();
       });
@@ -206,7 +223,7 @@ export class ComparableCandidateFinder {
       searchRadius = 50000;
       reason = `Ampliación a todo el departamento de ${target.department} por baja densidad de comparables`;
       filtered = allCandidates.filter((c) => {
-        if (c.propertyType !== target.propertyType) return false;
+        if (!isMatchingPropertyType(c.propertyType, target.propertyType)) return false;
         return c.department.toLowerCase() === target.department.toLowerCase();
       });
     }

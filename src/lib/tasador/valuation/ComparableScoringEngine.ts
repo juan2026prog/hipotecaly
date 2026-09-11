@@ -11,6 +11,7 @@ import {
   AppraisalSettingsV1,
 } from './valuationTypes';
 import { areNeighborhoodsAdjacent } from '../normalization/UruguayLocationDictionary';
+import { normalizeComparablePropertyType } from './ComparableCandidateFinder';
 
 export class ComparableScoringEngine {
   /**
@@ -50,17 +51,19 @@ export class ComparableScoringEngine {
     }
 
     // 2. Property Type Score (0 - 100)
+    const normTargetType = normalizeComparablePropertyType(target.propertyType);
+    const normCandType = normalizeComparablePropertyType(candidate.propertyType);
     let propertyTypeScore = 0;
-    if (target.propertyType === candidate.propertyType) {
+    if (normTargetType === normCandType) {
       propertyTypeScore = 100;
     } else if (
-      (target.propertyType === 'APARTMENT' && candidate.propertyType === 'PH') ||
-      (target.propertyType === 'PH' && candidate.propertyType === 'APARTMENT')
+      (normTargetType === 'APARTMENT' && normCandType === 'PH') ||
+      (normTargetType === 'PH' && normCandType === 'APARTMENT')
     ) {
       propertyTypeScore = 75;
     } else if (
-      (target.propertyType === 'HOUSE' && candidate.propertyType === 'PH') ||
-      (target.propertyType === 'PH' && candidate.propertyType === 'HOUSE')
+      (normTargetType === 'HOUSE' && normCandType === 'PH') ||
+      (normTargetType === 'PH' && normCandType === 'HOUSE')
     ) {
       propertyTypeScore = 70;
     } else {

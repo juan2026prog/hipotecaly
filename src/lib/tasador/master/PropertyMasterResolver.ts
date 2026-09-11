@@ -63,7 +63,19 @@ export interface PropertyMasterEntity {
 }
 
 export class PropertyMasterResolver {
-  private masterStore: Map<string, PropertyMasterEntity> = new Map();
+  private static instance: PropertyMasterResolver;
+  public masterStore: Map<string, PropertyMasterEntity> = new Map();
+
+  public static getInstance(): PropertyMasterResolver {
+    if (!PropertyMasterResolver.instance) {
+      PropertyMasterResolver.instance = new PropertyMasterResolver();
+    }
+    return PropertyMasterResolver.instance;
+  }
+
+  public get masters(): Map<string, PropertyMasterEntity> {
+    return this.masterStore;
+  }
 
   public calculateDedupHash(
     normalizedAddress: string,
@@ -199,3 +211,5 @@ export class PropertyMasterResolver {
     return Array.from(this.masterStore.values());
   }
 }
+
+export { PropertyMasterResolver as MasterPropertyResolver };
