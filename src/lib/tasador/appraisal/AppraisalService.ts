@@ -24,6 +24,7 @@ import { ValuationConfidenceEngine } from '../valuation/ValuationConfidenceEngin
 import { ComparableWeightEngine } from '../valuation/ComparableWeightEngine';
 import { AppraisalSettingsManager } from '../valuation/AppraisalSettingsManager';
 import { TargetPropertyInput, ScoredComparable } from '../valuation/valuationTypes';
+import { isProduction, isDemoMode, isDemoOrganization } from '../../demoControl';
 
 const LOCAL_APPRAISALS_KEY = 'hipotecaly_operational_appraisals_v1';
 
@@ -259,9 +260,15 @@ export class AppraisalService {
 
         const { error } = await supabase.from('appraisals').upsert(payload);
         if (error) {
-          console.warn('[AppraisalService] Warning saving to Supabase, falling back to local:', error.message);
+          console.warn('[AppraisalService] Warning saving to Supabase:', error.message);
+          if (isProduction() && !isDemoOrganization(fullRecord.organizationId)) {
+            throw new Error(`APPRAISAL_PERSISTENCE_FAILED: No se pudo persistir la tasación en base de datos: ${error.message}`);
+          }
         }
       } catch (err: any) {
+        if (isProduction() && !isDemoOrganization(fullRecord.organizationId)) {
+          throw err;
+        }
         console.warn('[AppraisalService] Exception saving to Supabase:', err.message);
       }
     }
@@ -299,7 +306,7 @@ export class AppraisalService {
     if (isSupabaseConfigured) {
       try {
         // 1. Actualizar appraisal
-        await supabase
+        const { error: appraisalErr } = await supabase
           .from('appraisals')
           .update({
             status,
@@ -310,6 +317,10 @@ export class AppraisalService {
           })
           .eq('id', appraisalId)
           .eq('organization_id', organizationId);
+
+        if (appraisalErr && isProduction() && !isDemoOrganization(organizationId)) {
+          throw new Error(`COMPARABLES_PERSISTENCE_FAILED: ${appraisalErr.message}`);
+        }
 
         // 2. Upsert comparables
         if (comparables.length > 0) {
@@ -328,9 +339,15 @@ export class AppraisalService {
             updated_at: appraisal.updatedAt,
           }));
 
-          await supabase.from('appraisal_comparables').upsert(compPayloads);
+          const { error: compsErr } = await supabase.from('appraisal_comparables').upsert(compPayloads);
+          if (compsErr && isProduction() && !isDemoOrganization(organizationId)) {
+            throw new Error(`COMPARABLES_ITEMS_PERSISTENCE_FAILED: ${compsErr.message}`);
+          }
         }
       } catch (err: any) {
+        if (isProduction() && !isDemoOrganization(organizationId)) {
+          throw err;
+        }
         console.warn('[AppraisalService] Warning saving comparables review to Supabase:', err.message);
       }
     }
@@ -391,6 +408,17 @@ export class AppraisalService {
       }
     } catch (err) {
       console.warn('[AppraisalService] API /api/tasador?action=comparables failed or unreachable:', err);
+    }
+
+    // En producción para organizaciones reales, NO usar datos sintéticos simulados si la API no devuelve nada
+    if (isProduction() && !isDemoOrganization(organizationId) && !isDemoMode({ organizationId })) {
+      return {
+        candidates: [],
+        stats: this.calculateDescriptiveStats([]),
+        setQuality: 'BAJA',
+        searchLevel: 'NONE',
+        totalPoolConsidered: 0,
+      };
     }
 
     // Fallback determinístico client-side en modo demo / offline
@@ -1177,14 +1205,26 @@ export class AppraisalService {
     const runNumber = previousRuns.length + 1;
     const runId = `run_${appraisal.id}_${runNumber}_${Date.now()}`;
 
+    let runUserId = params.userId || appraisal.createdBy || null;
+    let runUserEmail = params.userEmail || appraisal.creatorEmail || null;
+    if ((!runUserId || !runUserEmail) && isSupabaseConfigured) {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData?.session?.user) {
+          runUserId = runUserId || sessionData.session.user.id;
+          runUserEmail = runUserEmail || sessionData.session.user.email || null;
+        }
+      } catch {}
+    }
+
     // Creación inmutable de Valuation Run con snapshot congelado
     const run: AppraisalValuationRun = {
       id: runId,
       appraisalId: appraisal.id,
       organizationId: appraisal.organizationId,
       runNumber,
-      createdBy: params.userId || appraisal.createdBy || null,
-      creatorEmail: params.userEmail || appraisal.creatorEmail || null,
+      createdBy: runUserId,
+      creatorEmail: runUserEmail,
       engineVersion: 'v1.0.0-certified',
       configurationVersion: settings.version || 1,
       targetPropertySnapshot: JSON.parse(JSON.stringify(target)),
@@ -1204,6 +1244,47 @@ export class AppraisalService {
       createdAt: new Date().toISOString(),
     };
 
+    // Persistir a Supabase si está configurado
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from('appraisal_valuation_runs').insert([{
+          id: run.id,
+          appraisal_id: appraisal.id,
+          organization_id: appraisal.organizationId,
+          run_number: run.runNumber,
+          created_by: run.createdBy,
+          creator_email: run.creatorEmail,
+          engine_version: run.engineVersion,
+          configuration_version: run.configurationVersion,
+          target_property_snapshot: run.targetPropertySnapshot,
+          comparable_set_snapshot: run.comparableSetSnapshot,
+          comparables_used_count: run.comparablesUsedCount,
+          excluded_comparables_count: run.excludedComparablesCount,
+          estimated_market_value: run.estimatedMarketValue,
+          estimated_price_per_m2_usd: run.estimatedPricePerM2Usd,
+          value_range_min: run.valueRangeMin,
+          value_range_max: run.valueRangeMax,
+          confidence_level: run.confidenceLevel,
+          method_estimators: run.methodEstimators,
+          favorable_factors: run.favorableFactors,
+          consideration_factors: run.considerationFactors,
+          warnings: run.warnings,
+          notes: run.notes,
+          created_at: run.createdAt,
+        }]);
+
+        await supabase.from('appraisals').update({
+          status: 'VALUATED',
+          estimated_value: roundedValue,
+          updated_at: run.createdAt,
+        }).eq('id', appraisal.id);
+      } catch (err: any) {
+        if (isProduction() && !isDemoOrganization(appraisal.organizationId)) {
+          console.error('[AppraisalService] Error persisting valuation run to Supabase:', err);
+        }
+      }
+    }
+
     // Actualizar historial de runs
     const updatedRuns = [...previousRuns, run];
     this.memoryRuns.set(appraisal.id, updatedRuns);
@@ -1221,8 +1302,8 @@ export class AppraisalService {
     await this.addAuditLog({
       appraisalId: appraisal.id,
       organizationId: appraisal.organizationId,
-      userId: params.userId,
-      userEmail: params.userEmail,
+      userId: runUserId,
+      userEmail: runUserEmail,
       eventType: 'VALUATION_EXECUTED',
       description: `Ejecución de valoración RUN #${runNumber} completada exitosamente. Valor estimado: USD ${roundedValue.toLocaleString('es-UY')}`,
       metadata: { runNumber, estimatedMarketValue: roundedValue, confidenceLevel: finalConfidence },
@@ -1321,8 +1402,23 @@ export class AppraisalService {
       throw new Error('No es posible finalizar una tasación sin una ejecución de valoración completada.');
     }
 
+    const nowIso = new Date().toISOString();
     appraisal.status = 'FINALIZED';
-    appraisal.updatedAt = new Date().toISOString();
+    appraisal.updatedAt = nowIso;
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from('appraisals').update({
+          status: 'FINALIZED',
+          updated_at: nowIso,
+        }).eq('id', appraisal.id);
+      } catch (err: any) {
+        if (isProduction() && !isDemoOrganization(appraisal.organizationId)) {
+          console.error('[AppraisalService] Error finalizing appraisal in Supabase:', err);
+        }
+      }
+    }
+
     this.memoryAppraisals.set(appraisal.id, appraisal);
     this.saveToLocalStorage();
 

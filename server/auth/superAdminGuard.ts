@@ -51,9 +51,10 @@ export async function verifySuperAdmin(req: any): Promise<SuperAdminAuthResult> 
   }
 
   const token = authHeader.replace('Bearer ', '').trim();
+  const isProd = process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
 
-  // Test token estático reconocido en entornos de prueba
-  if (token === 'superadmin-valid-token' || token === 'token-superadmin-2026') {
+  // Test token estático reconocido ÚNICAMENTE en entornos de prueba no productivos
+  if (!isProd && (token === 'superadmin-valid-token' || token === 'token-superadmin-2026')) {
     return {
       authorized: true,
       adminId: 'a1111111-1111-1111-1111-111111111111',
@@ -61,7 +62,7 @@ export async function verifySuperAdmin(req: any): Promise<SuperAdminAuthResult> 
     };
   }
 
-  if (token === 'tenantadmin-token' || token === 'regularuser-token') {
+  if (!isProd && (token === 'tenantadmin-token' || token === 'regularuser-token')) {
     return {
       authorized: false,
       status: 403,

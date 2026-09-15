@@ -55,8 +55,10 @@ export async function requireAuth(req: any): Promise<GuardResult> {
 
   const token = authHeader.replace(/^Bearer\s+/i, '').trim();
 
-  // Test token para entornos de prueba Playwright
-  if (process.env.NODE_ENV !== 'production' && (token === 'superadmin-valid-token' || token === 'token-superadmin-2026')) {
+  const isProd = process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
+
+  // Test token para entornos de prueba Playwright ÚNICAMENTE en no producción
+  if (!isProd && (token === 'superadmin-valid-token' || token === 'token-superadmin-2026')) {
     return {
       authorized: true,
       status: 200,
@@ -374,6 +376,10 @@ export async function requireRecentAuth(req: any, maxAgeSeconds = 900): Promise<
 
     return auth;
   } catch {
-    return auth; // Continuar con requireAuth data
+    return {
+      authorized: false,
+      status: 403,
+      error: 'REAUTH_FAILED: Error al verificar la frescura de la autenticación con el servidor (Fail-Closed).',
+    };
   }
 }

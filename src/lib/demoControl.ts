@@ -5,7 +5,33 @@
 
 export const DEMO_ORGANIZATION_SLUG = 'estudio-nova';
 export const DEMO_ORGANIZATION_ID = 'd0000000-0000-0000-0000-000000000001';
-export const DEMO_ORGANIZATION_ALT_ID = 'a0000000-0000-0000-0000-000000000001';
+
+export function isProduction(): boolean {
+  if (typeof process !== 'undefined' && (process.env?.NODE_ENV === 'production' || process.env?.VERCEL_ENV === 'production')) {
+    return true;
+  }
+  if (typeof import.meta !== 'undefined' && import.meta.env?.PROD) {
+    return true;
+  }
+  return false;
+}
+
+export function isDevelopment(): boolean {
+  if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
+    return true;
+  }
+  if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
+    return true;
+  }
+  return false;
+}
+
+export function isTest(): boolean {
+  if (typeof process !== 'undefined' && (process.env?.NODE_ENV === 'test' || process.env?.VITEST === 'true' || process.env?.PLAYWRIGHT === '1')) {
+    return true;
+  }
+  return false;
+}
 
 export interface DemoContextCheckOptions {
   pathname?: string;
@@ -43,8 +69,7 @@ export function isDemoOrganization(
       clean === DEMO_ORGANIZATION_SLUG ||
       clean === 'nova' ||
       clean === 'nova-demo' ||
-      clean === DEMO_ORGANIZATION_ID ||
-      clean === DEMO_ORGANIZATION_ALT_ID
+      clean === DEMO_ORGANIZATION_ID
     );
   }
 
@@ -79,7 +104,8 @@ export function isDemoMode(options?: DemoContextCheckOptions): boolean {
   if (typeof window !== 'undefined') {
     const path = window.location.pathname;
     if (isDemoRoute(path)) return true;
-    if (window.location.search.includes('demo=true')) return true;
+    // En producción, solo permitimos demo mode si estamos en ruta demo explícita
+    if (!isProduction() && window.location.search.includes('demo=true')) return true;
   }
 
   return false;

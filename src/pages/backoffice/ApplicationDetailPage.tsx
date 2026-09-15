@@ -1703,7 +1703,7 @@ export const ApplicationDetailPage: React.FC = () => {
             </div>
 
             <p className="text-slate-600 leading-relaxed">
-              Prueba técnica y jurídica de otorgamiento de firma electrónica avanzada conforme a la Ley N° 18.600.
+              Registro de trazabilidad y gestión del proceso de firma electrónica según proveedor habilitado.
             </p>
 
             <div className="p-3.5 rounded-xl bg-slate-900 text-white space-y-2 font-mono text-[11px]">
@@ -1743,7 +1743,7 @@ export const ApplicationDetailPage: React.FC = () => {
             <div className="p-3 rounded-xl bg-emerald-50 text-emerald-900 border border-emerald-200 flex items-center space-x-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span className="font-semibold text-[11px]">
-                Integridad garantizada. Estructura de evidencia conforme a estándares criptográficos de firma avanzada.
+                Integridad garantizada. Estructura de evidencia técnica conforme a estándares criptográficos.
               </span>
             </div>
 

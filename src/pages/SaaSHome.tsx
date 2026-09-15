@@ -464,7 +464,7 @@ export const SaaSHome: React.FC = () => {
               { title: 'Auditoría Forense', desc: 'Pistas inmutables por usuario, fecha e IP.', badge: 'INCLUDED', badgeClass: 'bg-emerald-50 text-brand-green border-emerald-200' },
               { title: 'White-Label SSL', desc: 'Dominio propio y diseño corporativo.', badge: 'ADD-ON', badgeClass: 'bg-blue-50 text-blue-600 border-blue-200' },
               { title: 'Conexión DGR', desc: 'Cotejo directo con Dirección de Registros.', badge: 'COMING SOON', badgeClass: 'bg-amber-50 text-amber-700 border-amber-200' },
-              { title: 'Firma Notarial', desc: 'Protocolización electrónica avanzada.', badge: 'COMING SOON', badgeClass: 'bg-amber-50 text-amber-700 border-amber-200' },
+              { title: 'Firma Notarial', desc: 'Gestión de firma electrónica según proveedor habilitado.', badge: 'COMING SOON', badgeClass: 'bg-amber-50 text-amber-700 border-amber-200' },
             ].map((module, i) => (
               <div key={i} className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-white hover:border-brand-green hover:shadow-sm transition-all space-y-2 flex flex-col justify-between">
                 <div>

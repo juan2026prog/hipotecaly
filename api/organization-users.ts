@@ -92,10 +92,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const mappedNewRole = newRole === 'Administrador' ? 'tenant_admin' : newRole;
-      const currentClean = (currentRole || '').toLowerCase();
       const newClean = (mappedNewRole || '').toLowerCase();
 
-      // Intento vía RPC atómica con Advisory Lock por organización
+      // Ejecución vía RPC atómica con Advisory Lock por organización (Única fuente productiva)
       const { data: rpcResult, error: rpcErr } = await supabaseAdmin.rpc('manage_organization_member_atomic', {
         p_organization_id: organizationId,
         p_target_member_id: targetMemberId,
@@ -105,43 +104,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         p_actor_user_id: authGuard.data.userId || null,
       });
 
-      if (!rpcErr && rpcResult) {
-        return res.status(rpcResult.success ? 200 : 400).json(rpcResult);
+      if (rpcErr) {
+        return res.status(400).json({ success: false, error: rpcErr.message || 'Error al modificar rol de miembro.' });
       }
 
-      // Fallback local con comprobaciones estrictas
-      if (currentClean === 'tenant_owner') {
-        return res.status(403).json({
-          success: false,
-          error: 'Acceso denegado: El propietario principal de la organización (tenant_owner) no puede ser modificado ni degradado.',
-        });
-      }
-
-      if (newClean === 'tenant_owner' || newClean === 'owner') {
-        return res.status(403).json({
-          success: false,
-          error: 'Acceso denegado: No se pueden asignar derechos de propietario principal (tenant_owner) desde la gestión común de roles.',
-        });
-      }
-
-      const isTargetAdmin = ['tenant_admin', 'tenant_owner', 'admin'].includes(currentClean);
-      const isNewRoleNonAdmin = !['tenant_admin', 'tenant_owner', 'admin'].includes(newClean);
-      if (isTargetAdmin && isNewRoleNonAdmin && (activeAdminsCount ?? 1) <= 1) {
-        return res.status(400).json({
-          success: false,
-          error: 'Tu organización debe conservar al menos un Administrador activo.',
-        });
-      }
-
-      try {
-        await supabaseAdmin
-          .from('organization_members')
-          .update({ role: newClean })
-          .eq('id', targetMemberId)
-          .eq('organization_id', organizationId);
-      } catch {}
-
-      return res.status(200).json({ success: true, error: null });
+      return res.status(rpcResult?.success ? 200 : 400).json(rpcResult || { success: true });
     }
 
     // --------------------------------------------------------------------------
@@ -157,7 +124,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(authGuard.status || 403).json({ success: false, error: authGuard.error || 'Acceso denegado.' });
       }
 
-      // Intento vía RPC atómica con Advisory Lock por organización
+      // Ejecución vía RPC atómica con Advisory Lock por organización (Única fuente productiva)
       const { data: rpcResult, error: rpcErr } = await supabaseAdmin.rpc('manage_organization_member_atomic', {
         p_organization_id: organizationId,
         p_target_member_id: targetMemberId,
@@ -167,35 +134,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         p_actor_user_id: authGuard.data.userId || null,
       });
 
-      if (!rpcErr && rpcResult) {
-        return res.status(rpcResult.success ? 200 : 400).json(rpcResult);
+      if (rpcErr) {
+        return res.status(400).json({ success: false, error: rpcErr.message || 'Error al modificar estado de miembro.' });
       }
 
-      // Fallback local
-      if ((currentRole || '').toLowerCase() === 'tenant_owner') {
-        return res.status(403).json({
-          success: false,
-          error: 'Acceso denegado: El propietario principal de la organización (tenant_owner) no puede ser desactivado.',
-        });
-      }
-
-      const isTargetAdmin = ['tenant_admin', 'tenant_owner', 'admin'].includes((currentRole || '').toLowerCase());
-      if (newStatus === 'disabled' && isTargetAdmin && (activeAdminsCount ?? 1) <= 1) {
-        return res.status(400).json({
-          success: false,
-          error: 'Tu organización debe conservar al menos un Administrador activo.',
-        });
-      }
-
-      try {
-        await supabaseAdmin
-          .from('organization_members')
-          .update({ status: newStatus })
-          .eq('id', targetMemberId)
-          .eq('organization_id', organizationId);
-      } catch {}
-
-      return res.status(200).json({ success: true, error: null });
+      return res.status(rpcResult?.success ? 200 : 400).json(rpcResult || { success: true });
     }
 
     // --------------------------------------------------------------------------
@@ -211,6 +154,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(authGuard.status || 403).json({ success: false, error: authGuard.error || 'Acceso denegado.' });
       }
 
+      // Ejecución vía RPC atómica con Advisory Lock por organización (Única fuente productiva)
       const { data: rpcResult, error: rpcErr } = await supabaseAdmin.rpc('manage_organization_member_atomic', {
         p_organization_id: organizationId,
         p_target_member_id: targetMemberId,
@@ -220,34 +164,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         p_actor_user_id: authGuard.data.userId || null,
       });
 
-      if (!rpcErr && rpcResult) {
-        return res.status(rpcResult.success ? 200 : 400).json(rpcResult);
+      if (rpcErr) {
+        return res.status(400).json({ success: false, error: rpcErr.message || 'Error al remover miembro.' });
       }
 
-      if ((currentRole || '').toLowerCase() === 'tenant_owner') {
-        return res.status(403).json({
-          success: false,
-          error: 'Acceso denegado: El propietario principal de la organización (tenant_owner) no puede ser eliminado.',
-        });
-      }
-
-      const isTargetAdmin = ['tenant_admin', 'tenant_owner', 'admin'].includes((currentRole || '').toLowerCase());
-      if (isTargetAdmin && (activeAdminsCount ?? 1) <= 1) {
-        return res.status(400).json({
-          success: false,
-          error: 'Tu organización debe conservar al menos un Administrador activo.',
-        });
-      }
-
-      try {
-        await supabaseAdmin
-          .from('organization_members')
-          .delete()
-          .eq('id', targetMemberId)
-          .eq('organization_id', organizationId);
-      } catch {}
-
-      return res.status(200).json({ success: true, error: null });
+      return res.status(rpcResult?.success ? 200 : 400).json(rpcResult || { success: true });
     }
 
     // --------------------------------------------------------------------------

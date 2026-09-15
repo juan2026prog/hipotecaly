@@ -270,8 +270,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    const isLocalOrPreview = !import.meta.env.PROD;
+
     // Verificación de sesión de Master Admin persistente (ÚNICAMENTE en desarrollo o preview local)
-    const isMasterStored = !import.meta.env.PROD && typeof window !== 'undefined' && window.localStorage.getItem('hipotecaly_master_user') === 'admin@test.com';
+    const isMasterStored = isLocalOrPreview && typeof window !== 'undefined' && window.localStorage.getItem('hipotecaly_master_user') === 'admin@test.com';
     if (isMasterStored) {
       const masterUser: User = {
         id: 'u-master-superadmin-001',
@@ -292,7 +294,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    const storedMockUser = typeof window !== 'undefined' ? window.localStorage.getItem('hipotecaly_mock_active_user') : null;
+    const storedMockUser = isLocalOrPreview && typeof window !== 'undefined' ? window.localStorage.getItem('hipotecaly_mock_active_user') : null;
     if (storedMockUser) {
       try {
         const parsed = JSON.parse(storedMockUser);
@@ -308,7 +310,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // Verificación de sesión de prueba controlada ÚNICAMENTE en entorno local de test preview (puerto 4173) o QA activo
-    const isE2EPreview = typeof window !== 'undefined' && (window.location.port === '4173' || Boolean(window.localStorage.getItem('hipotecaly_qa_session_ref')));
+    const isE2EPreview = isLocalOrPreview && typeof window !== 'undefined' && (window.location.port === '4173' || Boolean(window.localStorage.getItem('hipotecaly_qa_session_ref')));
     const testRole = isE2EPreview && typeof window !== 'undefined' ? window.localStorage.getItem('hipotecaly_test_role') : null;
 
     if (isE2EPreview && testRole === 'visitor') {
@@ -377,7 +379,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           await resolveRoles(currentUser);
           await fetchBorrowerProfile(currentUser);
         } else {
-          const storedMock = typeof window !== 'undefined' ? window.localStorage.getItem('hipotecaly_mock_active_user') : null;
+          const storedMock = isLocalOrPreview && typeof window !== 'undefined' ? window.localStorage.getItem('hipotecaly_mock_active_user') : null;
           if (storedMock) {
             try {
               const parsed = JSON.parse(storedMock);
@@ -433,7 +435,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await resolveRoles(currentUser);
         await fetchBorrowerProfile(currentUser);
       } else {
-        const storedMock = typeof window !== 'undefined' ? window.localStorage.getItem('hipotecaly_mock_active_user') : null;
+        const storedMock = isLocalOrPreview && typeof window !== 'undefined' ? window.localStorage.getItem('hipotecaly_mock_active_user') : null;
         if (storedMock) {
           try {
             const parsed = JSON.parse(storedMock);
@@ -471,9 +473,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('[AUTH] signIn started');
     const emailTrimmed = emailInput.trim().toLowerCase();
     const passTrimmed = passwordInput.trim();
-
-    const isE2EPreview = typeof window !== 'undefined' && (window.location.port === '4173' || Boolean(window.localStorage.getItem('hipotecaly_qa_session_ref')));
-
     // Normalización de username simple a email si no tiene arroba
     const emailToAuth = emailTrimmed.includes('@') ? emailTrimmed : `${emailTrimmed}@hipotecaly.uy`;
 
@@ -523,8 +522,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Continuar con fallback de prueba en desarrollo
     }
 
-    // 2. Fallback de usuarios de demostración ÚNICAMENTE en desarrollo local o entorno preview de pruebas
-    if (!import.meta.env.PROD || isE2EPreview) {
+    // 2. Fallback de usuarios de demostración ÚNICAMENTE en desarrollo local o entorno de pruebas no productivo
+    if (!import.meta.env.PROD) {
       if (
         (emailTrimmed === 'superadmin' || emailTrimmed === 'admin@hipotecaly.uy' || emailTrimmed === 'admin' || emailTrimmed === 'juanmacastillo2008@gmail.com') &&
         (passTrimmed === 'admin123' || passTrimmed === 'admin' || passTrimmed === 'enano2018')

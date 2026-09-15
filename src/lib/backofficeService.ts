@@ -735,17 +735,25 @@ export async function updateApplicationStatus(
   notes?: string
 ) {
   try {
-    await supabase
+    const { error: updateErr } = await supabase
       .from('applications')
       .update({ status: toStatus, updated_at: new Date().toISOString() })
       .eq('id', applicationId);
 
-    await supabase.from('application_status_history').insert({
+    if (updateErr) {
+      return { success: false, error: updateErr };
+    }
+
+    const { error: histErr } = await supabase.from('application_status_history').insert({
       application_id: applicationId,
       from_status: fromStatus,
       to_status: toStatus,
       notes: notes || `Cambio de estado a ${toStatus}`,
     });
+
+    if (histErr) {
+      console.warn('[updateApplicationStatus] Warning inserting status history:', histErr.message);
+    }
 
     return { success: true };
   } catch (err: unknown) {

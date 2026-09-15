@@ -19,27 +19,44 @@ import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useTenant } from '../../contexts/TenantContext';
 
+import { isDemoMode as checkDemoMode, isDemoOrganization } from '../../lib/demoControl';
+
 export const DashboardPage: React.FC = () => {
   const { tenant } = useTenant();
   const location = useLocation();
   const isTenantPath = location.pathname.startsWith('/demo/');
+  const isDemo = checkDemoMode({ organizationId: tenant.id, isDemoMode: Boolean(tenant.demo_mode), pathname: location.pathname }) || isDemoOrganization(tenant.id);
   const baseRoute = isTenantPath ? `/demo/${tenant.slug || 'estudio-nova'}/admin` : '/app';
 
   const [recentApplications, setRecentApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [totalVolume, setTotalVolume] = useState<number>(1840000);
 
-  // 6 KPIs Operativos del Backoffice (Ubicados en la franja de métricas)
+  // 6 KPIs Operativos del Backoffice
   const [kpiCards, setKpiCards] = useState({
-    activeRequests: 8,
-    waitingDocs: 3,
-    inEvaluation: 2,
-    pendingValuation: 2,
-    pendingSignature: 1,
-    closingSoon: 1,
+    activeRequests: 0,
+    waitingDocs: 0,
+    inEvaluation: 0,
+    pendingValuation: 0,
+    pendingSignature: 0,
+    closingSoon: 0,
   });
 
-  // Alertas de "Necesita Atención" (PROTAGONISTA ARRIBA)
-  const [attentionItems] = useState([
+  // Alertas de "Necesita Atención"
+  const [attentionItems, setAttentionItems] = useState<any[]>([]);
+
+  // 7 Etapas del Pipeline Operativo (CENTRO)
+  const [pipelineCounts, setPipelineCounts] = useState<Record<string, number>>({
+    submitted: 0,
+    info_review: 0,
+    property_analysis: 0,
+    evaluation: 0,
+    offer_available: 0,
+    formalization: 0,
+    approved: 0,
+  });
+
+  const demoAttentionItems = [
     {
       id: 'att-1',
       category: 'docs',
@@ -80,7 +97,7 @@ export const DashboardPage: React.FC = () => {
       id: 'att-4',
       category: 'firma',
       typeText: '🟣 Firmas pendientes',
-      title: 'Minuta notarial definitiva lista para firma electrónica avanzada',
+      title: 'Minuta notarial definitiva lista para firma electrónica',
       applicationId: 'NOV-2026-00094',
       client: 'Carlos Benítez',
       severity: 'high',
@@ -100,41 +117,118 @@ export const DashboardPage: React.FC = () => {
       link: `${baseRoute}/solicitudes/e0000000-0000-0000-0000-000000000001`,
       actionLabel: 'Enviar recordatorio',
     },
-  ]);
-
-  // 7 Etapas del Pipeline Operativo (CENTRO)
-  const pipelineStages = [
-    { key: 'received', name: '1. Solicitud recibida', count: 2, filterStatus: 'submitted' },
-    { key: 'info_review', name: '2. Información en revisión', count: 2, filterStatus: 'info_review' },
-    { key: 'property_docs', name: '3. Propiedad y documentación', count: 1, filterStatus: 'property_analysis' },
-    { key: 'evaluation', name: '4. Evaluación', count: 1, filterStatus: 'evaluation' },
-    { key: 'conditions', name: '5. Condiciones', count: 1, filterStatus: 'offer_available' },
-    { key: 'formalization', name: '6. Formalización', count: 1, filterStatus: 'formalization' },
-    { key: 'completed', name: '7. Finalizada', count: 4, filterStatus: 'approved' },
   ];
 
   useEffect(() => {
     async function loadData() {
       setLoading(true);
-      const isDemo = Boolean(tenant.demo_mode);
       const m = await getBackofficeMetrics({ organizationId: tenant.id, isDemoMode: isDemo });
       const apps = await getApplicationsList({ organizationId: tenant.id, useDemoMode: isDemo });
       setRecentApplications(apps.slice(0, 6));
 
-      if (m) {
-        setKpiCards({
-          activeRequests: apps.filter((a) => a.status !== 'completed' && a.status !== 'rejected').length || 0,
-          waitingDocs: apps.filter((a) => a.status === 'draft' || a.status === 'info_review').length || 0,
-          inEvaluation: apps.filter((a) => a.status === 'in_analysis' || a.status === 'submitted' || a.status === 'evaluation').length || 0,
-          pendingValuation: apps.filter((a) => a.status === 'property_analysis').length || 0,
-          pendingSignature: apps.filter((a) => a.status === 'approved' || a.status === 'formalization').length || 0,
-          closingSoon: apps.filter((a) => a.status === 'formalization').length || 0,
+      if (isDemo) {
+        setAttentionItems(demoAttentionItems);
+        setTotalVolume(1840000);
+        setPipelineCounts({
+          submitted: 2,
+          info_review: 2,
+          property_analysis: 1,
+          evaluation: 1,
+          offer_available: 1,
+          formalization: 1,
+          approved: 4,
         });
+        setKpiCards({
+          activeRequests: 8,
+          waitingDocs: 3,
+          inEvaluation: 2,
+          pendingValuation: 2,
+          pendingSignature: 1,
+          closingSoon: 1,
+        });
+      } else {
+        // Cálculo 100% dinámico para organizaciones reales
+        const counts: Record<string, number> = {
+          submitted: apps.filter((a) => a.status === 'submitted').length,
+          info_review: apps.filter((a) => a.status === 'info_review').length,
+          property_analysis: apps.filter((a) => a.status === 'property_analysis').length,
+          evaluation: apps.filter((a) => a.status === 'evaluation').length,
+          offer_available: apps.filter((a) => a.status === 'offer_available').length,
+          formalization: apps.filter((a) => a.status === 'formalization').length,
+          approved: apps.filter((a) => a.status === 'approved').length,
+        };
+        setPipelineCounts(counts);
+
+        const realVolume = m ? m.totalRequested : apps.reduce((sum, a) => sum + (Number(a.requested_amount) || 0), 0);
+        setTotalVolume(realVolume);
+
+        const activeCount = apps.filter((a) => a.status !== 'approved' && a.status !== 'rejected').length;
+        const waitingDocsCount = apps.filter((a) => a.status === 'draft' || a.status === 'info_review' || a.status === 'submitted').length;
+        const inEvalCount = apps.filter((a) => a.status === 'evaluation').length;
+        const pendingValCount = apps.filter((a) => a.status === 'property_analysis').length;
+        const pendingSignCount = apps.filter((a) => a.status === 'formalization').length;
+        const closingSoonCount = apps.filter((a) => a.status === 'formalization').length;
+
+        setKpiCards({
+          activeRequests: activeCount,
+          waitingDocs: waitingDocsCount,
+          inEvaluation: inEvalCount,
+          pendingValuation: pendingValCount,
+          pendingSignature: pendingSignCount,
+          closingSoon: closingSoonCount,
+        });
+
+        // Generar alertas dinámicas reales
+        const dynamicAlerts: any[] = [];
+        const pendingReviewApps = apps.filter((a) => a.status === 'submitted' || a.status === 'info_review').slice(0, 3);
+        for (const app of pendingReviewApps) {
+          const clientName = app.borrower ? `${app.borrower.first_name} ${app.borrower.last_name}` : 'Titular pendiente';
+          dynamicAlerts.push({
+            id: `att-dyn-${app.id}`,
+            category: 'docs',
+            typeText: '🟠 Documentación pendiente',
+            title: `Expediente ${app.public_id || app.id} pendiente de revisión de recaudos`,
+            applicationId: app.public_id || app.id,
+            client: clientName,
+            severity: 'medium',
+            dueDate: 'En revisión',
+            link: `${baseRoute}/solicitudes/${app.id}`,
+            actionLabel: 'Revisar expediente',
+          });
+        }
+        const pendingValApps = apps.filter((a) => a.status === 'property_analysis').slice(0, 2);
+        for (const app of pendingValApps) {
+          const clientName = app.borrower ? `${app.borrower.first_name} ${app.borrower.last_name}` : 'Titular pendiente';
+          dynamicAlerts.push({
+            id: `att-dyn-val-${app.id}`,
+            category: 'tasacion',
+            typeText: '🟡 Tasación pendiente',
+            title: `Tasación requerida para garantía de expediente ${app.public_id || app.id}`,
+            applicationId: app.public_id || app.id,
+            client: clientName,
+            severity: 'medium',
+            dueDate: 'Pendiente peritaje',
+            link: `${baseRoute}/tasaciones`,
+            actionLabel: 'Tasador IA',
+          });
+        }
+        setAttentionItems(dynamicAlerts);
       }
+
       setLoading(false);
     }
     loadData();
-  }, [tenant.id, tenant.demo_mode]);
+  }, [tenant.id, tenant.demo_mode, isDemo]);
+
+  const pipelineStages = [
+    { key: 'received', name: '1. Solicitud recibida', count: pipelineCounts.submitted || 0, filterStatus: 'submitted' },
+    { key: 'info_review', name: '2. Información en revisión', count: pipelineCounts.info_review || 0, filterStatus: 'info_review' },
+    { key: 'property_docs', name: '3. Propiedad y documentación', count: pipelineCounts.property_analysis || 0, filterStatus: 'property_analysis' },
+    { key: 'evaluation', name: '4. Evaluación', count: pipelineCounts.evaluation || 0, filterStatus: 'evaluation' },
+    { key: 'conditions', name: '5. Condiciones', count: pipelineCounts.offer_available || 0, filterStatus: 'offer_available' },
+    { key: 'formalization', name: '6. Formalización', count: pipelineCounts.formalization || 0, filterStatus: 'formalization' },
+    { key: 'completed', name: '7. Finalizada', count: pipelineCounts.approved || 0, filterStatus: 'approved' },
+  ];
 
   const brandName = tenant.branding?.public_name || tenant.name || 'Estudio Nova';
 
@@ -188,35 +282,43 @@ export const DashboardPage: React.FC = () => {
             </span>
           </div>
 
-          <div className="divide-y divide-slate-100 text-xs">
-            {attentionItems.map((item) => (
-              <div
-                key={item.id}
-                className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/80 transition"
-              >
-                <div className="space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold text-slate-800">{item.typeText}</span>
-                    <span className="text-slate-300">•</span>
-                    <span className="font-mono font-bold text-[#102d49]">{item.applicationId}</span>
-                    <span className="text-slate-500">({item.client})</span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
-                      {item.dueDate}
-                    </span>
-                  </div>
-                  <p className="text-slate-600 text-xs">{item.title}</p>
-                </div>
-
-                <Link
-                  to={item.link}
-                  className="inline-flex items-center justify-center text-xs font-bold text-white bg-[#102d49] hover:bg-[#173a5e] px-4 py-2 rounded-xl shrink-0 shadow-xs transition"
+          {attentionItems.length === 0 ? (
+            <div className="p-8 text-center text-xs text-slate-500 bg-white space-y-1">
+              <CheckCircle2 className="w-6 h-6 mx-auto text-emerald-600 mb-1" />
+              <p className="font-semibold text-slate-700">Sin alertas operativas pendientes</p>
+              <p className="text-slate-400">Todos los expedientes y trámites de esta organización están al día.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 text-xs">
+              {attentionItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/80 transition"
                 >
-                  {item.actionLabel}
-                  <ArrowRight className="w-3.5 h-3.5 ml-1.5 text-[#f4b43b]" />
-                </Link>
-              </div>
-            ))}
-          </div>
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-slate-800">{item.typeText}</span>
+                      <span className="text-slate-300">•</span>
+                      <span className="font-mono font-bold text-[#102d49]">{item.applicationId}</span>
+                      <span className="text-slate-500">({item.client})</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                        {item.dueDate}
+                      </span>
+                    </div>
+                    <p className="text-slate-600 text-xs">{item.title}</p>
+                  </div>
+
+                  <Link
+                    to={item.link}
+                    className="inline-flex items-center justify-center text-xs font-bold text-white bg-[#102d49] hover:bg-[#173a5e] px-4 py-2 rounded-xl shrink-0 shadow-xs transition"
+                  >
+                    {item.actionLabel}
+                    <ArrowRight className="w-3.5 h-3.5 ml-1.5 text-[#f4b43b]" />
+                  </Link>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ============================================================ */}
@@ -228,7 +330,7 @@ export const DashboardPage: React.FC = () => {
               Expedientes Activos
             </span>
             <div className="text-2xl sm:text-3xl font-black text-[#102d49] font-serif">
-              {kpiCards.activeRequests || 8}
+              {kpiCards.activeRequests}
             </div>
             <span className="text-xs text-slate-500 block">En gestión operativa</span>
           </div>
@@ -238,7 +340,7 @@ export const DashboardPage: React.FC = () => {
               Volumen en Operación
             </span>
             <div className="text-2xl sm:text-3xl font-black text-[#102d49] font-serif">
-              USD 1.840.000
+              USD {totalVolume.toLocaleString('es-UY')}
             </div>
             <span className="text-xs text-emerald-700 font-semibold block">Créditos hipotecarios</span>
           </div>
@@ -248,7 +350,7 @@ export const DashboardPage: React.FC = () => {
               Próximos a Cerrar
             </span>
             <div className="text-2xl sm:text-3xl font-black text-emerald-700 font-serif">
-              {kpiCards.closingSoon || 4}
+              {kpiCards.closingSoon}
             </div>
             <span className="text-xs text-slate-500 block">En firma o formalización</span>
           </div>
@@ -258,7 +360,7 @@ export const DashboardPage: React.FC = () => {
               Demorados / Sobre Tiempo
             </span>
             <div className="text-2xl sm:text-3xl font-black text-rose-700 font-serif">
-              {Math.max(1, kpiCards.waitingDocs)}
+              {kpiCards.waitingDocs}
             </div>
             <span className="text-xs text-rose-600 font-semibold block">Requieren seguimiento</span>
           </div>
@@ -532,7 +634,7 @@ export const DashboardPage: React.FC = () => {
                   Volumen Operativo Gestionado
                 </span>
                 <div className="text-3xl font-extrabold text-white font-serif tracking-tight">
-                  USD 1.840.000
+                  USD {totalVolume.toLocaleString('es-UY')}
                 </div>
                 <p className="text-xs text-slate-300">
                   Operaciones estructuradas con garantía hipotecaria de primer rango en Uruguay.
@@ -544,34 +646,53 @@ export const DashboardPage: React.FC = () => {
                 <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Actividad Reciente
                 </h4>
-                <div className="space-y-3 text-xs">
-                  <div className="flex items-start space-x-3 pb-2 border-b border-slate-100">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
-                    <div>
-                      <p className="font-semibold text-slate-800">Minuta Notarial Generada</p>
-                      <p className="text-[11px] text-slate-400">Expediente HPT-2026-00124 (DocFlow)</p>
-                      <span className="text-[10px] text-slate-400 font-mono">Hace 12 min</span>
+                {isDemo ? (
+                  <div className="space-y-3 text-xs">
+                    <div className="flex items-start space-x-3 pb-2 border-b border-slate-100">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                      <div>
+                        <p className="font-semibold text-slate-800">Minuta Notarial Generada</p>
+                        <p className="text-[11px] text-slate-400">Expediente HPT-2026-00124 (DocFlow)</p>
+                        <span className="text-[10px] text-slate-400 font-mono">Hace 12 min</span>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-start space-x-3 pb-2 border-b border-slate-100">
-                    <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 shrink-0" />
-                    <div>
-                      <p className="font-semibold text-slate-800">Tasación Profesional Guardada</p>
-                      <p className="text-[11px] text-slate-400">Inmueble Carrasco: USD 240.000</p>
-                      <span className="text-[10px] text-slate-400 font-mono">Hace 45 min</span>
+                    <div className="flex items-start space-x-3 pb-2 border-b border-slate-100">
+                      <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 shrink-0" />
+                      <div>
+                        <p className="font-semibold text-slate-800">Tasación Profesional Guardada</p>
+                        <p className="text-[11px] text-slate-400">Inmueble Carrasco: USD 240.000</p>
+                        <span className="text-[10px] text-slate-400 font-mono">Hace 45 min</span>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-start space-x-3">
-                    <div className="w-2 h-2 rounded-full bg-amber-500 mt-1.5 shrink-0" />
-                    <div>
-                      <p className="font-semibold text-slate-800">Propuesta de Financiación Enviada</p>
-                      <p className="text-[11px] text-slate-400">Expediente NOV-2026-00089 por USD 100.000</p>
-                      <span className="text-[10px] text-slate-400 font-mono">Hace 2 horas</span>
+                    <div className="flex items-start space-x-3">
+                      <div className="w-2 h-2 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                      <div>
+                        <p className="font-semibold text-slate-800">Propuesta de Financiación Enviada</p>
+                        <p className="text-[11px] text-slate-400">Expediente NOV-2026-00089 por USD 100.000</p>
+                        <span className="text-[10px] text-slate-400 font-mono">Hace 2 horas</span>
+                      </div>
                     </div>
                   </div>
-                </div>
+                ) : recentApplications.length === 0 ? (
+                  <div className="py-6 text-center text-xs text-slate-400">
+                    Sin eventos recientes registrados
+                  </div>
+                ) : (
+                  <div className="space-y-3 text-xs">
+                    {recentApplications.slice(0, 3).map((app) => (
+                      <div key={app.id} className="flex items-start space-x-3 pb-2 border-b border-slate-100 last:border-0 last:pb-0">
+                        <div className="w-2 h-2 rounded-full bg-[#102d49] mt-1.5 shrink-0" />
+                        <div>
+                          <p className="font-semibold text-slate-800">Expediente {app.public_id || app.id}</p>
+                          <p className="text-[11px] text-slate-500">{app.borrower ? `${app.borrower.first_name} ${app.borrower.last_name}` : 'Solicitud'}</p>
+                          <span className="text-[10px] text-slate-400 font-mono">USD {Number(app.requested_amount || 0).toLocaleString('es-UY')}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>

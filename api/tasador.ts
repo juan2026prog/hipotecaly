@@ -3145,14 +3145,15 @@ async function verifySuperAdmin(req) {
     };
   }
   const token = authHeader.replace("Bearer ", "").trim();
-  if (token === "superadmin-valid-token" || token === "token-superadmin-2026") {
+  const isProd = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
+  if (!isProd && (token === "superadmin-valid-token" || token === "token-superadmin-2026")) {
     return {
       authorized: true,
       adminId: "a1111111-1111-1111-1111-111111111111",
       userEmail: "superadmin@hipotecaly.uy"
     };
   }
-  if (token === "tenantadmin-token" || token === "regularuser-token") {
+  if (!isProd && (token === "tenantadmin-token" || token === "regularuser-token")) {
     return {
       authorized: false,
       status: 403,
@@ -3229,16 +3230,22 @@ async function handler(req, res) {
   const action = req.query.action || "";
   try {
     if (req.method === "GET" && action === "summary") {
+      const adminAuth = await verifySuperAdmin(req);
+      if (!adminAuth.authorized) return res.status(adminAuth.status || 401).json({ error: adminAuth.error });
       const { data, error } = await supabaseAdmin.rpc("fn_superadmin_get_base_inmobiliaria_summary");
       if (error) throw error;
       return res.status(200).json({ success: true, summary: data });
     }
     if (req.method === "GET" && action === "sources") {
+      const adminAuth = await verifySuperAdmin(req);
+      if (!adminAuth.authorized) return res.status(adminAuth.status || 401).json({ error: adminAuth.error });
       const { data, error } = await supabaseAdmin.rpc("fn_superadmin_get_property_sources");
       if (error) throw error;
       return res.status(200).json({ success: true, sources: data });
     }
     if (req.method === "GET" && action === "listings") {
+      const adminAuth = await verifySuperAdmin(req);
+      if (!adminAuth.authorized) return res.status(adminAuth.status || 401).json({ error: adminAuth.error });
       const search = req.query.search || null;
       const sourceCode = req.query.source_code || null;
       const status = req.query.status || null;
@@ -3263,6 +3270,8 @@ async function handler(req, res) {
       return res.status(200).json({ success: true, listings: data });
     }
     if (req.method === "POST" && action === "switch") {
+      const adminAuth = await verifySuperAdmin(req);
+      if (!adminAuth.authorized) return res.status(adminAuth.status || 401).json({ error: adminAuth.error });
       const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
       const { sourceCode, field, value } = body || {};
       const { data, error } = await supabaseAdmin.rpc("fn_superadmin_toggle_source_switch", {
@@ -3274,6 +3283,8 @@ async function handler(req, res) {
       return res.status(200).json({ success: true, result: data });
     }
     if (req.method === "POST" && action === "health-check") {
+      const adminAuth = await verifySuperAdmin(req);
+      if (!adminAuth.authorized) return res.status(adminAuth.status || 401).json({ error: adminAuth.error });
       const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
       const sourceCode = body?.sourceCode;
       const healthChecker = SourceHealthCheck.getInstance();
@@ -3286,6 +3297,8 @@ async function handler(req, res) {
       }
     }
     if (req.method === "POST" && action === "discovery") {
+      const adminAuth = await verifySuperAdmin(req);
+      if (!adminAuth.authorized) return res.status(adminAuth.status || 401).json({ error: adminAuth.error });
       const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
       const { sourceCode, limit, department } = body || {};
       if (!sourceCode) {
@@ -3300,6 +3313,8 @@ async function handler(req, res) {
       return res.status(200).json({ success: true, result });
     }
     if (req.method === "POST" && action === "worker") {
+      const adminAuth = await verifySuperAdmin(req);
+      if (!adminAuth.authorized) return res.status(adminAuth.status || 401).json({ error: adminAuth.error });
       const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
       const batchSize = body?.batchSize ? parseInt(body.batchSize, 10) : 25;
       const worker = ListingIngestionWorker.getInstance();
@@ -3312,12 +3327,13 @@ async function handler(req, res) {
 
       // 1. Verificación de autenticación y aislamiento organizacional
       const authHeader = req.headers["authorization"] || req.headers["Authorization"];
+      const isProd = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
       let isAuthorized = false;
       let callerUserId = null;
 
       if (authHeader) {
         const token = typeof authHeader === "string" && authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : authHeader;
-        if (token === "superadmin-valid-token" || token === "token-superadmin-2026") {
+        if (!isProd && (token === "superadmin-valid-token" || token === "token-superadmin-2026")) {
           isAuthorized = true;
           callerUserId = "a1111111-1111-1111-1111-111111111111";
         } else if (token && token.length > 10) {
@@ -3338,13 +3354,9 @@ async function handler(req, res) {
               }
             }
           } catch {
-            // Ignorar y comprobar fallback
+            // Error de conexión
           }
         }
-      }
-
-      if (!isAuthorized && process.env.NODE_ENV !== "production") {
-        isAuthorized = true;
       }
 
       if (!isAuthorized) {
@@ -3568,142 +3580,7 @@ async function handler(req, res) {
         console.warn("[API /api/tasador?action=comparables] DB query error:", dbEx);
       }
 
-      // Ordenar por similitud
-      candidates.sort((a, b) => b.similarityScore - a.similarityScore);
-
-      // Si la base no retornó suficientes candidatos, completar con pool representativo certificado
-      if (candidates.length < 5) {
-        const mockNeigh = targetNeigh || "Pocitos";
-        const sampleSupplements = [
-          {
-            title: `Apartamento en ${mockNeigh} impecable planta`,
-            area: targetArea,
-            beds: targetBeds,
-            baths: targetBaths,
-            price: Math.round(targetArea * 2550),
-            dist: 320,
-            score: 93,
-            neigh: mockNeigh,
-            dept: targetDept || "Montevideo",
-            lat: (targetLat || -34.915) + 0.002,
-            lng: (targetLng || -56.148) - 0.001
-          },
-          {
-            title: `Unidad moderna con terraza en ${mockNeigh}`,
-            area: targetArea + 4,
-            beds: targetBeds,
-            baths: targetBaths,
-            price: Math.round((targetArea + 4) * 2600),
-            dist: 580,
-            score: 88,
-            neigh: mockNeigh,
-            dept: targetDept || "Montevideo",
-            lat: (targetLat || -34.915) - 0.003,
-            lng: (targetLng || -56.148) + 0.002
-          },
-          {
-            title: `Excelente estado con vista en ${mockNeigh}`,
-            area: Math.round(targetArea * 0.95),
-            beds: targetBeds,
-            baths: targetBaths,
-            price: Math.round(targetArea * 0.95 * 2500),
-            dist: 750,
-            score: 84,
-            neigh: mockNeigh,
-            dept: targetDept || "Montevideo",
-            lat: (targetLat || -34.915) + 0.005,
-            lng: (targetLng || -56.148) + 0.004
-          },
-          {
-            title: `Piso alto con garaje en ${mockNeigh}`,
-            area: targetArea + 8,
-            beds: targetBeds + 1,
-            baths: targetBaths,
-            price: Math.round((targetArea + 8) * 2450),
-            dist: 1100,
-            score: 79,
-            neigh: mockNeigh,
-            dept: targetDept || "Montevideo",
-            lat: (targetLat || -34.915) - 0.007,
-            lng: (targetLng || -56.148) - 0.005
-          },
-          {
-            title: `Planta estándar luminosa en ${mockNeigh}`,
-            area: targetArea - 6,
-            beds: targetBeds,
-            baths: targetBaths,
-            price: Math.round((targetArea - 6) * 2620),
-            dist: 1350,
-            score: 74,
-            neigh: mockNeigh,
-            dept: targetDept || "Montevideo",
-            lat: (targetLat || -34.915) + 0.008,
-            lng: (targetLng || -56.148) - 0.006
-          }
-        ];
-
-        for (let i = 0; i < sampleSupplements.length; i++) {
-          const s = sampleSupplements[i];
-          const adjusted = Math.round(s.price * 0.915);
-          candidates.push({
-            id: `cand_real_pool_${i + 1}`,
-            appraisalId: "",
-            propertyMasterId: `master_real_${i + 1}`,
-            listingId: `list_real_${i + 1}`,
-            similarityScore: s.score,
-            scoreBreakdown: {
-              locationScore: 90,
-              propertyTypeScore: 100,
-              surfaceScore: 90,
-              bedroomsScore: s.beds === targetBeds ? 100 : 75,
-              bathroomsScore: 85,
-              garageScore: 80,
-              ageScore: 85,
-              recencyScore: 90,
-              dataQualityScore: 92,
-              finalSimilarityScore: s.score,
-              factors: [
-                { factor: "Ubicación", status: "match", label: `Barrio ${s.neigh}`, detail: `${s.dist} m de distancia`, score: 90, maxScore: 100 },
-                { factor: "Tipo", status: "match", label: "Apartamento coincidente", detail: "Misma tipología", score: 100, maxScore: 100 },
-                { factor: "Superficie", status: "match", label: `${s.area} m² vs ${targetArea} m²`, detail: "Escala proporcional", score: 90, maxScore: 100 }
-              ]
-            },
-            selected: s.score >= 70,
-            rank: candidates.length + 1,
-            candidateData: {
-              id: `cand_real_pool_${i + 1}`,
-              propertyMasterId: `master_real_${i + 1}`,
-              sourceListingId: `infocasas_pool_${i + 1}`,
-              sourceCode: "infocasas",
-              sourceName: "InfoCasas Uruguay",
-              title: s.title,
-              propertyType: targetType,
-              department: s.dept,
-              city: "Montevideo",
-              neighborhood: s.neigh,
-              latitude: s.lat,
-              longitude: s.lng,
-              builtAreaM2: s.area,
-              totalAreaM2: s.area,
-              bedrooms: s.beds,
-              bathrooms: s.baths,
-              garages: targetGars,
-              constructionYear: 2017,
-              priceUsd: s.price,
-              pricePerM2Usd: Math.round(s.price / s.area),
-              adjustedPriceUsd: adjusted,
-              askingPriceAdjustmentApplied: true,
-              publicationDate: new Date(Date.now() - (i * 5 + 3) * 86400000).toISOString(),
-              daysSincePublication: i * 5 + 3,
-              dataQualityScore: 92,
-              comparableEligibility: "ELIGIBLE",
-              distanceMeters: s.dist,
-              primaryPhotoUrl: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=600&auto=format&fit=crop&q=80"
-            }
-          });
-        }
-      }
-
+      // Ordenar por similitud real (CERO comparables sintéticos)
       candidates.sort((a, b) => b.similarityScore - a.similarityScore);
       candidates.forEach((c, idx) => { c.rank = idx + 1; });
 
@@ -3757,9 +3634,51 @@ async function handler(req, res) {
       });
     }
     if (req.method === "POST" && action === "calculate_valuation") {
-      const { appraisalId, organizationId, targetProperty, comparables, userId, userEmail, notes } = req.body || {};
+      const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+      const { appraisalId, organizationId, targetProperty, comparables, notes } = body || {};
       if (!appraisalId || !organizationId || !targetProperty) {
         return res.status(400).json({ error: "Parámetros incompletos (se requiere appraisalId, organizationId y targetProperty)." });
+      }
+
+      // Verificación de autenticación
+      const authHeader = req.headers["authorization"] || req.headers["Authorization"];
+      const isProd = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
+      let isAuthorized = false;
+      let authenticatedUserId = null;
+      let authenticatedUserEmail = null;
+
+      if (authHeader) {
+        const token = typeof authHeader === "string" && authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : authHeader;
+        if (!isProd && (token === "superadmin-valid-token" || token === "token-superadmin-2026")) {
+          isAuthorized = true;
+          authenticatedUserId = "a1111111-1111-1111-1111-111111111111";
+          authenticatedUserEmail = "superadmin@hipotecaly.uy";
+        } else if (token && token.length > 10) {
+          try {
+            const { data: { user }, error: userErr } = await supabaseAdmin.auth.getUser(token);
+            if (!userErr && user) {
+              authenticatedUserId = user.id;
+              authenticatedUserEmail = user.email || null;
+              if (user.app_metadata?.role === "super_admin" || user.app_metadata?.role === "platform_admin") {
+                isAuthorized = true;
+              } else {
+                const { data: prof } = await supabaseAdmin.from("profiles").select("is_super_admin").eq("id", user.id).maybeSingle();
+                if (prof?.is_super_admin) {
+                  isAuthorized = true;
+                } else if (organizationId) {
+                  const { data: mem } = await supabaseAdmin.from("organization_members").select("id").eq("user_id", user.id).eq("organization_id", organizationId).maybeSingle();
+                  if (mem) isAuthorized = true;
+                }
+              }
+            }
+          } catch {}
+        }
+      }
+
+      if (!isAuthorized) {
+        return res.status(401).json({
+          error: "No autorizado. Se requiere sesión activa y pertenecer a la organización."
+        });
       }
 
       const included = (comparables || []).filter((c) => c.selected || c.status === "INCLUDED");
@@ -3849,8 +3768,8 @@ async function handler(req, res) {
         appraisalId,
         organizationId,
         runNumber,
-        createdBy: userId || null,
-        creatorEmail: userEmail || null,
+        createdBy: authenticatedUserId || null,
+        creatorEmail: authenticatedUserEmail || null,
         engineVersion: "v1.0.0-certified",
         configurationVersion: 2,
         targetPropertySnapshot: targetProperty,
@@ -3881,8 +3800,8 @@ async function handler(req, res) {
             appraisal_id: appraisalId,
             organization_id: organizationId,
             run_number: runNumber,
-            created_by: userId || null,
-            creator_email: userEmail || null,
+            created_by: authenticatedUserId || null,
+            creator_email: authenticatedUserEmail || null,
             engine_version: "v1.0.0-certified",
             configuration_version: 1,
             target_property_snapshot: targetProperty,
@@ -3915,9 +3834,45 @@ async function handler(req, res) {
       return res.status(200).json({ success: true, run });
     }
     if (req.method === "POST" && action === "finalize") {
-      const { appraisalId, organizationId } = req.body || {};
+      const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+      const { appraisalId, organizationId } = body || {};
       if (!appraisalId || !organizationId) {
         return res.status(400).json({ error: "Se requiere appraisalId y organizationId." });
+      }
+
+      // Verificación de autenticación
+      const authHeader = req.headers["authorization"] || req.headers["Authorization"];
+      const isProd = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
+      let isAuthorized = false;
+
+      if (authHeader) {
+        const token = typeof authHeader === "string" && authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : authHeader;
+        if (!isProd && (token === "superadmin-valid-token" || token === "token-superadmin-2026")) {
+          isAuthorized = true;
+        } else if (token && token.length > 10) {
+          try {
+            const { data: { user }, error: userErr } = await supabaseAdmin.auth.getUser(token);
+            if (!userErr && user) {
+              if (user.app_metadata?.role === "super_admin" || user.app_metadata?.role === "platform_admin") {
+                isAuthorized = true;
+              } else {
+                const { data: prof } = await supabaseAdmin.from("profiles").select("is_super_admin").eq("id", user.id).maybeSingle();
+                if (prof?.is_super_admin) {
+                  isAuthorized = true;
+                } else if (organizationId) {
+                  const { data: mem } = await supabaseAdmin.from("organization_members").select("id").eq("user_id", user.id).eq("organization_id", organizationId).maybeSingle();
+                  if (mem) isAuthorized = true;
+                }
+              }
+            }
+          } catch {}
+        }
+      }
+
+      if (!isAuthorized) {
+        return res.status(401).json({
+          error: "No autorizado. Se requiere sesión activa y pertenecer a la organización."
+        });
       }
 
       if (isSupabaseConfigured) {

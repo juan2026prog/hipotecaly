@@ -35,14 +35,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // 1. Verificación de Autenticación
   if (!user) {
-    const isExplicitPresentation =
-      location.search.includes('presentation=true') || location.search.includes('demo=true');
-
-    if (isExplicitPresentation) {
-      return <>{children}</>;
-    }
-
-    // Redirección obligatoria a login guardando la ruta de origen y tenant
+    // Redirección obligatoria a login guardando la ruta de origen y tenant (Sin bypass por query param)
     const redirectTo = encodeURIComponent(location.pathname + location.search);
     const tenantParam = tenant.slug ? `&tenant=${encodeURIComponent(tenant.slug)}` : '';
     return <Navigate to={`/ingresar?redirectTo=${redirectTo}${tenantParam}`} replace state={{ from: location }} />;

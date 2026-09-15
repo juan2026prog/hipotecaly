@@ -4,11 +4,20 @@
 // ==============================================================================
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { requireRole } from '../server/security/authGuards.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 
   if (req.method === 'GET') {
+    const authGuard = await requireRole(req, ['super_admin', 'tenant_admin', 'platform_admin']);
+    if (!authGuard.authorized) {
+      return res.status(authGuard.status || 403).json({
+        configured: false,
+        error: authGuard.error || 'Acceso denegado: Se requieren permisos administrativos.',
+      });
+    }
+
     const vercelToken = process.env.VERCEL_TOKEN;
     const vercelProjectId = process.env.VERCEL_PROJECT_ID;
     const vercelTeamId = process.env.VERCEL_TEAM_ID;

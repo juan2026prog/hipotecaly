@@ -1,11 +1,13 @@
 // ==============================================================================
 // VERCEL SERVERLESS FUNCTION: /api/integrations
 // Orquestador Central Serverless para KYC (Didit API v3) y Firma Digital
+// Control estricto de autorización server-side, fail-closed webhooks y validación de sesiones
 // ==============================================================================
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { requireAuth, requireRole, requireApplicationAccess } from '../server/security/authGuards.js';
 
 const SUPABASE_URL =
   process.env.SUPABASE_URL ||
@@ -41,28 +43,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
 
-      const { applicationId, userId, caseId } = bodyData || {};
+      const { applicationId, caseId } = bodyData || {};
 
       if (!applicationId) {
         return res.status(400).json({ error: 'Falta applicationId en el body.' });
       }
 
-      // 1. Obtener la solicitud desde PostgreSQL
-      const { data: app, error: appErr } = await supabaseAdmin
-        .from('applications')
-        .select('id, public_id, organization_id, status')
-        .eq('id', applicationId)
-        .maybeSingle();
-
-      if (appErr || !app) {
-        return res.status(404).json({ error: 'Solicitud no encontrada.' });
+      // 1. Autorización Server-Side Estricta sobre el expediente
+      const appGuard = await requireApplicationAccess(req, applicationId);
+      if (!appGuard.authorized || !appGuard.data) {
+        return res.status(appGuard.status || 403).json({
+          success: false,
+          error: appGuard.error || 'Acceso denegado: No tienes autorización sobre este expediente.',
+        });
       }
 
+      const { auth: callerAuth, application: app } = appGuard.data;
+      const targetUserId = callerAuth.userId;
       const isDemoOrg = app.organization_id === 'd0000000-0000-0000-0000-000000000001' || applicationId.includes('demo');
 
       // 2. Consultar autoritativamente KYC status en identity_verifications
       let isVerified = false;
-      const targetUserId = userId || (req.headers['x-user-id'] as string);
 
       if (targetUserId) {
         const { data: kycUser } = await supabaseAdmin
@@ -114,7 +115,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // 4. Actualización autoritativa a 'submitted'
       const nowIso = new Date().toISOString();
-      await supabaseAdmin
+      const { error: updateErr } = await supabaseAdmin
         .from('applications')
         .update({
           status: 'submitted',
@@ -123,11 +124,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         })
         .eq('id', applicationId);
 
+      if (updateErr) {
+        return res.status(500).json({
+          success: false,
+          error: 'DATABASE_ERROR',
+          message: 'Error al actualizar el estado de la solicitud.',
+        });
+      }
+
       await supabaseAdmin.from('application_status_history').insert({
         application_id: applicationId,
         from_status: 'draft',
         to_status: 'submitted',
-        notes: 'Solicitud enviada formalmente vía Serverless Gate con KYC verificado',
+        notes: `Solicitud enviada formalmente por usuario ${targetUserId} vía Serverless Gate con KYC verificado`,
       });
 
       return res.status(200).json({
@@ -153,7 +162,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const {
         tenantId = 'a0000000-0000-0000-0000-000000000001',
-        userId,
         caseId,
         documentType = 'CI',
         country = 'UY',
@@ -169,8 +177,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const apiKey = process.env.DIDIT_API_KEY;
       const workflowId = process.env.DIDIT_WORKFLOW_ID;
       const kycMode = (process.env.KYC_MODE || 'sandbox').toLowerCase().trim();
+      const isProd = process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
 
-      const isDemoModeReq = kycMode === 'mock' || kycMode === 'demo' || bodyData?.isDemo || bodyData?.mode === 'demo';
+      const isDemoModeReq = !isProd && (kycMode === 'mock' || kycMode === 'demo' || bodyData?.isDemo || bodyData?.mode === 'demo');
 
       if (isDemoModeReq && (!apiKey || !workflowId)) {
         const sessionId = `mock_kyc_${Date.now()}`;
@@ -190,6 +199,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
+      // Validar autenticación server-side para sesiones de verificación reales
+      const authGuard = await requireAuth(req);
+      if (!authGuard.authorized || !authGuard.data) {
+        return res.status(authGuard.status || 401).json({
+          error: authGuard.error || 'Autenticación requerida para iniciar sesión de verificación KYC.',
+        });
+      }
+
+      const effectiveUserId = authGuard.data.userId;
+      const effectiveTenantId = authGuard.data.organizationId || tenantId;
+
       if (!apiKey) {
         return res.status(500).json({
           error: 'CONFIG_ERROR',
@@ -204,7 +224,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
-      const opaqueVendorData = vendorData || (caseId ? `case_${caseId}` : `kyc_${Date.now()}`);
+      const opaqueVendorData = vendorData || (caseId ? `case_${caseId}` : `kyc_${effectiveUserId}_${Date.now()}`);
 
       const payload: Record<string, unknown> = {
         workflow_id: workflowId,
@@ -279,8 +299,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Persistir en Supabase identity_verifications
       try {
         await supabaseAdmin.from('identity_verifications').insert({
-          tenant_id: tenantId,
-          user_id: userId || null,
+          tenant_id: effectiveTenantId,
+          user_id: effectiveUserId,
           case_id: caseId || null,
           provider: 'didit',
           provider_session_id: sessionId,
@@ -314,12 +334,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'Falta parámetro sessionId, caseId o userId' });
       }
 
+      // Validar autenticación
+      const authGuard = await requireAuth(req);
+      if (!authGuard.authorized || !authGuard.data) {
+        return res.status(authGuard.status || 401).json({
+          error: authGuard.error || 'Autenticación requerida para consultar estado KYC.',
+        });
+      }
+
       let query = supabaseAdmin.from('identity_verifications').select('*');
       if (sessionId) {
         query = query.eq('provider_session_id', sessionId);
       } else if (caseId) {
         query = query.eq('case_id', caseId).order('created_at', { ascending: false }).limit(1);
       } else if (userId) {
+        // Solo Super Admin o el propio usuario pueden consultar su KYC
+        if (!authGuard.data.isSuperAdmin && authGuard.data.userId !== userId) {
+          return res.status(403).json({ error: 'Acceso denegado: No puedes consultar verificaciones de otro usuario.' });
+        }
         query = query.eq('user_id', userId).order('created_at', { ascending: false }).limit(1);
       }
 
@@ -351,35 +383,65 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           req.headers['x-signature'] ||
           req.headers['x-hmac-signature']) as string || '';
       const secret = process.env.DIDIT_WEBHOOK_SECRET || '';
-      const kycMode = (process.env.KYC_MODE || 'sandbox').toLowerCase().trim();
+      const isProd = process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
 
-      // 1. Validar firma HMAC si está configurada en producción/sandbox o si viene firma
-      if (secret || (kycMode !== 'mock' && signature)) {
+      // 1. FAIL-CLOSED: Validación de secreto y firma HMAC
+      if (!secret) {
+        if (isProd) {
+          return res.status(500).json({
+            error: 'INTEGRATION_NOT_CONFIGURED',
+            message: 'DIDIT_WEBHOOK_SECRET no está configurada en el servidor (Fail-Closed).',
+          });
+        }
+      }
+
+      if (secret || signature || isProd) {
         if (!secret) {
-          return res.status(500).json({ error: 'DIDIT_WEBHOOK_SECRET no está configurada.' });
+          return res.status(500).json({
+            error: 'INTEGRATION_NOT_CONFIGURED',
+            message: 'DIDIT_WEBHOOK_SECRET no configurada.',
+          });
         }
 
         if (!signature) {
-          return res.status(401).json({ error: 'Invalid HMAC signature: Signature header missing' });
+          return res.status(401).json({
+            error: 'INVALID_HMAC_SIGNATURE',
+            message: 'Encabezado de firma HMAC ausente.',
+          });
         }
 
         const hmac = crypto.createHmac('sha256', secret);
         hmac.update(rawBody);
         const calculated = hmac.digest('hex');
-        const bufCalc = Buffer.from(calculated, 'hex');
-        const bufSig = Buffer.from(signature, 'hex');
 
-        if (bufCalc.length !== bufSig.length || !crypto.timingSafeEqual(bufCalc, bufSig)) {
-          return res.status(401).json({ error: 'Invalid HMAC signature' });
+        let isMatch = false;
+        try {
+          const bufCalc = Buffer.from(calculated, 'hex');
+          const bufSig = Buffer.from(signature, 'hex');
+          isMatch = bufCalc.length === bufSig.length && crypto.timingSafeEqual(bufCalc, bufSig);
+        } catch {
+          isMatch = false;
+        }
+
+        if (!isMatch) {
+          return res.status(401).json({
+            error: 'INVALID_HMAC_SIGNATURE',
+            message: 'Firma HMAC inválida.',
+          });
         }
       }
 
-      const payload = typeof req.body === 'object' ? req.body : JSON.parse(rawBody);
+      let payload: any;
+      try {
+        payload = typeof req.body === 'object' ? req.body : JSON.parse(rawBody);
+      } catch {
+        return res.status(400).json({ error: 'INVALID_JSON_PAYLOAD', message: 'Payload inválido o corrupto.' });
+      }
+
       const sessionId = payload.session_id || payload.sessionId || payload.id;
       const eventType = payload.event || payload.action || payload.type || 'status.updated';
       const eventId = (req.headers['x-event-id'] as string) || payload.event_id || payload.id || `evt_${sessionId}_${Date.now()}`;
       
-      // Extraer el estado real contenido en el payload de status.updated
       const rawStatus = (
         payload.status ||
         payload.decision ||
@@ -404,11 +466,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } catch {}
 
       // 3. Mapeo Autoritativo de Estados Didit v3 -> HIPOTECALY
-      // Approved → verified
-      // Declined → failed
-      // In Review → pending_review
-      // Resubmission Required → resubmission_required
-      // Expired → expired
       let mappedStatus = 'in_progress';
       if (['approved', 'verified', 'passed', 'success'].includes(rawStatus)) {
         mappedStatus = 'verified';
@@ -448,7 +505,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             status: mappedStatus,
             metadata: {
               sessionId,
-              mode: kycMode,
+              mode: (process.env.KYC_MODE || 'sandbox').toLowerCase().trim(),
               providerStatus: rawStatus,
             },
           });
@@ -477,6 +534,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 4. GET /api/integrations/admin/settings
     // --------------------------------------------------------------------------
     if (cleanPath.includes('settings') && req.method === 'GET') {
+      const authGuard = await requireRole(req, ['super_admin', 'tenant_admin', 'platform_admin']);
+      if (!authGuard.authorized) {
+        return res.status(authGuard.status || 403).json({
+          error: authGuard.error || 'Acceso denegado: Se requieren permisos administrativos.',
+        });
+      }
+
       const hasDiditKey = Boolean(process.env.DIDIT_API_KEY);
       const hasDiditWorkflow = Boolean(process.env.DIDIT_WORKFLOW_ID);
       const hasDiditSecret = Boolean(process.env.DIDIT_WEBHOOK_SECRET);
@@ -551,3 +615,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 }
+
