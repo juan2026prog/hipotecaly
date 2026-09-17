@@ -1,99 +1,82 @@
 // ==============================================================================
-// HIPOTECALY: Capa Centralizada de Mapeo de Roles (Comercial <-> Técnico)
+// HIPOTECALY: Roles comerciales y compatibilidad legacy
+// ==============================================================================
+// IMPORTANTE:
+// Los roles técnicos legacy se conservan por compatibilidad con flujos existentes.
+// La autorización nueva de la organización se resuelve por permisos explícitos
+// (organization_roles + organization_role_permissions + assignments).
 // ==============================================================================
 
 export type CommercialRole =
+  | 'Propietario'
   | 'Administrador'
-  | 'Operador'
+  | 'Operaciones'
+  | 'Solo lectura'
   | 'Cliente'
   | 'Inversor'
   | 'Escribano';
 
-export type StaffCommercialRole = 'Administrador' | 'Operador' | 'Escribano';
+export type StaffCommercialRole = 'Administrador' | 'Operaciones' | 'Solo lectura' | 'Escribano';
 
-/**
- * Mapeo de roles técnicos a nombres comerciales simplificados.
- * Mantiene compatibilidad total con roles legacy de base de datos y RBAC.
- */
 export const ROLE_DISPLAY_MAP: Record<string, CommercialRole> = {
-  // Administrador
-  tenant_owner: 'Administrador',
+  tenant_owner: 'Propietario',
   tenant_admin: 'Administrador',
   admin: 'Administrador',
-
-  // Operador
-  analyst: 'Operador',
-  operator: 'Operador',
-  appraiser: 'Operador',
-  valuer: 'Operador',
-  operations: 'Operador',
-  auditor: 'Operador',
-  viewer: 'Operador',
-
-  // Cliente
+  analyst: 'Operaciones',
+  operator: 'Operaciones',
+  appraiser: 'Operaciones',
+  valuer: 'Operaciones',
+  operations: 'Operaciones',
+  auditor: 'Solo lectura',
+  viewer: 'Solo lectura',
   borrower: 'Cliente',
-
-  // Inversor
   lender: 'Inversor',
-
-  // Escribano
   notary: 'Escribano',
 };
 
-/**
- * Obtiene el nombre comercial de un rol a partir de su identificador técnico.
- */
 export function getCommercialRoleLabel(technicalOrCommercialRole: string | undefined | null): CommercialRole {
-  if (!technicalOrCommercialRole) return 'Operador';
-
+  if (!technicalOrCommercialRole) return 'Solo lectura';
   const cleanRole = technicalOrCommercialRole.trim().toLowerCase();
-
-  // Si ya viene en formato comercial
-  if (['administrador', 'admin'].includes(cleanRole) && !['tenant_admin', 'tenant_owner'].includes(cleanRole)) {
-    if (cleanRole === 'administrador') return 'Administrador';
-  }
-  if (cleanRole === 'operador') return 'Operador';
+  if (cleanRole === 'propietario') return 'Propietario';
+  if (['administrador', 'admin'].includes(cleanRole)) return 'Administrador';
+  if (['operaciones', 'operador'].includes(cleanRole)) return 'Operaciones';
+  if (['solo lectura', 'solo_lectura', 'viewer'].includes(cleanRole)) return 'Solo lectura';
   if (cleanRole === 'cliente') return 'Cliente';
   if (cleanRole === 'inversor') return 'Inversor';
   if (cleanRole === 'escribano') return 'Escribano';
-
-  return ROLE_DISPLAY_MAP[cleanRole] || 'Operador';
+  return ROLE_DISPLAY_MAP[cleanRole] || 'Solo lectura';
 }
 
 /**
- * Retorna el rol técnico representativo para persistencia de backend a partir del nombre comercial.
+ * Compatibilidad únicamente. Los roles personalizados no deben transformarse a
+ * tenant_role; se persisten en organization_roles y assignments.
  */
 export function getTechnicalRoleFromCommercial(commercialRole: string): string {
   switch (commercialRole) {
-    case 'Administrador':
-      return 'tenant_admin';
-    case 'Operador':
-      return 'analyst';
-    case 'Escribano':
-      return 'notary';
-    case 'Cliente':
-      return 'borrower';
-    case 'Inversor':
-      return 'lender';
-    default:
-      return 'analyst';
+    case 'Propietario': return 'tenant_owner';
+    case 'Administrador': return 'tenant_admin';
+    case 'Operaciones': return 'operator';
+    case 'Solo lectura': return 'viewer';
+    case 'Escribano': return 'notary';
+    case 'Cliente': return 'borrower';
+    case 'Inversor': return 'lender';
+    default: return 'viewer';
   }
 }
 
-/**
- * Descripción dinámica por rol comercial visible en modal de invitación y tarjetas
- */
 export const COMMERCIAL_ROLE_DESCRIPTIONS: Record<CommercialRole, string> = {
-  Administrador: 'Administra la organización y puede operar todas las áreas del sistema.',
-  Operador: 'Trabaja la operación diaria y los expedientes, sin administrar la configuración de la organización.',
+  Propietario: 'Control último de la organización. Es un rol protegido y no se asigna desde la gestión común.',
+  Administrador: 'Plantilla con acceso administrativo completo. La organización puede tener uno, varios o ningún administrador adicional al propietario.',
+  Operaciones: 'Plantilla para trabajo diario con expedientes, clientes, garantías, documentos y tasaciones.',
+  'Solo lectura': 'Plantilla de consulta sin permisos de administración ni mutaciones sensibles.',
   Cliente: 'Persona que solicita financiación y gestiona exclusivamente su propia solicitud.',
   Inversor: 'Prestamista o inversor que participa en oportunidades habilitadas por la organización.',
-  Escribano: 'Profesional responsable de la revisión jurídica y de la coordinación de la formalización de los expedientes asignados.',
+  Escribano: 'Plantilla especializada para revisión jurídica, checklist y formalización de expedientes asignados.',
 };
 
 /**
- * Opciones elegibles para invitar personal interno en la organización.
- * EXCLUYE explícitamente Cliente e Inversor.
+ * Estas opciones son plantillas iniciales. El administrador puede crear roles
+ * personalizados y combinar múltiples roles por usuario.
  */
 export const STAFF_INVITATION_OPTIONS: Array<{
   value: StaffCommercialRole;
@@ -101,68 +84,22 @@ export const STAFF_INVITATION_OPTIONS: Array<{
   label: string;
   description: string;
 }> = [
-  {
-    value: 'Administrador',
-    technicalRole: 'tenant_admin',
-    label: 'Administrador',
-    description: COMMERCIAL_ROLE_DESCRIPTIONS.Administrador,
-  },
-  {
-    value: 'Operador',
-    technicalRole: 'analyst',
-    label: 'Operador',
-    description: COMMERCIAL_ROLE_DESCRIPTIONS.Operador,
-  },
-  {
-    value: 'Escribano',
-    technicalRole: 'notary',
-    label: 'Escribano',
-    description: COMMERCIAL_ROLE_DESCRIPTIONS.Escribano,
-  },
+  { value: 'Administrador', technicalRole: 'tenant_admin', label: 'Administrador', description: COMMERCIAL_ROLE_DESCRIPTIONS.Administrador },
+  { value: 'Operaciones', technicalRole: 'operator', label: 'Operaciones', description: COMMERCIAL_ROLE_DESCRIPTIONS.Operaciones },
+  { value: 'Solo lectura', technicalRole: 'viewer', label: 'Solo lectura', description: COMMERCIAL_ROLE_DESCRIPTIONS['Solo lectura'] },
+  { value: 'Escribano', technicalRole: 'notary', label: 'Escribano', description: COMMERCIAL_ROLE_DESCRIPTIONS.Escribano },
 ];
 
-/**
- * Retorna las propiedades de diseño de badges UI para cada rol comercial
- */
 export function getRoleBadgeStyle(role: string): { label: CommercialRole; bgClass: string; textClass: string } {
-  const commercialLabel = getCommercialRoleLabel(role);
-
-  switch (commercialLabel) {
-    case 'Administrador':
-      return {
-        label: 'Administrador',
-        bgClass: 'bg-purple-100 border border-purple-200',
-        textClass: 'text-purple-800',
-      };
-    case 'Operador':
-      return {
-        label: 'Operador',
-        bgClass: 'bg-blue-100 border border-blue-200',
-        textClass: 'text-blue-800',
-      };
-    case 'Escribano':
-      return {
-        label: 'Escribano',
-        bgClass: 'bg-amber-100 border border-amber-200',
-        textClass: 'text-amber-800',
-      };
-    case 'Cliente':
-      return {
-        label: 'Cliente',
-        bgClass: 'bg-emerald-100 border border-emerald-200',
-        textClass: 'text-emerald-800',
-      };
-    case 'Inversor':
-      return {
-        label: 'Inversor',
-        bgClass: 'bg-indigo-100 border border-indigo-200',
-        textClass: 'text-indigo-800',
-      };
-    default:
-      return {
-        label: 'Operador',
-        bgClass: 'bg-slate-100 border border-slate-200',
-        textClass: 'text-slate-700',
-      };
+  const label = getCommercialRoleLabel(role);
+  switch (label) {
+    case 'Propietario': return { label, bgClass: 'bg-amber-100 border border-amber-200', textClass: 'text-amber-900' };
+    case 'Administrador': return { label, bgClass: 'bg-purple-100 border border-purple-200', textClass: 'text-purple-800' };
+    case 'Operaciones': return { label, bgClass: 'bg-blue-100 border border-blue-200', textClass: 'text-blue-800' };
+    case 'Solo lectura': return { label, bgClass: 'bg-slate-100 border border-slate-200', textClass: 'text-slate-700' };
+    case 'Escribano': return { label, bgClass: 'bg-amber-50 border border-amber-200', textClass: 'text-amber-800' };
+    case 'Cliente': return { label, bgClass: 'bg-emerald-100 border border-emerald-200', textClass: 'text-emerald-800' };
+    case 'Inversor': return { label, bgClass: 'bg-indigo-100 border border-indigo-200', textClass: 'text-indigo-800' };
+    default: return { label: 'Solo lectura', bgClass: 'bg-slate-100 border border-slate-200', textClass: 'text-slate-700' };
   }
 }
