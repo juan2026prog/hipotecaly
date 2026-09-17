@@ -16,7 +16,8 @@ export type CommercialRole =
   | 'Inversor'
   | 'Escribano';
 
-export type StaffCommercialRole = 'Administrador' | 'Operaciones' | 'Solo lectura' | 'Escribano';
+// "Operador" se conserva como alias UI legacy para no romper formularios antiguos.
+export type StaffCommercialRole = 'Administrador' | 'Operaciones' | 'Operador' | 'Solo lectura' | 'Escribano';
 
 export const ROLE_DISPLAY_MAP: Record<string, CommercialRole> = {
   tenant_owner: 'Propietario',
@@ -55,7 +56,8 @@ export function getTechnicalRoleFromCommercial(commercialRole: string): string {
   switch (commercialRole) {
     case 'Propietario': return 'tenant_owner';
     case 'Administrador': return 'tenant_admin';
-    case 'Operaciones': return 'operator';
+    case 'Operaciones':
+    case 'Operador': return 'operator';
     case 'Solo lectura': return 'viewer';
     case 'Escribano': return 'notary';
     case 'Cliente': return 'borrower';
@@ -85,7 +87,7 @@ export const STAFF_INVITATION_OPTIONS: Array<{
   description: string;
 }> = [
   { value: 'Administrador', technicalRole: 'tenant_admin', label: 'Administrador', description: COMMERCIAL_ROLE_DESCRIPTIONS.Administrador },
-  { value: 'Operaciones', technicalRole: 'operator', label: 'Operaciones', description: COMMERCIAL_ROLE_DESCRIPTIONS.Operaciones },
+  { value: 'Operador', technicalRole: 'operator', label: 'Operaciones', description: COMMERCIAL_ROLE_DESCRIPTIONS.Operaciones },
   { value: 'Solo lectura', technicalRole: 'viewer', label: 'Solo lectura', description: COMMERCIAL_ROLE_DESCRIPTIONS['Solo lectura'] },
   { value: 'Escribano', technicalRole: 'notary', label: 'Escribano', description: COMMERCIAL_ROLE_DESCRIPTIONS.Escribano },
 ];
