@@ -59,8 +59,8 @@ export const OFFICIAL_TEMPLATES: TenantTemplate[] = [
     },
     default_rules: {
       minLoanAmount: 10000,
-      maxLoanAmount: 250000,
-      maxFinancedPercentage: 50,
+      maxLoanAmount: 200000,
+      maxFinancedPercentage: 40,
       minTermMonths: 12,
       maxTermMonths: 60,
       defaultRate: 12.0,
@@ -96,8 +96,8 @@ export const OFFICIAL_TEMPLATES: TenantTemplate[] = [
     },
     default_rules: {
       minLoanAmount: 10000,
-      maxLoanAmount: 250000,
-      maxFinancedPercentage: 50,
+      maxLoanAmount: 200000,
+      maxFinancedPercentage: 40,
       minTermMonths: 12,
       maxTermMonths: 60,
       defaultRate: 11.5,
@@ -133,8 +133,8 @@ export const OFFICIAL_TEMPLATES: TenantTemplate[] = [
     },
     default_rules: {
       minLoanAmount: 10000,
-      maxLoanAmount: 250000,
-      maxFinancedPercentage: 50,
+      maxLoanAmount: 200000,
+      maxFinancedPercentage: 40,
       minTermMonths: 12,
       maxTermMonths: 60,
       defaultRate: 11.5,

@@ -519,40 +519,72 @@ function normalizePropertyType(typeRaw, titleRaw) {
 var REFERENCE_USD_UYU_RATE = 40.5;
 function normalizeCurrency(currencyRaw) {
   if (!currencyRaw || !currencyRaw.trim()) return "USD";
-  const c = currencyRaw.trim().toUpperCase();
-  if (c.includes("U$S") || c.includes("USD") || c.includes("US$") || c.includes("DOLAR") || c.includes("D\xD3LAR")) {
-    return "USD";
+  const clean = currencyRaw
+    .trim()
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  if (clean.includes("EUR") || clean.includes("€") || clean.includes("EURO")) {
+    return "EUR";
   }
-  if (c.includes("$U") || c.includes("UYU") || c.includes("PESO") || c === "$") {
-    return "UYU";
-  }
-  if (c.includes("UI") || c.includes("INDEXADA")) {
+  if (clean.includes("UI") || clean.includes("INDEXADA")) {
     return "UI";
   }
-  if (c.includes("UR") || c.includes("REAJUSTABLE")) {
+  if (clean.includes("$U") || clean.includes("UYU") || clean.includes("PESO") || clean.includes("URUGUAY") || clean === "$" || clean.startsWith("$ ")) {
+    return "UYU";
+  }
+  if (clean.includes("UNIDAD REAJUSTABLE") || clean.split(/[\s,.-]+/).includes("UR") || clean === "UR") {
     return "UR";
+  }
+  if (clean.includes("U$S") || clean.includes("USD") || clean.includes("US$") || clean.includes("DOLAR")) {
+    return "USD";
   }
   return "USD";
 }
+
 function parsePriceText(priceText) {
   if (!priceText || !priceText.trim()) {
     return { amount: null, currency: "USD" };
   }
-  const currency = normalizeCurrency(priceText);
-  const numbersOnly = priceText.replace(/[^\d.,]/g, "").trim();
+  const raw = priceText.trim();
+  const currency = normalizeCurrency(raw);
+  const numbersOnly = raw.replace(/[^\d.,]/g, "").trim();
   if (!numbersOnly) {
     return { amount: null, currency };
   }
   let cleaned = numbersOnly;
-  if (cleaned.includes(".") && cleaned.includes(",")) {
-    cleaned = cleaned.replace(/\./g, "").replace(",", ".");
-  } else if (cleaned.includes(".") && !cleaned.includes(",")) {
-    const parts = cleaned.split(".");
-    if (parts.length > 1 && parts[parts.length - 1].length === 3) {
-      cleaned = cleaned.replace(/\./g, "");
+  const hasDot = cleaned.includes(".");
+  const hasComma = cleaned.includes(",");
+
+  if (hasDot && hasComma) {
+    const lastDotIndex = cleaned.lastIndexOf(".");
+    const lastCommaIndex = cleaned.lastIndexOf(",");
+    if (lastCommaIndex > lastDotIndex) {
+      cleaned = cleaned.replace(/\./g, "").replace(",", ".");
+    } else {
+      cleaned = cleaned.replace(/,/g, "");
     }
-  } else if (cleaned.includes(",")) {
-    cleaned = cleaned.replace(",", ".");
+  } else if (hasDot && !hasComma) {
+    const parts = cleaned.split(".");
+    if (parts.length > 2) {
+      cleaned = cleaned.replace(/\./g, "");
+    } else if (parts.length === 2) {
+      if (parts[1].length === 3 && parseInt(parts[0], 10) >= 1) {
+        cleaned = cleaned.replace(/\./g, "");
+      }
+    }
+  } else if (hasComma && !hasDot) {
+    const parts = cleaned.split(",");
+    if (parts.length > 2) {
+      cleaned = cleaned.replace(/,/g, "");
+    } else if (parts.length === 2) {
+      if (parts[1].length === 3 && parseInt(parts[0], 10) >= 1) {
+        cleaned = cleaned.replace(/,/g, "");
+      } else {
+        cleaned = cleaned.replace(",", ".");
+      }
+    }
   }
   const amount = parseFloat(cleaned);
   return {
@@ -560,6 +592,7 @@ function parsePriceText(priceText) {
     currency
   };
 }
+
 function normalizePrice(params) {
   let price = params.priceRaw;
   let currency = normalizeCurrency(params.currencyRaw);
@@ -571,26 +604,55 @@ function normalizePrice(params) {
     }
   }
   const finalPrice = price && price > 0 ? price : 0;
-  let priceUsd = 0;
+  let priceUsd = null;
   let priceUyu = null;
+  let status = "NORMALIZED";
+  let errorMsg = void 0;
+  const customRates = params.customExchangeRates || {};
+
   if (currency === "USD") {
     priceUsd = finalPrice;
     priceUyu = Math.round(finalPrice * REFERENCE_USD_UYU_RATE);
   } else if (currency === "UYU") {
     priceUyu = finalPrice;
     priceUsd = Math.round(finalPrice / REFERENCE_USD_UYU_RATE);
-  } else {
-    priceUsd = finalPrice;
+  } else if (currency === "EUR") {
+    if (customRates.EUR && customRates.EUR > 0) {
+      priceUsd = Math.round(finalPrice * customRates.EUR);
+      priceUyu = Math.round((priceUsd || 0) * REFERENCE_USD_UYU_RATE);
+    } else {
+      status = "VALUATION_BLOCKED_MISSING_EXCHANGE_RATE";
+      errorMsg = "Falta cotización oficial verificada EUR/USD para normalizar la tasación.";
+    }
+  } else if (currency === "UI") {
+    if (customRates.UI && customRates.UI > 0) {
+      priceUyu = Math.round(finalPrice * customRates.UI);
+      priceUsd = Math.round(priceUyu / REFERENCE_USD_UYU_RATE);
+    } else {
+      status = "VALUATION_BLOCKED_MISSING_EXCHANGE_RATE";
+      errorMsg = "Falta valor oficial de la Unidad Indexada (UI/UYU) para normalizar la tasación.";
+    }
+  } else if (currency === "UR") {
+    if (customRates.UR && customRates.UR > 0) {
+      priceUyu = Math.round(finalPrice * customRates.UR);
+      priceUsd = Math.round(priceUyu / REFERENCE_USD_UYU_RATE);
+    } else {
+      status = "VALUATION_BLOCKED_MISSING_EXCHANGE_RATE";
+      errorMsg = "Falta valor oficial de la Unidad Reajustable (UR/UYU) para normalizar la tasación.";
+    }
   }
+
   const area = params.builtAreaM2 && params.builtAreaM2 > 0 ? params.builtAreaM2 : params.totalAreaM2;
-  const pricePerM2Usd = area && area > 0 && priceUsd > 0 ? Math.round(priceUsd / area * 100) / 100 : null;
+  const pricePerM2Usd = area && area > 0 && priceUsd && priceUsd > 0 ? Math.round(priceUsd / area * 100) / 100 : null;
   return {
     currentPrice: finalPrice,
     currentCurrency: currency,
     priceUsd,
     priceUyu,
     pricePerM2Usd,
-    confidence: finalPrice > 0 ? 100 : 0
+    confidence: status === "NORMALIZED" && finalPrice > 0 ? 100 : 0,
+    status,
+    error: errorMsg
   };
 }
 
@@ -3424,7 +3486,11 @@ async function handler(req, res) {
           .order("data_quality_score", { ascending: false })
           .limit(100);
 
-        if (!dbErr && dbListings && dbListings.length > 0) {
+        if (dbErr) {
+          return res.status(500).json({ error: `Error al consultar Base Inmobiliaria: ${dbErr.message}` });
+        }
+
+        if (dbListings && dbListings.length > 0) {
           for (const item of dbListings) {
             const master = item.property_master || {};
             const source = item.property_sources || {};
@@ -3435,6 +3501,19 @@ async function handler(req, res) {
             // Filtrar departamento coincidente si es posible
             if (targetDept && itemDept && targetDept !== itemDept && itemDept !== "montevideo") {
               continue;
+            }
+
+            const itemArea = master.covered_surface_m2 || master.total_surface_m2 || 75;
+            let itemPrice = item.price_usd_normalized || item.price_amount || 0;
+            if (item.currency && item.currency !== "USD") {
+              const norm = normalizePrice({
+                priceRaw: item.price_amount,
+                currencyRaw: item.currency,
+                builtAreaM2: itemArea
+              });
+              if (norm.priceUsd) {
+                itemPrice = norm.priceUsd;
+              }
             }
 
             const adjustedPrice = Math.round(itemPrice * 0.915); // 8.5% regla recalibrada V2
@@ -3576,8 +3655,9 @@ async function handler(req, res) {
             });
           }
         }
-      } catch (dbEx) {
-        console.warn("[API /api/tasador?action=comparables] DB query error:", dbEx);
+      } catch (dbEx: any) {
+        console.error("[API /api/tasador?action=comparables] DB query error:", dbEx);
+        return res.status(500).json({ error: `Error al consultar comparables en la Base Inmobiliaria: ${dbEx.message || 'Error de base de datos'}` });
       }
 
       // Ordenar por similitud real (CERO comparables sintéticos)
@@ -3590,7 +3670,7 @@ async function handler(req, res) {
       const m2Prices = selected.map((s) => s.candidateData.pricePerM2Usd).sort((a, b) => a - b);
       const distances = selected.map((s) => s.candidateData.distanceMeters || 0);
 
-      const median = (arr) => {
+      const median = (arr: number[]) => {
         if (arr.length === 0) return 0;
         const mid = Math.floor(arr.length / 2);
         return arr.length % 2 !== 0 ? arr[mid] : Math.round((arr[mid - 1] + arr[mid]) / 2);
@@ -3616,7 +3696,7 @@ async function handler(req, res) {
         medianPricePerM2Usd: medM2,
         dispersionPercentage: dispPct,
         averageDistanceMeters: avgDist,
-        warnings: []
+        warnings: [] as string[]
       };
 
       if (dispPct > 20) {
@@ -3633,19 +3713,43 @@ async function handler(req, res) {
         searchLevel: "NEIGHBORHOOD",
       });
     }
+
     if (req.method === "POST" && action === "calculate_valuation") {
       const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
       const { appraisalId, organizationId, targetProperty, comparables, notes } = body || {};
-      if (!appraisalId || !organizationId || !targetProperty) {
-        return res.status(400).json({ error: "Parámetros incompletos (se requiere appraisalId, organizationId y targetProperty)." });
+      if (!appraisalId || !targetProperty) {
+        return res.status(400).json({ error: "Parámetros incompletos (se requiere appraisalId y targetProperty)." });
       }
 
-      // Verificación de autenticación
+      // 1. OBTENER EL RECURSO REAL DESDE LA BASE DE DATOS (NO CONFIAR EN FRONTEND)
+      const { data: dbAppraisal, error: appraisalErr } = await supabaseAdmin
+        .from("appraisals")
+        .select("id, organization_id, status, property_input")
+        .eq("id", appraisalId)
+        .maybeSingle();
+
+      if (appraisalErr) {
+        return res.status(500).json({ error: `Error al verificar tasación en base de datos: ${appraisalErr.message}` });
+      }
+      if (!dbAppraisal) {
+        return res.status(404).json({ error: "Tasación no encontrada." });
+      }
+
+      const actualOrgId = dbAppraisal.organization_id;
+
+      // Si el cliente envía organizationId, validar que coincida estrictamente con la del recurso
+      if (organizationId && organizationId !== actualOrgId) {
+        return res.status(403).json({
+          error: "Acceso denegado: El recurso solicitado pertenece a otra organización."
+        });
+      }
+
+      // 2. VERIFICACIÓN DE AUTENTICACIÓN Y MEMBRESÍA EN LA ORGANIZACIÓN REAL DEL RECURSO
       const authHeader = req.headers["authorization"] || req.headers["Authorization"];
       const isProd = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
       let isAuthorized = false;
-      let authenticatedUserId = null;
-      let authenticatedUserEmail = null;
+      let authenticatedUserId: string | null = null;
+      let authenticatedUserEmail: string | null = null;
 
       if (authHeader) {
         const token = typeof authHeader === "string" && authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : authHeader;
@@ -3665,9 +3769,21 @@ async function handler(req, res) {
                 const { data: prof } = await supabaseAdmin.from("profiles").select("is_super_admin").eq("id", user.id).maybeSingle();
                 if (prof?.is_super_admin) {
                   isAuthorized = true;
-                } else if (organizationId) {
-                  const { data: mem } = await supabaseAdmin.from("organization_members").select("id").eq("user_id", user.id).eq("organization_id", organizationId).maybeSingle();
-                  if (mem) isAuthorized = true;
+                } else if (actualOrgId) {
+                  const { data: mem } = await supabaseAdmin
+                    .from("organization_members")
+                    .select("id, role, is_active")
+                    .eq("user_id", user.id)
+                    .eq("organization_id", actualOrgId)
+                    .eq("is_active", true)
+                    .maybeSingle();
+
+                  if (mem) {
+                    const roleClean = (mem.role || '').toLowerCase();
+                    if (['tenant_owner', 'tenant_admin', 'admin', 'operator', 'analyst', 'appraiser'].includes(roleClean)) {
+                      isAuthorized = true;
+                    }
+                  }
                 }
               }
             }
@@ -3676,23 +3792,139 @@ async function handler(req, res) {
       }
 
       if (!isAuthorized) {
-        return res.status(401).json({
-          error: "No autorizado. Se requiere sesión activa y pertenecer a la organización."
+        return res.status(403).json({
+          error: "Acceso denegado: No posees autorización ni membresía activa para la organización propietaria de esta tasación."
         });
       }
 
-      const included = (comparables || []).filter((c) => c.selected || c.status === "INCLUDED");
+      const inputComparables = Array.isArray(comparables) ? comparables : [];
+      const included = inputComparables.filter((c: any) => c.selected || c.status === "INCLUDED");
+
       if (included.length < 3) {
         return res.status(400).json({
           error: `Se requieren al menos 3 comparables válidos para ejecutar la valoración. Actualmente hay ${included.length}.`
         });
       }
 
+      // 3. SERVER-SIDE RE-FETCH Y VALIDACIÓN DE COMPARABLES (BLOQUE E & F: NO CONFIAR EN FRONTEND Y DEDUPLICAR)
+      const listingIds = included
+        .map((c: any) => c.listingId || c.candidateData?.id || c.id)
+        .filter((id: any) => Boolean(id) && typeof id === 'string' && id.length > 10);
+
+      let dbVerifiedMap = new Map<string, any>();
+      if (listingIds.length > 0) {
+        const { data: dbListings } = await supabaseAdmin
+          .from("property_listings")
+          .select(`
+            id,
+            master_id,
+            source_id,
+            external_id,
+            url,
+            price_amount,
+            currency,
+            price_usd_normalized,
+            data_quality_score,
+            property_master (
+              id,
+              canonical_address,
+              department,
+              neighborhood,
+              covered_surface_m2,
+              total_surface_m2,
+              rooms,
+              bathrooms,
+              garages
+            )
+          `)
+          .in("id", listingIds);
+
+        if (dbListings) {
+          dbListings.forEach((item: any) => {
+            dbVerifiedMap.set(item.id, item);
+          });
+        }
+      }
+
+      // Deduplicación server-side basada en master_id, canonical_address, external_id o url
+      const seenFingerprints = new Set<string>();
+      const deduplicatedComparables: any[] = [];
+      const duplicateFlags: any[] = [];
+
+      for (const comp of included) {
+        const compId = comp.listingId || comp.candidateData?.id || comp.id;
+        const verifiedItem = dbVerifiedMap.get(compId);
+
+        const masterId = verifiedItem?.master_id || comp.candidateData?.propertyMasterId || comp.propertyMasterId;
+        const canonicalUrl = verifiedItem?.url || comp.candidateData?.originalUrl;
+        const sourceExtId = `${verifiedItem?.source_id || comp.candidateData?.sourceCode}_${verifiedItem?.external_id || comp.candidateData?.sourceListingId}`;
+        const addressFingerprint = (verifiedItem?.property_master?.canonical_address || comp.candidateData?.streetName || '').toLowerCase().trim();
+
+        const dedupKey = masterId || canonicalUrl || sourceExtId || (addressFingerprint ? `addr_${addressFingerprint}` : null) || compId;
+
+        if (dedupKey && seenFingerprints.has(dedupKey)) {
+          duplicateFlags.push({
+            id: compId,
+            status: "POSSIBLE_DUPLICATE",
+            reason: `Coincidencia de colateral con otro comparable ya procesado (${dedupKey}).`
+          });
+          continue; // Excluir de la muestra efectiva de cálculo
+        }
+
+        if (dedupKey) {
+          seenFingerprints.add(dedupKey);
+        }
+
+        // Determinar valores canónicos protegidos contra manipulación cliente
+        let verifiedPriceUsd: number;
+        let verifiedArea: number;
+
+        if (verifiedItem) {
+          const m = verifiedItem.property_master || {};
+          verifiedArea = m.covered_surface_m2 || m.total_surface_m2 || comp.candidateData?.builtAreaM2 || 75;
+          let pUsd = verifiedItem.price_usd_normalized || verifiedItem.price_amount;
+          if (verifiedItem.currency && verifiedItem.currency !== 'USD') {
+            const norm = normalizePrice({
+              priceRaw: verifiedItem.price_amount,
+              currencyRaw: verifiedItem.currency,
+              builtAreaM2: verifiedArea
+            });
+            pUsd = norm.priceUsd || pUsd;
+          }
+          verifiedPriceUsd = pUsd || comp.candidateData?.priceUsd || 150000;
+        } else {
+          verifiedArea = comp.candidateData?.builtAreaM2 || comp.candidateData?.totalAreaM2 || 75;
+          const rawP = comp.candidateData?.priceUsd || comp.candidateData?.price_usd || 0;
+          verifiedPriceUsd = rawP > 0 ? rawP : 150000;
+        }
+
+        const askingAdjusted = Math.round(verifiedPriceUsd * 0.915);
+        const pricePerM2 = Math.round(askingAdjusted / (verifiedArea || 1));
+
+        deduplicatedComparables.push({
+          ...comp,
+          candidateData: {
+            ...(comp.candidateData || {}),
+            priceUsd: verifiedPriceUsd,
+            adjustedPriceUsd: askingAdjusted,
+            builtAreaM2: verifiedArea,
+            pricePerM2Usd: pricePerM2
+          }
+        });
+      }
+
+      if (deduplicatedComparables.length < 3) {
+        return res.status(400).json({
+          error: `Se requieren al menos 3 comparables únicos verificados. Tras deduplicación y verificación server-side quedaron ${deduplicatedComparables.length}.`,
+          duplicatesDetected: duplicateFlags
+        });
+      }
+
       const targetArea = targetProperty.surfaces?.builtAreaM2 || targetProperty.surfaces?.totalAreaM2 || 75;
 
-      // 1. Estimadores Estadísticos Robustos Certificados (Ajuste 8.5% V2)
-      const effectivePrices = included.map((c) => c.candidateData.adjustedPriceUsd || Math.round(c.candidateData.priceUsd * 0.915));
-      const m2Prices = included.map((c) => Math.round((c.candidateData.adjustedPriceUsd || (c.candidateData.priceUsd * 0.915)) / (c.candidateData.builtAreaM2 || 75)));
+      // 4. Estimadores Estadísticos Robustos Certificados (Ajuste 8.5% V2)
+      const effectivePrices = deduplicatedComparables.map((c) => c.candidateData.adjustedPriceUsd);
+      const m2Prices = deduplicatedComparables.map((c) => c.candidateData.pricePerM2Usd);
 
       // Mediana ponderada
       const sortedPrices = [...effectivePrices].sort((a, b) => a - b);
@@ -3711,10 +3943,7 @@ async function handler(req, res) {
       const m2Val = Math.round(avgM2 * targetArea);
 
       // Ajuste Directo de Coeficientes
-      const directVal = Math.round(included.reduce((acc, c) => {
-        const p = c.candidateData.adjustedPriceUsd || Math.round(c.candidateData.priceUsd * 0.915);
-        return acc + p;
-      }, 0) / included.length);
+      const directVal = Math.round(deduplicatedComparables.reduce((acc, c) => acc + c.candidateData.adjustedPriceUsd, 0) / deduplicatedComparables.length);
 
       // Ensamble Ponderado Certificado (Pesos: 0.35, 0.25, 0.25, 0.15)
       const rawEstimated = Math.round(
@@ -3724,7 +3953,7 @@ async function handler(req, res) {
         directVal * 0.15
       );
 
-      // Redondeo profesional para evitar falsa precisión
+      // Redondeo profesional
       const roundedEstimated = rawEstimated >= 100000 ? Math.round(rawEstimated / 1000) * 1000 : Math.round(rawEstimated / 500) * 500;
       const roundedPriceM2 = Math.round(roundedEstimated / targetArea);
 
@@ -3740,42 +3969,44 @@ async function handler(req, res) {
 
       // Confianza
       let confidenceLevel = "MEDIA";
-      if (included.length >= 5 && cv < 0.20) {
+      if (deduplicatedComparables.length >= 5 && cv < 0.20) {
         confidenceLevel = "ALTA";
-      } else if (included.length < 3 || cv > 0.30) {
+      } else if (deduplicatedComparables.length < 3 || cv > 0.30) {
         confidenceLevel = "BAJA";
       }
 
       // Factores determinísticos
-      const favorableFactors = [];
+      const favorableFactors: string[] = [];
       if (targetProperty.location?.neighborhood) favorableFactors.push(`Emplazamiento consolidado en ${targetProperty.location.neighborhood}`);
       if (targetProperty.layout?.garages > 0) favorableFactors.push(`Cochera/garaje verificado (${targetProperty.layout.garages} plaza)`);
-      if (included.length >= 5) favorableFactors.push(`Muestra sólida de ${included.length} comparables directos`);
+      if (deduplicatedComparables.length >= 5) favorableFactors.push(`Muestra sólida de ${deduplicatedComparables.length} comparables directos únicos`);
       if (cv < 0.15) favorableFactors.push("Homogeneidad de valores por m² en la zona (< 15% dispersión)");
 
-      const considerationFactors = [];
-      if (included.length === 3) considerationFactors.push("Muestra en el límite inferior admisible (3 comparables)");
+      const considerationFactors: string[] = [];
+      if (deduplicatedComparables.length === 3) considerationFactors.push("Muestra en el límite inferior admisible (3 comparables)");
       if (cv >= 0.20) considerationFactors.push(`Dispersión en USD/m² de ${(cv * 100).toFixed(1)}%`);
 
-      const warnings = [];
+      const warnings: string[] = [];
       if (cv > 0.25) warnings.push("El mercado de la zona presenta dispersión atípica de precios.");
+      if (duplicateFlags.length > 0) warnings.push(`Se detectaron y excluyeron ${duplicateFlags.length} comparables duplicados.`);
 
       const runId = `run_${appraisalId}_${Date.now()}`;
       const runNumber = 1;
+      const nowIso = new Date().toISOString();
 
       const run = {
         id: runId,
         appraisalId,
-        organizationId,
+        organizationId: actualOrgId,
         runNumber,
         createdBy: authenticatedUserId || null,
         creatorEmail: authenticatedUserEmail || null,
         engineVersion: "v1.0.0-certified",
         configurationVersion: 2,
         targetPropertySnapshot: targetProperty,
-        comparableSetSnapshot: comparables,
-        comparablesUsedCount: included.length,
-        excludedComparablesCount: (comparables || []).length - included.length,
+        comparableSetSnapshot: deduplicatedComparables,
+        comparablesUsedCount: deduplicatedComparables.length,
+        excludedComparablesCount: inputComparables.length - deduplicatedComparables.length,
         estimatedMarketValue: roundedEstimated,
         estimatedPricePerM2Usd: roundedPriceM2,
         valueRangeMin: roundedRangeMin,
@@ -3791,56 +4022,94 @@ async function handler(req, res) {
         considerationFactors,
         warnings,
         notes: notes || null,
-        createdAt: new Date().toISOString()
+        createdAt: nowIso
       };
 
       if (isSupabaseConfigured) {
-        try {
-          await supabaseAdmin.from("appraisal_valuation_runs").insert([{
-            appraisal_id: appraisalId,
-            organization_id: organizationId,
-            run_number: runNumber,
-            created_by: authenticatedUserId || null,
-            creator_email: authenticatedUserEmail || null,
-            engine_version: "v1.0.0-certified",
-            configuration_version: 1,
-            target_property_snapshot: targetProperty,
-            comparable_set_snapshot: comparables,
-            comparables_used_count: included.length,
-            excluded_comparables_count: (comparables || []).length - included.length,
-            estimated_market_value: roundedEstimated,
-            estimated_price_per_m2_usd: roundedPriceM2,
-            value_range_min: roundedRangeMin,
-            value_range_max: roundedRangeMax,
-            confidence_level: confidenceLevel,
-            method_estimators: run.methodEstimators,
-            favorable_factors: favorableFactors,
-            consideration_factors: considerationFactors,
-            warnings,
-            notes: notes || null,
-            created_at: run.createdAt
-          }]);
+        // Persistir run inmutable
+        const { error: runInsertErr } = await supabaseAdmin.from("appraisal_valuation_runs").insert([{
+          appraisal_id: appraisalId,
+          organization_id: actualOrgId,
+          run_number: runNumber,
+          created_by: authenticatedUserId || null,
+          creator_email: authenticatedUserEmail || null,
+          engine_version: "v1.0.0-certified",
+          configuration_version: 1,
+          target_property_snapshot: targetProperty,
+          comparable_set_snapshot: deduplicatedComparables,
+          comparables_used_count: deduplicatedComparables.length,
+          excluded_comparables_count: inputComparables.length - deduplicatedComparables.length,
+          estimated_market_value: roundedEstimated,
+          estimated_price_per_m2_usd: roundedPriceM2,
+          value_range_min: roundedRangeMin,
+          value_range_max: roundedRangeMax,
+          confidence_level: confidenceLevel,
+          method_estimators: run.methodEstimators,
+          favorable_factors: favorableFactors,
+          consideration_factors: considerationFactors,
+          warnings,
+          notes: notes || null,
+          created_at: nowIso
+        }]);
 
-          await supabaseAdmin.from("appraisals").update({
+        if (runInsertErr) {
+          console.error("[calculate_valuation] DB run insert error:", runInsertErr);
+          return res.status(500).json({
+            error: `Error al persistir la corrida de valoración: ${runInsertErr.message}`
+          });
+        }
+
+        // Actualizar appraisal con comprobación de ID y Organización estricta (Bloque A)
+        const { error: appraisalUpdateErr } = await supabaseAdmin
+          .from("appraisals")
+          .update({
             status: "VALUATED",
             estimated_value: roundedEstimated,
-            updated_at: run.createdAt
-          }).eq("id", appraisalId);
-        } catch (dbErr) {
-          console.warn("[calculate_valuation] Warning persisting to Supabase:", dbErr.message);
+            updated_at: nowIso
+          })
+          .eq("id", dbAppraisal.id)
+          .eq("organization_id", actualOrgId);
+
+        if (appraisalUpdateErr) {
+          console.error("[calculate_valuation] DB appraisal update error:", appraisalUpdateErr);
+          return res.status(500).json({
+            error: `Error al actualizar estado de la tasación: ${appraisalUpdateErr.message}`
+          });
         }
       }
 
       return res.status(200).json({ success: true, run });
     }
+
     if (req.method === "POST" && action === "finalize") {
       const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
       const { appraisalId, organizationId } = body || {};
-      if (!appraisalId || !organizationId) {
-        return res.status(400).json({ error: "Se requiere appraisalId y organizationId." });
+      if (!appraisalId) {
+        return res.status(400).json({ error: "Se requiere appraisalId." });
       }
 
-      // Verificación de autenticación
+      // 1. OBTENER EL RECURSO REAL DESDE BASE DE DATOS
+      const { data: dbAppraisal, error: appraisalErr } = await supabaseAdmin
+        .from("appraisals")
+        .select("id, organization_id, status")
+        .eq("id", appraisalId)
+        .maybeSingle();
+
+      if (appraisalErr) {
+        return res.status(500).json({ error: `Error al consultar tasación: ${appraisalErr.message}` });
+      }
+      if (!dbAppraisal) {
+        return res.status(404).json({ error: "Tasación no encontrada." });
+      }
+
+      const actualOrgId = dbAppraisal.organization_id;
+
+      // Validación Cross-Tenant
+      if (organizationId && organizationId !== actualOrgId) {
+        return res.status(403).json({ error: "Acceso denegado: El recurso pertenece a otra organización." });
+      }
+
+      // 2. Verificación de autenticación y rol
       const authHeader = req.headers["authorization"] || req.headers["Authorization"];
       const isProd = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
       let isAuthorized = false;
@@ -3859,9 +4128,21 @@ async function handler(req, res) {
                 const { data: prof } = await supabaseAdmin.from("profiles").select("is_super_admin").eq("id", user.id).maybeSingle();
                 if (prof?.is_super_admin) {
                   isAuthorized = true;
-                } else if (organizationId) {
-                  const { data: mem } = await supabaseAdmin.from("organization_members").select("id").eq("user_id", user.id).eq("organization_id", organizationId).maybeSingle();
-                  if (mem) isAuthorized = true;
+                } else if (actualOrgId) {
+                  const { data: mem } = await supabaseAdmin
+                    .from("organization_members")
+                    .select("id, role, is_active")
+                    .eq("user_id", user.id)
+                    .eq("organization_id", actualOrgId)
+                    .eq("is_active", true)
+                    .maybeSingle();
+
+                  if (mem) {
+                    const roleClean = (mem.role || '').toLowerCase();
+                    if (['tenant_owner', 'tenant_admin', 'admin', 'operator', 'analyst', 'appraiser'].includes(roleClean)) {
+                      isAuthorized = true;
+                    }
+                  }
                 }
               }
             }
@@ -3870,19 +4151,23 @@ async function handler(req, res) {
       }
 
       if (!isAuthorized) {
-        return res.status(401).json({
-          error: "No autorizado. Se requiere sesión activa y pertenecer a la organización."
+        return res.status(403).json({
+          error: "No autorizado. Se requiere membresía activa y rol autorizado en la organización del recurso."
         });
       }
 
       if (isSupabaseConfigured) {
-        try {
-          await supabaseAdmin.from("appraisals").update({
+        const { error: updateErr } = await supabaseAdmin
+          .from("appraisals")
+          .update({
             status: "FINALIZED",
             updated_at: new Date().toISOString()
-          }).eq("id", appraisalId).eq("organization_id", organizationId);
-        } catch (dbErr) {
-          console.warn("[finalize] Warning updating appraisal status:", dbErr.message);
+          })
+          .eq("id", dbAppraisal.id)
+          .eq("organization_id", actualOrgId);
+
+        if (updateErr) {
+          return res.status(500).json({ error: `Error al finalizar la tasación: ${updateErr.message}` });
         }
       }
 

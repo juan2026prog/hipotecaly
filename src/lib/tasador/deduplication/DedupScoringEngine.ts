@@ -88,11 +88,17 @@ export class DedupScoringEngine {
     }
 
     // 2. Señal Exacta / Fuerte: Dirección Normalizada
-    if (a.streetName && b.streetName && cleanText(a.streetName) === cleanText(b.streetName)) {
+    const addrA = a.normalizedAddress || (a as any).addressNormalized || a.streetName;
+    const addrB = b.normalizedAddress || (b as any).addressNormalized || b.streetName;
+
+    if (addrA && addrB && cleanText(addrA) === cleanText(addrB)) {
+      addressScore = 95;
+      matchReasons.push(`Misma dirección normalizada coincidente (${addrA})`);
+    } else if (a.streetName && b.streetName && cleanText(a.streetName) === cleanText(b.streetName)) {
       if (a.streetNumber && b.streetNumber && a.streetNumber === b.streetNumber) {
         if (a.unit && b.unit && a.unit === b.unit) {
           addressScore = 100;
-          matchReasons.push(`Misma dirección exacta y unidad (${a.normalizedAddress})`);
+          matchReasons.push(`Misma dirección exacta y unidad (${a.normalizedAddress || addrA})`);
         } else if (!a.unit && !b.unit) {
           // Si es apartamento sin unidad especificada, es mismo edificio pero unidad incierta
           if (a.propertyType === 'APARTMENT' || b.propertyType === 'APARTMENT') {
@@ -100,7 +106,7 @@ export class DedupScoringEngine {
             matchReasons.push(`Mismo edificio pero unidades no especificadas`);
           } else {
             addressScore = 95;
-            matchReasons.push(`Misma dirección y número (${a.normalizedAddress})`);
+            matchReasons.push(`Misma dirección y número (${a.normalizedAddress || addrA})`);
           }
         } else {
           addressScore = 60; // Mismo edificio, diferente unidad
@@ -134,8 +140,8 @@ export class DedupScoringEngine {
     }
 
     // 4. Señal Visual: Hash de Fotos
-    const aHashes = new Set(a.media.map((m) => m.sha256Hash).filter(Boolean));
-    const bHashes = new Set(b.media.map((m) => m.sha256Hash).filter(Boolean));
+    const aHashes = new Set((a.media || []).map((m) => m?.sha256Hash).filter(Boolean));
+    const bHashes = new Set((b.media || []).map((m) => m?.sha256Hash).filter(Boolean));
     if (aHashes.size > 0 && bHashes.size > 0) {
       let sharedPhotos = 0;
       for (const h of aHashes) {
@@ -149,8 +155,8 @@ export class DedupScoringEngine {
     }
 
     // 5. Superficies
-    const aArea = a.builtAreaM2 || a.totalAreaM2;
-    const bArea = b.builtAreaM2 || b.totalAreaM2;
+    const aArea = a.builtAreaM2 || a.totalAreaM2 || (a as any).coveredAreaM2;
+    const bArea = b.builtAreaM2 || b.totalAreaM2 || (b as any).coveredAreaM2;
     if (aArea && bArea && aArea > 0 && bArea > 0) {
       const diffPct = (Math.abs(aArea - bArea) / Math.max(aArea, bArea)) * 100;
       evidenceDetails['areaDiffPercentage'] = Math.round(diffPct * 10) / 10;

@@ -56,10 +56,10 @@ export function isDemoRoute(pathname?: string): boolean {
 }
 
 /**
- * Determina si una organización es la organización de demostración (Estudio Nova)
+ * Determina si una organización es la organización de demostración (Estudio Nova o flag is_demo)
  */
 export function isDemoOrganization(
-  orgOrSlugOrId?: { id?: string; slug?: string; demo_mode?: boolean } | string | null
+  orgOrSlugOrId?: { id?: string; slug?: string; is_demo?: boolean; demo_mode?: boolean } | string | null
 ): boolean {
   if (!orgOrSlugOrId) return false;
 
@@ -74,7 +74,7 @@ export function isDemoOrganization(
   }
 
   if (typeof orgOrSlugOrId === 'object') {
-    if (orgOrSlugOrId.demo_mode === true) return true;
+    if (orgOrSlugOrId.is_demo === true || orgOrSlugOrId.demo_mode === true) return true;
     if (orgOrSlugOrId.slug && isDemoOrganization(orgOrSlugOrId.slug)) return true;
     if (orgOrSlugOrId.id && isDemoOrganization(orgOrSlugOrId.id)) return true;
   }
@@ -83,28 +83,34 @@ export function isDemoOrganization(
 }
 
 /**
- * Fuente única de verdad para verificar si una operación se ejecuta en Modo Demo
+ * Fuente única de verdad para verificar si una operación se ejecuta en Modo Demo.
+ * Regla de Oro: Las organizaciones reales JAMÁS ejecutan datos simulados,
+ * independientemente de la URL o pathname.
  */
 export function isDemoMode(options?: DemoContextCheckOptions): boolean {
-  if (options?.isDemoMode === true) return true;
-
-  if (options?.organizationSlug && isDemoOrganization(options.organizationSlug)) {
-    return true;
+  // 1. Si se pasa un flag explícito, respetarlo
+  if (options?.isDemoMode !== undefined && options?.isDemoMode !== null) {
+    return options.isDemoMode;
   }
 
-  if (options?.organizationId && isDemoOrganization(options.organizationId)) {
-    return true;
+  // 2. Si se proporciona organización o slug, la organización persistida es la única fuente de verdad
+  if (options?.organizationId) {
+    return isDemoOrganization(options.organizationId);
   }
 
+  if (options?.organizationSlug) {
+    return isDemoOrganization(options.organizationSlug);
+  }
+
+  // 3. Si NO hay contexto de organización, evaluar si estamos en una vista de preview/landing demo pública
   if (isDemoRoute(options?.pathname)) {
     return true;
   }
 
-  // Comprobar parámetros de URL si estamos en frontend
+  // Comprobar parámetros de URL si estamos en frontend sin organización vinculada
   if (typeof window !== 'undefined') {
     const path = window.location.pathname;
     if (isDemoRoute(path)) return true;
-    // En producción, solo permitimos demo mode si estamos en ruta demo explícita
     if (!isProduction() && window.location.search.includes('demo=true')) return true;
   }
 

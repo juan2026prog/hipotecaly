@@ -196,7 +196,7 @@ export class NormalizationEngine {
       horizontalPropertyUnit: null,
       currentPrice: priceNorm.currentPrice,
       currentCurrency: priceNorm.currentCurrency,
-      priceUsd: priceNorm.priceUsd,
+      priceUsd: priceNorm.priceUsd ?? 0,
       priceUyu: priceNorm.priceUyu,
       pricePerM2Usd: priceNorm.pricePerM2Usd,
       expensesAmount: raw.expensesRaw || null,

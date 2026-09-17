@@ -57,17 +57,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { rawToken, tokenHash } = generateCSPRNGTokenServer();
       const expiresAt = new Date(Date.now() + 3600000 * 24 * 7).toISOString();
 
-      try {
-        await supabaseAdmin.from('organization_invitations').insert({
-          organization_id: organizationId,
-          email: email.trim().toLowerCase(),
-          role: targetTechnicalRole,
-          token_hash: tokenHash,
-          expires_at: expiresAt,
-          status: 'PENDING',
-          invited_by: authGuard.data.email || 'Administrador',
+      const { error: insErr } = await supabaseAdmin.from('organization_invitations').insert({
+        organization_id: organizationId,
+        email: email.trim().toLowerCase(),
+        role: targetTechnicalRole,
+        token_hash: tokenHash,
+        expires_at: expiresAt,
+        status: 'PENDING',
+        invited_by: authGuard.data.email || 'Administrador',
+      });
+
+      if (insErr) {
+        return res.status(500).json({
+          success: false,
+          error: `Error al persistir invitación en base de datos: ${insErr.message}`,
         });
-      } catch {}
+      }
 
       // Retornar rawToken ÚNICAMENTE una vez en la respuesta para construir el enlace inicial
       return res.status(200).json({
@@ -184,13 +189,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(authGuard.status || 403).json({ success: false, error: authGuard.error || 'Acceso denegado.' });
       }
 
-      try {
-        await supabaseAdmin
-          .from('organization_invitations')
-          .update({ status: 'REVOKED' })
-          .eq('id', invitationId)
-          .eq('organization_id', organizationId);
-      } catch {}
+      const { error: updateErr } = await supabaseAdmin
+        .from('organization_invitations')
+        .update({ status: 'REVOKED' })
+        .eq('id', invitationId)
+        .eq('organization_id', organizationId);
+
+      if (updateErr) {
+        return res.status(500).json({
+          success: false,
+          error: `Error al revocar invitación en base de datos: ${updateErr.message}`,
+        });
+      }
 
       return res.status(200).json({ success: true, error: null });
     }

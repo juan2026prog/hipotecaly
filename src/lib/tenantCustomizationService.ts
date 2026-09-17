@@ -118,9 +118,9 @@ export const DEFAULT_WHITELABEL_CONFIG: WhiteLabelCustomization = {
   themeMode: 'light',
 
   // 2. Políticas Crediticias
-  maxLtv: 50,
-  minLoanAmount: 15000,
-  maxLoanAmount: 300000,
+  maxLtv: 40,
+  minLoanAmount: 10000,
+  maxLoanAmount: 200000,
   defaultInterestRate: 11.5,
   moratoryRate: 16.0,
   availableTerms: [12, 24, 36, 48, 60],

@@ -18,6 +18,7 @@ import { DocumentTemplate, DocumentCategory, TemplateStatus } from '../../lib/do
 import { DOCUMENT_VARIABLES, VARIABLE_CATEGORIES } from '../../lib/docflow/variableRegistry';
 import { DocumentService } from '../../lib/docflow/documentService';
 import { getApplicationsList } from '../../lib/backofficeService';
+import { escapeHtml, sanitizeHtml } from '../../lib/docflow/templateEngine';
 import { Button } from '../ui/Button';
 
 interface TemplateEditorModalProps {
@@ -206,7 +207,7 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
       for (const p of parts) {
         val = val ? val[p] : undefined;
       }
-      const repl = val !== undefined && val !== null ? String(val) : `<span class="bg-amber-100 text-amber-800 px-1 rounded font-mono font-bold">[${v.label}: PENDIENTE]</span>`;
+      const repl = val !== undefined && val !== null ? escapeHtml(String(val)) : `<span class="bg-amber-100 text-amber-800 px-1 rounded font-mono font-bold">[${escapeHtml(v.label)}: PENDIENTE]</span>`;
       const regex = new RegExp(`\\{\\{\\s*${v.key.replace('.', '\\.')}\\s*\\}\\}`, 'g');
       rendered = rendered.replace(regex, `<span class="bg-emerald-50 text-emerald-900 border-b border-emerald-400 font-semibold" title="Variable: {{${v.key}}}">${repl}</span>`);
     });
@@ -215,7 +216,7 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
     rendered = rendered.replace(/\{\{#if\s+([a-zA-Z0-9_.]+)\}\}/g, '<div class="border-l-2 border-indigo-400 pl-3 my-2 bg-indigo-50/40 p-2 rounded text-xs"><strong>[Bloque Condicional si $1]:</strong> ');
     rendered = rendered.replace(/\{\{\/if\}\}/g, '</div>');
 
-    setPreviewHtml(rendered);
+    setPreviewHtml(sanitizeHtml(rendered));
   }, [selectedApp, content, requiredFields, tenantName]);
 
   if (!isOpen) return null;

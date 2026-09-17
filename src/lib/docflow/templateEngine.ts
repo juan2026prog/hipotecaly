@@ -150,26 +150,69 @@ export function processConditionalBlocks(template: string, data: ResolvedCaseDat
 }
 
 /**
- * Reemplaza variables del tipo {{category.key}} por su valor formateado
+ * Escapa caracteres HTML especiales para evitar inyecciones XSS
+ */
+export function escapeHtml(str: any): string {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/**
+ * Sanitiza HTML eliminando etiquetas peligrosas (<script>, <iframe>, <object>, <embed>, <form>, etc.),
+ * manejadores de eventos (onerror, onload, onclick, onmouseover, etc.) y URLs con pseudo-protocolos (javascript:).
+ */
+export function sanitizeHtml(html: string): string {
+  if (!html) return '';
+
+  let sanitized = String(html);
+
+  // 1. Eliminar tags ejecutables y contenedores de scripts/plugins
+  sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  sanitized = sanitized.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+  sanitized = sanitized.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
+  sanitized = sanitized.replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '');
+  sanitized = sanitized.replace(/<embed\b[^>]*>/gi, '');
+  sanitized = sanitized.replace(/<applet\b[^<]*(?:(?!<\/applet>)<[^<]*)*<\/applet>/gi, '');
+  sanitized = sanitized.replace(/<meta\b[^>]*>/gi, '');
+  sanitized = sanitized.replace(/<link\b[^>]*>/gi, '');
+  sanitized = sanitized.replace(/<base\b[^>]*>/gi, '');
+
+  // 2. Eliminar atributos de manejadores de eventos (on*)
+  sanitized = sanitized.replace(/\s+on[a-zA-Z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+
+  // 3. Eliminar URLs peligrosas con javascript: o vbscript: o data:text/html
+  sanitized = sanitized.replace(/(href|src|action)\s*=\s*["']?\s*(?:javascript|vbscript|data\s*:\s*text\/html):[^"'>\s]*/gi, '$1="#"');
+
+  return sanitized;
+}
+
+/**
+ * Reemplaza variables del tipo {{category.key}} por su valor formateado y escapado
  */
 export function renderTemplate(templateContent: string, data: ResolvedCaseData): string {
   // 1. Evaluar condicionales primero
   let processed = processConditionalBlocks(templateContent, data);
 
-  // 2. Reemplazar variables dinámicas
+  // 2. Reemplazar variables dinámicas con escape HTML estricto
   const varRegex = /\{\{([a-zA-Z0-9_.]+)\}\}/g;
   processed = processed.replace(varRegex, (_match, key) => {
     const varDef = DOCUMENT_VARIABLES.find((v) => v.key === key);
     const rawVal = getNestedValue(data as any, key);
 
     if (rawVal === undefined || rawVal === null) {
-      return `<span class="docflow-unresolved text-amber-700 bg-amber-50 px-1 py-0.5 rounded font-mono text-xs border border-amber-300 font-bold">[${key}: no provisto]</span>`;
+      return `<span class="docflow-unresolved text-amber-700 bg-amber-50 px-1 py-0.5 rounded font-mono text-xs border border-amber-300 font-bold">[${escapeHtml(key)}: no provisto]</span>`;
     }
 
-    return formatVariableValue(rawVal, varDef?.type, data.loan?.currency || 'USD');
+    const formatted = formatVariableValue(rawVal, varDef?.type, data.loan?.currency || 'USD');
+    return escapeHtml(formatted);
   });
 
-  return processed;
+  return sanitizeHtml(processed);
 }
 
 /**

@@ -62,17 +62,17 @@ export const CostBreakdownSimulator: React.FC<CostBreakdownSimulatorProps> = ({ 
             </div>
             <input
               type="range"
-              min={30000}
-              max={300000}
+              min={10000}
+              max={200000}
               step={5000}
               value={loanAmount}
               onChange={(e) => setLoanAmount(Number(e.target.value))}
               className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-green"
             />
             <div className="flex justify-between text-[10px] text-slate-400 mt-1">
-              <span>USD 30.000</span>
-              <span>USD 150.000</span>
-              <span>USD 300.000</span>
+              <span>USD 10.000</span>
+              <span>USD 100.000</span>
+              <span>USD 200.000</span>
             </div>
           </div>
 

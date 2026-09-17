@@ -96,6 +96,49 @@ const LOCAL_AUDIT_LOGS_CACHE: AuditLogEntry[] = [
 ];
 
 /**
+ * Sanitiza recursivamente objetos y arreglos eliminando claves sensibles
+ */
+export function deepSanitizeSecrets<T>(data: T): T {
+  if (data === null || data === undefined) return data;
+  if (typeof data !== 'object') return data;
+
+  if (Array.isArray(data)) {
+    return data.map((item) => deepSanitizeSecrets(item)) as unknown as T;
+  }
+
+  const forbiddenKeyPatterns = [
+    'password',
+    'pass',
+    'token',
+    'secret',
+    'api_key',
+    'apikey',
+    'authorization',
+    'bearer',
+    'cookie',
+    'jwt',
+    'private_key',
+    'service_role',
+  ];
+
+  const sanitized: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data as Record<string, any>)) {
+    const lowerKey = key.toLowerCase();
+    const isForbidden = forbiddenKeyPatterns.some((f) => lowerKey === f || lowerKey.includes(f));
+
+    if (typeof value === 'object' && value !== null) {
+      sanitized[key] = deepSanitizeSecrets(value);
+    } else if (isForbidden) {
+      sanitized[key] = '[REDACTED_SECRET]';
+    } else {
+      sanitized[key] = value;
+    }
+  }
+
+  return sanitized as T;
+}
+
+/**
  * Registra un nuevo evento de auditoría inmutable
  */
 export async function logAuditEvent(params: {
@@ -113,18 +156,8 @@ export async function logAuditEvent(params: {
   metadata?: Record<string, any>;
   ipAddress?: string;
 }): Promise<AuditLogEntry> {
-  // Sanitizar metadatos para evitar persistir tokens secretos o credenciales
-  const sanitizedMeta = { ...(params.metadata || {}) };
-  delete sanitizedMeta.token;
-  delete sanitizedMeta.raw_token;
-  delete sanitizedMeta.invite_token;
-  delete sanitizedMeta.secret;
-  delete sanitizedMeta.jwt;
-  delete sanitizedMeta.password;
-  delete sanitizedMeta.authorization;
-  delete sanitizedMeta.access_token;
-  delete sanitizedMeta.refresh_token;
-  delete sanitizedMeta.token_hash;
+  // Sanitizar recursivamente metadatos para evitar persistir tokens secretos o credenciales
+  const sanitizedMeta = deepSanitizeSecrets(params.metadata || {});
 
   const newLog: AuditLogEntry = {
     id: `al-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
@@ -147,7 +180,7 @@ export async function logAuditEvent(params: {
   // Guardar en cache local para reactividad inmediata
   LOCAL_AUDIT_LOGS_CACHE.unshift(newLog);
 
-  // Intentar persistir en Supabase con RLS
+  // Persistir en Supabase con RLS asegurando que los metadatos persistan sanitizados
   try {
     if (params.organizationId) {
       await supabase.from('audit_logs').insert({
@@ -159,7 +192,7 @@ export async function logAuditEvent(params: {
         old_data: params.oldValue ? { value: params.oldValue } : null,
         new_data: params.newValue ? { value: params.newValue } : null,
         metadata: {
-          ...params.metadata,
+          ...sanitizedMeta,
           user_name: newLog.user_name,
           user_role: newLog.user_role,
           record_identifier: newLog.record_identifier,
