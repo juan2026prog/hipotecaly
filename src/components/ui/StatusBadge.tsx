@@ -135,6 +135,62 @@ const STATUS_CONFIG: Record<
     styles: 'bg-navy/10 text-navy border-navy/20',
     dot: 'bg-navy',
   },
+  // Estados de flujo y análisis
+  property_analysis: {
+    label: 'Análisis de garantía',
+    styles: 'bg-purple-50 text-purple-700 border-purple-200',
+    dot: 'bg-purple-500',
+  },
+  evaluation: {
+    label: 'Evaluación de riesgo',
+    styles: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    dot: 'bg-indigo-500',
+  },
+  pending: {
+    label: 'Pendiente',
+    styles: 'bg-slate-100 text-slate-700 border-slate-200',
+    dot: 'bg-slate-400',
+  },
+  processing: {
+    label: 'Procesando',
+    styles: 'bg-blue-50 text-blue-700 border-blue-200',
+    dot: 'bg-blue-500',
+  },
+  not_configured: {
+    label: 'No configurado',
+    styles: 'bg-amber-50 text-amber-700 border-amber-200',
+    dot: 'bg-amber-500',
+  },
+  demo: {
+    label: 'Modo Demo',
+    styles: 'bg-amber-100 text-amber-900 border-amber-300 font-bold',
+    dot: 'bg-amber-500',
+  },
+  signed: {
+    label: 'Firmado',
+    styles: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+    dot: 'bg-emerald-500',
+  },
+  verified: {
+    label: 'Verificado',
+    styles: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+    dot: 'bg-emerald-500',
+  },
+  connected: {
+    label: 'Conectado',
+    styles: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+    dot: 'bg-emerald-500',
+  },
+  healthy: {
+    label: 'Operativo',
+    styles: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+    dot: 'bg-emerald-500',
+  },
+  failed: {
+    label: 'Fallido',
+    styles: 'bg-rose-50 text-rose-700 border-rose-200',
+    dot: 'bg-rose-500',
+  },
   archived: {
     label: 'Archivada',
     styles: 'bg-slate-100 text-slate-600 border-slate-200',

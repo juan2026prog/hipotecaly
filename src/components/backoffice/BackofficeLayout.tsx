@@ -466,8 +466,8 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
           </div>
         </header>
 
-        {/* Contenedor de la página */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        {/* Contenedor de la página con espacio inferior seguro */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-24 md:pb-12">
           {children}
         </main>
       </div>

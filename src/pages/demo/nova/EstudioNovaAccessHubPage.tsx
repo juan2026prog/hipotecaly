@@ -42,22 +42,33 @@ export const EstudioNovaAccessHubPage: React.FC = () => {
   }, [brandName]);
 
   const handleEnterPortal = async (card: any) => {
+    if (card.id === 'home') {
+      navigate(card.path);
+      return;
+    }
+
     setNavigatingId(card.id);
     try {
+      let res;
       if (card.id === 'notary') {
-        await signIn('escribano', 'demo123');
+        res = await signIn('escribano@estudionova.uy', 'demo123');
       } else if (card.id === 'client') {
-        await signIn('cliente', 'demo123');
+        res = await signIn('cliente@estudionova.uy', 'demo123');
       } else if (card.id === 'backoffice') {
-        await signIn('operador', 'demo123');
+        res = await signIn('operador@estudionova.uy', 'demo123');
       } else if (card.id === 'investor') {
-        await signIn('prestamista', 'demo123');
+        res = await signIn('inversor@estudionova.uy', 'demo123');
       } else if (card.id === 'superadmin') {
-        await signIn('admin', 'admin123');
+        res = await signIn('admin@hipotecaly.uy', 'admin123');
       }
-      navigate(card.path);
+
+      if (res && res.error) {
+        navigate(`/ingresar?tenant=${encodeURIComponent(slug)}&role=${encodeURIComponent(card.id)}`);
+      } else {
+        navigate(card.path);
+      }
     } catch {
-      navigate(card.path);
+      navigate(`/ingresar?tenant=${encodeURIComponent(slug)}&role=${encodeURIComponent(card.id)}`);
     } finally {
       setNavigatingId(null);
     }

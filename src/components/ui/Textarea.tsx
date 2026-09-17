@@ -10,7 +10,12 @@ export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextArea
 
 export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ label, error, helperText, className, id, rows = 4, ...props }, ref) => {
-    const textareaId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
+    const generatedId = React.useId();
+    const textareaId = id || (label ? label.toLowerCase().replace(/[^a-z0-9]+/g, '-') : generatedId);
+    const errorId = `${textareaId}-error`;
+    const helperId = `${textareaId}-helper`;
+
+    const describedBy = error ? errorId : helperText ? helperId : undefined;
 
     return (
       <div className="w-full">
@@ -26,6 +31,8 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           ref={ref}
           id={textareaId}
           rows={rows}
+          aria-invalid={Boolean(error)}
+          aria-describedby={describedBy}
           className={twMerge(
             clsx(
               'w-full p-4 rounded-btn border text-slate-text bg-white transition-colors duration-150 text-sm md:text-base font-normal',
@@ -37,9 +44,15 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           )}
           {...props}
         />
-        {error && <p className="mt-1.5 text-xs text-rose-600">{error}</p>}
+        {error && (
+          <p id={errorId} role="alert" className="mt-1.5 text-xs text-rose-600 font-medium">
+            {error}
+          </p>
+        )}
         {helperText && !error && (
-          <p className="mt-1.5 text-xs text-slate-muted">{helperText}</p>
+          <p id={helperId} className="mt-1.5 text-xs text-slate-muted">
+            {helperText}
+          </p>
         )}
       </div>
     );

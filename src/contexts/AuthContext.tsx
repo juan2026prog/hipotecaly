@@ -270,7 +270,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    const isLocalOrPreview = !import.meta.env.PROD;
+    const isLocalOrPreview = !import.meta.env.PROD || (typeof window !== 'undefined' && (window.location.port === '4173' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'));
 
     // Verificación de sesión de Master Admin persistente (ÚNICAMENTE en desarrollo o preview local)
     const isMasterStored = isLocalOrPreview && typeof window !== 'undefined' && window.localStorage.getItem('hipotecaly_master_user') === 'admin@test.com';

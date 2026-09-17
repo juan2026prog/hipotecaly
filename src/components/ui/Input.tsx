@@ -10,7 +10,12 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, helperText, className, id, ...props }, ref) => {
-    const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
+    const generatedId = React.useId();
+    const inputId = id || (label ? label.toLowerCase().replace(/[^a-z0-9]+/g, '-') : generatedId);
+    const errorId = `${inputId}-error`;
+    const helperId = `${inputId}-helper`;
+
+    const describedBy = error ? errorId : helperText ? helperId : undefined;
 
     return (
       <div className="w-full">
@@ -25,6 +30,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         <input
           ref={ref}
           id={inputId}
+          aria-invalid={Boolean(error)}
+          aria-describedby={describedBy}
           className={twMerge(
             clsx(
               'w-full min-h-[46px] md:min-h-[48px] px-4 rounded-btn border text-slate-text bg-white transition-colors duration-150',
@@ -36,9 +43,15 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           )}
           {...props}
         />
-        {error && <p className="mt-1.5 text-xs text-rose-600">{error}</p>}
+        {error && (
+          <p id={errorId} role="alert" className="mt-1.5 text-xs text-rose-600 font-medium">
+            {error}
+          </p>
+        )}
         {helperText && !error && (
-          <p className="mt-1.5 text-xs text-slate-muted">{helperText}</p>
+          <p id={helperId} className="mt-1.5 text-xs text-slate-muted">
+            {helperText}
+          </p>
         )}
       </div>
     );

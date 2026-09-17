@@ -1,81 +1,97 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
-import { MarketplaceHome } from './pages/MarketplaceHome';
-import { SaaSHome } from './pages/SaaSHome';
-import { SaaSIntegrationPage } from './pages/saas/SaaSIntegrationPage';
-import { SaaSFullPlatformPage } from './pages/saas/SaaSFullPlatformPage';
-import { SimulatorPage } from './pages/SimulatorPage';
-import { ApplicationWizard } from './pages/wizard/ApplicationWizard';
-import { ApplicantAccount } from './pages/account/ApplicantAccount';
-import { LoginPage } from './pages/auth/LoginPage';
-import { RegisterPage } from './pages/auth/RegisterPage';
-import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
-import { AuthCallbackPage } from './pages/auth/AuthCallbackPage';
-import { HowItWorksPage, FaqPage, SaaSPricingPage, ContactPage } from './pages/MarketingPages';
-import { AboutPage } from './pages/landing/AboutPage';
-import { NotFoundPage } from './pages/NotFoundPage';
-import { TermsPage, PrivacyPage, SecurityPage } from './pages/legal/LegalPages';
-import { SignatureReturnPage } from './pages/signature/SignatureReturnPage';
+import { PageLoadingSpinner } from './components/ui/PageLoadingSpinner';
 
-// Backoffice Pages
-import { DashboardPage } from './pages/backoffice/DashboardPage';
-import { ApplicationsPage } from './pages/backoffice/ApplicationsPage';
-import { ApplicationDetailPage } from './pages/backoffice/ApplicationDetailPage';
-import { ClientsPage } from './pages/backoffice/ClientsPage';
-import { PropertiesPage } from './pages/backoffice/PropertiesPage';
-import { DocumentsPage } from './pages/backoffice/DocumentsPage';
-import { TasksPage, ReportsPage, AnalyticsPage, SettingsPage } from './pages/backoffice/OtherBackofficePages';
-import { TasadorHomePage } from './pages/tasador/TasadorHomePage';
-import { TasadorNewAppraisalPage } from './pages/tasador/TasadorNewAppraisalPage';
-import { TasadorComparablesPage } from './pages/tasador/TasadorComparablesPage';
-import { AuditPage } from './pages/backoffice/AuditPage';
-import { LendersPage } from './pages/backoffice/LendersPage';
-import { LenderDetailPage } from './pages/backoffice/LenderDetailPage';
-import { LenderDashboardPage } from './pages/lender/LenderDashboardPage';
-import { LenderOpportunityDetailPage } from './pages/lender/LenderOpportunityDetailPage';
-import { LenderOffersPage } from './pages/lender/LenderOffersPage';
-import { LenderMessagesPage } from './pages/lender/LenderMessagesPage';
-import { UsersManagementPage } from './pages/backoffice/UsersManagementPage';
-import { OrganizationSettingsPage } from './pages/backoffice/OrganizationSettingsPage';
-import { WhiteLabelBackofficePage } from './pages/backoffice/WhiteLabelBackofficePage';
-import { WhatsAppSettingsPage } from './pages/backoffice/WhatsAppSettingsPage';
-import { SuperAdminLeadsPage } from './pages/admin/SuperAdminLeadsPage';
+// 1. Public & Core Pages (Lazy Loaded)
+const MarketplaceHome = React.lazy(() => import('./pages/MarketplaceHome').then((m) => ({ default: m.MarketplaceHome })));
+const SaaSHome = React.lazy(() => import('./pages/SaaSHome').then((m) => ({ default: m.SaaSHome })));
+const SaaSIntegrationPage = React.lazy(() => import('./pages/saas/SaaSIntegrationPage').then((m) => ({ default: m.SaaSIntegrationPage })));
+const SaaSFullPlatformPage = React.lazy(() => import('./pages/saas/SaaSFullPlatformPage').then((m) => ({ default: m.SaaSFullPlatformPage })));
+const SimulatorPage = React.lazy(() => import('./pages/SimulatorPage').then((m) => ({ default: m.SimulatorPage })));
+const ApplicationWizard = React.lazy(() => import('./pages/wizard/ApplicationWizard').then((m) => ({ default: m.ApplicationWizard })));
+const ApplicantAccount = React.lazy(() => import('./pages/account/ApplicantAccount').then((m) => ({ default: m.ApplicantAccount })));
+const LoginPage = React.lazy(() => import('./pages/auth/LoginPage').then((m) => ({ default: m.LoginPage })));
+const RegisterPage = React.lazy(() => import('./pages/auth/RegisterPage').then((m) => ({ default: m.RegisterPage })));
+const ForgotPasswordPage = React.lazy(() => import('./pages/auth/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
+const AuthCallbackPage = React.lazy(() => import('./pages/auth/AuthCallbackPage').then((m) => ({ default: m.AuthCallbackPage })));
+const HowItWorksPage = React.lazy(() => import('./pages/MarketingPages').then((m) => ({ default: m.HowItWorksPage })));
+const FaqPage = React.lazy(() => import('./pages/MarketingPages').then((m) => ({ default: m.FaqPage })));
+const SaaSPricingPage = React.lazy(() => import('./pages/MarketingPages').then((m) => ({ default: m.SaaSPricingPage })));
+const ContactPage = React.lazy(() => import('./pages/MarketingPages').then((m) => ({ default: m.ContactPage })));
+const AboutPage = React.lazy(() => import('./pages/landing/AboutPage').then((m) => ({ default: m.AboutPage })));
+const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
+const TermsPage = React.lazy(() => import('./pages/legal/LegalPages').then((m) => ({ default: m.TermsPage })));
+const PrivacyPage = React.lazy(() => import('./pages/legal/LegalPages').then((m) => ({ default: m.PrivacyPage })));
+const SecurityPage = React.lazy(() => import('./pages/legal/LegalPages').then((m) => ({ default: m.SecurityPage })));
+const SignatureReturnPage = React.lazy(() => import('./pages/signature/SignatureReturnPage').then((m) => ({ default: m.SignatureReturnPage })));
 
-// Tenant Demo ESTUDIO NOVA & Portales Tenant
-import { EstudioNovaPage } from './pages/demo/nova/EstudioNovaPage';
-import { EstudioNovaAccessHubPage } from './pages/demo/nova/EstudioNovaAccessHubPage';
-import { TenantSimulatorPage } from './pages/demo/TenantSimulatorPage';
-import { TenantWizardPage } from './pages/demo/TenantWizardPage';
-import { TenantInvestorDashboardPage } from './pages/demo/TenantInvestorDashboardPage';
-import { TenantInvestorProfilePage } from './pages/demo/TenantInvestorProfilePage';
+// 2. Backoffice Pages (Lazy Loaded)
+const DashboardPage = React.lazy(() => import('./pages/backoffice/DashboardPage').then((m) => ({ default: m.DashboardPage })));
+const ApplicationsPage = React.lazy(() => import('./pages/backoffice/ApplicationsPage').then((m) => ({ default: m.ApplicationsPage })));
+const ApplicationDetailPage = React.lazy(() => import('./pages/backoffice/ApplicationDetailPage').then((m) => ({ default: m.ApplicationDetailPage })));
+const ClientsPage = React.lazy(() => import('./pages/backoffice/ClientsPage').then((m) => ({ default: m.ClientsPage })));
+const PropertiesPage = React.lazy(() => import('./pages/backoffice/PropertiesPage').then((m) => ({ default: m.PropertiesPage })));
+const DocumentsPage = React.lazy(() => import('./pages/backoffice/DocumentsPage').then((m) => ({ default: m.DocumentsPage })));
+const TasksPage = React.lazy(() => import('./pages/backoffice/OtherBackofficePages').then((m) => ({ default: m.TasksPage })));
+const ReportsPage = React.lazy(() => import('./pages/backoffice/OtherBackofficePages').then((m) => ({ default: m.ReportsPage })));
+const AnalyticsPage = React.lazy(() => import('./pages/backoffice/OtherBackofficePages').then((m) => ({ default: m.AnalyticsPage })));
+const SettingsPage = React.lazy(() => import('./pages/backoffice/OtherBackofficePages').then((m) => ({ default: m.SettingsPage })));
+const TasadorHomePage = React.lazy(() => import('./pages/tasador/TasadorHomePage').then((m) => ({ default: m.TasadorHomePage })));
+const TasadorNewAppraisalPage = React.lazy(() => import('./pages/tasador/TasadorNewAppraisalPage').then((m) => ({ default: m.TasadorNewAppraisalPage })));
+const TasadorComparablesPage = React.lazy(() => import('./pages/tasador/TasadorComparablesPage').then((m) => ({ default: m.TasadorComparablesPage })));
+const AuditPage = React.lazy(() => import('./pages/backoffice/AuditPage').then((m) => ({ default: m.AuditPage })));
+const LendersPage = React.lazy(() => import('./pages/backoffice/LendersPage').then((m) => ({ default: m.LendersPage })));
+const LenderDetailPage = React.lazy(() => import('./pages/backoffice/LenderDetailPage').then((m) => ({ default: m.LenderDetailPage })));
+const UsersManagementPage = React.lazy(() => import('./pages/backoffice/UsersManagementPage').then((m) => ({ default: m.UsersManagementPage })));
+const OrganizationSettingsPage = React.lazy(() => import('./pages/backoffice/OrganizationSettingsPage').then((m) => ({ default: m.OrganizationSettingsPage })));
+const WhiteLabelBackofficePage = React.lazy(() => import('./pages/backoffice/WhiteLabelBackofficePage').then((m) => ({ default: m.WhiteLabelBackofficePage })));
+const WhatsAppSettingsPage = React.lazy(() => import('./pages/backoffice/WhatsAppSettingsPage').then((m) => ({ default: m.WhatsAppSettingsPage })));
+const SuperAdminLeadsPage = React.lazy(() => import('./pages/admin/SuperAdminLeadsPage').then((m) => ({ default: m.SuperAdminLeadsPage })));
 
-// Portal Notarial & Escribanos (/notary)
-import { NotaryDashboardPage } from './pages/notary/NotaryDashboardPage';
-import { NotaryApplicationsPage } from './pages/notary/NotaryApplicationsPage';
-import { NotaryApplicationDetailPage } from './pages/notary/NotaryApplicationDetailPage';
-import { NotaryTasksPage } from './pages/notary/NotaryTasksPage';
-import { NotaryDocumentsPage } from './pages/notary/NotaryDocumentsPage';
-import { NotarySignaturesPage } from './pages/notary/NotarySignaturesPage';
-import { NotaryCalendarPage } from './pages/notary/NotaryCalendarPage';
-import { NotaryProfilePage } from './pages/notary/NotaryProfilePage';
+// 3. Lender / Marketplace (Lazy Loaded)
+const LenderDashboardPage = React.lazy(() => import('./pages/lender/LenderDashboardPage').then((m) => ({ default: m.LenderDashboardPage })));
+const LenderOpportunityDetailPage = React.lazy(() => import('./pages/lender/LenderOpportunityDetailPage').then((m) => ({ default: m.LenderOpportunityDetailPage })));
+const LenderOffersPage = React.lazy(() => import('./pages/lender/LenderOffersPage').then((m) => ({ default: m.LenderOffersPage })));
+const LenderMessagesPage = React.lazy(() => import('./pages/lender/LenderMessagesPage').then((m) => ({ default: m.LenderMessagesPage })));
 
-// Super Admin Hub
-import { SuperAdminDashboardPage } from './pages/admin/SuperAdminDashboardPage';
-import { SuperAdminTenantsPage } from './pages/admin/SuperAdminTenantsPage';
-import { SuperAdminServicesPage } from './pages/admin/SuperAdminServicesPage';
-import { SuperAdminImpersonatePage } from './pages/admin/SuperAdminImpersonatePage';
-import { SuperAdminActivityPage } from './pages/admin/SuperAdminActivityPage';
-import { SuperAdminTechnicalConfigPage } from './pages/admin/SuperAdminTechnicalConfigPage';
-import { SuperAdminAccountPage } from './pages/admin/SuperAdminAccountPage';
-import { SuperAdminDocumentsPage } from './pages/admin/SuperAdminDocumentsPage';
-import { AdminAiPage } from './pages/admin/AdminAiPage';
-import { TenantOnboardingWizardPage } from './pages/admin/TenantOnboardingWizardPage';
-import { GenericWhiteLabelLanding } from './pages/landing/GenericWhiteLabelLanding';
-import { LendersSolutionPage } from './pages/solutions/LendersSolutionPage';
-import { FinancialsSolutionPage } from './pages/solutions/FinancialsSolutionPage';
-import { NotariesSolutionPage } from './pages/solutions/NotariesSolutionPage';
-import { SaaSModulesCatalogPage } from './pages/saas/SaaSModulesCatalogPage';
+// 4. Tenant Demo ESTUDIO NOVA & Portales Tenant (Lazy Loaded)
+const EstudioNovaPage = React.lazy(() => import('./pages/demo/nova/EstudioNovaPage').then((m) => ({ default: m.EstudioNovaPage })));
+const EstudioNovaAccessHubPage = React.lazy(() => import('./pages/demo/nova/EstudioNovaAccessHubPage').then((m) => ({ default: m.EstudioNovaAccessHubPage })));
+const TenantSimulatorPage = React.lazy(() => import('./pages/demo/TenantSimulatorPage').then((m) => ({ default: m.TenantSimulatorPage })));
+const TenantWizardPage = React.lazy(() => import('./pages/demo/TenantWizardPage').then((m) => ({ default: m.TenantWizardPage })));
+const TenantInvestorDashboardPage = React.lazy(() => import('./pages/demo/TenantInvestorDashboardPage').then((m) => ({ default: m.TenantInvestorDashboardPage })));
+const TenantInvestorProfilePage = React.lazy(() => import('./pages/demo/TenantInvestorProfilePage').then((m) => ({ default: m.TenantInvestorProfilePage })));
+
+// 5. Portal Notarial & Escribanos (Lazy Loaded)
+const NotaryDashboardPage = React.lazy(() => import('./pages/notary/NotaryDashboardPage').then((m) => ({ default: m.NotaryDashboardPage })));
+const NotaryApplicationsPage = React.lazy(() => import('./pages/notary/NotaryApplicationsPage').then((m) => ({ default: m.NotaryApplicationsPage })));
+const NotaryApplicationDetailPage = React.lazy(() => import('./pages/notary/NotaryApplicationDetailPage').then((m) => ({ default: m.NotaryApplicationDetailPage })));
+const NotaryTasksPage = React.lazy(() => import('./pages/notary/NotaryTasksPage').then((m) => ({ default: m.NotaryTasksPage })));
+const NotaryDocumentsPage = React.lazy(() => import('./pages/notary/NotaryDocumentsPage').then((m) => ({ default: m.NotaryDocumentsPage })));
+const NotarySignaturesPage = React.lazy(() => import('./pages/notary/NotarySignaturesPage').then((m) => ({ default: m.NotarySignaturesPage })));
+const NotaryCalendarPage = React.lazy(() => import('./pages/notary/NotaryCalendarPage').then((m) => ({ default: m.NotaryCalendarPage })));
+const NotaryProfilePage = React.lazy(() => import('./pages/notary/NotaryProfilePage').then((m) => ({ default: m.NotaryProfilePage })));
+
+// 6. Super Admin Hub (Lazy Loaded)
+const SuperAdminDashboardPage = React.lazy(() => import('./pages/admin/SuperAdminDashboardPage').then((m) => ({ default: m.SuperAdminDashboardPage })));
+const SuperAdminTenantsPage = React.lazy(() => import('./pages/admin/SuperAdminTenantsPage').then((m) => ({ default: m.SuperAdminTenantsPage })));
+const SuperAdminServicesPage = React.lazy(() => import('./pages/admin/SuperAdminServicesPage').then((m) => ({ default: m.SuperAdminServicesPage })));
+const SuperAdminImpersonatePage = React.lazy(() => import('./pages/admin/SuperAdminImpersonatePage').then((m) => ({ default: m.SuperAdminImpersonatePage })));
+const SuperAdminActivityPage = React.lazy(() => import('./pages/admin/SuperAdminActivityPage').then((m) => ({ default: m.SuperAdminActivityPage })));
+const SuperAdminTechnicalConfigPage = React.lazy(() => import('./pages/admin/SuperAdminTechnicalConfigPage').then((m) => ({ default: m.SuperAdminTechnicalConfigPage })));
+const SuperAdminAccountPage = React.lazy(() => import('./pages/admin/SuperAdminAccountPage').then((m) => ({ default: m.SuperAdminAccountPage })));
+const SuperAdminDocumentsPage = React.lazy(() => import('./pages/admin/SuperAdminDocumentsPage').then((m) => ({ default: m.SuperAdminDocumentsPage })));
+const AdminAiPage = React.lazy(() => import('./pages/admin/AdminAiPage').then((m) => ({ default: m.AdminAiPage })));
+const TenantOnboardingWizardPage = React.lazy(() => import('./pages/admin/TenantOnboardingWizardPage').then((m) => ({ default: m.TenantOnboardingWizardPage })));
+
+// 7. Solutions & Verticales (Lazy Loaded)
+const GenericWhiteLabelLanding = React.lazy(() => import('./pages/landing/GenericWhiteLabelLanding').then((m) => ({ default: m.GenericWhiteLabelLanding })));
+const LendersSolutionPage = React.lazy(() => import('./pages/solutions/LendersSolutionPage').then((m) => ({ default: m.LendersSolutionPage })));
+const FinancialsSolutionPage = React.lazy(() => import('./pages/solutions/FinancialsSolutionPage').then((m) => ({ default: m.FinancialsSolutionPage })));
+const NotariesSolutionPage = React.lazy(() => import('./pages/solutions/NotariesSolutionPage').then((m) => ({ default: m.NotariesSolutionPage })));
+const SaaSModulesCatalogPage = React.lazy(() => import('./pages/saas/SaaSModulesCatalogPage').then((m) => ({ default: m.SaaSModulesCatalogPage })));
+
 import { TenantProvider } from './contexts/TenantContext';
 import { DemoViewProvider } from './contexts/DemoViewContext';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
@@ -199,7 +215,8 @@ export const App: React.FC = () => {
               {/* Barra de navegación comercial para modo demostración y presentaciones */}
               <DemoSalesModeBar />
 
-              <Routes>
+              <Suspense fallback={<PageLoadingSpinner />}>
+                <Routes>
               {/* ========================================================== */}
               {/* 1. RUTAS PÚBLICAS MARKETPLACE & INSTITUCIONALES           */}
               {/* ========================================================== */}
@@ -1058,7 +1075,8 @@ export const App: React.FC = () => {
               {/* Fallback 404 Institucional */}
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
-            </DemoViewProvider>
+          </Suspense>
+          </DemoViewProvider>
           </TenantProvider>
         </BrowserRouter>
       </AuthProvider>

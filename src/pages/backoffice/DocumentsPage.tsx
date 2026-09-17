@@ -282,7 +282,7 @@ export const DocumentsPage: React.FC = () => {
                         }}
                         className="text-xs font-semibold text-slate-700 hover:text-navy"
                       >
-                        <Eye className="w-3.5 h-3.5 mr-1" /> Ver / Probar
+                        <Eye className="w-3.5 h-3.5 mr-1" /> Ver plantilla
                       </Button>
 
                       <Button
@@ -430,7 +430,7 @@ export const DocumentsPage: React.FC = () => {
                           }}
                           className="text-xs font-bold text-[#102d49]"
                         >
-                          <Edit className="w-3.5 h-3.5 mr-1" /> Editar / Probar
+                          <Edit className="w-3.5 h-3.5 mr-1" /> Modificar plantilla
                         </Button>
 
                         <button

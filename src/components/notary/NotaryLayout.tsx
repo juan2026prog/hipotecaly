@@ -269,8 +269,8 @@ export const NotaryLayout: React.FC<{ children: React.ReactNode; title?: string 
           </div>
         </header>
 
-        {/* Page Body */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        {/* Page Body con espacio inferior seguro */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-24 md:pb-12">
           <div className="max-w-7xl mx-auto space-y-6">{children}</div>
         </main>
       </div>

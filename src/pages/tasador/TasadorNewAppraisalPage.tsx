@@ -329,8 +329,9 @@ export const TasadorNewAppraisalPage: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">País</label>
+                  <label htmlFor="country-input" className="font-semibold text-slate-700 block mb-1">País</label>
                   <input
+                    id="country-input"
                     type="text"
                     value={country}
                     disabled
@@ -339,10 +340,11 @@ export const TasadorNewAppraisalPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">
+                  <label htmlFor="department-select" className="font-semibold text-slate-700 block mb-1">
                     Departamento <span className="text-rose-500">*</span>
                   </label>
                   <select
+                    id="department-select"
                     value={department}
                     onChange={(e) => {
                       setDepartment(e.target.value);
@@ -364,11 +366,12 @@ export const TasadorNewAppraisalPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">
+                  <label htmlFor="neighborhood-input" className="font-semibold text-slate-700 block mb-1">
                     Barrio / Zona <span className="text-rose-500">*</span>
                   </label>
                   {department === 'Montevideo' ? (
                     <select
+                      id="neighborhood-input"
                       value={neighborhood}
                       onChange={(e) => setNeighborhood(e.target.value)}
                       className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#102d49]/20 font-medium"
@@ -382,6 +385,7 @@ export const TasadorNewAppraisalPage: React.FC = () => {
                     </select>
                   ) : (
                     <input
+                      id="neighborhood-input"
                       type="text"
                       placeholder="Ej: La Barra, Punta del Este..."
                       value={neighborhood}
@@ -392,8 +396,9 @@ export const TasadorNewAppraisalPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Localidad / Ciudad</label>
+                  <label htmlFor="city-input" className="font-semibold text-slate-700 block mb-1">Localidad / Ciudad</label>
                   <input
+                    id="city-input"
                     type="text"
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
@@ -403,8 +408,9 @@ export const TasadorNewAppraisalPage: React.FC = () => {
 
                 <div className="sm:col-span-2 grid grid-cols-3 gap-2">
                   <div className="col-span-2">
-                    <label className="font-semibold text-slate-700 block mb-1">Calle / Avenida</label>
+                    <label htmlFor="street-name-input" className="font-semibold text-slate-700 block mb-1">Calle / Avenida</label>
                     <input
+                      id="street-name-input"
                       type="text"
                       placeholder="Ej: Bulevar España"
                       value={streetName}
@@ -413,8 +419,9 @@ export const TasadorNewAppraisalPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="font-semibold text-slate-700 block mb-1">Nº Puerta</label>
+                    <label htmlFor="street-number-input" className="font-semibold text-slate-700 block mb-1">Nº Puerta</label>
                     <input
+                      id="street-number-input"
                       type="text"
                       placeholder="Ej: 2450"
                       value={streetNumber}
@@ -426,8 +433,9 @@ export const TasadorNewAppraisalPage: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="font-semibold text-slate-700 block mb-1">Apto / Unidad</label>
+                    <label htmlFor="unit-apt-input" className="font-semibold text-slate-700 block mb-1">Apto / Unidad</label>
                     <input
+                      id="unit-apt-input"
                       type="text"
                       placeholder="Ej: 402"
                       value={unitOrApt}
@@ -436,8 +444,9 @@ export const TasadorNewAppraisalPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="font-semibold text-slate-700 block mb-1">Piso</label>
+                    <label htmlFor="floor-input" className="font-semibold text-slate-700 block mb-1">Piso</label>
                     <input
+                      id="floor-input"
                       type="text"
                       placeholder="Ej: 4"
                       value={floor}

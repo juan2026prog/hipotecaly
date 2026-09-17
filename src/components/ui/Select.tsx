@@ -18,7 +18,12 @@ export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElemen
 
 export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
   ({ label, error, helperText, className, id, children, options, ...props }, ref) => {
-    const selectId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
+    const generatedId = React.useId();
+    const selectId = id || (label ? label.toLowerCase().replace(/[^a-z0-9]+/g, '-') : generatedId);
+    const errorId = `${selectId}-error`;
+    const helperId = `${selectId}-helper`;
+
+    const describedBy = error ? errorId : helperText ? helperId : undefined;
 
     return (
       <div className="w-full">
@@ -34,6 +39,8 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           <select
             ref={ref}
             id={selectId}
+            aria-invalid={Boolean(error)}
+            aria-describedby={describedBy}
             className={twMerge(
               clsx(
                 'w-full min-h-[46px] md:min-h-[48px] px-4 pr-10 rounded-btn border text-slate-text bg-white transition-colors duration-150 appearance-none text-sm md:text-base font-medium',
@@ -56,9 +63,15 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             <ChevronDown className="w-4 h-4" />
           </div>
         </div>
-        {error && <p className="mt-1.5 text-xs text-rose-600">{error}</p>}
+        {error && (
+          <p id={errorId} role="alert" className="mt-1.5 text-xs text-rose-600 font-medium">
+            {error}
+          </p>
+        )}
         {helperText && !error && (
-          <p className="mt-1.5 text-xs text-slate-muted">{helperText}</p>
+          <p id={helperId} className="mt-1.5 text-xs text-slate-muted">
+            {helperText}
+          </p>
         )}
       </div>
     );

@@ -96,7 +96,7 @@ export const Navbar: React.FC = () => {
               size="sm"
               className={`text-xs font-bold shadow-xs px-4 ${isWhiteLabel ? 'bg-[#173a5e] hover:bg-[#102d49] text-white uppercase tracking-wider' : ''}`}
             >
-              {isWhiteLabel ? 'Solicitar Financiación' : 'Solicitar demo'} <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+              Solicitar Financiación <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
             </Button>
           </Link>
         </div>
@@ -146,7 +146,7 @@ export const Navbar: React.FC = () => {
                 size="md"
                 className={`w-full font-bold ${isWhiteLabel ? 'bg-[#173a5e] text-white uppercase tracking-wider' : ''}`}
               >
-                {isWhiteLabel ? 'Solicitar Financiación' : 'Solicitar demo'} <ArrowRight className="w-4 h-4 ml-1.5" />
+                Solicitar Financiación <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
             </Link>
             <Link to="/mi-cuenta" className="w-full" onClick={() => setMobileMenuOpen(false)}>
