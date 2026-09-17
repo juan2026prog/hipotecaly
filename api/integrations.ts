@@ -325,7 +325,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // --------------------------------------------------------------------------
     // 2. GET /api/integrations/kyc/status
     // --------------------------------------------------------------------------
-    if (cleanPath.includes('status') && req.method === 'GET') {
+    if (cleanPath.includes('kyc') && cleanPath.includes('status') && req.method === 'GET') {
       const sessionId = (req.query?.sessionId || req.query?.session_id) as string;
       const caseId = (req.query?.caseId || req.query?.case_id) as string;
       const userId = (req.query?.userId || req.query?.user_id) as string;
