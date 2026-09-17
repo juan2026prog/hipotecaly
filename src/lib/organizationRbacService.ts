@@ -27,6 +27,17 @@ export interface MemberRoleAssignment {
   role?: OrganizationRole;
 }
 
+export interface OrganizationMemberRbac {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  is_active: boolean;
+  legacy_role: string;
+  email?: string;
+  full_name?: string;
+  roles: OrganizationRole[];
+}
+
 export async function getPermissionDefinitions(): Promise<PermissionDefinition[]> {
   const { data, error } = await supabase
     .from('permission_definitions')
@@ -67,6 +78,51 @@ export async function getOrganizationRoles(organizationId: string): Promise<Orga
     ...role,
     permissions: grouped.get(role.id) || [],
   })) as OrganizationRole[];
+}
+
+export async function getOrganizationMembersRbac(organizationId: string): Promise<OrganizationMemberRbac[]> {
+  const { data: members, error } = await supabase
+    .from('organization_members')
+    .select('id, organization_id, user_id, role, is_active, profiles(email, first_name, last_name)')
+    .eq('organization_id', organizationId)
+    .order('created_at');
+  if (error) throw error;
+
+  const roles = await getOrganizationRoles(organizationId);
+  const roleMap = new Map(roles.map((role) => [role.id, role]));
+  const memberIds = (members || []).map((m: any) => m.id);
+
+  const assignmentsByMember = new Map<string, OrganizationRole[]>();
+  if (memberIds.length > 0) {
+    const { data: assignments, error: assignmentError } = await supabase
+      .from('organization_member_role_assignments')
+      .select('member_id, role_id')
+      .in('member_id', memberIds);
+    if (assignmentError) throw assignmentError;
+
+    for (const assignment of assignments || []) {
+      const role = roleMap.get((assignment as any).role_id);
+      if (!role) continue;
+      const list = assignmentsByMember.get((assignment as any).member_id) || [];
+      list.push(role);
+      assignmentsByMember.set((assignment as any).member_id, list);
+    }
+  }
+
+  return (members || []).map((member: any) => {
+    const profile = Array.isArray(member.profiles) ? member.profiles[0] : member.profiles;
+    const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ');
+    return {
+      id: member.id,
+      organization_id: member.organization_id,
+      user_id: member.user_id,
+      is_active: Boolean(member.is_active),
+      legacy_role: member.role,
+      email: profile?.email || undefined,
+      full_name: fullName || profile?.email || undefined,
+      roles: assignmentsByMember.get(member.id) || [],
+    } as OrganizationMemberRbac;
+  });
 }
 
 export async function getMemberRoleAssignments(memberId: string): Promise<MemberRoleAssignment[]> {
@@ -129,4 +185,8 @@ export function assignRoleToMember(organizationId: string, memberId: string, rol
 
 export function removeRoleFromMember(organizationId: string, memberId: string, roleId: string) {
   return callRolesApi({ action: 'remove-role', organizationId, memberId, roleId });
+}
+
+export function inviteOrganizationMemberWithRole(organizationId: string, email: string, roleId: string) {
+  return callRolesApi({ action: 'invite-with-role', organizationId, email, roleId });
 }
