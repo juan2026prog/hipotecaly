@@ -95,34 +95,34 @@ class AdminAiService {
   public async getStatus(): Promise<AdminAiStatus> {
     const defaultStatus: AdminAiStatus = {
       provider: 'openai',
-      configured: true,
-      active: true,
-      maskedKey: 'sk-proj-••••••••••••••••3a9F',
+      configured: false,
+      active: false,
+      maskedKey: '',
       lastTestedAt: new Date().toISOString(),
-      lastTestStatus: 'PASS',
-      lastTestMessage: 'Conexión activa con OpenAI',
+      lastTestStatus: 'NOT_CONFIGURED',
+      lastTestMessage: 'OPENAI_API_KEY no configurada',
       secretSource: 'vault',
       configuredModels: {
-        extraction: 'gpt-5.6-luna',
-        reasoning: 'gpt-5.6-terra',
-        deep: 'gpt-5.6-sol',
+        extraction: 'gpt-4o-mini',
+        reasoning: 'gpt-4o',
+        deep: 'o3-mini',
       },
       modelsStatus: [
-        { role: 'Lectura de documentos', model: 'gpt-5.6-luna', accessible: true },
-        { role: 'Evaluación crediticia', model: 'gpt-5.6-terra', accessible: true },
-        { role: 'Tasación asistida', model: 'gpt-5.6-sol', accessible: true },
+        { role: 'Lectura de documentos', model: 'gpt-4o-mini', accessible: false },
+        { role: 'Evaluación crediticia', model: 'gpt-4o', accessible: false },
+        { role: 'Tasación asistida', model: 'o3-mini', accessible: false },
       ],
       systemHealth: {
         supabaseConnected: true,
-        vaultActive: true,
+        vaultActive: false,
         memory3Available: true,
-        walletCasosActive: true,
+        walletCasosActive: false,
       },
     };
 
     try {
       const headers = await this.getAuthHeaders();
-      const res = await fetch('/api/admin/ai/status', {
+      const res = await fetch('/api/integrations/ai/status', {
         method: 'GET',
         headers,
       });
@@ -133,7 +133,33 @@ class AdminAiService {
         return defaultStatus;
       }
 
-      return await parseSafeJson<AdminAiStatus>(res, defaultStatus);
+      const data = await parseSafeJson<any>(res, defaultStatus);
+      return {
+        provider: 'openai',
+        configured: Boolean(data.configured),
+        active: Boolean(data.active),
+        maskedKey: data.maskedKey || (data.configured ? 'sk-••••••••••••••••' : ''),
+        lastTestedAt: new Date().toISOString(),
+        lastTestStatus: data.status === 'HEALTHY' ? 'PASS' : data.status || 'NOT_CONFIGURED',
+        lastTestMessage: data.message || (data.configured ? 'Conexión activa con OpenAI' : 'No configurado'),
+        secretSource: 'vault',
+        configuredModels: {
+          extraction: data.models?.extraction || 'gpt-4o-mini',
+          reasoning: data.models?.reasoning || 'gpt-4o',
+          deep: data.models?.deep || 'o3-mini',
+        },
+        modelsStatus: [
+          { role: 'Lectura de documentos', model: data.models?.extraction || 'gpt-4o-mini', accessible: Boolean(data.active) },
+          { role: 'Evaluación crediticia', model: data.models?.reasoning || 'gpt-4o', accessible: Boolean(data.active) },
+          { role: 'Tasación asistida', model: data.models?.deep || 'o3-mini', accessible: Boolean(data.active) },
+        ],
+        systemHealth: {
+          supabaseConnected: true,
+          vaultActive: Boolean(data.configured),
+          memory3Available: true,
+          walletCasosActive: Boolean(data.active),
+        },
+      };
     } catch {
       return defaultStatus;
     }

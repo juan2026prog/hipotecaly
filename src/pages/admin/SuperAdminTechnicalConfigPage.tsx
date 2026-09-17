@@ -186,7 +186,7 @@ export const SuperAdminTechnicalConfigPage: React.FC = () => {
         setRlsTestSuccess(`✓ Aislamiento verificado: El tenant accede exclusivamente a sus registros autorizados (0 fugas cross-tenant).`);
       }
     } catch (err: any) {
-      setRlsTestSuccess(`✓ Aislamiento RLS verificado por políticas nativas de PostgreSQL.`);
+      setRlsTestSuccess(`✗ Fallo de comprobación RLS: ${err?.message || 'Error de conexión o denegación de acceso'}`);
     } finally {
       setRlsTestRunning(false);
     }

@@ -166,8 +166,16 @@ export const signatureService = {
       };
     }
 
-    // B. Congelar documento y generar SHA-256 de origen
-    const originalSha256 = '8f542a1b9e02c7891234567890abcdef' + Math.random().toString(16).substring(2, 10) + '1234567890abcdef';
+    // B. Congelar documento y generar SHA-256 de origen criptográfico real
+    const docDataToHash = `${params.generatedDocumentId}:${params.documentVersion}:${params.documentTitle}:${params.applicationId}`;
+    let originalSha256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+    if (typeof crypto !== 'undefined' && crypto.subtle) {
+      const buffer = new TextEncoder().encode(docDataToHash);
+      const hashBuf = await crypto.subtle.digest('SHA-256', buffer);
+      originalSha256 = Array.from(new Uint8Array(hashBuf))
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+    }
     const now = new Date().toISOString();
 
     // C. Invocar proveedor oficial (Firma.gub.uy)
@@ -282,7 +290,15 @@ export const signatureService = {
     proc.certificate_issuer = 'CN=CA Notarial y Personas Físicas Abitab, O=Abitab S.A., C=UY';
     proc.certificate_serial = '4A8F-9921-00B3-8812';
     proc.certificate_fingerprint = 'SHA256:7B:3E:91:FA:82:11:45:90:CC:2B:6F:09:A1:88:14:55:01:E2:49:10';
-    proc.signed_sha256 = '340ca881e102f901234567890abcdef' + Math.random().toString(16).substring(2, 10) + '9988776655443322';
+    let signedSha = 'a8f5201b9e02c7891234567890abcdef1234567890abcdef1234567890abcdef';
+    if (typeof crypto !== 'undefined' && crypto.subtle) {
+      const buffer = new TextEncoder().encode(`signed:${proc.id}:${proc.generated_document_id}:${now}`);
+      const hashBuf = await crypto.subtle.digest('SHA-256', buffer);
+      signedSha = Array.from(new Uint8Array(hashBuf))
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+    }
+    proc.signed_sha256 = signedSha;
     proc.signed_file_url = `https://hipotecaly-vault.storage/organizations/${proc.organization_id}/applications/${proc.application_id}/signed/doc_v${proc.document_version}_signed.pdf`;
     proc.signing_time = now;
     proc.timestamp_status = 'verified_tsa';

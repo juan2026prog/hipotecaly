@@ -377,7 +377,7 @@ export class GoogleCalendarServerService {
       return {
         success: false,
         status: 'sync_error',
-        error: 'El usuario no tiene Google Calendar conectado.',
+        error: 'NOT_CONFIGURED: El usuario no tiene Google Calendar conectado.',
       };
     }
 

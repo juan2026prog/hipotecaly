@@ -17,6 +17,7 @@ export type CrawlerRunStatus =
   | 'PENDING'
   | 'RUNNING'
   | 'COMPLETED'
+  | 'COMPLETED_WITH_ERRORS'
   | 'PARTIAL'
   | 'FAILED'
   | 'RATE_LIMITED'

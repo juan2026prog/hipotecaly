@@ -269,20 +269,13 @@ export async function syncCalendarEventWithGoogleApi(params: {
     // Fallback
   }
 
-  // Fallback simulado cuando el servidor serverless no está activo
+  // Fallback honesto cuando el servidor de sincronización no está configurado
   const isConn = (await getUserCalendarIntegrationState(params.userId)).isConnected;
   if (!isConn) {
-    return { success: false, status: 'sync_error', error: 'Google Calendar no conectado' };
+    return { success: false, status: 'sync_error', error: 'NOT_CONFIGURED: Google Calendar no está conectado para este usuario.' };
   }
 
-  if (params.action === 'insert') {
-    const mockId = `gcal_evt_${Date.now()}`;
-    return { success: true, googleEventId: mockId, status: 'synced' };
-  }
-  if (params.action === 'patch') {
-    return { success: true, googleEventId: params.googleCalendarEventId, status: 'synced' };
-  }
-  return { success: true, status: 'synced' };
+  return { success: false, status: 'sync_error', error: 'NOT_CONFIGURED: El servicio de sincronización automática de Google Calendar no está disponible en este entorno.' };
 }
 
 /**

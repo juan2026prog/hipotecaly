@@ -81,5 +81,84 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  return res.status(200).json({ status: 'ok' });
+  if (req.method === 'POST') {
+    const authGuard = await requireRole(req, ['super_admin', 'tenant_admin', 'platform_admin']);
+    if (!authGuard.authorized) {
+      return res.status(authGuard.status || 403).json({
+        success: false,
+        configured: false,
+        error: authGuard.error || 'Acceso denegado: Se requieren permisos administrativos.',
+      });
+    }
+
+    let bodyData = req.body;
+    if (typeof bodyData === 'string') {
+      try {
+        bodyData = JSON.parse(bodyData);
+      } catch {
+        bodyData = {};
+      }
+    }
+
+    const { organizationId, domainId, domain } = bodyData || {};
+
+    if (!organizationId && !domainId && !domain) {
+      return res.status(400).json({
+        success: false,
+        configured: false,
+        error: 'Faltan parámetros organizationId y domainId en el cuerpo de la solicitud.',
+      });
+    }
+
+    const vercelToken = process.env.VERCEL_TOKEN;
+    const vercelProjectId = process.env.VERCEL_PROJECT_ID;
+    const vercelTeamId = process.env.VERCEL_TEAM_ID;
+
+    if (!vercelToken || !vercelProjectId) {
+      return res.status(200).json({
+        success: false,
+        configured: false,
+        status: 'NOT_CONFIGURED',
+        isVerified: false,
+        error: 'VERCEL_TOKEN o VERCEL_PROJECT_ID no configurados en las variables de entorno de Vercel.',
+      });
+    }
+
+    try {
+      const teamParam = vercelTeamId ? `?teamId=${encodeURIComponent(vercelTeamId)}` : '';
+      const domainToCheck = domain || 'custom.domain.uy';
+      const verifyUrl = `https://api.vercel.com/v9/projects/${encodeURIComponent(vercelProjectId)}/domains/${encodeURIComponent(domainToCheck)}/verify${teamParam}`;
+
+      const verifyRes = await fetch(verifyUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${vercelToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const verifyData = await verifyRes.json().catch(() => ({}));
+      const isVerified = Boolean(verifyData?.verified);
+      const domainStatus = isVerified ? 'VERIFIED' : verifyRes.ok ? 'DNS_PENDING' : 'FAILED';
+
+      return res.status(200).json({
+        success: isVerified,
+        configured: true,
+        status: domainStatus,
+        isVerified,
+        sslStatus: isVerified ? 'active' : 'pending',
+        statusMessage: isVerified ? 'Dominio verificado con éxito en Vercel Edge Network.' : 'Pendiente de propagación DNS de registros CNAME/TXT.',
+        verificationDetails: verifyData,
+      });
+    } catch (err: unknown) {
+      return res.status(500).json({
+        success: false,
+        configured: true,
+        status: 'FAILED',
+        error: err instanceof Error ? err.message : 'Error inesperado al verificar dominio.',
+      });
+    }
+  }
+
+  return res.status(405).json({ error: 'METHOD_NOT_ALLOWED', message: 'Método no soportado.' });
 }

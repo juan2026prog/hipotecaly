@@ -20,6 +20,19 @@ export interface CommunicationTemplate {
   version: number;
 }
 
+export type CommunicationStatus =
+  | 'CREATED'
+  | 'QUEUED'
+  | 'PROVIDER_ACCEPTED'
+  | 'DELIVERED'
+  | 'FAILED'
+  | 'NOT_CONFIGURED'
+  | 'LINK_OPENED'
+  | 'delivered'
+  | 'sent'
+  | 'failed'
+  | 'pending';
+
 export interface CommunicationLog {
   id: string;
   application_id: string;
@@ -30,7 +43,7 @@ export interface CommunicationLog {
   template_version: number;
   subject?: string;
   message_content: string;
-  status: 'delivered' | 'sent' | 'failed' | 'pending';
+  status: CommunicationStatus;
   delivery_type: 'AUTOMÁTICA' | 'MANUAL';
   delivery_mode?: 'demo' | 'live';
   sent_by_user?: string;
@@ -326,6 +339,17 @@ export async function sendApplicationCommunication(params: {
 
   const user = params.userName || params.sentByUser || 'Sistema';
 
+  // Zero False Success: Determinar estado honesto del canal
+  let initialStatus: CommunicationStatus = 'NOT_CONFIGURED';
+  if (params.channel === 'whatsapp' && params.deliveryType === 'MANUAL') {
+    initialStatus = 'LINK_OPENED';
+  } else if (isDemo) {
+    initialStatus = 'QUEUED';
+  } else {
+    // Si no hay integración de Resend / Twilio configurada en el servidor:
+    initialStatus = 'NOT_CONFIGURED';
+  }
+
   const newComm: CommunicationLog = {
     id: `comm-${Date.now()}`,
     application_id: params.applicationId,
@@ -336,7 +360,7 @@ export async function sendApplicationCommunication(params: {
     template_version: template?.version || 1,
     subject: finalSubject,
     message_content: finalContent,
-    status: 'delivered',
+    status: initialStatus,
     delivery_type: params.deliveryType,
     delivery_mode: isDemo ? 'demo' : 'live',
     sent_by_user: user,
@@ -354,11 +378,11 @@ export async function sendApplicationCommunication(params: {
     organizationId: params.organizationId,
     userName: user,
     userRole: 'operator',
-    action: `Envío de comunicación (${params.deliveryType} - ${isDemo ? 'DEMO' : 'PRODUCCIÓN'})`,
+    action: `Envío de comunicación (${params.deliveryType} - Estado: ${initialStatus})`,
     module: 'Comunicaciones',
     recordIdentifier: `${params.channel.toUpperCase()} — ${params.recipient}`,
     applicationId: params.applicationId,
-    newValue: isDemo ? `Simulación Demo: ${eventName}` : eventName,
+    newValue: isDemo ? `Simulación Demo: ${eventName} (${initialStatus})` : `${eventName} (${initialStatus})`,
   });
 
   return newComm;

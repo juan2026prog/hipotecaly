@@ -574,14 +574,26 @@ export const TenantInvestorDashboardPage: React.FC = () => {
               };
             });
 
-            // Combinar garantizando las iniciales
-            const combined = [...mappedOpps];
-            for (const item of INITIAL_OPPORTUNITIES) {
-              if (!combined.some(c => c.id === item.id || c.public_id === item.public_id)) {
-                combined.push(item);
+            const isDemoTenant = tenant.id === 'd0000000-0000-0000-0000-000000000001' || tenant.slug === 'estudio-nova' || tenant.slug === 'demo';
+
+            if (isDemoTenant) {
+              const combined = [...mappedOpps];
+              for (const item of INITIAL_OPPORTUNITIES) {
+                if (!combined.some(c => c.id === item.id || c.public_id === item.public_id)) {
+                  combined.push(item);
+                }
               }
+              setOpportunities(combined);
+            } else {
+              setOpportunities(mappedOpps);
             }
-            setOpportunities(combined);
+          } else {
+            const isDemoTenant = tenant.id === 'd0000000-0000-0000-0000-000000000001' || tenant.slug === 'estudio-nova' || tenant.slug === 'demo';
+            if (isDemoTenant) {
+              setOpportunities(INITIAL_OPPORTUNITIES);
+            } else {
+              setOpportunities([]);
+            }
           }
         } catch (err) {
           console.warn('Error conectando a Supabase para oportunidades:', err);

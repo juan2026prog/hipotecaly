@@ -91,9 +91,8 @@ class AdminSystemHealthService {
         database: {
           name: 'Base de datos',
           provider: 'Supabase PostgreSQL 15.6',
-          status: 'OPERATIVO',
-          latencyMs: 14,
-          message: 'PostgreSQL conectado',
+          status: 'NO VERIFICADO',
+          message: 'Pendiente de prueba de conexión en runtime',
           dataTestId: 'service-db-status',
         },
         storage: {

@@ -347,7 +347,7 @@ export class IngestionEngine {
    */
   public async executeRun(
     sourceCode: string,
-    options?: DiscoverOptions & { runType?: CrawlerRunType; customPayloads?: RawListingPayload[] }
+    options?: DiscoverOptions & { runType?: CrawlerRunType; customPayloads?: RawListingPayload[]; dryRun?: boolean }
   ): Promise<IngestionRunResult> {
     const startTime = Date.now();
     const runId = `run_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
@@ -397,6 +397,12 @@ export class IngestionEngine {
           if (isUnchanged) {
             listingsUnchanged++;
             this.lifecycleManager.markSeen(listingKey, raw.sourceCode);
+            continue;
+          }
+
+          // Si es dryRun, no mutamos el almacenamiento persistente
+          if (options?.dryRun) {
+            listingsNew++;
             continue;
           }
 
@@ -478,7 +484,13 @@ export class IngestionEngine {
         }
       }
 
-      status = errorsCount > 0 && listingsDiscovered === 0 ? 'FAILED' : 'COMPLETED';
+      if (errorsCount > 0 && listingsDiscovered === 0) {
+        status = 'FAILED';
+      } else if (errorsCount > 0) {
+        status = 'COMPLETED_WITH_ERRORS';
+      } else {
+        status = 'COMPLETED';
+      }
     } catch (runErr: any) {
       status = 'FAILED';
       errorsCount++;

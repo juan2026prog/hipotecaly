@@ -228,6 +228,7 @@ export class AiService {
   public async getAiStatus(): Promise<{
     configured: boolean;
     active: boolean;
+    status?: string;
     models: {
       extraction: string;
       reasoning: string;
@@ -236,17 +237,29 @@ export class AiService {
     };
   }> {
     try {
-      const response = await fetch('/api/ai/status');
+      const response = await fetch('/api/integrations/ai/status');
       if (response.ok) {
-        return await response.json();
+        const data = await response.json();
+        return {
+          configured: Boolean(data.configured),
+          active: Boolean(data.active),
+          status: data.status || (data.configured ? 'HEALTHY' : 'NOT_CONFIGURED'),
+          models: data.models || {
+            extraction: 'gpt-4o-mini',
+            reasoning: 'gpt-4o',
+            deep: 'o3-mini',
+            embeddings: 'text-embedding-3-small',
+          },
+        };
       }
     } catch {
       // Fallback
     }
 
     return {
-      configured: true,
-      active: true,
+      configured: false,
+      active: false,
+      status: 'NOT_CONFIGURED',
       models: {
         extraction: 'gpt-4o-mini',
         reasoning: 'gpt-4o',

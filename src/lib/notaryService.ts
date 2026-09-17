@@ -815,10 +815,10 @@ export const notaryService = {
         });
         return { success: true };
       }
-    } catch {
-      // Fallback
+      return { success: false, error: error.message };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Error de conexión al actualizar estado notarial' };
     }
-    return { success: true };
   },
 
   // 7. Checklist Notarial
@@ -873,10 +873,10 @@ export const notaryService = {
         .eq('id', itemId);
 
       if (!error) return { success: true };
-    } catch {
-      // Fallback
+      return { success: false, error: error.message };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Error al actualizar ítem de checklist' };
     }
-    return { success: true };
   },
 
   // 8. Observaciones Notariales Estructuradas
@@ -906,6 +906,8 @@ export const notaryService = {
   },
 
   async createNotaryObservation(observation: Omit<NotaryObservation, 'id' | 'created_at' | 'updated_at'>) {
+    const isDemo = isDemoMode({ organizationId: observation.organization_id }) || observation.application_id.startsWith('e0000');
+
     try {
       const { data, error } = await supabase
         .from('notary_observations')
@@ -925,20 +927,31 @@ export const notaryService = {
         });
         return { data: data as NotaryObservation, error: null };
       }
+      if (!isDemo && error) {
+        return { data: null, error: error.message };
+      }
     } catch (err: any) {
-      return { data: null, error: err };
+      if (!isDemo) {
+        return { data: null, error: err?.message || 'Error al crear observación notarial' };
+      }
     }
 
-    const mockNew: NotaryObservation = {
-      id: `obs-new-${Date.now()}`,
-      ...observation,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    return { data: mockNew, error: null };
+    if (isDemo) {
+      const mockNew: NotaryObservation = {
+        id: `obs-new-${Date.now()}`,
+        ...observation,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      return { data: mockNew, error: null };
+    }
+
+    return { data: null, error: 'No se pudo persistir la observación notarial en base de datos.' };
   },
 
   async resolveNotaryObservation(observationId: string, organizationId: string, applicationId: string, resolvedBy: string, notes?: string) {
+    const isDemo = isDemoMode({ organizationId }) || applicationId.startsWith('e0000');
+
     try {
       const { error } = await supabase
         .from('notary_observations')
@@ -958,10 +971,20 @@ export const notaryService = {
         });
         return { success: true };
       }
-    } catch {
-      // Fallback
+      if (!isDemo && error) {
+        return { success: false, error: error.message };
+      }
+    } catch (err: any) {
+      if (!isDemo) {
+        return { success: false, error: err?.message || 'Error al resolver observación notarial' };
+      }
     }
-    return { success: true };
+
+    if (isDemo) {
+      return { success: true };
+    }
+
+    return { success: false, error: 'No se pudo actualizar el estado de la observación en base de datos.' };
   },
 
   // 9. Perfil Profesional del Escribano (Caja Notarial, Firma Digital, Estudio)

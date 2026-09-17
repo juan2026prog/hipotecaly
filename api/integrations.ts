@@ -346,6 +346,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (sessionId) {
         query = query.eq('provider_session_id', sessionId);
       } else if (caseId) {
+        // Validar propiedad del caso/expediente antes de responder
+        if (!authGuard.data.isSuperAdmin) {
+          const { data: appData } = await supabaseAdmin
+            .from('applications')
+            .select('organization_id, borrower_id')
+            .or(`id.eq.${caseId},public_id.eq.${caseId}`)
+            .maybeSingle();
+
+          if (appData) {
+            const isOwner = appData.borrower_id === authGuard.data.userId;
+            const isOrgMember = appData.organization_id === authGuard.data.organizationId;
+            if (!isOwner && !isOrgMember) {
+              return res.status(403).json({
+                error: 'ACCESO_DENEGADO_KYC_CASE',
+                message: 'No tienes autorización para consultar el estado KYC de este expediente.',
+              });
+            }
+          }
+        }
         query = query.eq('case_id', caseId).order('created_at', { ascending: false }).limit(1);
       } else if (userId) {
         // Solo Super Admin o el propio usuario pueden consultar su KYC
@@ -367,6 +386,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             mode: (process.env.KYC_MODE || 'sandbox').toLowerCase().trim(),
           },
         });
+      }
+
+      // Validar pertenencia del registro recuperado al caller
+      if (!authGuard.data.isSuperAdmin && data.tenant_id && authGuard.data.organizationId) {
+        if (data.tenant_id !== authGuard.data.organizationId && data.user_id !== authGuard.data.userId) {
+          return res.status(403).json({ error: 'Acceso denegado a este registro de verificación KYC.' });
+        }
       }
 
       return res.status(200).json({ success: true, verification: data });
@@ -596,6 +622,92 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           mode: (process.env.SIGNATURE_MODE || 'live').toLowerCase(),
           configured: Boolean(process.env.FIRMA_GUB_API_BASE_URL || process.env.FIRMA_GUB_BASE_URL),
         },
+      });
+    }
+
+    // --------------------------------------------------------------------------
+    // 5. GET /api/integrations/signature/status
+    // --------------------------------------------------------------------------
+    if (cleanPath.includes('signature') && cleanPath.includes('status') && req.method === 'GET') {
+      const processId = (req.query?.processId || req.query?.process_id || req.query?.id) as string;
+      if (!processId) {
+        return res.status(400).json({ error: 'Falta parámetro processId' });
+      }
+
+      const { data: proc, error: pErr } = await supabaseAdmin
+        .from('signature_processes')
+        .select(`*, documents:signature_documents(*), signers:signature_signers(*)`)
+        .or(`id.eq.${processId},provider_process_id.eq.${processId}`)
+        .maybeSingle();
+
+      if (pErr || !proc) {
+        return res.status(404).json({
+          error: 'PROCESS_NOT_FOUND',
+          message: 'El proceso de firma no fue encontrado en el sistema.',
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        process: proc,
+      });
+    }
+
+    // --------------------------------------------------------------------------
+    // 6. GET /api/integrations/ai/status y POST /api/integrations/ai/test
+    // --------------------------------------------------------------------------
+    if (cleanPath.includes('ai')) {
+      const apiKey = process.env.OPENAI_API_KEY;
+      const isEnabled = process.env.AI_ENABLED !== 'false';
+
+      if (!isEnabled) {
+        return res.status(200).json({
+          configured: Boolean(apiKey),
+          active: false,
+          status: 'DISABLED',
+          provider: 'OpenAI',
+          message: 'El servicio de IA se encuentra desactivado administrativamente.',
+        });
+      }
+
+      if (!apiKey || apiKey.trim().length === 0) {
+        return res.status(200).json({
+          configured: false,
+          active: false,
+          status: 'NOT_CONFIGURED',
+          provider: 'OpenAI',
+          message: 'OPENAI_API_KEY no está configurada en el entorno del servidor.',
+        });
+      }
+
+      return res.status(200).json({
+        configured: true,
+        active: true,
+        status: 'HEALTHY',
+        provider: 'OpenAI',
+        models: {
+          extraction: process.env.OPENAI_MODEL_EXTRACTION || 'gpt-4o-mini',
+          reasoning: process.env.OPENAI_MODEL_REASONING || 'gpt-4o',
+          deep: process.env.OPENAI_MODEL_DEEP || 'o3-mini',
+          embeddings: 'text-embedding-3-small',
+        },
+      });
+    }
+
+    // --------------------------------------------------------------------------
+    // 7. GET /api/integrations/calendar/status
+    // --------------------------------------------------------------------------
+    if (cleanPath.includes('calendar')) {
+      const gcalClientId = process.env.GOOGLE_CALENDAR_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
+      const configured = Boolean(gcalClientId && gcalClientId.trim().length > 0);
+
+      return res.status(200).json({
+        configured,
+        provider: 'google_calendar',
+        status: configured ? 'PARTIAL' : 'NOT_CONFIGURED',
+        message: configured
+          ? 'Google Calendar disponible mediante sincronización OAuth individual y enlaces directos.'
+          : 'GOOGLE_CALENDAR_CLIENT_ID no configurado.',
       });
     }
 
