@@ -26,6 +26,8 @@ export interface Lender {
   created_at: string;
   updated_at: string;
   rules?: LenderRules;
+  source?: 'manual' | 'csv' | 'xlsx' | 'white_label';
+  onboarding_status?: 'lead' | 'invited' | 'onboarding' | 'active' | 'paused' | 'discarded';
   _source?: 'demo' | 'database';
 }
 
@@ -88,6 +90,8 @@ export async function getLendersList(options?: {
       is_active: row.is_active,
       created_at: row.created_at,
       updated_at: row.updated_at,
+      source: row.source || 'manual',
+      onboarding_status: row.onboarding_status || 'active',
       _source: 'database',
       rules: row.lender_rules?.[0]
         ? {
@@ -112,6 +116,59 @@ export async function getLendersList(options?: {
   } catch (err: unknown) {
     return { lenders: [], error: err instanceof Error ? err.message : 'Error al consultar prestamistas' };
   }
+}
+
+export interface CreateLenderInput {
+  organization_id: string;
+  display_name: string;
+  legal_name?: string;
+  contact_name?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  lender_type?: string;
+  available_capital?: number;
+  currency?: string;
+  notes?: string;
+  source?: 'manual' | 'csv' | 'xlsx';
+}
+
+export async function createLender(input: CreateLenderInput): Promise<{ lender: Lender | null; error: string | null }> {
+  const payload = {
+    organization_id: input.organization_id,
+    name: input.display_name,
+    display_name: input.display_name,
+    legal_name: input.legal_name || null,
+    contact_name: input.contact_name || input.display_name,
+    contact_email: input.contact_email || null,
+    contact_phone: input.contact_phone || null,
+    lender_type: input.lender_type || 'private_investor',
+    available_capital: input.available_capital ?? null,
+    currency: input.currency || 'USD',
+    notes: input.notes || null,
+    source: input.source || 'manual',
+    imported_at: input.source && input.source !== 'manual' ? new Date().toISOString() : null,
+    onboarding_status: 'active',
+    status: 'active',
+    is_active: true,
+  };
+  const { data, error } = await supabase.from('lenders').insert(payload).select('*').single();
+  if (error) return { lender: null, error: error.message };
+  return { lender: data as Lender, error: null };
+}
+
+export async function importLenders(
+  organizationId: string,
+  rows: Array<Omit<CreateLenderInput, 'organization_id'>>,
+  source: 'csv' | 'xlsx'
+): Promise<{ created: number; errors: string[] }> {
+  let created = 0;
+  const errors: string[] = [];
+  for (const [index, row] of rows.entries()) {
+    if (!row.display_name?.trim()) { errors.push(\`Fila \${index + 2}: falta nombre\`); continue; }
+    const result = await createLender({ ...row, organization_id: organizationId, source });
+    if (result.error) errors.push(\`Fila \${index + 2}: \${result.error}\`); else created += 1;
+  }
+  return { created, errors };
 }
 
 export async function getLenderById(
