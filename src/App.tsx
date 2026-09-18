@@ -28,6 +28,7 @@ const SignatureReturnPage = React.lazy(() => import('./pages/signature/Signature
 
 // 2. Backoffice Pages (Lazy Loaded)
 const DashboardPage = React.lazy(() => import('./pages/backoffice/DashboardPage').then((m) => ({ default: m.DashboardPage })));
+const OrganizationDashboardPage = React.lazy(() => import('./pages/backoffice/OrganizationDashboardPage').then((m) => ({ default: m.OrganizationDashboardPage })));
 const ApplicationsPage = React.lazy(() => import('./pages/backoffice/ApplicationsPage').then((m) => ({ default: m.ApplicationsPage })));
 const ApplicationDetailPage = React.lazy(() => import('./pages/backoffice/ApplicationDetailPage').then((m) => ({ default: m.ApplicationDetailPage })));
 const ClientsPage = React.lazy(() => import('./pages/backoffice/ClientsPage').then((m) => ({ default: m.ClientsPage })));
