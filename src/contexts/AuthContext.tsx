@@ -270,197 +270,62 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    const isLocalOrPreview = !import.meta.env.PROD || (typeof window !== 'undefined' && (window.location.port === '4173' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'));
-
-    // Verificación de sesión de Master Admin persistente (ÚNICAMENTE en desarrollo o preview local)
-    const isMasterStored = isLocalOrPreview && typeof window !== 'undefined' && window.localStorage.getItem('hipotecaly_master_user') === 'admin@test.com';
-    if (isMasterStored) {
-      const masterUser: User = {
-        id: 'u-master-superadmin-001',
-        app_metadata: { role: 'super_admin', is_super_admin: true },
-        user_metadata: { first_name: 'Admin', last_name: 'Total', role: 'super_admin' },
-        aud: 'authenticated',
-        created_at: new Date().toISOString(),
-        email: 'admin@test.com',
-      } as any;
-      setUser(masterUser);
-      setUserRole('super_admin');
-      setIsSuperAdmin(true);
-      setMemberships([
-        { organizationId: 'a0000000-0000-0000-0000-000000000001', role: 'super_admin', isActive: true },
-        { organizationId: 'd0000000-0000-0000-0000-000000000001', role: 'super_admin', isActive: true },
-      ]);
-      setLoading(false);
-      return;
-    }
-
-    const storedMockUser = isLocalOrPreview && typeof window !== 'undefined' ? window.localStorage.getItem('hipotecaly_mock_active_user') : null;
-    if (storedMockUser) {
-      try {
-        const parsed = JSON.parse(storedMockUser);
-        setUser(parsed.mockUser);
-        setUserRole(parsed.role);
-        setIsSuperAdmin(Boolean(parsed.isSuperAdmin));
-        setMemberships(parsed.mems || []);
-        setLoading(false);
-        return;
-      } catch {
-        window.localStorage.removeItem('hipotecaly_mock_active_user');
-      }
-    }
-
-    // Verificación de sesión de prueba controlada ÚNICAMENTE en entorno local de test preview (puerto 4173) o QA activo
-    const isE2EPreview = isLocalOrPreview && typeof window !== 'undefined' && (window.location.port === '4173' || Boolean(window.localStorage.getItem('hipotecaly_qa_session_ref')));
-    const testRole = isE2EPreview && typeof window !== 'undefined' ? window.localStorage.getItem('hipotecaly_test_role') : null;
-
-    if (isE2EPreview && testRole === 'visitor') {
-      setUser(null);
-      setSession(null);
-      setBorrower(null);
-      setUserRole(null);
-      setIsSuperAdmin(false);
-      setMemberships([]);
-      setLoading(false);
-      return;
-    }
-
-    if (isE2EPreview && testRole && testRole !== 'visitor') {
-      const mockUser: User = {
-        id: 'u-test-' + testRole,
-        app_metadata: { role: testRole },
-        user_metadata: { first_name: 'Test', last_name: testRole, role: testRole },
-        aud: 'authenticated',
-        created_at: new Date().toISOString(),
-        email: `${testRole}@hipotecaly.test`,
-      } as any;
-      const activeQaRef = adminQaService.getCurrentQaSessionRef();
-      const isQa = Boolean(activeQaRef && new Date(activeQaRef.expiresAt).getTime() > Date.now());
-      setIsQaSession(isQa);
-      if (activeQaRef && isQa) {
-        setQaSessionData({
-          sessionId: activeQaRef.sessionId,
-          role: activeQaRef.role,
-          tenantId: activeQaRef.tenantId,
-          tenantName: activeQaRef.tenantName,
-          expiresAt: activeQaRef.expiresAt,
-        });
-      } else {
-        setQaSessionData(null);
-      }
-
-      setUser(mockUser);
-      setUserRole(testRole as UserRole);
-      setIsSuperAdmin(testRole === 'super_admin' || testRole === 'platform_admin');
-      setMemberships([
-        {
-          organizationId: 'a0000000-0000-0000-0000-000000000001',
-          role: testRole as UserRole,
-          isActive: true,
-        },
-        {
-          organizationId: 'd0000000-0000-0000-0000-000000000001',
-          role: testRole as UserRole,
-          isActive: true,
-        },
-      ]);
-      setLoading(false);
-      return;
-    }
-
-    // 1. Obtener sesión activa de Supabase
+    // Supabase Auth is the only source of truth for persisted sessions.
+    // LocalStorage mock/master/test identities are intentionally ignored.
     supabase.auth
       .getSession()
       .then(async ({ data: { session: initialSession } }) => {
         setSession(initialSession);
         const currentUser = initialSession?.user ?? null;
+        setUser(currentUser);
 
         if (currentUser) {
-          setUser(currentUser);
           await resolveRoles(currentUser);
           await fetchBorrowerProfile(currentUser);
         } else {
-          const storedMock = isLocalOrPreview && typeof window !== 'undefined' ? window.localStorage.getItem('hipotecaly_mock_active_user') : null;
-          if (storedMock) {
-            try {
-              const parsed = JSON.parse(storedMock);
-              setUser(parsed.mockUser);
-              setUserRole(parsed.role);
-              setIsSuperAdmin(Boolean(parsed.isSuperAdmin));
-              setMemberships(parsed.mems || []);
-              setLoading(false);
-              return;
-            } catch {
-              window.localStorage.removeItem('hipotecaly_mock_active_user');
-            }
-          }
-
-          if (isE2EPreview) {
-            const defaultTestUser: User = {
-              id: 'a1111111-1111-1111-1111-111111111111',
-              app_metadata: { role: 'super_admin' },
-              user_metadata: { first_name: 'Admin', last_name: 'Super', role: 'super_admin' },
-              aud: 'authenticated',
-              created_at: new Date().toISOString(),
-              email: 'admin@hipotecaly.uy',
-            } as any;
-            setUser(defaultTestUser);
-            setUserRole('super_admin');
-            setIsSuperAdmin(true);
-            setMemberships([
-              {
-                organizationId: 'a0000000-0000-0000-0000-000000000001',
-                role: 'super_admin',
-                isActive: true,
-              },
-            ]);
-          } else {
-            setUser(null);
-          }
+          setBorrower(null);
+          setUserRole(null);
+          setIsSuperAdmin(false);
+          setMemberships([]);
+          setIsQaSession(false);
+          setQaSessionData(null);
         }
         setLoading(false);
       })
       .catch(() => {
-        setLoading(false);
-      });
-
-    // 2. Suscribirse a cambios de autenticación
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
-      setSession(newSession);
-      const currentUser = newSession?.user ?? null;
-
-      if (currentUser) {
-        setUser(currentUser);
-        await resolveRoles(currentUser);
-        await fetchBorrowerProfile(currentUser);
-      } else {
-        const storedMock = isLocalOrPreview && typeof window !== 'undefined' ? window.localStorage.getItem('hipotecaly_mock_active_user') : null;
-        if (storedMock) {
-          try {
-            const parsed = JSON.parse(storedMock);
-            setUser(parsed.mockUser);
-            setUserRole(parsed.role);
-            setIsSuperAdmin(Boolean(parsed.isSuperAdmin));
-            setMemberships(parsed.mems || []);
-            setLoading(false);
-            return;
-          } catch {
-            window.localStorage.removeItem('hipotecaly_mock_active_user');
-          }
-        }
+        setSession(null);
         setUser(null);
         setBorrower(null);
         setUserRole(null);
         setIsSuperAdmin(false);
         setMemberships([]);
+        setIsQaSession(false);
+        setQaSessionData(null);
+        setLoading(false);
+      });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      setSession(newSession);
+      const currentUser = newSession?.user ?? null;
+      setUser(currentUser);
+
+      if (currentUser) {
+        await resolveRoles(currentUser);
+        await fetchBorrowerProfile(currentUser);
+      } else {
+        setBorrower(null);
+        setUserRole(null);
+        setIsSuperAdmin(false);
+        setMemberships([]);
+        setIsQaSession(false);
+        setQaSessionData(null);
       }
       setLoading(false);
     });
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
   const signIn = async (emailInput: string, passwordInput: string): Promise<{
@@ -518,169 +383,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           memberships: resolvedMemberships,
         };
       }
-    } catch {
-      // Continuar con fallback de prueba en desarrollo
+    } catch (err: unknown) {
+      setLoading(false);
+      return { error: err instanceof Error ? err : new Error('Error al iniciar sesión.') };
     }
 
-    // 2. Fallback de usuarios de demostración ÚNICAMENTE en desarrollo local o entorno de pruebas no productivo
-    if (!import.meta.env.PROD) {
-      if (
-        (emailTrimmed === 'superadmin' || emailTrimmed === 'admin@hipotecaly.uy' || emailTrimmed === 'admin' || emailTrimmed === 'juanmacastillo2008@gmail.com') &&
-        (passTrimmed === 'admin123' || passTrimmed === 'admin' || passTrimmed === 'enano2018')
-      ) {
-        const mockUser: User = {
-          id: 'f0000000-0000-0000-0000-000000000001',
-          app_metadata: { role: 'super_admin', is_super_admin: true },
-          user_metadata: { first_name: 'Super', last_name: 'Admin', role: 'super_admin' },
-          aud: 'authenticated',
-          created_at: new Date().toISOString(),
-          email: 'juanmacastillo2008@gmail.com',
-        } as any;
-        setUser(mockUser);
-        setUserRole('super_admin');
-        setIsSuperAdmin(true);
-        const mems: UserMembership[] = [
-          { organizationId: 'a0000000-0000-0000-0000-000000000001', role: 'super_admin', isActive: true },
-        ];
-        setMemberships(mems);
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem('hipotecaly_mock_active_user', JSON.stringify({ mockUser, role: 'super_admin', isSuperAdmin: true, mems }));
-        }
-        setLoading(false);
-        return { error: null, user: mockUser, role: 'super_admin', isSuperAdmin: true, memberships: mems };
-      }
-
-      if (
-        (emailTrimmed === 'admin@estudionova.uy') &&
-        (passTrimmed === 'admin123')
-      ) {
-        const mockUser: User = {
-          id: 'u0000000-0000-0000-0000-000000000001',
-          app_metadata: { role: 'tenant_admin' },
-          user_metadata: { first_name: 'Administrador', last_name: 'Estudio Nova', role: 'tenant_admin' },
-          aud: 'authenticated',
-          created_at: new Date().toISOString(),
-          email: 'admin@estudionova.uy',
-        } as any;
-        setUser(mockUser);
-        setUserRole('tenant_admin');
-        setIsSuperAdmin(false);
-        const mems: UserMembership[] = [
-          { organizationId: 'd0000000-0000-0000-0000-000000000001', role: 'tenant_admin', isActive: true },
-        ];
-        setMemberships(mems);
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem('hipotecaly_mock_active_user', JSON.stringify({ mockUser, role: 'tenant_admin', isSuperAdmin: false, mems }));
-        }
-        setLoading(false);
-        return { error: null, user: mockUser, role: 'tenant_admin', isSuperAdmin: false, memberships: mems };
-      }
-
-      if (
-        (emailTrimmed === 'operador' || emailTrimmed === 'operador@hipotecaly.uy' || emailTrimmed === 'operador@estudionova.uy' || emailTrimmed === 'analyst') &&
-        (passTrimmed === 'demo123' || passTrimmed === 'admin123' || passTrimmed === 'operador')
-      ) {
-        const mockUser: User = {
-          id: 'u0000000-0000-0000-0000-000000000002',
-          app_metadata: { role: 'analyst' },
-          user_metadata: { first_name: 'Operador', last_name: 'Estudio Nova', role: 'analyst' },
-          aud: 'authenticated',
-          created_at: new Date().toISOString(),
-          email: 'operador@estudionova.uy',
-        } as any;
-        setUser(mockUser);
-        setUserRole('analyst');
-        setIsSuperAdmin(false);
-        const mems: UserMembership[] = [
-          { organizationId: 'd0000000-0000-0000-0000-000000000001', role: 'analyst', isActive: true },
-        ];
-        setMemberships(mems);
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem('hipotecaly_mock_active_user', JSON.stringify({ mockUser, role: 'analyst', isSuperAdmin: false, mems }));
-        }
-        setLoading(false);
-        return { error: null, user: mockUser, role: 'analyst', isSuperAdmin: false, memberships: mems };
-      }
-
-      if (
-        (emailTrimmed === 'cliente' || emailTrimmed === 'cliente@hipotecaly.uy' || emailTrimmed === 'cliente@estudionova.uy' || emailTrimmed === 'borrower') &&
-        (passTrimmed === 'demo123' || passTrimmed === 'admin123' || passTrimmed === 'cliente')
-      ) {
-        const mockUser: User = {
-          id: 'u0000000-0000-0000-0000-000000000003',
-          app_metadata: { role: 'borrower' },
-          user_metadata: { first_name: 'Cliente', last_name: 'Estudio Nova', role: 'borrower' },
-          aud: 'authenticated',
-          created_at: new Date().toISOString(),
-          email: 'cliente@estudionova.uy',
-        } as any;
-        setUser(mockUser);
-        setUserRole('borrower');
-        setIsSuperAdmin(false);
-        const mems: UserMembership[] = [
-          { organizationId: 'd0000000-0000-0000-0000-000000000001', role: 'borrower', isActive: true },
-        ];
-        setMemberships(mems);
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem('hipotecaly_mock_active_user', JSON.stringify({ mockUser, role: 'borrower', isSuperAdmin: false, mems }));
-        }
-        setLoading(false);
-        return { error: null, user: mockUser, role: 'borrower', isSuperAdmin: false, memberships: mems };
-      }
-
-      if (
-        (emailTrimmed === 'prestamista' || emailTrimmed === 'prestamista@hipotecaly.uy' || emailTrimmed === 'inversor@estudionova.uy' || emailTrimmed === 'lender') &&
-        (passTrimmed === 'demo123' || passTrimmed === 'admin123' || passTrimmed === 'prestamista')
-      ) {
-        const mockUser: User = {
-          id: 'u0000000-0000-0000-0000-000000000004',
-          app_metadata: { role: 'lender' },
-          user_metadata: { first_name: 'Inversor', last_name: 'Estudio Nova', role: 'lender' },
-          aud: 'authenticated',
-          created_at: new Date().toISOString(),
-          email: 'inversor@estudionova.uy',
-        } as any;
-        setUser(mockUser);
-        setUserRole('lender');
-        setIsSuperAdmin(false);
-        const mems: UserMembership[] = [
-          { organizationId: 'd0000000-0000-0000-0000-000000000001', role: 'lender', isActive: true },
-        ];
-        setMemberships(mems);
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem('hipotecaly_mock_active_user', JSON.stringify({ mockUser, role: 'lender', isSuperAdmin: false, mems }));
-        }
-        setLoading(false);
-        return { error: null, user: mockUser, role: 'lender', isSuperAdmin: false, memberships: mems };
-      }
-
-      if (
-        (emailTrimmed === 'escribano' || emailTrimmed === 'escribano@hipotecaly.uy' || emailTrimmed === 'escribano@estudionova.uy' || emailTrimmed === 'notary') &&
-        (passTrimmed === 'demo123' || passTrimmed === 'admin123' || passTrimmed === 'escribano')
-      ) {
-        const mockUser: User = {
-          id: 'u0000000-0000-0000-0000-000000000005',
-          app_metadata: { role: 'notary' },
-          user_metadata: { first_name: 'Escribano', last_name: 'Estudio Nova', role: 'notary' },
-          aud: 'authenticated',
-          created_at: new Date().toISOString(),
-          email: 'escribano@estudionova.uy',
-        } as any;
-        setUser(mockUser);
-        setUserRole('notary');
-        setIsSuperAdmin(false);
-        const mems: UserMembership[] = [
-          { organizationId: 'd0000000-0000-0000-0000-000000000001', role: 'notary', isActive: true },
-        ];
-        setMemberships(mems);
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem('hipotecaly_mock_active_user', JSON.stringify({ mockUser, role: 'notary', isSuperAdmin: false, mems }));
-        }
-        setLoading(false);
-        return { error: null, user: mockUser, role: 'notary', isSuperAdmin: false, memberships: mems };
-      }
-    }
-
+    setLoading(false);
     return { error: new Error('Credenciales incorrectas o usuario no encontrado.') };
   };
 
