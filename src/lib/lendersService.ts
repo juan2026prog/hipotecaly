@@ -51,12 +51,8 @@ export async function getLendersList(options?: {
   organizationId?: string;
   isDemoMode?: boolean;
 }): Promise<{ lenders: Lender[]; error: string | null }> {
-  const isDemo = isDemoMode({ organizationId: options?.organizationId, isDemoMode: options?.isDemoMode });
-
-  if (isDemo) {
-    return getFallbackLenders();
-  }
-
+  // Investor records always come from the database, including demo/White Label organizations.
+  // Demo mode is presentation-only here; it must never inject fictitious investors.
   try {
     let query = supabase.from('lenders').select('*, lender_rules(*)');
     if (options?.organizationId) {
