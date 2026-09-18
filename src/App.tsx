@@ -406,6 +406,31 @@ export const App: React.FC = () => {
               <Route path="/app/ai-admin" element={<Navigate to="/superadmin/ia" replace />} />
 
               {/* ========================================================== */}
+              {/* 4. BACKOFFICE REAL DE ORGANIZACIÓN (/org/:tenantSlug/admin) */}
+              {/* White Label is optional; these routes never depend on /demo. */}
+              {/* ========================================================== */}
+              <Route path="/org/:tenantSlug/admin" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','analyst','operator','notary','viewer','super_admin']} requireTenantMatch><DashboardPage /></ProtectedRoute>} />
+              <Route path="/org/:tenantSlug/admin/solicitudes" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','analyst','operator','notary','viewer','super_admin']} requireTenantMatch><ApplicationsPage /></ProtectedRoute>} />
+              <Route path="/org/:tenantSlug/admin/solicitudes/:id" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','analyst','operator','notary','viewer','super_admin']} requireTenantMatch><ApplicationDetailPage /></ProtectedRoute>} />
+              <Route path="/org/:tenantSlug/admin/clientes" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','analyst','operator','notary','viewer','super_admin']} requireTenantMatch><ClientsPage /></ProtectedRoute>} />
+              <Route path="/org/:tenantSlug/admin/propiedades" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','analyst','operator','notary','viewer','super_admin']} requireTenantMatch><PropertiesPage /></ProtectedRoute>} />
+              <Route path="/org/:tenantSlug/admin/documentos" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','analyst','operator','notary','viewer','super_admin']} requireTenantMatch><DocumentsPage /></ProtectedRoute>} />
+              <Route path="/org/:tenantSlug/admin/tasaciones" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','analyst','operator','notary','viewer','super_admin']} requireTenantMatch><TasadorHomePage /></ProtectedRoute>} />
+              <Route path="/org/:tenantSlug/admin/tasaciones/nueva" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','analyst','operator','notary','viewer','super_admin']} requireTenantMatch><TasadorNewAppraisalPage /></ProtectedRoute>} />
+              <Route path="/org/:tenantSlug/admin/tasaciones/:id" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','analyst','operator','notary','viewer','super_admin']} requireTenantMatch><TasadorComparablesPage /></ProtectedRoute>} />
+              <Route path="/org/:tenantSlug/admin/tareas" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','analyst','operator','notary','viewer','super_admin']} requireTenantMatch><TasksPage /></ProtectedRoute>} />
+              <Route path="/org/:tenantSlug/admin/reportes" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','analyst','super_admin']} requireTenantMatch><ReportsPage /></ProtectedRoute>} />
+              <Route path="/org/:tenantSlug/admin/analitica" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','analyst','super_admin']} requireTenantMatch><AnalyticsPage /></ProtectedRoute>} />
+              <Route path="/org/:tenantSlug/admin/auditoria" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','super_admin']} requireTenantMatch><AuditPage /></ProtectedRoute>} />
+              <Route path="/org/:tenantSlug/admin/configuracion" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','super_admin']} requireTenantMatch><SettingsPage /></ProtectedRoute>} />
+              <Route path="/org/:tenantSlug/admin/usuarios" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','super_admin']} requireTenantMatch><UsersManagementPage /></ProtectedRoute>} />
+              <Route path="/org/:tenantSlug/admin/organizacion" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','super_admin']} requireTenantMatch><OrganizationSettingsPage /></ProtectedRoute>} />
+              <Route path="/org/:tenantSlug/admin/whitelabel" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','super_admin']} requireTenantMatch><WhiteLabelBackofficePage /></ProtectedRoute>} />
+              <Route path="/org/:tenantSlug/admin/whatsapp" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','super_admin']} requireTenantMatch><WhatsAppSettingsPage /></ProtectedRoute>} />
+              <Route path="/org/:tenantSlug/admin/prestamistas" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','analyst','super_admin']} requireTenantMatch><LendersPage /></ProtectedRoute>} />
+              <Route path="/org/:tenantSlug/admin/prestamistas/:id" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','analyst','super_admin']} requireTenantMatch><LenderDetailPage /></ProtectedRoute>} />
+
+              {/* ========================================================== */}
               {/* 4. ARQUITECTURA DEMO & TENANT DINÁMICO (/demo/:tenantSlug)  */}
               {/* ========================================================== */}
               
