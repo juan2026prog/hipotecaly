@@ -28,9 +28,15 @@ export const TenantBrand: React.FC<TenantBrandProps> = ({
 
   const isNova = tenant?.slug === 'estudio-nova' || tenant?.slug === 'nova' || tenant?.slug === 'estudio_nova';
 
-  const logoSizes = {
-    sm: 'w-7 h-7 rounded-lg text-sm',
-    md: 'w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-lg sm:text-xl',
+  const logoImageClasses = {
+    sm: 'h-8 max-h-8 w-auto max-w-[150px] object-contain shrink-0',
+    md: 'h-10 max-h-10 w-auto max-w-[190px] object-contain shrink-0',
+    lg: 'h-14 max-h-14 w-auto max-w-[240px] object-contain shrink-0',
+  }[size];
+
+  const squareFallbackSizes = {
+    sm: 'w-8 h-8 rounded-lg text-sm',
+    md: 'w-10 h-10 rounded-xl text-lg sm:text-xl',
     lg: 'w-12 h-12 rounded-2xl text-2xl',
   }[size];
 
@@ -40,13 +46,15 @@ export const TenantBrand: React.FC<TenantBrandProps> = ({
     lg: 'text-2xl font-black',
   }[size];
 
+  const hasCustomLogo = Boolean(tenant?.branding?.logo_url);
+
   return (
     <div className={clsx('flex items-center space-x-3 text-left', className)}>
-      {tenant?.branding?.logo_url ? (
+      {hasCustomLogo ? (
         <img
-          src={tenant.branding.logo_url}
+          src={tenant?.branding?.logo_url}
           alt={name}
-          className={clsx(logoSizes, 'object-contain shrink-0 rounded-lg')}
+          className={clsx(logoImageClasses, 'rounded-sm')}
           onError={(e) => {
             // Fallback visual si la imagen falla al cargar
             (e.currentTarget as HTMLElement).style.display = 'none';
@@ -55,7 +63,7 @@ export const TenantBrand: React.FC<TenantBrandProps> = ({
       ) : isNova ? (
         <div
           className={clsx(
-            logoSizes,
+            squareFallbackSizes,
             'relative flex items-center justify-center font-serif font-black text-white shadow-xs transition-transform shrink-0',
             isWhite ? 'bg-[#173a5e] border border-white/20' : 'bg-[#173a5e]'
           )}
@@ -66,7 +74,7 @@ export const TenantBrand: React.FC<TenantBrandProps> = ({
       ) : (
         <div
           className={clsx(
-            logoSizes,
+            squareFallbackSizes,
             'relative flex items-center justify-center font-black text-white shadow-xs transition-transform shrink-0',
             isWhite ? 'border border-white/20' : ''
           )}
@@ -76,28 +84,31 @@ export const TenantBrand: React.FC<TenantBrandProps> = ({
         </div>
       )}
 
-      <div className="leading-tight">
-        <span
-          className={clsx(
-            textSizes,
-            isNova && 'font-serif tracking-tight',
-            isWhite ? 'text-white' : isNova ? 'text-[#173a5e]' : 'text-navy',
-            'block truncate'
-          )}
-        >
-          {name}
-        </span>
-        {showTagline && (
+      {/* Si no hay logo cargado, mostramos el nombre en tipografía. Si hay logo, mantenemos la tipografía limpia o personalizada si se especifica */}
+      {!hasCustomLogo && (
+        <div className="leading-tight">
           <span
             className={clsx(
-              'text-[10px] uppercase font-semibold tracking-wider block mt-0.5 truncate',
-              isWhite ? 'text-slate-400' : isNova ? 'text-[#245f91]' : 'text-slate-muted'
+              textSizes,
+              isNova && 'font-serif tracking-tight',
+              isWhite ? 'text-white' : isNova ? 'text-[#173a5e]' : 'text-navy',
+              'block truncate'
             )}
           >
-            {tagline}
+            {name}
           </span>
-        )}
-      </div>
+          {showTagline && (
+            <span
+              className={clsx(
+                'text-[10px] uppercase font-semibold tracking-wider block mt-0.5 truncate',
+                isWhite ? 'text-slate-400' : isNova ? 'text-[#245f91]' : 'text-slate-muted'
+              )}
+            >
+              {tagline}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 };

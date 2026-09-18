@@ -316,37 +316,39 @@ export const EstudioNovaPage: React.FC = () => {
               <img
                 src={orgLogo}
                 alt={orgName}
-                className="h-11 w-auto max-w-[180px] object-contain rounded-lg transition-transform group-hover:scale-105"
+                className="h-10 sm:h-12 w-auto max-w-[220px] object-contain rounded transition-transform group-hover:scale-105"
                 onError={(e) => {
                   (e.currentTarget as HTMLElement).style.display = 'none';
                 }}
               />
             ) : (
-              <div
-                className="relative w-11 h-11 rounded-lg flex items-center justify-center text-white font-serif font-black text-2xl shadow-sm transition-transform group-hover:scale-105"
-                style={{ backgroundColor: primaryColor }}
-              >
-                <span>{orgName.charAt(0)}</span>
-                <span
-                  className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
-                  style={{ backgroundColor: accentColor }}
-                />
-              </div>
+              <>
+                <div
+                  className="relative w-11 h-11 rounded-lg flex items-center justify-center text-white font-serif font-black text-2xl shadow-sm transition-transform group-hover:scale-105"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  <span>{orgName.charAt(0)}</span>
+                  <span
+                    className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
+                    style={{ backgroundColor: accentColor }}
+                  />
+                </div>
+                <div className="text-left">
+                  <span
+                    className="text-xl font-serif font-extrabold tracking-tight block leading-none"
+                    style={{ color: primaryColor }}
+                  >
+                    {orgName.toUpperCase()}
+                  </span>
+                  <span
+                    className="text-[10px] uppercase font-bold tracking-widest block mt-1"
+                    style={{ color: '#245f91' }}
+                  >
+                    {orgTagline}
+                  </span>
+                </div>
+              </>
             )}
-            <div className="text-left">
-              <span
-                className="text-xl font-serif font-extrabold tracking-tight block leading-none"
-                style={{ color: primaryColor }}
-              >
-                {orgName.toUpperCase()}
-              </span>
-              <span
-                className="text-[10px] uppercase font-bold tracking-widest block mt-1"
-                style={{ color: '#245f91' }}
-              >
-                {orgTagline}
-              </span>
-            </div>
           </a>
 
           {/* Menú de Navegación Desktop */}

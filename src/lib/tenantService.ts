@@ -292,6 +292,60 @@ export async function resolveTenant(
     const rawSlug = demoMatch[1].toLowerCase().replace('_', '-');
     if (rawSlug === 'estudio-nova' || rawSlug === 'nova' || rawSlug === 'nova-demo') {
       setActiveTenantSession('estudio-nova');
+      
+      // 1. Revisar si hay configuración personalizada en localStorage o cache
+      if (typeof window !== 'undefined') {
+        const local = window.localStorage.getItem('whitelabel_config_d0000000-0000-0000-0000-000000000001');
+        if (local) {
+          try {
+            const parsed = JSON.parse(local);
+            if (parsed && (parsed.logoUrl || parsed.publicName)) {
+              return {
+                ...NOVA_TENANT,
+                branding: {
+                  ...NOVA_TENANT.branding,
+                  public_name: parsed.publicName || NOVA_TENANT.branding.public_name,
+                  tag_line: parsed.tagline || NOVA_TENANT.branding.tag_line,
+                  logo_url: parsed.logoUrl !== undefined ? parsed.logoUrl : NOVA_TENANT.branding.logo_url,
+                  favicon_url: parsed.faviconUrl !== undefined ? parsed.faviconUrl : NOVA_TENANT.branding.favicon_url,
+                  primary_color: parsed.primaryColor || NOVA_TENANT.branding.primary_color,
+                  secondary_color: parsed.secondaryColor || NOVA_TENANT.branding.secondary_color,
+                },
+              };
+            }
+          } catch {}
+        }
+      }
+      
+      // 2. Revisar DB Supabase si está disponible
+      if (isSupabaseConfigured) {
+        try {
+          const { data } = await supabase
+            .from('organizations')
+            .select('*, organization_branding(*), organization_settings(*)')
+            .eq('id', 'd0000000-0000-0000-0000-000000000001')
+            .maybeSingle();
+
+          if (data) {
+            const b = Array.isArray(data.organization_branding)
+              ? data.organization_branding[0] || {}
+              : data.organization_branding || {};
+            return {
+              ...NOVA_TENANT,
+              branding: {
+                ...NOVA_TENANT.branding,
+                public_name: b.public_name || NOVA_TENANT.branding.public_name,
+                tag_line: b.tag_line || NOVA_TENANT.branding.tag_line,
+                logo_url: b.logo_url !== undefined ? b.logo_url : NOVA_TENANT.branding.logo_url,
+                favicon_url: b.favicon_url !== undefined ? b.favicon_url : NOVA_TENANT.branding.favicon_url,
+                primary_color: b.primary_color || NOVA_TENANT.branding.primary_color,
+                secondary_color: b.secondary_color || NOVA_TENANT.branding.secondary_color,
+              },
+            };
+          }
+        } catch {}
+      }
+
       return NOVA_TENANT;
     }
     if (REGISTERED_TENANTS[rawSlug]) {
@@ -348,7 +402,7 @@ export async function resolveTenant(
   }
   if (pathname === '/demo') {
     setActiveTenantSession('estudio-nova');
-    return NOVA_TENANT;
+    return resolveTenant(hostname, '/demo/estudio-nova', search);
   }
 
   // 1. Verificación por Query Params (?source=estudio_nova, ?tenant=..., ?org=...)
