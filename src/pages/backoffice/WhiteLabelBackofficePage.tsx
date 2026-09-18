@@ -22,7 +22,6 @@ import {
   HeroImagePosition,
   OrganizationHomeVersionItem,
 } from '../../lib/organizationHomeService';
-import { OrganizationHero } from '../../components/organization/OrganizationHero';
 import {
   uploadOrganizationBrandingAsset,
   deleteOrganizationBrandingAsset,
@@ -58,12 +57,9 @@ import {
   RotateCcw,
   ExternalLink,
   Eye,
-  EyeOff,
   Lock,
   Download,
   Upload,
-  Smartphone,
-  Monitor,
   Play,
   History,
   FileCheck,
@@ -161,8 +157,6 @@ export const WhiteLabelBackofficePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
-  const [showLivePreview, setShowLivePreview] = useState(true);
-  const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
 
   // Estados de Versionado y Publicación de Home (Fase 6)
   const [homeVersions, setHomeVersions] = useState<OrganizationHomeVersionItem[]>([]);
@@ -862,17 +856,6 @@ export const WhiteLabelBackofficePage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowLivePreview(!showLivePreview)}
-              className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors flex items-center space-x-1.5 ${
-                showLivePreview ? 'bg-slate-100 border-slate-300 text-navy' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              {showLivePreview ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-              <span>{showLivePreview ? 'Ocultar Mini-Preview' : 'Ver Mini-Preview'}</span>
-            </button>
-
             <Link
               to={`/demo/${tenant.slug || 'estudio-nova'}?preview=true`}
               target="_blank"
@@ -1011,7 +994,7 @@ export const WhiteLabelBackofficePage: React.FC = () => {
           </div>
 
           {/* Área de contenido */}
-          <div className={showLivePreview ? 'lg:col-span-6 space-y-6' : 'lg:col-span-9 space-y-6'}>
+          <div className="lg:col-span-9 space-y-6">
 
 
             
@@ -3800,115 +3783,6 @@ export const WhiteLabelBackofficePage: React.FC = () => {
             )}
 
           </div>
-
-
-          {/* ============================================================ */}
-          {/* Columna Derecha: Vista Previa Interactiva en Vivo            */}
-          {/* ============================================================ */}
-          {showLivePreview && (
-            <div className="lg:col-span-3 sticky top-24 space-y-4">
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-md p-4 space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <div className="flex items-center space-x-2">
-                    <Eye className="w-4 h-4 text-brand-green" />
-                    <span className="text-xs font-bold text-navy uppercase tracking-wider">
-                      Vista Previa en Vivo (Reactiva)
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-lg">
-                    <button
-                      onClick={() => setPreviewDevice('desktop')}
-                      className={`p-1 rounded text-xs ${previewDevice === 'desktop' ? 'bg-white shadow-xs text-navy font-bold' : 'text-slate-500'}`}
-                      title="Vista Escritorio"
-                    >
-                      <Monitor className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setPreviewDevice('mobile')}
-                      className={`p-1 rounded text-xs ${previewDevice === 'mobile' ? 'bg-white shadow-xs text-navy font-bold' : 'text-slate-500'}`}
-                      title="Vista Móvil"
-                    >
-                      <Smartphone className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Marco de Simulación del Portal utilizando OrganizationHero real */}
-                <div
-                  className={`mx-auto rounded-xl overflow-hidden shadow-inner border border-slate-200 transition-all ${
-                    previewDevice === 'mobile' ? 'max-w-[340px] text-xs' : 'w-full text-xs'
-                  }`}
-                >
-                  {/* Mini-Navbar simulado con Logo real reactivo */}
-                  <div className="bg-white border-b border-slate-200 px-3 py-2 flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      {config.logoUrl ? (
-                        <img
-                          src={config.logoUrl}
-                          alt={config.publicName}
-                          className="h-6 w-auto max-w-[90px] object-contain rounded"
-                          onError={(e) => {
-                            (e.currentTarget as HTMLElement).style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        <div
-                          className="w-6 h-6 rounded flex items-center justify-center text-white font-serif font-black text-xs shadow-2xs relative"
-                          style={{ backgroundColor: config.primaryColor }}
-                        >
-                          <span>{config.publicName.charAt(0) || 'N'}</span>
-                          <span
-                            className="absolute top-0.5 right-0.5 w-1 h-1 rounded-full"
-                            style={{ backgroundColor: config.accentColor }}
-                          />
-                        </div>
-                      )}
-                      <div className="text-left leading-none">
-                        <span className="text-[11px] font-serif font-extrabold block truncate max-w-[120px]" style={{ color: config.primaryColor }}>
-                          {config.publicName.toUpperCase()}
-                        </span>
-                        {config.tagline && (
-                          <span className="text-[8px] text-slate-400 block truncate max-w-[120px]">
-                            {config.tagline}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center space-x-1.5">
-                      <span className="text-[9px] font-bold px-2 py-0.5 rounded text-white" style={{ backgroundColor: config.primaryColor }}>
-                        Simular
-                      </span>
-                    </div>
-                  </div>
-
-                  <OrganizationHero
-                    branding={{
-                      public_name: config.publicName,
-                      tag_line: config.tagline,
-                      logo_url: config.logoUrl,
-                      favicon_url: config.faviconUrl,
-                      primary_color: config.primaryColor,
-                      secondary_color: config.secondaryColor,
-                      accent_color: config.accentColor,
-                    }}
-                    homeSettings={homeSettings}
-                    className="!py-8 !sm:py-10"
-                  />
-                </div>
-
-                <div className="text-center pt-2">
-                  <Link
-                    to={`/demo/${tenant.slug || 'estudio-nova'}`}
-                    target="_blank"
-                    className="text-xs font-bold text-navy hover:text-brand-green inline-flex items-center"
-                  >
-                    Abrir Home Pública en Nueva Pestaña →
-                  </Link>
-                </div>
-              </div>
-            </div>
-          )}
 
         </div>
 

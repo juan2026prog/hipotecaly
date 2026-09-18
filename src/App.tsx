@@ -28,7 +28,6 @@ const SignatureReturnPage = React.lazy(() => import('./pages/signature/Signature
 
 // 2. Backoffice Pages (Lazy Loaded)
 const DashboardPage = React.lazy(() => import('./pages/backoffice/DashboardPage').then((m) => ({ default: m.DashboardPage })));
-const OrganizationDashboardPage = React.lazy(() => import('./pages/backoffice/OrganizationDashboardPage').then((m) => ({ default: m.OrganizationDashboardPage })));
 const ApplicationsPage = React.lazy(() => import('./pages/backoffice/ApplicationsPage').then((m) => ({ default: m.ApplicationsPage })));
 const ApplicationDetailPage = React.lazy(() => import('./pages/backoffice/ApplicationDetailPage').then((m) => ({ default: m.ApplicationDetailPage })));
 const ClientsPage = React.lazy(() => import('./pages/backoffice/ClientsPage').then((m) => ({ default: m.ClientsPage })));
@@ -410,7 +409,7 @@ export const App: React.FC = () => {
               {/* 4. BACKOFFICE REAL DE ORGANIZACIÓN (/org/:tenantSlug/admin) */}
               {/* White Label is optional; these routes never depend on /demo. */}
               {/* ========================================================== */}
-              <Route path="/org/:tenantSlug/admin" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','analyst','operator','notary','viewer','super_admin']} requireTenantMatch><OrganizationDashboardPage /></ProtectedRoute>} />
+              <Route path="/org/:tenantSlug/admin" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','analyst','operator','notary','viewer','super_admin']} requireTenantMatch><DashboardPage /></ProtectedRoute>} />
               <Route path="/org/:tenantSlug/admin/solicitudes" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','analyst','operator','notary','viewer','super_admin']} requireTenantMatch><ApplicationsPage /></ProtectedRoute>} />
               <Route path="/org/:tenantSlug/admin/solicitudes/:id" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','analyst','operator','notary','viewer','super_admin']} requireTenantMatch><ApplicationDetailPage /></ProtectedRoute>} />
               <Route path="/org/:tenantSlug/admin/clientes" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','analyst','operator','notary','viewer','super_admin']} requireTenantMatch><ClientsPage /></ProtectedRoute>} />
