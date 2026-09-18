@@ -48,6 +48,8 @@ export default defineConfig({
           /^\/auth\//,
           /^\/rest\//,
           /^\/app/,
+          /^\/org/,
+          /^\/superadmin/,
           /^\/admin/,
           /^\/notary/,
           /^\/demo/,
