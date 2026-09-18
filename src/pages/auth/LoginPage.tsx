@@ -70,12 +70,14 @@ export const LoginPage: React.FC = () => {
         // Organization staff always land in the canonical Hipotecaly backoffice.
         // Never allow a stale client/demo "from" route to downgrade their console.
         destination = `/org/${targetTenantSlug}/admin`;
-      } else if (redirectTo) {
-        destination = redirectTo;
+      } else if (role === 'lender') {
+        // Lenders have their own private investor portal. A stale ProtectedRoute
+        // origin (e.g. /cliente from a previous account) must never override it.
+        destination = `/demo/${targetTenantSlug}/inversor`;
       } else if (role === 'notary') {
         destination = '/notary';
-      } else if (role === 'lender') {
-        destination = `/demo/${targetTenantSlug}/inversor`;
+      } else if (redirectTo) {
+        destination = redirectTo;
       } else {
         const clientTarget = `/demo/${targetTenantSlug}/cliente`;
         destination = isFromSaveSimulation ? `${clientTarget}?tab=simulaciones&saved=true` : clientTarget;
