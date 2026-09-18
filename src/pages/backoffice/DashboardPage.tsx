@@ -25,8 +25,13 @@ export const DashboardPage: React.FC = () => {
   const { tenant } = useTenant();
   const location = useLocation();
   const isTenantPath = location.pathname.startsWith('/demo/');
+  const isOrganizationPath = location.pathname.startsWith('/org/');
   const isDemo = checkDemoMode({ organizationId: tenant.id, isDemoMode: Boolean(tenant.demo_mode), pathname: location.pathname }) || isDemoOrganization(tenant.id);
-  const baseRoute = isTenantPath ? `/demo/${tenant.slug || 'estudio-nova'}/admin` : '/app';
+  const baseRoute = isOrganizationPath
+    ? `/org/${tenant.slug}/admin`
+    : isTenantPath
+      ? `/demo/${tenant.slug || 'estudio-nova'}/admin`
+      : '/app';
 
   const [recentApplications, setRecentApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
