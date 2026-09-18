@@ -22,7 +22,8 @@ export type TenantModuleKey =
   | 'cost_breakdown_enabled'
   | 'external_simulator_integration_enabled'
   | 'investor_portal_enabled'
-  | 'whatsapp_direct_enabled';
+  | 'whatsapp_direct_enabled'
+  | 'white_label_enabled';
 
 export interface TenantModule {
   id?: string;
@@ -52,6 +53,8 @@ export const DEFAULT_MODULES_MAP: Record<TenantModuleKey, boolean> = {
   external_simulator_integration_enabled: true,
   investor_portal_enabled: true,
   whatsapp_direct_enabled: true,
+  // White Label is an add-on, never assumed for a normal organization.
+  white_label_enabled: false,
 };
 
 // Cache en memoria por tenant
