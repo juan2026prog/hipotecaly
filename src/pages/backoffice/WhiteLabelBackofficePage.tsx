@@ -24,6 +24,10 @@ import {
 } from '../../lib/organizationHomeService';
 import { OrganizationHero } from '../../components/organization/OrganizationHero';
 import {
+  uploadOrganizationBrandingAsset,
+  deleteOrganizationBrandingAsset,
+} from '../../lib/organizationBrandingService';
+import {
   OrganizationFaqItem,
   getOrganizationFaqs,
   createOrganizationFaq,
@@ -142,13 +146,17 @@ export const WhiteLabelBackofficePage: React.FC = () => {
   const { tenant } = useTenant();
   const [config, setConfig] = useState<WhiteLabelCustomization>(DEFAULT_WHITELABEL_CONFIG);
   const [homeSettings, setHomeSettings] = useState<OrganizationHomeSettings>(DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
+  const [brandingError, setBrandingError] = useState<string | null>(null);
+  const [brandingSuccess, setBrandingSuccess] = useState<string | null>(null);
   const [uploadingHeroImg, setUploadingHeroImg] = useState(false);
   const [uploadingOgImg, setUploadingOgImg] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<
     'branding' | 'underwriting' | 'domain' | 'landing' | 'seo' | 'versions' | 'costs' | 'communications' | 'legal' | 'modules'
-  >('landing');
+  >('branding');
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -420,10 +428,29 @@ export const WhiteLabelBackofficePage: React.FC = () => {
         saveHomeDraft(tenant.id, homeSettings),
       ]);
 
-      // 2. Publicar nueva versión
+      // 2. Publicar nueva versión con snapshot compuesto completo
       const res = await publishHomeVersion(tenant.id, {
         changelogNotes: homePublishNotes || 'Actualización de contenidos y configuración desde el panel White-Label.',
         authorName: 'Admin WhiteLabel',
+        brandingData: {
+          publicName: config.publicName,
+          tagline: config.tagline,
+          supportPhone: config.supportPhone,
+          supportEmail: config.supportEmail,
+          address: config.address,
+          businessHours: config.businessHours,
+          footerDescription: config.footerDescription,
+          logoUrl: config.logoUrl,
+          logoStoragePath: config.logoStoragePath,
+          faviconUrl: config.faviconUrl,
+          faviconStoragePath: config.faviconStoragePath,
+          primaryColor: config.primaryColor,
+          secondaryColor: config.secondaryColor,
+          accentColor: config.accentColor,
+          socialInstagram: config.socialInstagram,
+          socialLinkedin: config.socialLinkedin,
+          socialFacebook: config.socialFacebook,
+        },
       });
 
       if (res.success && res.data) {
@@ -468,6 +495,134 @@ export const WhiteLabelBackofficePage: React.FC = () => {
       alert(err.message || 'Error inesperado al restaurar');
     } finally {
       setRollingBackHome(false);
+    }
+  };
+
+  // Subida de Logo Principal
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingLogo(true);
+    setBrandingError(null);
+    setBrandingSuccess(null);
+
+    try {
+      const res = await uploadOrganizationBrandingAsset(
+        tenant.id,
+        file,
+        'logo',
+        config.logoStoragePath
+      );
+
+      if (res.success && res.url) {
+        const updatedConfig = {
+          ...config,
+          logoUrl: res.url,
+          logoStoragePath: res.storagePath,
+        };
+        setConfig(updatedConfig);
+        setHomeSettings((prev) => ({ ...prev, hasUnpublishedChanges: true, status: 'draft' }));
+        setBrandingSuccess('Logo cargado correctamente en el borrador de trabajo.');
+        setTimeout(() => setBrandingSuccess(null), 4000);
+      } else {
+        setBrandingError(res.error || 'Error al subir el logo.');
+      }
+    } catch (err: any) {
+      setBrandingError(err.message || 'Error inesperado al subir el logo.');
+    } finally {
+      setUploadingLogo(false);
+      e.target.value = '';
+    }
+  };
+
+  // Eliminación de Logo Principal
+  const handleDeleteLogo = async () => {
+    if (!config.logoUrl) return;
+    setUploadingLogo(true);
+    setBrandingError(null);
+
+    try {
+      if (config.logoStoragePath) {
+        await deleteOrganizationBrandingAsset(tenant.id, config.logoStoragePath);
+      }
+      const updatedConfig = {
+        ...config,
+        logoUrl: '',
+        logoStoragePath: '',
+      };
+      setConfig(updatedConfig);
+      setHomeSettings((prev) => ({ ...prev, hasUnpublishedChanges: true, status: 'draft' }));
+      setBrandingSuccess('Logo eliminado del borrador. Se utilizará la inicial como fallback.');
+      setTimeout(() => setBrandingSuccess(null), 4000);
+    } catch (err: any) {
+      setBrandingError(err.message || 'Error al eliminar el logo.');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  // Subida de Favicon
+  const handleFaviconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingFavicon(true);
+    setBrandingError(null);
+    setBrandingSuccess(null);
+
+    try {
+      const res = await uploadOrganizationBrandingAsset(
+        tenant.id,
+        file,
+        'favicon',
+        config.faviconStoragePath
+      );
+
+      if (res.success && res.url) {
+        const updatedConfig = {
+          ...config,
+          faviconUrl: res.url,
+          faviconStoragePath: res.storagePath,
+        };
+        setConfig(updatedConfig);
+        setHomeSettings((prev) => ({ ...prev, hasUnpublishedChanges: true, status: 'draft' }));
+        setBrandingSuccess('Favicon cargado correctamente en el borrador de trabajo.');
+        setTimeout(() => setBrandingSuccess(null), 4000);
+      } else {
+        setBrandingError(res.error || 'Error al subir el favicon.');
+      }
+    } catch (err: any) {
+      setBrandingError(err.message || 'Error inesperado al subir el favicon.');
+    } finally {
+      setUploadingFavicon(false);
+      e.target.value = '';
+    }
+  };
+
+  // Eliminación de Favicon
+  const handleDeleteFavicon = async () => {
+    if (!config.faviconUrl) return;
+    setUploadingFavicon(true);
+    setBrandingError(null);
+
+    try {
+      if (config.faviconStoragePath) {
+        await deleteOrganizationBrandingAsset(tenant.id, config.faviconStoragePath);
+      }
+      const updatedConfig = {
+        ...config,
+        faviconUrl: '',
+        faviconStoragePath: '',
+      };
+      setConfig(updatedConfig);
+      setHomeSettings((prev) => ({ ...prev, hasUnpublishedChanges: true, status: 'draft' }));
+      setBrandingSuccess('Favicon eliminado del borrador. Se utilizará el favicon institucional por defecto.');
+      setTimeout(() => setBrandingSuccess(null), 4000);
+    } catch (err: any) {
+      setBrandingError(err.message || 'Error al eliminar el favicon.');
+    } finally {
+      setUploadingFavicon(false);
     }
   };
 
@@ -665,12 +820,22 @@ export const WhiteLabelBackofficePage: React.FC = () => {
         <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center space-x-3">
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-sm"
-                style={{ backgroundColor: config.primaryColor }}
-              >
-                {config.publicName.charAt(0)}
-              </div>
+              {config.logoUrl ? (
+                <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shadow-xs overflow-hidden">
+                  <img
+                    src={config.logoUrl}
+                    alt={config.publicName}
+                    className="max-h-full max-w-full object-contain"
+                  />
+                </div>
+              ) : (
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-sm"
+                  style={{ backgroundColor: config.primaryColor }}
+                >
+                  {config.publicName.charAt(0) || 'N'}
+                </div>
+              )}
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-xl sm:text-2xl font-black text-navy tracking-tight">
@@ -862,6 +1027,193 @@ export const WhiteLabelBackofficePage: React.FC = () => {
                   <p className="text-xs text-slate-500 mt-0.5">
                     Personalizá los colores, logotipos, tipografías y el estilo visual de los portales de tus clientes.
                   </p>
+                </div>
+
+                {/* Mensajes de Feedback de Branding */}
+                {brandingError && (
+                  <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-bold flex items-center justify-between animate-fadeIn">
+                    <div className="flex items-center space-x-2">
+                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                      <span>{brandingError}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setBrandingError(null)}
+                      className="text-rose-500 hover:text-rose-700 font-bold ml-2"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+
+                {brandingSuccess && (
+                  <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold flex items-center justify-between animate-fadeIn">
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>{brandingSuccess}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setBrandingSuccess(null)}
+                      className="text-emerald-500 hover:text-emerald-700 font-bold ml-2"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+
+                {/* ====================================================== */}
+                {/* NUEVA SECCIÓN: LOGOTIPO E IDENTIDAD DEL SITIO           */}
+                {/* ====================================================== */}
+                <div className="p-5 bg-slate-50/70 rounded-2xl border border-slate-200 space-y-4">
+                  <div className="border-b border-slate-200 pb-2.5">
+                    <h4 className="text-xs font-bold text-navy uppercase tracking-wider flex items-center gap-1.5">
+                      <ImageIcon className="w-4 h-4 text-brand-green" /> LOGOTIPO E IDENTIDAD DEL SITIO
+                    </h4>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Personalizá el logo y favicon del portal White Label.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {/* 1. LOGO PRINCIPAL */}
+                    <div className="space-y-3 bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+                      <div>
+                        <label className="text-xs font-bold text-navy block">Logo principal</label>
+                        <span className="text-[10px] text-slate-400">
+                          Recomendado: logo horizontal, fondo transparente.
+                        </span>
+                      </div>
+
+                      {/* Preview Box Logo */}
+                      <div className="h-28 w-full rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 flex items-center justify-center p-3 relative overflow-hidden group">
+                        {config.logoUrl ? (
+                          <img
+                            src={config.logoUrl}
+                            alt="Preview Logo"
+                            className="max-h-full max-w-full object-contain transition-transform group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="text-center space-y-1">
+                            <div
+                              className="w-10 h-10 mx-auto rounded-lg flex items-center justify-center text-white font-serif font-black text-lg shadow-2xs"
+                              style={{ backgroundColor: config.primaryColor }}
+                            >
+                              {config.publicName.charAt(0) || 'N'}
+                            </div>
+                            <span className="text-[10px] font-semibold text-slate-400 block">
+                              Fallback: Inicial [{config.publicName.charAt(0) || 'N'}]
+                            </span>
+                          </div>
+                        )}
+                        {uploadingLogo && (
+                          <div className="absolute inset-0 bg-white/80 backdrop-blur-2xs flex items-center justify-center space-x-2 text-xs font-bold text-navy">
+                            <div className="w-4 h-4 border-2 border-navy border-t-transparent rounded-full animate-spin" />
+                            <span>Subiendo...</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Botones de acción Logo */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <label className={`px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[#102d49] text-white hover:bg-[#173a5e] cursor-pointer flex items-center space-x-1.5 shadow-2xs transition-all ${uploadingLogo ? 'opacity-50 pointer-events-none' : ''}`}>
+                          <UploadCloud className="w-3.5 h-3.5 text-[#f4b43b]" />
+                          <span>{config.logoUrl ? 'Reemplazar logo' : 'Subir logo'}</span>
+                          <input
+                            type="file"
+                            accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
+                            onChange={handleLogoUpload}
+                            className="hidden"
+                          />
+                        </label>
+
+                        {config.logoUrl && (
+                          <button
+                            type="button"
+                            onClick={handleDeleteLogo}
+                            disabled={uploadingLogo}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-rose-200 transition-colors flex items-center space-x-1"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 mr-1" />
+                            <span>Eliminar</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <span className="text-[10px] text-slate-400 font-mono block">
+                        Formatos: PNG, JPG, WEBP o SVG (máx. 5 MB)
+                      </span>
+                    </div>
+
+                    {/* 2. FAVICON */}
+                    <div className="space-y-3 bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+                      <div>
+                        <label className="text-xs font-bold text-navy block">Favicon</label>
+                        <span className="text-[10px] text-slate-400">
+                          Recomendado: imagen cuadrada de 512 × 512 px.
+                        </span>
+                      </div>
+
+                      {/* Preview Box Favicon (Cuadrado) */}
+                      <div className="h-28 w-full rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 flex items-center justify-center p-3 relative overflow-hidden group">
+                        {config.faviconUrl ? (
+                          <div className="w-14 h-14 rounded-xl border border-slate-200 bg-white p-2 shadow-sm flex items-center justify-center">
+                            <img
+                              src={config.faviconUrl}
+                              alt="Preview Favicon"
+                              className="max-h-full max-w-full object-contain"
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-14 h-14 rounded-xl shadow-sm flex items-center justify-center text-white font-serif font-black text-2xl relative"
+                            style={{ backgroundColor: config.primaryColor }}
+                          >
+                            <span>{config.publicName.charAt(0) || 'N'}</span>
+                            <span
+                              className="absolute top-1 right-1 w-2 h-2 rounded-full"
+                              style={{ backgroundColor: config.accentColor }}
+                            />
+                          </div>
+                        )}
+                        {uploadingFavicon && (
+                          <div className="absolute inset-0 bg-white/80 backdrop-blur-2xs flex items-center justify-center space-x-2 text-xs font-bold text-navy">
+                            <div className="w-4 h-4 border-2 border-navy border-t-transparent rounded-full animate-spin" />
+                            <span>Subiendo...</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Botones de acción Favicon */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <label className={`px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[#102d49] text-white hover:bg-[#173a5e] cursor-pointer flex items-center space-x-1.5 shadow-2xs transition-all ${uploadingFavicon ? 'opacity-50 pointer-events-none' : ''}`}>
+                          <UploadCloud className="w-3.5 h-3.5 text-[#f4b43b]" />
+                          <span>{config.faviconUrl ? 'Reemplazar favicon' : 'Subir favicon'}</span>
+                          <input
+                            type="file"
+                            accept="image/png,image/x-icon,image/vnd.microsoft.icon,image/svg+xml,.ico"
+                            onChange={handleFaviconUpload}
+                            className="hidden"
+                          />
+                        </label>
+
+                        {config.faviconUrl && (
+                          <button
+                            type="button"
+                            onClick={handleDeleteFavicon}
+                            disabled={uploadingFavicon}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-rose-200 transition-colors flex items-center space-x-1"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 mr-1" />
+                            <span>Eliminar</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <span className="text-[10px] text-slate-400 font-mono block">
+                        Formatos: PNG, ICO, SVG (máx. 5 MB)
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Presets Rápidos */}
@@ -3487,10 +3839,55 @@ export const WhiteLabelBackofficePage: React.FC = () => {
                     previewDevice === 'mobile' ? 'max-w-[340px] text-xs' : 'w-full text-xs'
                   }`}
                 >
+                  {/* Mini-Navbar simulado con Logo real reactivo */}
+                  <div className="bg-white border-b border-slate-200 px-3 py-2 flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      {config.logoUrl ? (
+                        <img
+                          src={config.logoUrl}
+                          alt={config.publicName}
+                          className="h-6 w-auto max-w-[90px] object-contain rounded"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div
+                          className="w-6 h-6 rounded flex items-center justify-center text-white font-serif font-black text-xs shadow-2xs relative"
+                          style={{ backgroundColor: config.primaryColor }}
+                        >
+                          <span>{config.publicName.charAt(0) || 'N'}</span>
+                          <span
+                            className="absolute top-0.5 right-0.5 w-1 h-1 rounded-full"
+                            style={{ backgroundColor: config.accentColor }}
+                          />
+                        </div>
+                      )}
+                      <div className="text-left leading-none">
+                        <span className="text-[11px] font-serif font-extrabold block truncate max-w-[120px]" style={{ color: config.primaryColor }}>
+                          {config.publicName.toUpperCase()}
+                        </span>
+                        {config.tagline && (
+                          <span className="text-[8px] text-slate-400 block truncate max-w-[120px]">
+                            {config.tagline}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-1.5">
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded text-white" style={{ backgroundColor: config.primaryColor }}>
+                        Simular
+                      </span>
+                    </div>
+                  </div>
+
                   <OrganizationHero
                     branding={{
                       public_name: config.publicName,
                       tag_line: config.tagline,
+                      logo_url: config.logoUrl,
+                      favicon_url: config.faviconUrl,
                       primary_color: config.primaryColor,
                       secondary_color: config.secondaryColor,
                       accent_color: config.accentColor,

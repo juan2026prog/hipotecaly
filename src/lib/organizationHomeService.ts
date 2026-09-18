@@ -46,6 +46,9 @@ export interface CompositeBrandingData {
   businessHours: string;
   footerDescription: string;
   logoUrl?: string;
+  logoStoragePath?: string;
+  faviconUrl?: string;
+  faviconStoragePath?: string;
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
@@ -611,6 +614,10 @@ export function createCompositeEditorialSnapshot(
     address: brandingData?.address || DEFAULT_ESTUDIO_NOVA_BRANDING_SNAPSHOT.address,
     businessHours: brandingData?.businessHours || DEFAULT_ESTUDIO_NOVA_BRANDING_SNAPSHOT.businessHours,
     footerDescription: brandingData?.footerDescription || DEFAULT_ESTUDIO_NOVA_BRANDING_SNAPSHOT.footerDescription,
+    logoUrl: brandingData?.logoUrl,
+    logoStoragePath: brandingData?.logoStoragePath,
+    faviconUrl: brandingData?.faviconUrl,
+    faviconStoragePath: brandingData?.faviconStoragePath,
     primaryColor: brandingData?.primaryColor || DEFAULT_ESTUDIO_NOVA_BRANDING_SNAPSHOT.primaryColor,
     secondaryColor: brandingData?.secondaryColor || DEFAULT_ESTUDIO_NOVA_BRANDING_SNAPSHOT.secondaryColor,
     accentColor: brandingData?.accentColor || DEFAULT_ESTUDIO_NOVA_BRANDING_SNAPSHOT.accentColor,

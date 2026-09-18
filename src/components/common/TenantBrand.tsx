@@ -34,12 +34,6 @@ export const TenantBrand: React.FC<TenantBrandProps> = ({
     lg: 'w-12 h-12 rounded-2xl text-2xl',
   }[size];
 
-  const svgSizes = {
-    sm: 'w-4 h-4',
-    md: 'w-5 h-5 sm:w-6 sm:h-6',
-    lg: 'w-7 h-7',
-  }[size];
-
   const textSizes = {
     sm: 'text-sm font-bold',
     md: 'text-lg sm:text-xl font-extrabold',
@@ -48,7 +42,17 @@ export const TenantBrand: React.FC<TenantBrandProps> = ({
 
   return (
     <div className={clsx('flex items-center space-x-3 text-left', className)}>
-      {isNova ? (
+      {tenant?.branding?.logo_url ? (
+        <img
+          src={tenant.branding.logo_url}
+          alt={name}
+          className={clsx(logoSizes, 'object-contain shrink-0 rounded-lg')}
+          onError={(e) => {
+            // Fallback visual si la imagen falla al cargar
+            (e.currentTarget as HTMLElement).style.display = 'none';
+          }}
+        />
+      ) : isNova ? (
         <div
           className={clsx(
             logoSizes,
@@ -56,40 +60,19 @@ export const TenantBrand: React.FC<TenantBrandProps> = ({
             isWhite ? 'bg-[#173a5e] border border-white/20' : 'bg-[#173a5e]'
           )}
         >
-          <span>N</span>
+          <span>{name.charAt(0) || 'N'}</span>
           <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[#f4b43b]" />
         </div>
-      ) : tenant?.branding?.logo_url ? (
-        <img
-          src={tenant.branding.logo_url}
-          alt={name}
-          className={clsx(logoSizes, 'object-contain shrink-0')}
-        />
       ) : (
         <div
           className={clsx(
             logoSizes,
-            'flex items-center justify-center shrink-0 border shadow-xs transition-transform',
-            isWhite
-              ? 'bg-navy border-navy-border'
-              : 'bg-navy border-navy-border'
+            'relative flex items-center justify-center font-black text-white shadow-xs transition-transform shrink-0',
+            isWhite ? 'border border-white/20' : ''
           )}
+          style={{ backgroundColor: tenant?.branding?.primary_color || '#071A35' }}
         >
-          <svg className={svgSizes} viewBox="0 0 100 100" fill="none">
-            <path
-              d="M50 22L24 43V74C24 76.2 25.8 78 28 78H72C74.2 78 76 76.2 76 74V43L50 22Z"
-              stroke="var(--brand-green, #2DA674)"
-              strokeWidth="8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M43 78V56C43 52.1 46.1 49 50 49C53.9 49 57 52.1 57 56V78"
-              stroke="var(--brand-green, #2DA674)"
-              strokeWidth="8"
-              strokeLinecap="round"
-            />
-          </svg>
+          <span>{name.charAt(0) || 'H'}</span>
         </div>
       )}
 

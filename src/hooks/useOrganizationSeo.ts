@@ -124,6 +124,21 @@ export function useOrganizationSeo({
     }
     linkCanonical.setAttribute('href', resolvedCanonical);
 
+    // 6.1. Favicon Dinámico por Organización
+    const resolvedFavicon = branding?.faviconUrl?.trim();
+    let linkIcon = document.querySelector("link[rel~='icon']") as HTMLLinkElement | null;
+    if (resolvedFavicon) {
+      if (!linkIcon) {
+        linkIcon = document.createElement('link');
+        linkIcon.rel = 'icon';
+        document.head.appendChild(linkIcon);
+      }
+      linkIcon.href = resolvedFavicon;
+    } else if (linkIcon && linkIcon.href.includes('organization-branding')) {
+      // Si no hay favicon configurado y tenía uno previo, restaurar default
+      linkIcon.href = '/favicon.ico';
+    }
+
     // 7. Schema.org JSON-LD Estructurado (Resolución dinámica de tipos)
     const schemaTypes: string[] = ['Organization'];
     if (resolvedName.toLowerCase().includes('crédito') || resolvedName.toLowerCase().includes('finan') || orgTagline.toLowerCase().includes('finan')) {

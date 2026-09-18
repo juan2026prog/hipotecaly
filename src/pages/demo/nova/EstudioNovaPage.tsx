@@ -110,6 +110,9 @@ export const EstudioNovaPage: React.FC = () => {
   const secondaryColor = snapBranding?.secondaryColor || tenant?.branding?.secondary_color || '#102d49';
   const accentColor = snapBranding?.accentColor || tenant?.branding?.accent_color || '#f4b43b';
 
+  const orgLogo = snapBranding?.logoUrl !== undefined ? snapBranding.logoUrl : (tenant?.branding?.logo_url || '');
+  const orgFavicon = snapBranding?.faviconUrl !== undefined ? snapBranding.faviconUrl : (tenant?.branding?.favicon_url || '');
+
   // Inyección dinámica de SEO / Metadatos
   useOrganizationSeo({
     settings: homeSettings,
@@ -121,6 +124,8 @@ export const EstudioNovaPage: React.FC = () => {
       address: institutionalAddress,
       businessHours,
       footerDescription,
+      logoUrl: orgLogo,
+      faviconUrl: orgFavicon,
       primaryColor,
       secondaryColor,
       accentColor,
@@ -307,11 +312,14 @@ export const EstudioNovaPage: React.FC = () => {
           
           {/* LOGO DE LA ORGANIZACIÓN */}
           <a href="#inicio" className="flex items-center space-x-3 group">
-            {tenant?.branding?.logo_url ? (
+            {orgLogo ? (
               <img
-                src={tenant.branding.logo_url}
+                src={orgLogo}
                 alt={orgName}
-                className="h-11 w-auto object-contain rounded-lg transition-transform group-hover:scale-105"
+                className="h-11 w-auto max-w-[180px] object-contain rounded-lg transition-transform group-hover:scale-105"
+                onError={(e) => {
+                  (e.currentTarget as HTMLElement).style.display = 'none';
+                }}
               />
             ) : (
               <div
@@ -1033,8 +1041,15 @@ export const EstudioNovaPage: React.FC = () => {
           
           <div className="space-y-3">
             <div className="flex items-center space-x-2">
-              {tenant?.branding?.logo_url ? (
-                <img src={tenant.branding.logo_url} alt={orgName} className="h-8 w-auto object-contain rounded" />
+              {orgLogo ? (
+                <img
+                  src={orgLogo}
+                  alt={orgName}
+                  className="h-8 w-auto max-w-[140px] object-contain rounded"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLElement).style.display = 'none';
+                  }}
+                />
               ) : (
                 <div
                   className="relative w-8 h-8 rounded flex items-center justify-center text-white font-serif font-bold text-base"

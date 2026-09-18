@@ -17,7 +17,9 @@ export interface WhiteLabelCustomization {
   rut: string;
   tagline: string;
   logoUrl: string;
+  logoStoragePath?: string;
   faviconUrl: string;
+  faviconStoragePath?: string;
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
@@ -241,7 +243,9 @@ export async function getWhiteLabelCustomization(tenantId: string, slug?: string
           primaryColor: branding.primary_color || DEFAULT_WHITELABEL_CONFIG.primaryColor,
           secondaryColor: branding.secondary_color || DEFAULT_WHITELABEL_CONFIG.secondaryColor,
           logoUrl: branding.logo_url || '',
+          logoStoragePath: branding.logo_storage_path || '',
           faviconUrl: branding.favicon_url || '',
+          faviconStoragePath: branding.favicon_storage_path || '',
           customDomain: orgData.custom_domain || DEFAULT_WHITELABEL_CONFIG.customDomain,
           maxLtv: rules.maxFinancedPercentage || DEFAULT_WHITELABEL_CONFIG.maxLtv,
           minLoanAmount: rules.minLoanAmount || DEFAULT_WHITELABEL_CONFIG.minLoanAmount,
@@ -378,7 +382,9 @@ export async function saveWhiteLabelCustomization(
             public_name: config.publicName,
             tag_line: config.tagline,
             logo_url: config.logoUrl,
+            logo_storage_path: config.logoStoragePath,
             favicon_url: config.faviconUrl,
+            favicon_storage_path: config.faviconStoragePath,
             primary_color: config.primaryColor,
             secondary_color: config.secondaryColor,
             support_phone: config.supportPhone,
