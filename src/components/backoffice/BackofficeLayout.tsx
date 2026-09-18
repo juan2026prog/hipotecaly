@@ -90,8 +90,12 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isSuperAdmin, hasPermission('applications.view')]);
 
-  const isTenantPath = location.pathname.startsWith('/demo/');
-  const baseRoute = `/demo/${tenant.slug || 'estudio-nova'}/admin`;
+  const isTenantPath = location.pathname.startsWith('/demo/') || location.pathname.startsWith('/org/');
+  // /org is the canonical operational backoffice. /demo remains only for sales/demo experiences.
+  const isOrganizationBackoffice = location.pathname.startsWith('/org/');
+  const baseRoute = isOrganizationBackoffice
+    ? `/org/${tenant.slug}/admin`
+    : `/demo/${tenant.slug || 'estudio-nova'}/admin`;
   const can = (permission: string) => isSuperAdmin || hasPermission(permission);
   const canAny = (permissions: string[]) => isSuperAdmin || hasAnyPermission(permissions);
 
@@ -126,7 +130,7 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
     {
       title: 'ADMINISTRACIÓN',
       items: [
-        ...(can('organization.branding.manage') ? [{ name: 'Marca y Portal', href: `${baseRoute}/whitelabel`, icon: Palette }] : []),
+        ...((modules.white_label_enabled || isSuperAdmin) && can('organization.branding.manage') ? [{ name: 'White Label', href: `${baseRoute}/whitelabel`, icon: Palette }] : []),
         ...(can('organization.integrations.manage') ? [{ name: 'WhatsApp Directo', href: `${baseRoute}/whatsapp`, icon: MessageSquare }] : []),
         ...(canAny(['organization.users.view', 'organization.users.manage', 'organization.roles.manage'])
           ? [{ name: 'Usuarios y permisos', href: `${baseRoute}/usuarios`, icon: Users }]
@@ -289,8 +293,8 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
               </div>
             )}
 
-            <Link to="/" target="_blank" className="hidden sm:inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-500 hover:text-brand-green py-2 px-3 rounded-lg hover:bg-slate-50 min-h-[40px]">
-              <span>Ver Portal</span><ExternalLink className="w-3.5 h-3.5" />
+            <Link to={modules.white_label_enabled ? `/demo/${tenant.slug}` : "/"} target="_blank" className="hidden sm:inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-500 hover:text-brand-green py-2 px-3 rounded-lg hover:bg-slate-50 min-h-[40px]">
+              <span>{modules.white_label_enabled ? "Ver mi White Label" : "Ver Hipotecaly"}</span><ExternalLink className="w-3.5 h-3.5" />
             </Link>
             <span className="hidden md:inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-brand-green-dark border border-brand-green/20">
               <span className="w-1.5 h-1.5 rounded-full bg-brand-green mr-1.5" />Operativo
