@@ -87,7 +87,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     const belongsToTenant = memberships.some(
       (m) => m.organizationId === tenant.id && m.isActive
     );
-    // External lenders are scoped by lenders.organization_id and mirrored into
+    // External lenders are scoped by lenders.organization_id (production tenant guard) and mirrored into
     // trusted app_metadata by the backend. They are intentionally not rows in
     // organization_members, so tenant isolation must accept that authoritative
     // organization scope as well.
