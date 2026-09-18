@@ -66,10 +66,12 @@ export const LoginPage: React.FC = () => {
       // must never override the canonical Super Admin destination.
       if (isSuper || role === 'super_admin' || role === 'platform_admin') {
         destination = '/superadmin';
+      } else if (role === 'tenant_admin' || role === 'tenant_owner' || role === 'analyst' || role === 'operator') {
+        // Organization staff always land in the canonical Hipotecaly backoffice.
+        // Never allow a stale client/demo "from" route to downgrade their console.
+        destination = `/org/${targetTenantSlug}/admin`;
       } else if (redirectTo) {
         destination = redirectTo;
-      } else if (role === 'tenant_admin' || role === 'tenant_owner' || role === 'analyst' || role === 'operator') {
-        destination = `/org/${targetTenantSlug}/admin`;
       } else if (role === 'notary') {
         destination = '/notary';
       } else if (role === 'lender') {
