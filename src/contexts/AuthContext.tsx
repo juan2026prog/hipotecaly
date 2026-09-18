@@ -153,6 +153,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let resolvedMems: UserMembership[] = [];
     let resolvedRole: UserRole = 'borrower';
 
+    // Lenders are external investor identities, not organization staff.
+    // organization_members uses tenant_role and intentionally does not contain "lender".
+    // Resolve the lender context directly from the lenders table before tenant membership RBAC.
+    if (!isSuper && currentUser.app_metadata?.role === 'lender') {
+      try {
+        const { data: lenderData, error: lenderError } = await supabase
+          .from('lenders')
+          .select('id, organization_id, is_active')
+          .eq('user_id', currentUser.id)
+          .maybeSingle();
+
+        if (!lenderError && lenderData && lenderData.is_active !== false) {
+          resolvedRole = 'lender';
+          resolvedMems = lenderData.organization_id
+            ? [{ organizationId: lenderData.organization_id, role: 'lender', isActive: true }]
+            : [];
+          setMemberships(resolvedMems);
+          setUserRole(resolvedRole);
+          return { resolvedRole, resolvedIsSuper: false, resolvedMemberships: resolvedMems };
+        }
+      } catch {
+        // Continue with normal RBAC resolution so a DB error never fabricates lender access.
+      }
+    }
+
     // 2. Consulta a organization_members (Fuente autoritativa para roles de tenant)
     try {
       const { data, error } = await supabase
