@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useLocation } from 'react-router-dom';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { NotaryLayout } from '../../components/notary/NotaryLayout';
 import { notaryService } from '../../lib/notaryService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -45,6 +45,7 @@ export const NotaryApplicationDetailPage: React.FC = () => {
   const { user } = useAuth();
   const { tenant } = useTenant();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const isTenantPath = location.pathname.startsWith('/demo/');
   const basePath = isTenantPath ? `/demo/${tenant.slug}/notary` : '/notary';
@@ -52,11 +53,10 @@ export const NotaryApplicationDetailPage: React.FC = () => {
   const [app, setApp] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'resumen' | 'revision' | 'documentos' | 'escritura_firma' | 'historial'>('resumen');
+  const [notaryGate, setNotaryGate] = useState<{ canSign: boolean; issues: string[]; profile: any } | null>(null);
 
   // Motor Notarial Dinámico
   const [dynamicReqs, setDynamicReqs] = useState<DynamicNotaryRequirement[]>([]);
-
-  // Observaciones
   const [observations, setObservations] = useState<NotaryObservation[]>([]);
 
   // Modal para nueva observación
@@ -137,6 +137,9 @@ export const NotaryApplicationDetailPage: React.FC = () => {
       const events = await calendarService.getEventsByApplication(appData.id);
       const activeSignature = events.find((e) => e.eventType === 'signature' && e.status !== 'cancelled');
       setScheduledEvent(activeSignature || null);
+
+      const gateRes = await notaryService.validateNotaryReadyForSignature(user?.id || 'u-test-notary', appData.id);
+      setNotaryGate(gateRes);
     } catch {
       // Fallback
     } finally {
@@ -1258,13 +1261,23 @@ export const NotaryApplicationDetailPage: React.FC = () => {
                     >
                       Generar Borrador
                     </button>
-                    <button
-                      onClick={() => setShowFeaModal(true)}
-                      className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-colors shadow-sm flex items-center space-x-1.5"
-                    >
-                      <Stamp className="w-3.5 h-3.5 text-teal-400" />
-                      <span>Preparar Versión para Firma (FEA)</span>
-                    </button>
+                    {notaryGate && !notaryGate.canSign ? (
+                      <button
+                        onClick={() => navigate(`${basePath}/perfil`)}
+                        className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-colors shadow-sm flex items-center space-x-1.5"
+                      >
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-200" />
+                        <span>Completar Perfil para Firmar</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setShowFeaModal(true)}
+                        className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-colors shadow-sm flex items-center space-x-1.5"
+                      >
+                        <Stamp className="w-3.5 h-3.5 text-teal-400" />
+                        <span>Preparar Versión para Firma (FEA)</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1282,7 +1295,7 @@ export const NotaryApplicationDetailPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Progreso de Firmas Multilaterales */}
+              {/* Progreso de Firmas Multilaterales */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
@@ -1296,6 +1309,28 @@ export const NotaryApplicationDetailPage: React.FC = () => {
                   <span>Ver Información Técnica</span>
                 </button>
               </div>
+
+              {notaryGate && !notaryGate.canSign && (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-2 text-xs">
+                  <div className="flex items-center space-x-2 text-amber-900 font-bold">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Firma notarial bloqueada: Perfil profesional o proveedor de firma no completado</span>
+                  </div>
+                  <ul className="list-disc list-inside text-amber-800 text-[11px] space-y-0.5 pl-1">
+                    {notaryGate.issues.map((iss, idx) => (
+                      <li key={idx}>{iss}</li>
+                    ))}
+                  </ul>
+                  <div className="pt-2">
+                    <button
+                      onClick={() => navigate(`${basePath}/perfil`)}
+                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-xs shadow-sm transition-colors"
+                    >
+                      Completar Perfil Profesional
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2.5 text-xs">
                 <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
@@ -1317,14 +1352,25 @@ export const NotaryApplicationDetailPage: React.FC = () => {
                 <div className="p-3 bg-teal-50 border border-teal-300 rounded-xl flex items-center justify-between">
                   <div>
                     <div className="font-bold text-teal-950">Escribana Autorizante: Esc. María Pérez Morales</div>
-                    <div className="text-[11px] text-teal-700">Firma digital disponible vía Firma.gub.uy / SNE</div>
+                    <div className="text-[11px] text-teal-700">
+                      {notaryGate && !notaryGate.canSign ? 'Firma no disponible hasta completar perfil profesional' : 'Firma digital disponible vía Firma.gub.uy / SNE'}
+                    </div>
                   </div>
-                  <button
-                    onClick={() => setShowFeaModal(true)}
-                    className="px-3 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-bold text-xs"
-                  >
-                    Firmar Ahora
-                  </button>
+                  {notaryGate && !notaryGate.canSign ? (
+                    <button
+                      onClick={() => navigate(`${basePath}/perfil`)}
+                      className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-xs"
+                    >
+                      Completar Perfil
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setShowFeaModal(true)}
+                      className="px-3 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-bold text-xs"
+                    >
+                      Firmar Ahora
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

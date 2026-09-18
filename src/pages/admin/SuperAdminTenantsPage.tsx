@@ -20,6 +20,7 @@ import { SuperAdminTenantDetailModal } from '../../components/admin/SuperAdminTe
 import { Button } from '../../components/ui/Button';
 import { getAllRegisteredTenants, Tenant } from '../../lib/tenantService';
 import { resetNovaDemoTenant } from '../../lib/tenantOnboardingService';
+import { supabase } from '../../lib/supabase';
 
 export const SuperAdminTenantsPage: React.FC = () => {
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -28,9 +29,16 @@ export const SuperAdminTenantsPage: React.FC = () => {
   const [planFilter, setPlanFilter] = useState<'all' | 'whitelabel' | 'core'>('all');
   const [selectedTenantModal, setSelectedTenantModal] = useState<Tenant | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  const loadData = () => {
-    const list = getAllRegisteredTenants();
+  const loadData = async () => {
+    let list = getAllRegisteredTenants();
+    try {
+      const { data, error } = await supabase.from('organizations').select('*');
+      if (!error && data && data.length > 0) {
+        list = data as unknown as Tenant[];
+      }
+    } catch {
+      // Fallback
+    }
     setTenants(list);
   };
 
