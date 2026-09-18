@@ -120,7 +120,7 @@ export const AuthCallbackPage: React.FC = () => {
         } else if (isSuper || currentUser.app_metadata?.role === 'super_admin' || currentUser.app_metadata?.role === 'platform_admin' || currentUser.app_metadata?.is_super_admin) {
           destination = '/superadmin';
         } else if (activeMems.some((m) => m.role === 'tenant_admin' || (m.role as string) === 'tenant_owner' || m.role === 'analyst' || m.role === 'operator')) {
-          destination = `/demo/${resolvedTenantSlug}/admin`;
+          destination = `/org/${resolvedTenantSlug}/admin`;
         } else if (activeMems.some((m) => m.role === 'notary')) {
           destination = '/notary';
         } else if (activeMems.some((m) => m.role === 'lender')) {

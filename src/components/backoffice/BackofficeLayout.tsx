@@ -182,7 +182,19 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
       <aside className="hidden lg:flex lg:flex-col lg:w-64 bg-navy text-white flex-shrink-0 z-30 border-r border-navy-border shadow-xl">
         <div className="h-20 flex items-center px-6 border-b border-navy-border/70 justify-between">
           <Link to={baseRoute} className="flex items-center space-x-3">
-            <TenantBrand isWhite size="sm" customName={tenant.branding.public_name || 'HIPOTECALY'} />
+            {isOrganizationBackoffice ? (
+              <div className="flex items-center space-x-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center font-black text-white text-sm shadow-xs">
+                  H
+                </div>
+                <div className="leading-tight">
+                  <span className="text-sm font-black text-white tracking-wider block">HIPOTECALY</span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Backoffice</span>
+                </div>
+              </div>
+            ) : (
+              <TenantBrand isWhite size="sm" customName={tenant.branding.public_name || 'HIPOTECALY'} />
+            )}
           </Link>
         </div>
 
@@ -293,9 +305,48 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
               </div>
             )}
 
-            <Link to={modules.white_label_enabled ? `/demo/${tenant.slug}` : "/"} target="_blank" className="hidden sm:inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-500 hover:text-brand-green py-2 px-3 rounded-lg hover:bg-slate-50 min-h-[40px]">
-              <span>{modules.white_label_enabled ? "Ver mi White Label" : "Ver Hipotecaly"}</span><ExternalLink className="w-3.5 h-3.5" />
-            </Link>
+            {(tenant.is_white_label || modules.white_label_enabled) ? (
+              <div className="flex items-center space-x-1.5">
+                {isOrganizationBackoffice ? (
+                  <Link
+                    to={`/demo/${tenant.slug}/admin`}
+                    className="inline-flex items-center space-x-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 py-2 px-3 rounded-xl transition shadow-2xs min-h-[40px]"
+                    title="Ver la vista de administración con la marca y estilo propios de la organización"
+                  >
+                    <Palette className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Ver modo White Label</span>
+                  </Link>
+                ) : (
+                  <Link
+                    to={`/org/${tenant.slug}/admin`}
+                    className="inline-flex items-center space-x-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 py-2 px-3 rounded-xl transition shadow-2xs min-h-[40px]"
+                    title="Volver al panel operativo canónico de Hipotecaly"
+                  >
+                    <span>Volver a Backoffice Hipotecaly</span>
+                  </Link>
+                )}
+
+                <Link
+                  to={`/demo/${tenant.slug}`}
+                  target="_blank"
+                  className="hidden sm:inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-600 hover:text-brand-green py-2 px-2.5 rounded-lg hover:bg-slate-50 min-h-[40px]"
+                  title="Abrir el portal público y de solicitantes en una nueva pestaña"
+                >
+                  <span>Portal público</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            ) : (
+              <Link
+                to="/"
+                target="_blank"
+                className="hidden sm:inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-500 hover:text-brand-green py-2 px-3 rounded-lg hover:bg-slate-50 min-h-[40px]"
+              >
+                <span>Ver Hipotecaly</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </Link>
+            )}
+
             <span className="hidden md:inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-brand-green-dark border border-brand-green/20">
               <span className="w-1.5 h-1.5 rounded-full bg-brand-green mr-1.5" />Operativo
             </span>
@@ -311,7 +362,19 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
           <div className="relative w-72 max-w-full bg-navy text-white flex flex-col justify-between py-6 px-4 shadow-2xl z-10 overflow-y-auto">
             <div className="space-y-6">
               <div className="flex items-center justify-between pb-4 border-b border-navy-border">
-                <TenantBrand isWhite size="sm" customName={tenant.branding.public_name || 'HIPOTECALY'} />
+                {isOrganizationBackoffice ? (
+                  <div className="flex items-center space-x-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center font-black text-white text-sm shadow-xs">
+                      H
+                    </div>
+                    <div className="leading-tight">
+                      <span className="text-sm font-black text-white tracking-wider block">HIPOTECALY</span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Backoffice</span>
+                    </div>
+                  </div>
+                ) : (
+                  <TenantBrand isWhite size="sm" customName={tenant.branding.public_name || 'HIPOTECALY'} />
+                )}
                 <button onClick={() => setMobileDrawerOpen(false)} className="p-2 rounded-lg text-slate-400 hover:text-white min-h-[44px] min-w-[44px] flex items-center justify-center"><X className="w-6 h-6" /></button>
               </div>
               {renderNavigation(true)}

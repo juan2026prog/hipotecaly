@@ -246,10 +246,12 @@ export const DashboardPage: React.FC = () => {
           <div>
             <div className="flex items-center space-x-2">
               <span className="text-[10px] font-bold text-[#f4b43b] bg-[#102d49] px-2 py-0.5 rounded uppercase tracking-wider">
-                {brandName}
+                {isOrganizationPath ? `HIPOTECALY · ${brandName}` : brandName}
               </span>
               <span className="text-slate-400">•</span>
-              <span className="text-xs text-slate-500 font-medium">Panel Principal de Trabajo</span>
+              <span className="text-xs text-slate-500 font-medium">
+                {isOrganizationPath ? 'Backoffice Operativo' : 'Modo White Label Demo'}
+              </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[#102d49] tracking-tight mt-1">
               Inicio
