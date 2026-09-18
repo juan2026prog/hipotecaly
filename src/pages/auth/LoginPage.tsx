@@ -69,7 +69,7 @@ export const LoginPage: React.FC = () => {
       } else if (role === 'tenant_admin' || role === 'tenant_owner' || role === 'analyst' || role === 'operator') {
         // Organization staff always land in the canonical Hipotecaly backoffice.
         // Never allow a stale client/demo "from" route to downgrade their console.
-        destination = `/org/${targetTenantSlug}/admin`;
+        destination = `/demo/${targetTenantSlug}/admin`;
       } else if (redirectTo) {
         destination = redirectTo;
       } else if (role === 'notary') {
