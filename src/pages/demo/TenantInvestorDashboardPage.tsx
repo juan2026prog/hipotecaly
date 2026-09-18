@@ -448,9 +448,9 @@ export const TenantInvestorDashboardPage: React.FC = () => {
   }, [location.pathname]);
 
   // Colecciones de Datos
-  const [opportunities, setOpportunities] = useState<PrivateOpportunity[]>(INITIAL_OPPORTUNITIES);
-  const [loans, setLoans] = useState<ActiveLoan[]>(INITIAL_LOANS);
-  const [proposals, setProposals] = useState<ProposalItem[]>(INITIAL_PROPOSALS);
+  const [opportunities, setOpportunities] = useState<PrivateOpportunity[]>([]);
+  const [loans, setLoans] = useState<ActiveLoan[]>([]);
+  const [proposals, setProposals] = useState<ProposalItem[]>([]);
 
   // Perfil del Inversor y Criterios Centralizados
   const [profileData, setProfileData] = useState<InvestorProfileData>(() => {
@@ -532,7 +532,28 @@ export const TenantInvestorDashboardPage: React.FC = () => {
 
       if (isSupabaseConfigured) {
         try {
-          const { data: oppData } = await supabase
+          const { data: authData } = await supabase.auth.getUser();
+          const currentUser = authData.user;
+          if (!currentUser) {
+            setOpportunities([]);
+            setLoading(false);
+            return;
+          }
+
+          const { data: lender } = await supabase
+            .from('lenders')
+            .select('id, organization_id, available_capital')
+            .eq('user_id', currentUser.id)
+            .eq('is_active', true)
+            .maybeSingle();
+
+          if (!lender || lender.organization_id !== tenant.id) {
+            setOpportunities([]);
+            setLoading(false);
+            return;
+          }
+
+          const { data: oppData, error: oppError } = await supabase
             .from('opportunities')
             .select(`
               id, status, match_score, created_at,
@@ -541,65 +562,69 @@ export const TenantInvestorDashboardPage: React.FC = () => {
                 properties(city, department, property_type, estimated_value)
               )
             `)
+            .eq('lender_id', lender.id)
             .order('created_at', { ascending: false });
 
-          if (oppData && oppData.length > 0) {
-            const mappedOpps: PrivateOpportunity[] = oppData.map((d: any) => {
-              const app = d.application || {};
-              const prop = Array.isArray(app.properties) ? app.properties[0] : (app.properties || {});
-              const req = Number(app.requested_amount) || 100000;
-              const val = Number(prop.estimated_value) || (req * 2.8);
-              const ratio = val > 0 ? Math.round((req / val) * 1000) / 10 : 35.0;
-              const zoneStr = [prop.city || 'Pocitos', prop.department || 'Montevideo'].filter(Boolean).join(' · ');
+          if (oppError) throw oppError;
 
-              return {
-                id: d.id,
-                public_id: app.public_id || `NOV-${d.id.slice(0, 8).toUpperCase()}`,
-                zone: zoneStr,
-                department: prop.department || 'Montevideo',
-                property_type: prop.property_type || 'Apartamento',
-                requested_amount: req,
-                currency: app.currency || 'USD',
-                preliminary_valuation: val,
-                financing_ratio: ratio,
-                term_months: Number(app.term_months) || 36,
-                modality: 'solo_intereses' as PaymentModalityType,
-                modality_label: 'Solo intereses + capital al vencimiento',
-                suggested_rate: 11.5,
-                applicant_income_status: 'Documentación de ingresos verificada',
-                guarantee_status: 'Garantía en análisis por tasador colegiado',
-                documentation_pct: 90,
-                status: 'Disponible para propuesta',
-                assigned_time: 'Reciente',
-              };
-            });
+          const mappedOpps: PrivateOpportunity[] = (oppData || []).map((d: any) => {
+            const app = d.application || {};
+            const prop = Array.isArray(app.properties) ? app.properties[0] : (app.properties || {});
+            const req = Number(app.requested_amount) || 0;
+            const val = Number(prop.estimated_value) || 0;
+            const ratio = val > 0 ? Math.round((req / val) * 1000) / 10 : 0;
+            return {
+              id: d.id,
+              public_id: app.public_id || `OP-${d.id.slice(0, 8).toUpperCase()}`,
+              zone: [prop.city, prop.department].filter(Boolean).join(' · ') || 'Zona no informada',
+              department: prop.department || 'No informado',
+              property_type: prop.property_type || 'No informado',
+              requested_amount: req,
+              currency: app.currency || 'USD',
+              preliminary_valuation: val,
+              financing_ratio: ratio,
+              term_months: Number(app.term_months) || 0,
+              modality: 'solo_intereses' as PaymentModalityType,
+              modality_label: 'Condiciones a definir por la organización',
+              suggested_rate: 0,
+              applicant_income_status: 'Información anonimizada disponible en expediente',
+              guarantee_status: 'Garantía en análisis',
+              documentation_pct: 0,
+              status: d.status || 'Disponible',
+              assigned_time: 'Asignada',
+            };
+          });
+          setOpportunities(mappedOpps);
 
-            const isDemoTenant = tenant.id === 'd0000000-0000-0000-0000-000000000001' || tenant.slug === 'estudio-nova' || tenant.slug === 'demo';
+          const { data: offerData } = await supabase
+            .from('lender_offers')
+            .select('id, application_id, amount, currency, term_months, rate, notes, status, created_at, expiration_date')
+            .eq('lender_id', lender.id)
+            .order('created_at', { ascending: false });
 
-            if (isDemoTenant) {
-              const combined = [...mappedOpps];
-              for (const item of INITIAL_OPPORTUNITIES) {
-                if (!combined.some(c => c.id === item.id || c.public_id === item.public_id)) {
-                  combined.push(item);
-                }
-              }
-              setOpportunities(combined);
-            } else {
-              setOpportunities(mappedOpps);
-            }
-          } else {
-            const isDemoTenant = tenant.id === 'd0000000-0000-0000-0000-000000000001' || tenant.slug === 'estudio-nova' || tenant.slug === 'demo';
-            if (isDemoTenant) {
-              setOpportunities(INITIAL_OPPORTUNITIES);
-            } else {
-              setOpportunities([]);
-            }
-          }
+          setProposals((offerData || []).map((o: any) => ({
+            id: o.id,
+            opp_id: o.application_id,
+            public_id: o.application_id.slice(0, 8).toUpperCase(),
+            property_type: 'Expediente',
+            zone: 'Datos protegidos',
+            proposed_amount: Number(o.amount),
+            proposed_rate: Number(o.rate),
+            term_months: Number(o.term_months),
+            modality: 'solo_intereses' as PaymentModalityType,
+            modality_label: 'Propuesta registrada',
+            estimated_interest_yearly: Number(o.amount) * (Number(o.rate) / 100),
+            submitted_at: new Date(o.created_at).toLocaleDateString('es-UY'),
+            valid_until: o.expiration_date || '',
+            status: o.status === 'accepted' ? 'aceptada' : o.status === 'rejected' ? 'rechazada' : 'enviada',
+            conditions: o.notes || '',
+          })));
         } catch (err) {
           console.warn('Error conectando a Supabase para oportunidades:', err);
+          setOpportunities([]);
+          setProposals([]);
         }
       }
-
       setLoading(false);
     }
 
@@ -675,35 +700,30 @@ export const TenantInvestorDashboardPage: React.FC = () => {
     setProposalSuccessMessage(false);
   };
 
-  const handleSubmitProposal = (e: React.FormEvent) => {
+  const handleSubmitProposal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedOppForProposal) return;
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData.user) return;
+    const { data: lender } = await supabase.from('lenders').select('id').eq('user_id', authData.user.id).maybeSingle();
+    if (!lender) return;
 
-    const yearlyInt = selectedOppForProposal.modality === 'solo_intereses'
-      ? calculateInterestOnlyReturns(proposalForm.amount, proposalForm.rate, proposalForm.term).yearlyInterest
-      : calculateAmortizingReturns(proposalForm.amount, proposalForm.rate, proposalForm.term).firstMonthInterest * 12;
+    const { error } = await supabase.from('investor_interests').upsert({
+      opportunity_id: selectedOppForProposal.id,
+      lender_id: lender.id,
+      indicated_amount: proposalForm.amount,
+      currency: selectedOppForProposal.currency || 'USD',
+      message: proposalForm.conditions,
+      status: 'interested',
+      non_binding: true,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'opportunity_id,lender_id' });
 
-    const newProp: ProposalItem = {
-      id: `prop-${Date.now()}`,
-      opp_id: selectedOppForProposal.id,
-      public_id: selectedOppForProposal.public_id,
-      property_type: selectedOppForProposal.property_type,
-      zone: selectedOppForProposal.zone,
-      proposed_amount: proposalForm.amount,
-      proposed_rate: proposalForm.rate,
-      term_months: proposalForm.term,
-      modality: selectedOppForProposal.modality,
-      modality_label: selectedOppForProposal.modality_label,
-      estimated_interest_yearly: yearlyInt,
-      submitted_at: 'Hoy',
-      valid_until: `${proposalForm.validityDays} días`,
-      status: 'enviada',
-      conditions: proposalForm.conditions,
-    };
-
-    setProposals([newProp, ...proposals]);
+    if (error) {
+      console.warn('No se pudo registrar el interés:', error);
+      return;
+    }
     setProposalSuccessMessage(true);
-
     setTimeout(() => {
       setSelectedOppForProposal(null);
       setProposalSuccessMessage(false);
