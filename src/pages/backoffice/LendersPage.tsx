@@ -2,19 +2,82 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BackofficeLayout } from '../../components/backoffice/BackofficeLayout';
 import { Button } from '../../components/ui/Button';
-import { getLendersList, Lender } from '../../lib/lendersService';
-import { Plus, Shield, ArrowRight, CheckCircle2, PauseCircle, AlertCircle } from 'lucide-react';
+import { createLender, getLendersList, importLenders, Lender } from '../../lib/lendersService';
+import { Plus, Shield, ArrowRight, CheckCircle2, PauseCircle, AlertCircle, Upload, X } from 'lucide-react';
+import { useTenant } from '../../contexts/TenantContext';
 
 export const LendersPage: React.FC = () => {
+  const { tenant } = useTenant();
   const [lenders, setLenders] = useState<Lender[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState({ display_name: '', contact_name: '', contact_email: '', contact_phone: '', available_capital: '', notes: '' });
 
-  useEffect(() => {
-    getLendersList().then((res) => {
-      setLenders(res.lenders);
-      setLoading(false);
+  const load = async () => {
+    if (!tenant?.id) { setLoading(false); return; }
+    setLoading(true);
+    const res = await getLendersList({ organizationId: tenant.id });
+    setLenders(res.lenders);
+    setError(res.error);
+    setLoading(false);
+  };
+
+  useEffect(() => { void load(); }, [tenant?.id]);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tenant?.id || !form.display_name.trim()) return;
+    const res = await createLender({
+      organization_id: tenant.id,
+      display_name: form.display_name.trim(),
+      contact_name: form.contact_name.trim(),
+      contact_email: form.contact_email.trim(),
+      contact_phone: form.contact_phone.trim(),
+      available_capital: form.available_capital ? Number(form.available_capital) : undefined,
+      notes: form.notes.trim(),
+      source: 'manual',
     });
-  }, []);
+    if (res.error) { setError(res.error); return; }
+    setForm({ display_name: '', contact_name: '', contact_email: '', contact_phone: '', available_capital: '', notes: '' });
+    setShowCreate(false);
+    setNotice('Inversor guardado correctamente.');
+    await load();
+  };
+
+  const handleCsv = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !tenant?.id) return;
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      setError('Importación XLSX directa todavía no está habilitada. Exportá el Excel como CSV.');
+      e.target.value = '';
+      return;
+    }
+    const lines = (await file.text()).split(/\r?\n/).filter(Boolean);
+    const split = (line: string) => line.split(/[,;]/).map(v => v.trim().replace(/^"|"$/g, ''));
+    const headers = split(lines[0] || '').map(h => h.toLowerCase());
+    const rows = lines.slice(1).map(line => {
+      const values = split(line);
+      const get = (...names: string[]) => {
+        const i = headers.findIndex(h => names.includes(h));
+        return i >= 0 ? values[i] || '' : '';
+      };
+      return {
+        display_name: get('nombre', 'name', 'display_name'),
+        contact_name: get('contacto', 'contact_name'),
+        contact_email: get('email', 'contact_email'),
+        contact_phone: get('telefono', 'teléfono', 'phone', 'contact_phone'),
+        available_capital: Number(get('capital', 'available_capital')) || undefined,
+        notes: get('notas', 'notes'),
+      };
+    });
+    const res = await importLenders(tenant.id, rows, 'csv');
+    setNotice(res.created + ' inversor(es) importados.');
+    setError(res.errors.length ? res.errors.slice(0, 3).join(' · ') : null);
+    e.target.value = '';
+    await load();
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -50,19 +113,46 @@ export const LendersPage: React.FC = () => {
               Prestamistas e Inversores Registrados
             </h2>
             <p className="text-xs sm:text-sm text-slate-muted mt-1">
-              Administración de inversores privados, family offices y estudios con capital. Los datos de contacto son estrictamente confidenciales.
+              Cartera privada de inversores de la organización. Alta manual o importación CSV; los datos quedan aislados por organización.
             </p>
           </div>
-          <Button variant="primary" size="md" className="shrink-0 shadow-sm">
-            <Plus className="w-4 h-4 mr-1.5" /> Nuevo Prestamista
-          </Button>
+          <div className="flex gap-2 shrink-0">
+            <label className="inline-flex items-center justify-center h-10 px-4 rounded-lg border border-slate-border bg-white text-xs font-bold text-navy cursor-pointer hover:bg-slate-50">
+              <Upload className="w-4 h-4 mr-1.5" /> Importar CSV
+              <input type="file" accept=".csv,text/csv" className="hidden" onChange={handleCsv} />
+            </label>
+            <Button variant="primary" size="md" className="shadow-sm" onClick={() => setShowCreate(true)}>
+              <Plus className="w-4 h-4 mr-1.5" /> Agregar inversor
+            </Button>
+          </div>
         </div>
+
+        {notice && <div className="p-3 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-semibold">{notice}</div>}
+        {error && <div className="p-3 rounded-lg bg-rose-50 text-rose-800 text-xs">{error}</div>}
+
+        {showCreate && (
+          <form onSubmit={handleCreate} className="bg-white rounded-card p-5 border border-slate-border shadow-card space-y-4">
+            <div className="flex items-start justify-between">
+              <div><h3 className="font-bold text-navy">Agregar inversor</h3><p className="text-xs text-slate-500">Alta real en la cartera privada de la organización.</p></div>
+              <button type="button" onClick={() => setShowCreate(false)}><X className="w-5 h-5 text-slate-400" /></button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input required className="h-11 px-3 border border-slate-border rounded-lg text-sm" placeholder="Nombre / denominación *" value={form.display_name} onChange={e => setForm({...form, display_name:e.target.value})} />
+              <input className="h-11 px-3 border border-slate-border rounded-lg text-sm" placeholder="Persona de contacto" value={form.contact_name} onChange={e => setForm({...form, contact_name:e.target.value})} />
+              <input type="email" className="h-11 px-3 border border-slate-border rounded-lg text-sm" placeholder="Email" value={form.contact_email} onChange={e => setForm({...form, contact_email:e.target.value})} />
+              <input className="h-11 px-3 border border-slate-border rounded-lg text-sm" placeholder="Teléfono" value={form.contact_phone} onChange={e => setForm({...form, contact_phone:e.target.value})} />
+              <input type="number" min="0" className="h-11 px-3 border border-slate-border rounded-lg text-sm" placeholder="Capital disponible USD" value={form.available_capital} onChange={e => setForm({...form, available_capital:e.target.value})} />
+              <input className="h-11 px-3 border border-slate-border rounded-lg text-sm" placeholder="Notas internas" value={form.notes} onChange={e => setForm({...form, notes:e.target.value})} />
+            </div>
+            <div className="flex justify-end"><Button type="submit" variant="primary">Guardar inversor</Button></div>
+          </form>
+        )}
 
         {/* Banner Anti-Bypass */}
         <div className="p-4 rounded-xl bg-navy/5 border border-navy/10 flex items-start space-x-3 text-xs text-navy">
           <Shield className="w-4 h-4 text-brand-green shrink-0 mt-0.5" />
           <div>
-            <strong>Protección de Intermediación (Anti-Bypass):</strong> Los prestamistas activos únicamente reciben expedientes en formato anonimizado y no pueden visualizar datos personales del solicitante sin revelación formalmente autorizada.
+            <strong>Flujo de contacto protegido:</strong> el inversor recibe oportunidades anonimizadas, marca interés no vinculante y la organización decide cuándo conectar a las partes.
           </div>
         </div>
 
