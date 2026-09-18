@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth, UserRole } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
 import { AccessDenied } from './AccessDenied';
+import { getAllRegisteredTenants } from '../../lib/tenantService';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -43,6 +44,21 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // 2. Verificación de Super Admin
   if (requireSuperAdmin && !isSuperAdmin) {
+    // A stale /superadmin destination must not strand organization staff on a 403.
+    // Send them to their own canonical Hipotecaly backoffice instead.
+    const staffRoles: UserRole[] = ['tenant_owner', 'tenant_admin', 'analyst', 'operator'];
+    const activeStaffMembership = memberships.find(
+      (m) => m.isActive && staffRoles.includes(m.role)
+    );
+    if (activeStaffMembership) {
+      const organization = getAllRegisteredTenants().find(
+        (candidate) => candidate.id === activeStaffMembership.organizationId
+      );
+      if (organization) {
+        return <Navigate to={`/org/${organization.slug}/admin`} replace />;
+      }
+    }
+
     return (
       <AccessDenied
         requiredRoles={['super_admin']}
