@@ -6,7 +6,6 @@ import { Input } from '../../components/ui/Input';
 import { Checkbox } from '../../components/ui/Checkbox';
 import { useAuth } from '../../contexts/AuthContext';
 import { getAllRegisteredTenants } from '../../lib/tenantService';
-import { isProduction } from '../../lib/demoControl';
 import { ArrowRight, AlertCircle, ShieldCheck } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
@@ -25,7 +24,6 @@ export const LoginPage: React.FC = () => {
   const searchParams = new URLSearchParams(location.search);
   const isFromSaveSimulation = searchParams.get('action') === 'save_simulation';
   const tenantParam = searchParams.get('tenant');
-  const showDemoAccess = !isProduction() || location.pathname.startsWith('/demo') || searchParams.get('demo') === 'true';
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
@@ -83,25 +81,7 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleDemoLogin = async (roleType: 'admin' | 'analyst' | 'borrower' | 'lender' | 'notary', targetPath: string) => {
-    const credentials = {
-      admin: { u: 'admin@estudionova.uy', p: 'admin123' },
-      analyst: { u: 'operador@estudionova.uy', p: 'admin123' },
-      borrower: { u: 'cliente@estudionova.uy', p: 'admin123' },
-      lender: { u: 'inversor@estudionova.uy', p: 'admin123' },
-      notary: { u: 'escribano@estudionova.uy', p: 'admin123' },
-    }[roleType];
-    setLoading(true);
-    setErrorMessage(null);
-    const { error } = await signIn(credentials.u, credentials.p);
-    setLoading(false);
-    if (!error) {
-      console.log('[AUTH] demo redirect ->', targetPath);
-      navigate(targetPath);
-    } else {
-      setErrorMessage(error.message);
-    }
-  };
+
 
   return (
     <AuthLayout
@@ -205,72 +185,7 @@ export const LoginPage: React.FC = () => {
         </div>
       </form>
 
-      {/* Panel de Acceso Rápido de Demostración y QA */}
-      {showDemoAccess && (
-        <div className="mt-6 pt-5 border-t border-slate-200 space-y-3 text-left">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 flex items-center">
-              <ShieldCheck className="w-3.5 h-3.5 mr-1 text-amber-500" />
-              Acceso Rápido Demo / Pruebas
-            </span>
-            <span className="text-[10px] text-brand-green font-mono font-bold bg-emerald-50 px-1.5 py-0.5 rounded">
-              1-Click Demo
-            </span>
-          </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => handleDemoLogin('admin', '/demo/estudio-nova/admin')}
-              className="p-2.5 rounded-xl border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100/80 text-left transition-colors text-xs group"
-            >
-              <span className="font-bold text-indigo-950 block group-hover:text-indigo-700">👑 Administrador</span>
-              <span className="text-[10px] text-indigo-800 font-mono block mt-0.5">admin@estudionova.uy / admin123</span>
-            </button>
-
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => handleDemoLogin('analyst', '/demo/estudio-nova/admin')}
-              className="p-2.5 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100/80 text-left transition-colors text-xs group"
-            >
-              <span className="font-bold text-blue-950 block group-hover:text-blue-700">🏢 Operador</span>
-              <span className="text-[10px] text-blue-800 font-mono block mt-0.5">operador@estudionova.uy / admin123</span>
-            </button>
-
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => handleDemoLogin('borrower', '/demo/estudio-nova/cliente')}
-              className="p-2.5 rounded-xl border-2 border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-left transition-all text-xs group shadow-xs"
-            >
-              <span className="font-bold text-emerald-950 block group-hover:text-emerald-700">👤 Cliente</span>
-              <span className="text-[10px] text-emerald-800 font-mono block mt-0.5">cliente@estudionova.uy / admin123</span>
-            </button>
-
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => handleDemoLogin('lender', '/demo/estudio-nova/inversor')}
-              className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/70 hover:bg-purple-100/80 text-left transition-colors text-xs group"
-            >
-              <span className="font-bold text-purple-950 block group-hover:text-purple-700">💼 Inversor</span>
-              <span className="text-[10px] text-purple-800 font-mono block mt-0.5">inversor@estudionova.uy / admin123</span>
-            </button>
-
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => handleDemoLogin('notary', '/notary')}
-              className="p-2.5 rounded-xl border border-teal-300 bg-teal-50/70 hover:bg-teal-100/80 text-left transition-colors text-xs group"
-            >
-              <span className="font-bold text-teal-950 block group-hover:text-teal-700">📜 Escribano</span>
-              <span className="text-[10px] text-teal-800 font-mono block mt-0.5">escribano@estudionova.uy / admin123</span>
-            </button>
-          </div>
-        </div>
-      )}
 
       <div className="mt-6 pt-5 border-t border-slate-100 text-center text-xs text-slate-muted space-y-2">
         <p>
