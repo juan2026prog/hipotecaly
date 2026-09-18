@@ -69,7 +69,7 @@ export const LoginPage: React.FC = () => {
       } else if (redirectTo) {
         destination = redirectTo;
       } else if (role === 'tenant_admin' || role === 'tenant_owner' || role === 'analyst' || role === 'operator') {
-        destination = `/demo/${targetTenantSlug}/admin`;
+        destination = `/org/${targetTenantSlug}/admin`;
       } else if (role === 'notary') {
         destination = '/notary';
       } else if (role === 'lender') {
