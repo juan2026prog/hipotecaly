@@ -306,23 +306,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      // IMPORTANT: never await Supabase queries inside onAuthStateChange.
+      // Supabase can hold the auth lock while this callback runs; awaiting
+      // resolveRoles/fetchBorrowerProfile here can deadlock signInWithPassword
+      // and make a successful login appear to bounce back to /ingresar.
       setSession(newSession);
       const currentUser = newSession?.user ?? null;
       setUser(currentUser);
 
-      if (currentUser) {
-        await resolveRoles(currentUser);
-        await fetchBorrowerProfile(currentUser);
-      } else {
+      if (!currentUser) {
         setBorrower(null);
         setUserRole(null);
         setIsSuperAdmin(false);
         setMemberships([]);
         setIsQaSession(false);
         setQaSessionData(null);
+        setLoading(false);
+        return;
       }
-      setLoading(false);
+
+      // Defer DB-backed profile/role resolution until the auth callback releases.
+      window.setTimeout(() => {
+        void (async () => {
+          await resolveRoles(currentUser);
+          await fetchBorrowerProfile(currentUser);
+          setLoading(false);
+        })();
+      }, 0);
     });
 
     return () => subscription.unsubscribe();
