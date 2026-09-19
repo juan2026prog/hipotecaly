@@ -28,6 +28,7 @@ import {
   getLendersList,
   getInvestorInterests,
   submitInvestorInterest,
+  evaluateInvestorOpportunityMatch,
   Lender,
   InvestorInterest,
 } from '../../lib/lendersService';
@@ -196,35 +197,18 @@ export const TenantInvestorDashboardPage: React.FC = () => {
     loadData();
   }, [tenant.id, user?.id]);
 
-  // Evaluador de Match de Criterios (X de 5)
+  // Evaluador Canónico de Match de Criterios (7 Factores)
   const evaluateCriteriaMatch = (opp: PrivateOpportunity) => {
-    const checkZone = investorCriteria.acceptedDepartments.some(dept =>
-      opp.department.toLowerCase().includes(dept.toLowerCase()) ||
-      opp.zone.toLowerCase().includes(dept.toLowerCase())
-    );
-    const checkType = investorCriteria.acceptedPropertyTypes.some(t =>
-      opp.property_type.toLowerCase().includes(t.toLowerCase()) ||
-      t.toLowerCase().includes(opp.property_type.toLowerCase())
-    );
-    const checkRatio = opp.financing_ratio <= investorCriteria.maxFinancingRatio;
-    const checkRate = (opp.suggested_rate || 11.5) >= investorCriteria.minRate;
-    const checkModality = investorCriteria.acceptedModalities.includes(opp.modality);
-
-    const checks = [
-      { label: 'Zona geográfica aceptada', passed: checkZone, reason: checkZone ? 'Zona preferida' : 'Fuera de departamentos preferidos' },
-      { label: 'Tipo de inmueble aceptado', passed: checkType, reason: checkType ? `${opp.property_type} aceptado` : 'Tipo de inmueble secundario' },
-      { label: 'Financiación máxima (LTV)', passed: checkRatio, reason: checkRatio ? `${opp.financing_ratio}% ≤ ${investorCriteria.maxFinancingRatio}% máx` : `Supera el límite de ${investorCriteria.maxFinancingRatio}%` },
-      { label: 'Tasa objetivo', passed: checkRate, reason: checkRate ? `${opp.suggested_rate}% ≥ ${investorCriteria.minRate}% mín` : 'Tasa inferior al objetivo' },
-      { label: 'Modalidad aceptada', passed: checkModality, reason: checkModality ? 'Modalidad compatible' : 'Modalidad no seleccionada' },
-    ];
-
-    const passedCount = checks.filter(c => c.passed).length;
-    return {
-      total: checks.length,
-      passedCount,
-      isPerfect: passedCount === checks.length,
-      checks,
-    };
+    return evaluateInvestorOpportunityMatch(investorCriteria, {
+      requested_amount: opp.requested_amount,
+      financing_ratio: opp.financing_ratio,
+      term_months: opp.term_months,
+      suggested_rate: opp.suggested_rate,
+      property_type: opp.property_type,
+      department: opp.department,
+      zone: opp.zone,
+      modality: opp.modality,
+    });
   };
 
   // Manejo de Manifestación de Interés No Vinculante
@@ -461,11 +445,11 @@ export const TenantInvestorDashboardPage: React.FC = () => {
                             </h3>
                           </div>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                            match.passedCount >= 4
+                            match.passedCount >= 5
                               ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                               : 'bg-amber-50 text-amber-700 border-amber-200'
                           }`}>
-                            Match {match.passedCount}/5
+                            Match {match.passedCount}/{match.total}
                           </span>
                         </div>
 
@@ -582,11 +566,11 @@ export const TenantInvestorDashboardPage: React.FC = () => {
 
                       <div className="text-right">
                         <span className={`inline-block text-xs font-bold px-2.5 py-1 rounded-full border ${
-                          match.passedCount >= 4
+                          match.passedCount >= 5
                             ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                             : 'bg-amber-50 text-amber-800 border-amber-200'
                         }`}>
-                          Match {match.passedCount}/5
+                          Match {match.passedCount}/{match.total}
                         </span>
                       </div>
                     </div>

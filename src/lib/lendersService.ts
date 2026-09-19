@@ -749,3 +749,145 @@ export async function updateInvestorInterestOutcome(
     return { success: false, error: err instanceof Error ? err.message : 'Error al actualizar resultado' };
   }
 }
+
+// -----------------------------------------------------------------------------
+// 8. MOTOR CANÓNICO DE MATCHING DE CRITERIOS DE INVERSIÓN (7 CRITERIOS)
+// -----------------------------------------------------------------------------
+export interface InvestorMatchingCriteria {
+  minLoanAmount?: number;
+  maxLoanAmount?: number;
+  minTermMonths?: number;
+  maxTermMonths?: number;
+  maxFinancingRatio?: number; // LTV % (ej. 40 o 50)
+  minRate?: number;
+  acceptedPropertyTypes?: string[];
+  acceptedDepartments?: string[];
+  acceptedModalities?: string[];
+}
+
+export interface MatchOpportunityData {
+  requested_amount: number;
+  financing_ratio: number; // LTV %
+  term_months: number;
+  suggested_rate?: number;
+  property_type: string;
+  department: string;
+  zone?: string;
+  modality?: string;
+}
+
+export interface MatchEvaluationResult {
+  total: number;
+  passedCount: number;
+  isPerfect: boolean;
+  score: number; // Porcentaje 0 a 100
+  checks: Array<{
+    label: string;
+    passed: boolean;
+    reason: string;
+  }>;
+}
+
+export function evaluateInvestorOpportunityMatch(
+  criteria: InvestorMatchingCriteria,
+  opp: MatchOpportunityData
+): MatchEvaluationResult {
+  const minLoan = criteria.minLoanAmount !== undefined ? criteria.minLoanAmount : 0;
+  const maxLoan = criteria.maxLoanAmount !== undefined ? criteria.maxLoanAmount : Infinity;
+  const checkAmount = opp.requested_amount >= minLoan && opp.requested_amount <= maxLoan;
+
+  const minTerm = criteria.minTermMonths !== undefined ? criteria.minTermMonths : 0;
+  const maxTerm = criteria.maxTermMonths !== undefined ? criteria.maxTermMonths : Infinity;
+  const checkTerm = opp.term_months >= minTerm && opp.term_months <= maxTerm;
+
+  const maxLtv = criteria.maxFinancingRatio !== undefined ? criteria.maxFinancingRatio : 100;
+  const checkLtv = opp.financing_ratio <= maxLtv;
+
+  const minRate = criteria.minRate !== undefined ? criteria.minRate : 0;
+  const checkRate = (opp.suggested_rate ?? 11.5) >= minRate;
+
+  const acceptedTypes = criteria.acceptedPropertyTypes && criteria.acceptedPropertyTypes.length > 0
+    ? criteria.acceptedPropertyTypes
+    : ['Apartamento', 'Casa', 'Local Comercial', 'Campo', 'Oficina', 'Terreno'];
+  const checkType = acceptedTypes.some((t) =>
+    opp.property_type.toLowerCase().includes(t.toLowerCase()) ||
+    t.toLowerCase().includes(opp.property_type.toLowerCase())
+  );
+
+  const acceptedDepts = criteria.acceptedDepartments && criteria.acceptedDepartments.length > 0
+    ? criteria.acceptedDepartments
+    : ['Montevideo', 'Canelones', 'Maldonado', 'Colonia'];
+  const oppZone = (opp.zone || '').toLowerCase();
+  const oppDept = (opp.department || '').toLowerCase();
+  const checkDept = acceptedDepts.some((d) => {
+    const dLower = d.toLowerCase();
+    return oppDept.includes(dLower) || oppZone.includes(dLower);
+  });
+
+  const acceptedMods = criteria.acceptedModalities && criteria.acceptedModalities.length > 0
+    ? criteria.acceptedModalities
+    : ['solo_intereses', 'capital_e_intereses'];
+  const oppMod = opp.modality || 'solo_intereses';
+  const checkModality = acceptedMods.includes(oppMod);
+
+  const checks = [
+    {
+      label: 'Monto solicitado',
+      passed: checkAmount,
+      reason: checkAmount
+        ? `USD ${opp.requested_amount.toLocaleString('es-UY')} dentro de rango (USD ${minLoan.toLocaleString('es-UY')} - ${maxLoan === Infinity ? 'Sin límite' : maxLoan.toLocaleString('es-UY')})`
+        : `Monto USD ${opp.requested_amount.toLocaleString('es-UY')} fuera del rango configurado`,
+    },
+    {
+      label: 'Plazo solicitado',
+      passed: checkTerm,
+      reason: checkTerm
+        ? `${opp.term_months} meses dentro del rango (${minTerm} - ${maxTerm === Infinity ? 'Sin límite' : maxTerm} meses)`
+        : `Plazo de ${opp.term_months} meses fuera del rango configurado`,
+    },
+    {
+      label: 'Financiación máxima (LTV)',
+      passed: checkLtv,
+      reason: checkLtv
+        ? `${opp.financing_ratio}% ≤ ${maxLtv}% máx`
+        : `Financiación de ${opp.financing_ratio}% supera el máximo de ${maxLtv}%`,
+    },
+    {
+      label: 'Tasa objetivo',
+      passed: checkRate,
+      reason: checkRate
+        ? `${opp.suggested_rate ?? 11.5}% ≥ ${minRate}% mín`
+        : `Tasa propuesta inferior al mínimo de ${minRate}%`,
+    },
+    {
+      label: 'Tipo de inmueble / garantía',
+      passed: checkType,
+      reason: checkType
+        ? `${opp.property_type} aceptado`
+        : `Tipo ${opp.property_type} no incluido en preferencias`,
+    },
+    {
+      label: 'Zona geográfica',
+      passed: checkDept,
+      reason: checkDept
+        ? `${opp.department || 'Zona'} aceptada`
+        : `Ubicación fuera de departamentos de interés`,
+    },
+    {
+      label: 'Modalidad de amortización',
+      passed: checkModality,
+      reason: checkModality
+        ? 'Modalidad compatible'
+        : 'Modalidad de pago no aceptada',
+    },
+  ];
+
+  const passedCount = checks.filter((c) => c.passed).length;
+  return {
+    total: checks.length,
+    passedCount,
+    isPerfect: passedCount === checks.length,
+    score: Math.round((passedCount / checks.length) * 100),
+    checks,
+  };
+}

@@ -67,10 +67,14 @@ export function mapRawRowsToInvestors(
 
     const nombre =
       normalizedRow.nombre ||
+      normalizedRow.nombre_o_razon_social ||
+      normalizedRow.nombre_razon_social ||
+      normalizedRow.razon_social ||
       normalizedRow.denominacion ||
       normalizedRow.inversor ||
       normalizedRow.name ||
-      normalizedRow.razon_social ||
+      normalizedRow.investor ||
+      normalizedRow.full_name ||
       '';
 
     const email = (
@@ -78,6 +82,7 @@ export function mapRawRowsToInvestors(
       normalizedRow.correo ||
       normalizedRow.correo_electronico ||
       normalizedRow.mail ||
+      normalizedRow.contact_email ||
       ''
     ).toLowerCase();
 
@@ -86,6 +91,7 @@ export function mapRawRowsToInvestors(
       normalizedRow.celular ||
       normalizedRow.phone ||
       normalizedRow.tel ||
+      normalizedRow.contact_phone ||
       ''
     );
 
@@ -93,12 +99,15 @@ export function mapRawRowsToInvestors(
       normalizedRow.tipo ||
       normalizedRow.tipo_inversor ||
       normalizedRow.tipo_de_inversor ||
+      normalizedRow.investor_type ||
+      normalizedRow.lender_type ||
       'Persona';
 
     const contacto =
       normalizedRow.contacto ||
       normalizedRow.persona_de_contacto ||
       normalizedRow.persona_contacto ||
+      normalizedRow.contact_name ||
       '';
 
     const parseNum = (v: any) => {
@@ -110,9 +119,11 @@ export function mapRawRowsToInvestors(
 
     const capital_disponible = parseNum(
       normalizedRow.capital_disponible ||
+      normalizedRow.capital_disponible_usd ||
       normalizedRow.capital ||
       normalizedRow.monto_disponible ||
-      normalizedRow.capital_declarado
+      normalizedRow.capital_declarado ||
+      normalizedRow.available_capital
     );
 
     const moneda = (
@@ -124,6 +135,7 @@ export function mapRawRowsToInvestors(
     const monto_min = parseNum(
       normalizedRow.monto_min ||
       normalizedRow.monto_minimo ||
+      normalizedRow.monto_minimo_usd ||
       normalizedRow.min_loan ||
       normalizedRow.min_amount
     );
@@ -131,6 +143,7 @@ export function mapRawRowsToInvestors(
     const monto_max = parseNum(
       normalizedRow.monto_max ||
       normalizedRow.monto_maximo ||
+      normalizedRow.monto_maximo_usd ||
       normalizedRow.max_loan ||
       normalizedRow.max_amount
     );
@@ -139,12 +152,14 @@ export function mapRawRowsToInvestors(
       normalizedRow.tasa_min ||
       normalizedRow.tasa_minima ||
       normalizedRow.tasa ||
+      normalizedRow.tasa_minima_porcentaje ||
       normalizedRow.min_rate
     );
 
     let ltv_max = parseNum(
       normalizedRow.ltv_max ||
       normalizedRow.ltv_maximo ||
+      normalizedRow.ltv_maximo_porcentaje ||
       normalizedRow.ltv ||
       normalizedRow.max_ltv ||
       normalizedRow.financiacion_maxima
