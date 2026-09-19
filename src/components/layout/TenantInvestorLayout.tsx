@@ -9,7 +9,6 @@ import {
   LayoutDashboard,
   Target,
   FileCheck,
-  Building,
   Shield,
   LogOut,
   Lock,
@@ -44,21 +43,21 @@ export const TenantInvestorLayout: React.FC<TenantInvestorLayoutProps> = ({
   const navItems = [
     { label: 'Inicio', path: `${basePath}`, icon: LayoutDashboard },
     { label: 'Oportunidades', path: `${basePath}/oportunidades`, icon: Target },
-    { label: 'Mis préstamos', path: `${basePath}/prestamos`, icon: Building },
-    { label: 'Propuestas', path: `${basePath}/propuestas`, icon: FileCheck },
+    { label: 'Mis Intereses', path: `${basePath}/intereses`, icon: FileCheck },
+    { label: 'Mi Perfil', path: `${basePath}/perfil`, icon: User },
   ];
 
   const isNavActive = (path: string) => {
     if (path === basePath) {
       return location.pathname === basePath;
     }
-    if (path.endsWith('/propuestas')) {
-      return location.pathname.startsWith(path) || location.pathname.endsWith('/ofertas');
+    if (path.endsWith('/intereses')) {
+      return location.pathname.startsWith(path) || location.pathname.endsWith('/propuestas') || location.pathname.endsWith('/ofertas');
     }
     return location.pathname.startsWith(path);
   };
 
-  const openProfile = (tab: 'datos' | 'verificacion' | 'fondos' | 'criterios' | 'documentos' | 'firma' | 'cuenta' | 'notificaciones' = 'datos') => {
+  const openProfile = (tab: 'datos' | 'criterios' = 'datos') => {
     setIsUserMenuOpen(false);
     navigate(`${basePath}/perfil?tab=${tab}`);
   };
@@ -96,7 +95,7 @@ export const TenantInvestorLayout: React.FC<TenantInvestorLayoutProps> = ({
             </Link>
           </div>
 
-          {/* Navegación Desktop (EXACTAMENTE LAS 4 SECCIONES PRINCIPALES) */}
+          {/* Navegación Desktop */}
           <nav className="hidden md:flex items-center space-x-1.5">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -137,7 +136,7 @@ export const TenantInvestorLayout: React.FC<TenantInvestorLayoutProps> = ({
                   style={{ color: accentColor }}
                 >
                   <CheckCircle2 className="w-2.5 h-2.5 mr-1" />
-                  Mi perfil verificado
+                  Perfil Activo
                 </span>
               </div>
               <ChevronDown className="w-3.5 h-3.5 text-slate-300 hidden sm:block" />
@@ -156,7 +155,7 @@ export const TenantInvestorLayout: React.FC<TenantInvestorLayoutProps> = ({
                       {user?.email || 'inversor@estudionova.uy'}
                     </p>
                     <span className="text-[10px] text-emerald-700 font-semibold flex items-center mt-0.5">
-                      ✓ Identidad y fondos validados
+                      ✓ Acceso seguro privado
                     </span>
                   </div>
 
@@ -166,7 +165,7 @@ export const TenantInvestorLayout: React.FC<TenantInvestorLayoutProps> = ({
                       className="w-full px-4 py-2.5 text-left font-semibold text-slate-700 hover:bg-slate-50 flex items-center space-x-2 transition-colors"
                     >
                       <User className="w-4 h-4 text-slate-500" />
-                      <span>Mi perfil</span>
+                      <span>Mis Datos</span>
                     </button>
 
                     <button
@@ -174,15 +173,7 @@ export const TenantInvestorLayout: React.FC<TenantInvestorLayoutProps> = ({
                       className="w-full px-4 py-2.5 text-left font-semibold text-slate-700 hover:bg-slate-50 flex items-center space-x-2 transition-colors"
                     >
                       <Sliders className="w-4 h-4 text-slate-500" />
-                      <span>Mis criterios de inversión</span>
-                    </button>
-
-                    <button
-                      onClick={() => openProfile('documentos')}
-                      className="w-full px-4 py-2.5 text-left font-semibold text-slate-700 hover:bg-slate-50 flex items-center space-x-2 transition-colors"
-                    >
-                      <FileCheck className="w-4 h-4 text-slate-500" />
-                      <span>Mis documentos y KYC</span>
+                      <span>Mis Criterios de Inversión</span>
                     </button>
                   </div>
 
@@ -201,7 +192,6 @@ export const TenantInvestorLayout: React.FC<TenantInvestorLayoutProps> = ({
           </div>
         </div>
       </header>
-
 
       {/* Banner de Aislamiento Privado */}
       <div className="bg-[#0e253e] border-b border-[#173a5e] px-4 py-2 text-[11px] text-slate-300 flex items-center justify-center space-x-2 text-center">

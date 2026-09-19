@@ -51,6 +51,10 @@ test.describe('Investors Module Unit & Service Tests', () => {
         nombre: 'Ana Pérez',
         email: 'existente@ejemplo.com',
       },
+      {
+        nombre: '', // Empty name
+        email: 'invalido@ejemplo.com',
+      },
     ];
 
     const existing = [
@@ -61,6 +65,8 @@ test.describe('Investors Module Unit & Service Tests', () => {
     expect(result.validRows.length).toBe(0);
     expect(result.duplicateRows.length).toBe(1);
     expect(result.duplicateRows[0]._duplicateReason).toContain('Email ya registrado');
+    expect(result.errorRows.length).toBe(1);
+    expect(result.errorRows[0]._errorReason || result.errorRows[0]._errors?.[0]).toContain('nombre');
   });
 });
 

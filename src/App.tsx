@@ -783,6 +783,14 @@ export const App: React.FC = () => {
                 }
               />
               <Route
+                path="/demo/:tenantSlug/inversor/intereses"
+                element={
+                  <ProtectedRoute allowedRoles={['lender', 'super_admin']} requireTenantMatch>
+                    <TenantInvestorDashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/demo/:tenantSlug/inversor/ofertas"
                 element={
                   <ProtectedRoute allowedRoles={['lender', 'super_admin']} requireTenantMatch>
