@@ -201,7 +201,15 @@ export interface ResolvedCaseData {
     neighborhood?: string;
     address: string;
     type: string;
+    regime?: string;
+    unit?: string;
+    floor?: string;
+    block?: string;
+    cadastral_section?: string;
+    cadastral_status?: string;
     area_m2: number;
+    built_surface_m2?: number;
+    land_surface_m2?: number;
     bedrooms: number;
     bathrooms: number;
     estimated_value: number;

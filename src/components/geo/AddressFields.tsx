@@ -1,11 +1,12 @@
 // ==============================================================================
 // HIPOTECALY GEOCORE - FORMULARIO INTEGRADO DE DIRECCIÓN (AddressFields)
-// Soporta búsqueda inteligente, campos jerárquicos, fallback manual y mapa interactivo
+// Búsqueda general tipo Collectibles + Detalle sincronizado + Mapa Leaflet bidireccional
 // ==============================================================================
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { CanonicalGeoAddress, AddressCandidate, LocationPrecision } from '../../lib/geo/types';
 import { GeoService } from '../../lib/geo/geoService';
+import { normalizeDepartment } from '../../lib/geo/normalization';
 import { AddressAutocomplete } from './AddressAutocomplete';
 import { DepartmentSelect } from './DepartmentSelect';
 import { LocalitySelect } from './LocalitySelect';
@@ -13,7 +14,7 @@ import { NeighborhoodSelect } from './NeighborhoodSelect';
 import { StreetAutocomplete } from './StreetAutocomplete';
 import { LocationPicker } from './LocationPicker';
 import { GeoPrecisionBadge } from './GeoPrecisionBadge';
-import { Info, Edit3, Search, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Info, CheckCircle2, AlertTriangle, MapPin, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface AddressFieldsProps {
   address: CanonicalGeoAddress;
@@ -28,16 +29,19 @@ export const AddressFields: React.FC<AddressFieldsProps> = ({
   showMap = true,
   className = '',
 }) => {
-  const [inputMode, setInputMode] = useState<'search' | 'fields'>('search');
-  const [manualFallbackActive, setManualFallbackActive] = useState(false);
+  const [showAdvancedDetails, setShowAdvancedDetails] = useState(false);
   const [geocodingInProgress, setGeocodingInProgress] = useState(false);
+  const debounceNumberTimerRef = useRef<any>(null);
 
-  // Manejar selección desde el buscador general
-  const handleSelectAutocomplete = async (candidate: AddressCandidate) => {
+  // Manejar selección desde el buscador general (handleGeoAddressSelect)
+  const handleGeoAddressSelect = async (candidate: AddressCandidate) => {
     let lat = candidate.latitude ?? null;
     let lng = candidate.longitude ?? null;
     let precision: LocationPrecision = candidate.precision;
     let verified = false;
+
+    // Normalizar departamento
+    const normalizedDept = normalizeDepartment(candidate.department) || candidate.department || address.department;
 
     // Si aún no tiene coordenadas o faltan, intentar geocodificar
     if ((!lat || !lng) && candidate.streetName) {
@@ -46,7 +50,7 @@ export const AddressFields: React.FC<AddressFieldsProps> = ({
         const geocoded = await GeoService.getInstance().geocodeAddress({
           streetName: candidate.streetName,
           streetNumber: candidate.portalNumber ? String(candidate.portalNumber) : undefined,
-          department: candidate.department,
+          department: normalizedDept,
           locality: candidate.locality,
           streetId: candidate.raw?.idCalle,
         });
@@ -57,7 +61,7 @@ export const AddressFields: React.FC<AddressFieldsProps> = ({
           verified = true;
         }
       } catch (err) {
-        console.warn('Geocoding candidate failed:', err);
+        console.warn('[AddressFields] Geocoding candidate failed:', err);
       } finally {
         setGeocodingInProgress(false);
       }
@@ -67,15 +71,18 @@ export const AddressFields: React.FC<AddressFieldsProps> = ({
 
     const updated: CanonicalGeoAddress = {
       ...address,
-      department: candidate.department || address.department,
-      locality: candidate.locality || address.locality,
+      country: 'Uruguay',
+      countryCode: 'UY',
+      department: normalizedDept,
+      locality: candidate.locality || (normalizedDept === 'Montevideo' ? 'Montevideo' : ''),
+      neighborhood: candidate.neighborhood || address.neighborhood || '',
       streetName: candidate.streetName || address.streetName,
       streetNumber: candidate.portalNumber ? String(candidate.portalNumber) : address.streetNumber,
       postalCode: candidate.postalCode || address.postalCode,
       latitude: lat,
       longitude: lng,
       precision,
-      source: candidate.source,
+      source: candidate.source || 'ide_uy',
       verified,
       verifiedAt: verified ? new Date().toISOString() : null,
       officialAddressId: candidate.officialAddressId,
@@ -85,7 +92,7 @@ export const AddressFields: React.FC<AddressFieldsProps> = ({
     onChange(updated);
   };
 
-  // Re-geocodificar cuando el usuario cambia calle o número en modo campos
+  // Re-geocodificar cuando el usuario cambia calle o número en el formulario de detalle
   const handleFieldGeocode = async (
     streetName: string,
     streetNumber: string,
@@ -133,11 +140,13 @@ export const AddressFields: React.FC<AddressFieldsProps> = ({
           formattedAddress: res.fullAddress,
         });
       } else {
-        // Fallback no exacto
+        // Fallback
         onChange({
           ...address,
           streetName,
           streetNumber,
+          department: dept,
+          locality,
           latitude: null,
           longitude: null,
           precision: streetNumber ? 'STREET' : 'NEIGHBORHOOD',
@@ -146,78 +155,66 @@ export const AddressFields: React.FC<AddressFieldsProps> = ({
         });
       }
     } catch (err) {
-      console.warn('Error on field geocode:', err);
+      console.warn('[AddressFields] Error on field geocode:', err);
     } finally {
       setGeocodingInProgress(false);
     }
   };
 
+  const handleStreetNumberChange = (num: string) => {
+    onChange({
+      ...address,
+      streetNumber: num,
+    });
+
+    if (debounceNumberTimerRef.current) {
+      clearTimeout(debounceNumberTimerRef.current);
+    }
+
+    if (num.trim() && address.streetName) {
+      debounceNumberTimerRef.current = setTimeout(() => {
+        handleFieldGeocode(address.streetName, num, address.department, address.locality);
+      }, 500);
+    }
+  };
+
   return (
     <div className={`space-y-4 ${className}`}>
-      {/* Selector de Modo de Carga */}
-      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-        <div className="flex items-center space-x-2">
-          <button
-            type="button"
-            onClick={() => setInputMode('search')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center space-x-1.5 ${
-              inputMode === 'search'
-                ? 'bg-[#102d49] text-white'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            <Search className="w-3.5 h-3.5" />
-            <span>Búsqueda Rápida</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setInputMode('fields')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center space-x-1.5 ${
-              inputMode === 'fields'
-                ? 'bg-[#102d49] text-white'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            <Edit3 className="w-3.5 h-3.5" />
-            <span>Detalle por Campos</span>
-          </button>
+      {/* 1. BUSCADOR PRINCIPAL TIPO COLLECTIBLES */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <label className="block text-xs font-bold text-slate-800">
+            Buscar dirección del inmueble
+          </label>
+          <GeoPrecisionBadge precision={address.precision} />
         </div>
-
-        <GeoPrecisionBadge precision={address.precision} />
+        <AddressAutocomplete
+          onSelectAddress={handleGeoAddressSelect}
+          placeholder="Escribí calle y número... (Ej: Bulevar España 2450)"
+        />
+        <p className="text-[11px] text-slate-400">
+          Escribí al menos 3 letras para buscar en todo Uruguay con IDE Uruguay oficial.
+        </p>
       </div>
 
-      {/* MODO 1: BÚSQUEDA RÁPIDA */}
-      {inputMode === 'search' && (
-        <div className="space-y-3">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Buscar dirección oficial en Uruguay
-            </label>
-            <AddressAutocomplete
-              onSelectAddress={handleSelectAutocomplete}
-              placeholder="Escribí calle y número (ej: Bulevar España 2450, Montevideo)..."
-            />
-          </div>
-
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <span>¿No encontrás la dirección exacta en el buscador?</span>
-            <button
-              type="button"
-              onClick={() => {
-                setInputMode('fields');
-                setManualFallbackActive(true);
-              }}
-              className="text-[#102d49] font-bold hover:underline"
-            >
-              Completar por campos o manual
-            </button>
-          </div>
+      {/* 2. DETALLE DE UBICACIÓN / CAMPOS AUTOCOMPLETADOS */}
+      <div className="pt-2 border-t border-slate-100 space-y-3">
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs font-bold text-slate-700 flex items-center space-x-1.5">
+            <MapPin className="w-3.5 h-3.5 text-[#102d49]" />
+            <span>Detalle de Ubicación</span>
+          </h4>
+          <button
+            type="button"
+            onClick={() => setShowAdvancedDetails(!showAdvancedDetails)}
+            className="text-[11px] font-semibold text-[#102d49] hover:underline flex items-center space-x-1"
+          >
+            <span>{showAdvancedDetails ? 'Ocultar campos adicionales' : 'Ver campos adicionales (Apto, Piso, Padrón)'}</span>
+            {showAdvancedDetails ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          </button>
         </div>
-      )}
 
-      {/* MODO 2: CAMPOS JERÁRQUICOS */}
-      {inputMode === 'fields' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
           <div>
             <label className="font-semibold text-slate-700 block mb-1">País</label>
             <input
@@ -235,15 +232,16 @@ export const AddressFields: React.FC<AddressFieldsProps> = ({
             <DepartmentSelect
               value={address.department}
               onChange={(dept) => {
+                const isDeptChanged = dept !== address.department;
                 onChange({
                   ...address,
                   department: dept,
                   locality: dept === 'Montevideo' ? 'Montevideo' : '',
                   neighborhood: '',
-                  streetName: '',
-                  streetNumber: '',
-                  latitude: null,
-                  longitude: null,
+                  streetName: isDeptChanged ? '' : address.streetName,
+                  streetNumber: isDeptChanged ? '' : address.streetNumber,
+                  latitude: isDeptChanged ? null : address.latitude,
+                  longitude: isDeptChanged ? null : address.longitude,
                   precision: 'DEPARTMENT',
                   verified: false,
                 });
@@ -262,10 +260,6 @@ export const AddressFields: React.FC<AddressFieldsProps> = ({
                 onChange({
                   ...address,
                   locality: loc,
-                  streetName: '',
-                  streetNumber: '',
-                  latitude: null,
-                  longitude: null,
                   precision: 'LOCALITY',
                   verified: false,
                 });
@@ -294,31 +288,14 @@ export const AddressFields: React.FC<AddressFieldsProps> = ({
               <label className="font-semibold text-slate-700 block mb-1">
                 Calle / Avenida <span className="text-rose-500">*</span>
               </label>
-              {!manualFallbackActive ? (
-                <StreetAutocomplete
-                  department={address.department}
-                  locality={address.locality}
-                  value={address.streetName}
-                  onChange={(stName, stId) => {
-                    handleFieldGeocode(stName, address.streetNumber, address.department, address.locality, stId);
-                  }}
-                />
-              ) : (
-                <input
-                  type="text"
-                  placeholder="Calle o avenida..."
-                  value={address.streetName}
-                  onChange={(e) => {
-                    onChange({
-                      ...address,
-                      streetName: e.target.value,
-                      verified: false,
-                      source: 'manual',
-                    });
-                  }}
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 font-medium"
-                />
-              )}
+              <StreetAutocomplete
+                department={address.department}
+                locality={address.locality}
+                value={address.streetName}
+                onChange={(stName, stId) => {
+                  handleFieldGeocode(stName, address.streetNumber, address.department, address.locality, stId);
+                }}
+              />
             </div>
 
             <div>
@@ -327,52 +304,53 @@ export const AddressFields: React.FC<AddressFieldsProps> = ({
                 type="text"
                 placeholder="Ej: 2450"
                 value={address.streetNumber}
-                onChange={(e) => {
-                  const num = e.target.value;
-                  handleFieldGeocode(address.streetName, num, address.department, address.locality);
-                }}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 font-medium"
+                onChange={(e) => handleStreetNumberChange(e.target.value)}
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#102d49]/20"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="font-semibold text-slate-700 block mb-1">Apto / Unidad</label>
-              <input
-                type="text"
-                placeholder="Ej: 402"
-                value={address.unitOrApt || ''}
-                onChange={(e) => onChange({ ...address, unitOrApt: e.target.value })}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 font-medium"
-              />
-            </div>
-            <div>
-              <label className="font-semibold text-slate-700 block mb-1">Piso</label>
-              <input
-                type="text"
-                placeholder="Ej: 4"
-                value={address.floor || ''}
-                onChange={(e) => onChange({ ...address, floor: e.target.value })}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 font-medium"
-              />
-            </div>
-          </div>
+          {showAdvancedDetails && (
+            <>
+              <div className="grid grid-cols-2 gap-2 sm:col-span-2">
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Apto / Unidad</label>
+                  <input
+                    type="text"
+                    placeholder="Ej: 402"
+                    value={address.unitOrApt || ''}
+                    onChange={(e) => onChange({ ...address, unitOrApt: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#102d49]/20"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Piso</label>
+                  <input
+                    type="text"
+                    placeholder="Ej: 4"
+                    value={address.floor || ''}
+                    onChange={(e) => onChange({ ...address, floor: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#102d49]/20"
+                  />
+                </div>
+              </div>
 
-          <div>
-            <label className="font-semibold text-slate-700 block mb-1">Padrón Catastral (Opcional)</label>
-            <input
-              type="text"
-              placeholder="Ej: 34567"
-              value={address.cadastralNumber || ''}
-              onChange={(e) => onChange({ ...address, cadastralNumber: e.target.value })}
-              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 font-medium"
-            />
-          </div>
+              <div className="sm:col-span-2">
+                <label className="font-semibold text-slate-700 block mb-1">Padrón Catastral (Opcional)</label>
+                <input
+                  type="text"
+                  placeholder="Ej: 34567"
+                  value={address.cadastralNumber || ''}
+                  onChange={(e) => onChange({ ...address, cadastralNumber: e.target.value })}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-[#102d49]/20"
+                />
+              </div>
+            </>
+          )}
         </div>
-      )}
+      </div>
 
-      {/* Estado y Mensajes de Verificación Dinámicos */}
+      {/* 3. ESTADO DE VERIFICACIÓN */}
       <div className="pt-1">
         {geocodingInProgress ? (
           <div className="flex items-center space-x-2 text-xs text-blue-700 bg-blue-50 px-3 py-2 rounded-xl border border-blue-200">
@@ -383,27 +361,27 @@ export const AddressFields: React.FC<AddressFieldsProps> = ({
           <div className="flex items-center space-x-2 text-xs text-emerald-800 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-200">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>
-              ✓ Dirección verificada. Coordenadas reales obtenidas para la búsqueda de comparables.
+              ✓ Dirección exacta verificada. Coordenadas reales obtenidas ({address.latitude.toFixed(4)}, {address.longitude.toFixed(4)}).
             </span>
           </div>
         ) : address.streetName ? (
           <div className="flex items-center space-x-2 text-xs text-amber-800 bg-amber-50 px-3 py-2 rounded-xl border border-amber-200">
             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
             <span>
-              ⚠ No encontramos numeración exacta verificada. Podés ajustar el marcador en el mapa para ubicar el inmueble con precisión.
+              ⚠ No encontramos numeración exacta verificada. Podés ajustar el marcador en el mapa para posicionar el inmueble con precisión.
             </span>
           </div>
         ) : (
           <div className="flex items-center space-x-2 text-xs text-slate-600 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200">
             <Info className="w-4 h-4 text-slate-400 shrink-0" />
             <span>
-              Ingresá la calle o buscá la dirección para posicionar la garantía y calcular comparables de mercado.
+              Buscá una dirección arriba o completá la calle para posicionar la garantía en el mapa interactivo.
             </span>
           </div>
         )}
       </div>
 
-      {/* MAPA INTERACTIVO LEAFLET */}
+      {/* 4. MAPA INTERACTIVO OPENSTREETMAP CON PIN BIDIRECCIONAL */}
       {showMap && (
         <div className="pt-2">
           <LocationPicker
@@ -415,16 +393,20 @@ export const AddressFields: React.FC<AddressFieldsProps> = ({
                 : undefined
             }
             onLocationChange={(lat, lng, reverse) => {
+              const updatedDept = normalizeDepartment(reverse?.department) || reverse?.department || address.department;
               onChange({
                 ...address,
                 latitude: lat,
                 longitude: lng,
+                department: updatedDept,
+                locality: reverse?.locality || address.locality,
+                streetName: reverse?.streetName || address.streetName,
+                streetNumber: reverse?.streetNumber || address.streetNumber,
                 precision: 'EXACT_ADDRESS',
                 verified: true,
                 source: 'manual',
                 verifiedAt: new Date().toISOString(),
-                ...(reverse?.streetName && !address.streetName ? { streetName: reverse.streetName } : {}),
-                ...(reverse?.streetNumber && !address.streetNumber ? { streetNumber: reverse.streetNumber } : {}),
+                formattedAddress: reverse?.address || address.formattedAddress,
               });
             }}
           />
@@ -433,3 +415,4 @@ export const AddressFields: React.FC<AddressFieldsProps> = ({
     </div>
   );
 };
+

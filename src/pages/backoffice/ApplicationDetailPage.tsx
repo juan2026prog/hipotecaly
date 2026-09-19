@@ -1063,30 +1063,59 @@ export const ApplicationDetailPage: React.FC = () => {
                   <p className="text-xs text-slate-500">Inmueble gravado en garantía de primer rango.</p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs">
                   <div>
                     <label className="text-slate-400 font-medium">Tipo de inmueble</label>
-                    <p className="font-bold text-[#102d49] text-sm capitalize">{app.property?.property_type || 'Apartamento'}</p>
-                  </div>
-                  <div>
-                    <label className="text-slate-400 font-medium">Superficie</label>
-                    <p className="font-bold text-[#102d49] text-sm">{app.property?.surface_m2 || 85} m²</p>
+                    <p className="font-bold text-[#102d49] text-sm capitalize">{app.property?.property_type?.replace('_', ' ') || 'Apartamento'}</p>
                   </div>
                   <div>
                     <label className="text-slate-400 font-medium">Padrón Catastral</label>
-                    <p className="font-bold text-[#102d49] text-sm font-mono">{app.property?.cadastral_number || '34.892'}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="font-bold text-[#102d49] text-sm font-mono">{app.property?.cadastral_number || 'S/D'}</span>
+                      {app.property?.cadastral_status === 'verificado' ? (
+                        <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded">Verificado ✓</span>
+                      ) : (
+                        <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">Declarado</span>
+                      )}
+                    </div>
                   </div>
                   <div>
-                    <label className="text-slate-400 font-medium">Departamento</label>
-                    <p className="font-bold text-[#102d49] text-sm">{app.property?.department || 'Montevideo'}</p>
+                    <label className="text-slate-400 font-medium">Régimen Catastral</label>
+                    <p className="font-bold text-[#102d49] text-sm capitalize">
+                      {app.property?.cadastral_regime ? app.property.cadastral_regime.replace('_', ' ') : (app.property?.property_type === 'apartamento' ? 'Propiedad Horizontal (PH)' : 'Padrón Común')}
+                    </p>
                   </div>
                   <div>
-                    <label className="text-slate-400 font-medium">Barrio / Zona</label>
-                    <p className="font-bold text-[#102d49] text-sm">{app.property?.neighborhood || 'Pocitos'}</p>
+                    <label className="text-slate-400 font-medium">Unidad / Piso / Bloque</label>
+                    <p className="font-bold text-[#102d49] text-sm">
+                      {app.property?.unit_number ? `Unidad ${app.property.unit_number}` : ''}
+                      {app.property?.floor ? ` · Piso ${app.property.floor}` : ''}
+                      {app.property?.block ? ` · Bloque ${app.property.block}` : ''}
+                      {!app.property?.unit_number && !app.property?.floor && !app.property?.block ? 'No especificado' : ''}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs pt-2">
+                  <div>
+                    <label className="text-slate-400 font-medium">Superficie Total / Propia</label>
+                    <p className="font-bold text-[#102d49] text-sm">{app.property?.surface_m2 || 85} m²</p>
+                  </div>
+                  <div>
+                    <label className="text-slate-400 font-medium">Sup. Edificada / Terreno</label>
+                    <p className="font-bold text-[#102d49] text-sm">
+                      {app.property?.built_surface_m2 ? `${app.property.built_surface_m2} m² edif.` : ''}
+                      {app.property?.land_surface_m2 ? ` · ${app.property.land_surface_m2} m² solar` : ''}
+                      {!app.property?.built_surface_m2 && !app.property?.land_surface_m2 ? `${app.property?.surface_m2 || 85} m²` : ''}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-slate-400 font-medium">Ubicación</label>
+                    <p className="font-bold text-[#102d49] text-sm">{app.property?.neighborhood || app.property?.city || 'Pocitos'}, {app.property?.department || 'Montevideo'}</p>
                   </div>
                   <div>
                     <label className="text-slate-400 font-medium">Situación Jurídica</label>
-                    <p className="font-bold text-emerald-700 text-sm">Libre de Gravámenes ✓</p>
+                    <p className="font-bold text-emerald-700 text-sm capitalize">{app.property?.legal_status?.replace('_', ' ') || 'Libre de gravámenes'} ✓</p>
                   </div>
                 </div>
 

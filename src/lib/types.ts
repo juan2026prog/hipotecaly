@@ -228,6 +228,15 @@ export interface Application {
   updated_at: string;
 }
 
+export type CadastralRegime =
+  | 'comun'
+  | 'propiedad_horizontal'
+  | 'incorporacion_14261'
+  | 'ley_10751'
+  | 'rural';
+
+export type CadastralVerificationStatus = 'declarado' | 'verificado' | 'rectificado' | 'observado';
+
 export interface Property {
   id: string;
   application_id: string;
@@ -238,11 +247,22 @@ export interface Property {
   neighborhood?: string;
   address?: string;
   cadastral_number?: string;
+  cadastral_regime?: CadastralRegime | string;
+  unit_number?: string;
+  floor?: string;
+  block?: string;
+  cadastral_section?: string;
   surface_m2?: number;
+  built_surface_m2?: number;
+  land_surface_m2?: number;
   bedrooms?: number;
   bathrooms?: number;
   estimated_value: number;
   legal_status: LegalStatus;
+  cadastral_status?: CadastralVerificationStatus;
+  verified_at?: string;
+  verified_by?: string;
+  verified_notes?: string;
   notes?: string;
   created_at: string;
   updated_at: string;

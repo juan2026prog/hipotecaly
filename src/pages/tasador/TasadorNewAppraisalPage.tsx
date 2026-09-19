@@ -106,12 +106,53 @@ export const TasadorNewAppraisalPage: React.FC = () => {
   // Bloque G: Fotos
   const [photos, setPhotos] = useState<AppraisalPhoto[]>([]);
 
-  // Bloque H: Observaciones
   const [observations, setObservations] = useState('');
 
   // Estado de envío y validación
   const [saving, setSaving] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Pre-carga automática de la propiedad canónica del expediente
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const qPadron = params.get('cadastralNumber') || params.get('padron');
+    const qDept = params.get('department');
+    const qCity = params.get('city') || params.get('locality');
+    const qNeigh = params.get('neighborhood');
+    const qAddr = params.get('address');
+    const qType = params.get('propertyType') as AppraisalPropertyType | null;
+    const qUnit = params.get('unit') || params.get('unitNumber');
+    const qFloor = params.get('floor');
+    const qBlock = params.get('block');
+    const qSurface = Number(params.get('surfaceM2')) || null;
+    const qBedrooms = Number(params.get('bedrooms')) || null;
+    const qBathrooms = Number(params.get('bathrooms')) || null;
+
+    if (qPadron || qDept || qAddr || qCity || qUnit || qBlock) {
+      setGeoAddress((prev) => ({
+        ...prev,
+        department: qDept || prev.department,
+        locality: qCity || prev.locality,
+        neighborhood: qNeigh || prev.neighborhood,
+        streetName: qAddr || prev.streetName,
+        unitOrApt: qUnit || prev.unitOrApt,
+        floor: qFloor || prev.floor,
+        cadastralNumber: qPadron || prev.cadastralNumber,
+        formattedAddress: qAddr ? `${qAddr}, ${qCity || qDept || ''}` : prev.formattedAddress,
+      }));
+    }
+    if (qType) {
+      setPropertyType(qType);
+      setHorizontalProperty(qType === 'apartamento');
+    }
+    if (qSurface) {
+      setTotalAreaM2(qSurface);
+      setCoveredAreaM2(qSurface);
+      setBuiltAreaM2(qSurface);
+    }
+    if (qBedrooms) setBedrooms(qBedrooms);
+    if (qBathrooms) setBathrooms(qBathrooms);
+  }, []);
 
   const toggleAmenity = (key: keyof typeof amenities) => {
     setAmenities((prev) => ({ ...prev, [key]: !prev[key] }));

@@ -121,33 +121,80 @@ export class IDEUruguayProvider implements GeoProvider {
     const cached = this.cache.get<AddressCandidate[]>(cacheKey);
     if (cached) return cached;
 
+    // Detectar número de puerta si está presente en la consulta
+    const numMatch = query.match(/(\d+)/);
+    const portalNumber = numMatch ? numMatch[1] : null;
+    const streetOnly = query.replace(/(\d+)/, "").trim();
+
     try {
-      const url = `${this.baseUrl}/api/v1/geocode/candidates?q=${encodeURIComponent(query)}&limit=${limit}`;
-      const res = await fetch(url);
+      // 1. Obtener sugerencias de calles en todo el país (sin requerir departamento previo)
+      const searchTarget = streetOnly.length >= 2 ? streetOnly : query;
+      const sugUrl = `${this.baseUrl}/api/v0/geocode/SugerenciaCalleCompleta?entrada=${encodeURIComponent(searchTarget)}`;
+      const res = await fetch(sugUrl);
       if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          const results: AddressCandidate[] = data.map((item: any) => {
-            const hasCoords = item.lat && item.lng && (item.lat !== 0 || item.lng !== 0);
-            return {
-              id: String(item.id || item.idCalle),
-              fullAddress: item.address,
-              streetName: item.nomVia || item.address?.split(",")[0],
-              portalNumber: item.portalNumber || null,
-              department: item.departamento,
-              locality: item.localidad,
+        const sugs = await res.json();
+        if (Array.isArray(sugs) && sugs.length > 0) {
+          const topSugs = sugs.slice(0, limit);
+          const results: AddressCandidate[] = [];
+
+          for (const s of topSugs) {
+            // Si el usuario ingresó un número de puerta, resolver portal exacto
+            if (portalNumber && s.idCalle) {
+              try {
+                const findUrl = `${this.baseUrl}/api/v1/geocode/find?type=calle&idcalle=${s.idCalle}&portal=${portalNumber}`;
+                const findRes = await fetch(findUrl);
+                if (findRes.ok) {
+                  const findData = await findRes.json();
+                  if (Array.isArray(findData) && findData.length > 0) {
+                    const item = findData[0];
+                    const hasCoords = item.lat && item.lng && (item.lat !== 0 || item.lng !== 0);
+                    results.push({
+                      id: String(item.id || item.idCalle),
+                      fullAddress: `${s.calle} ${portalNumber}, ${s.localidad}, ${s.departamento}`,
+                      streetName: s.calle,
+                      portalNumber: portalNumber,
+                      department: s.departamento,
+                      locality: s.localidad,
+                      neighborhood: null,
+                      postalCode: item.postalCode || null,
+                      latitude: hasCoords ? item.lat : null,
+                      longitude: hasCoords ? item.lng : null,
+                      precision: item.state === 1 ? "EXACT_ADDRESS" : "STREET_NUMBER",
+                      source: "ide_uy",
+                      officialAddressId: item.id,
+                      raw: item,
+                    });
+                    continue;
+                  }
+                }
+              } catch (e) {
+                // Silenciosamente continuar con calle base
+              }
+            }
+
+            // Si no hay número o no resolvió portal con find, agregar como candidato de calle
+            results.push({
+              id: String(s.idCalle),
+              fullAddress: `${s.calle}, ${s.localidad}, ${s.departamento}`,
+              streetName: s.calle,
+              portalNumber: null,
+              department: s.departamento,
+              locality: s.localidad,
               neighborhood: null,
-              postalCode: item.postalCode || null,
-              latitude: hasCoords ? item.lat : null,
-              longitude: hasCoords ? item.lng : null,
-              precision: item.portalNumber ? (item.state === 1 ? "EXACT_ADDRESS" : "STREET_NUMBER") : "STREET",
+              postalCode: null,
+              latitude: null,
+              longitude: null,
+              precision: "STREET",
               source: "ide_uy",
-              officialAddressId: item.id,
-              raw: item,
-            };
-          });
-          this.cache.set(cacheKey, results, 1000 * 60 * 30);
-          return results;
+              officialAddressId: s.idCalle,
+              raw: s,
+            });
+          }
+
+          if (results.length > 0) {
+            this.cache.set(cacheKey, results, 1000 * 60 * 30);
+            return results;
+          }
         }
       }
     } catch (err) {
@@ -167,9 +214,18 @@ export class IDEUruguayProvider implements GeoProvider {
     if (cached) return cached;
 
     try {
-      // 1. Intentar con find si tenemos idCalle y número
-      if (addr.streetId && addr.streetNumber) {
-        const findUrl = `${this.baseUrl}/api/v1/geocode/find?type=calle&idcalle=${addr.streetId}&portal=${addr.streetNumber}`;
+      // 1. Si tenemos idCalle y número, o si podemos resolver idCalle primero
+      let streetId = addr.streetId;
+      if (!streetId && addr.streetName) {
+        const sugs = await this.searchStreet(addr.streetName, addr.department || "Montevideo", addr.locality);
+        if (sugs.length > 0) {
+          streetId = sugs[0].idCalle;
+        }
+      }
+
+      if (streetId) {
+        const portalParam = addr.streetNumber ? `&portal=${encodeURIComponent(addr.streetNumber)}` : "";
+        const findUrl = `${this.baseUrl}/api/v1/geocode/find?type=calle&idcalle=${streetId}${portalParam}`;
         const findRes = await fetch(findUrl);
         if (findRes.ok) {
           const findData = await findRes.json();
@@ -179,7 +235,7 @@ export class IDEUruguayProvider implements GeoProvider {
             if (hasCoords) {
               const resObj: AddressCandidate = {
                 id: String(item.id || item.idCalle),
-                fullAddress: item.address,
+                fullAddress: item.address || `${addr.streetName} ${addr.streetNumber || ""}, ${addr.locality || ""}, ${addr.department || ""}`,
                 streetName: item.nomVia || addr.streetName,
                 portalNumber: item.portalNumber || addr.streetNumber,
                 department: item.departamento || addr.department,
@@ -187,7 +243,7 @@ export class IDEUruguayProvider implements GeoProvider {
                 postalCode: item.postalCode || null,
                 latitude: item.lat,
                 longitude: item.lng,
-                precision: item.state === 1 ? "EXACT_ADDRESS" : "STREET_NUMBER",
+                precision: addr.streetNumber ? (item.state === 1 ? "EXACT_ADDRESS" : "STREET_NUMBER") : "STREET",
                 source: "ide_uy",
                 officialAddressId: item.id,
                 raw: item,
@@ -199,7 +255,7 @@ export class IDEUruguayProvider implements GeoProvider {
         }
       }
 
-      // 2. Intentar con direcUnica
+      // 2. Fallback: direcUnica
       const url = `${this.baseUrl}/api/v1/geocode/direcUnica?q=${encodeURIComponent(query)}`;
       const res = await fetch(url);
       if (res.ok) {
@@ -218,7 +274,7 @@ export class IDEUruguayProvider implements GeoProvider {
               postalCode: item.postalCode || null,
               latitude: item.lat,
               longitude: item.lng,
-              precision: item.state === 1 ? "EXACT_ADDRESS" : "STREET_NUMBER",
+              precision: addr.streetNumber ? (item.state === 1 ? "EXACT_ADDRESS" : "STREET_NUMBER") : "STREET",
               source: "ide_uy",
               officialAddressId: item.id,
               raw: item,

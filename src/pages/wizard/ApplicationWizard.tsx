@@ -77,8 +77,16 @@ export const ApplicationWizard: React.FC = () => {
   const [neighborhood, setNeighborhood] = useState<string>('Pocitos');
   const [address, setAddress] = useState<string>('');
   const [cadastralNumber, setCadastralNumber] = useState<string>('');
+  const [cadastralRegime, setCadastralRegime] = useState<string>('comun');
+  const [unitNumber, setUnitNumber] = useState<string>('');
+  const [floor, setFloor] = useState<string>('');
+  const [block, setBlock] = useState<string>('');
+  const [cadastralSection, setCadastralSection] = useState<string>('');
   const [surfaceM2, setSurfaceM2] = useState<number>(120);
+  const [builtSurfaceM2, setBuiltSurfaceM2] = useState<number>(120);
+  const [landSurfaceM2, setLandSurfaceM2] = useState<number>(300);
   const [bedrooms, setBedrooms] = useState<number>(3);
+  const [bathrooms, setBathrooms] = useState<number>(1);
   const [estimatedValue, setEstimatedValue] = useState<number>(200000);
   const [legalStatus, setLegalStatus] = useState<string>('libre_gravamenes');
 
@@ -173,8 +181,16 @@ export const ApplicationWizard: React.FC = () => {
             setNeighborhood(draft.property.neighborhood || '');
             setAddress(draft.property.address || '');
             setCadastralNumber(draft.property.cadastralNumber || '');
+            setCadastralRegime(draft.property.cadastralRegime || (draft.property.propertyType === 'apartamento' ? 'propiedad_horizontal' : 'comun'));
+            setUnitNumber(draft.property.unitNumber || '');
+            setFloor(draft.property.floor || '');
+            setBlock(draft.property.block || '');
+            setCadastralSection(draft.property.cadastralSection || '');
             setSurfaceM2(draft.property.surfaceM2 || 120);
+            setBuiltSurfaceM2(draft.property.builtSurfaceM2 || draft.property.surfaceM2 || 120);
+            setLandSurfaceM2(draft.property.landSurfaceM2 || 300);
             setBedrooms(draft.property.bedrooms || 3);
+            setBathrooms(draft.property.bathrooms || 1);
             setEstimatedValue(draft.property.estimatedValue || 200000);
             setLegalStatus(draft.property.legalStatus || 'libre_gravamenes');
           }
@@ -248,10 +264,19 @@ export const ApplicationWizard: React.FC = () => {
         neighborhood,
         address,
         cadastralNumber,
+        cadastralRegime,
+        unitNumber,
+        floor,
+        block,
+        cadastralSection,
         surfaceM2,
+        builtSurfaceM2,
+        landSurfaceM2,
         bedrooms,
+        bathrooms,
         estimatedValue,
         legalStatus,
+        cadastralStatus: 'declarado',
       },
       income: {
         incomeType,
@@ -604,6 +629,14 @@ export const ApplicationWizard: React.FC = () => {
                       </p>
                     </div>
 
+                    {/* Banner informativo de no bloqueo */}
+                    <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200/80 flex items-start gap-2.5 text-xs text-blue-900">
+                      <ShieldCheck className="w-4 h-4 text-[#173a5e] shrink-0 mt-0.5" />
+                      <div className="leading-relaxed">
+                        <span className="font-bold">Completá lo que conozcas:</span> Podés continuar aunque algunos datos técnicos o catastrales estén pendientes. Nuestro equipo técnico y notarial completará y verificará la información registral durante el estudio.
+                      </div>
+                    </div>
+
                     <CurrencyInput
                       label="Valor de referencia estimado del inmueble (USD)"
                       value={estimatedValue}
@@ -625,13 +658,23 @@ export const ApplicationWizard: React.FC = () => {
                         </label>
                         <select
                           value={propertyType}
-                          onChange={(e) => setPropertyType(e.target.value)}
+                          onChange={(e) => {
+                            const newType = e.target.value;
+                            setPropertyType(newType);
+                            if (newType === 'apartamento') {
+                              setCadastralRegime('propiedad_horizontal');
+                            } else if (newType === 'campo') {
+                              setCadastralRegime('rural');
+                            } else {
+                              setCadastralRegime('comun');
+                            }
+                          }}
                           className="w-full min-h-[44px] px-3.5 rounded-xl border border-[#dfe5ea] bg-white text-xs font-semibold text-[#27384a]"
                         >
                           <option value="casa">Casa</option>
                           <option value="apartamento">Apartamento</option>
-                          <option value="local_comercial">Local Comercial</option>
-                          <option value="terreno">Terreno</option>
+                          <option value="local_comercial">Local Comercial / Oficina</option>
+                          <option value="terreno">Terreno / Solar</option>
                           <option value="campo">Campo / Rural</option>
                           <option value="otro">Otro tipo</option>
                         </select>
@@ -646,7 +689,7 @@ export const ApplicationWizard: React.FC = () => {
                           onChange={(e) => setDepartment(e.target.value)}
                           className="w-full min-h-[44px] px-3.5 rounded-xl border border-[#dfe5ea] bg-white text-xs font-semibold text-[#27384a]"
                         >
-                          {['Montevideo', 'Canelones', 'Maldonado', 'Colonia', 'San José', 'Rocha', 'Salto', 'Paysandú'].map((d) => (
+                          {['Montevideo', 'Canelones', 'Maldonado', 'Colonia', 'San José', 'Rocha', 'Salto', 'Paysandú', 'Rivera', 'Tacuarembó', 'Soriano', 'Lavalleja', 'Florida', 'Durazno', 'Treinta y Tres', 'Cerro Largo', 'Artigas', 'Río Negro', 'Flores'].map((d) => (
                             <option key={d} value={d}>{d}</option>
                           ))}
                         </select>
@@ -679,26 +722,204 @@ export const ApplicationWizard: React.FC = () => {
                       helperText="La información exacta se mantiene bajo estricta confidencialidad y control de acceso."
                     />
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <Input
-                        label="Superficie aprox. (m²)"
-                        type="number"
-                        value={surfaceM2}
-                        onChange={(e) => setSurfaceM2(Number(e.target.value))}
-                      />
-                      <Input
-                        label="Dormitorios"
-                        type="number"
-                        value={bedrooms}
-                        onChange={(e) => setBedrooms(Number(e.target.value))}
-                      />
-                      <Input
-                        label="Número de Padrón (opcional)"
-                        type="text"
-                        value={cadastralNumber}
-                        onChange={(e) => setCadastralNumber(e.target.value)}
-                        placeholder="Padrón N°"
-                      />
+                    {/* BLOQUE DINÁMICO SEGÚN TIPO DE PROPIEDAD */}
+                    <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-4">
+                      <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-[#173a5e]">
+                          Identificación Catastral y Datos Técnicos ({propertyType.replace('_', ' ')})
+                        </span>
+                        <span className="text-[10px] font-semibold text-slate-500 bg-white px-2 py-0.5 rounded-full border border-slate-200">
+                          Opcional / A verificar
+                        </span>
+                      </div>
+
+                      {/* Caso 1: APARTAMENTO / PROPIEDAD HORIZONTAL */}
+                      {propertyType === 'apartamento' && (
+                        <div className="space-y-3.5">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <Input
+                              label="Número de Padrón (opcional)"
+                              type="text"
+                              value={cadastralNumber}
+                              onChange={(e) => setCadastralNumber(e.target.value)}
+                              placeholder="Ej. 142.890"
+                              helperText="Padrón matriz o individual"
+                            />
+                            <Input
+                              label="Unidad / Apto N° (opcional)"
+                              type="text"
+                              value={unitNumber}
+                              onChange={(e) => setUnitNumber(e.target.value)}
+                              placeholder="Ej. 402"
+                            />
+                            <div className="grid grid-cols-2 gap-2">
+                              <Input
+                                label="Piso (opcional)"
+                                type="text"
+                                value={floor}
+                                onChange={(e) => setFloor(e.target.value)}
+                                placeholder="Ej. 4"
+                              />
+                              <Input
+                                label="Bloque / Torre"
+                                type="text"
+                                value={block}
+                                onChange={(e) => setBlock(e.target.value)}
+                                placeholder="Ej. B"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <Input
+                              label="Superficie propia (m²)"
+                              type="number"
+                              value={surfaceM2}
+                              onChange={(e) => {
+                                const v = Number(e.target.value);
+                                setSurfaceM2(v);
+                                setBuiltSurfaceM2(v);
+                              }}
+                            />
+                            <Input
+                              label="Dormitorios"
+                              type="number"
+                              value={bedrooms}
+                              onChange={(e) => setBedrooms(Number(e.target.value))}
+                            />
+                            <Input
+                              label="Baños"
+                              type="number"
+                              value={bathrooms}
+                              onChange={(e) => setBathrooms(Number(e.target.value))}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Caso 2: CASA */}
+                      {propertyType === 'casa' && (
+                        <div className="space-y-3.5">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <Input
+                              label="Número de Padrón (opcional)"
+                              type="text"
+                              value={cadastralNumber}
+                              onChange={(e) => setCadastralNumber(e.target.value)}
+                              placeholder="Ej. 48.912"
+                              helperText="Padrón catastral de la finca"
+                            />
+                            <div>
+                              <label className="block text-xs font-bold text-[#27384a] mb-1.5">
+                                Régimen Catastral
+                              </label>
+                              <select
+                                value={cadastralRegime}
+                                onChange={(e) => setCadastralRegime(e.target.value)}
+                                className="w-full min-h-[44px] px-3.5 rounded-xl border border-[#dfe5ea] bg-white text-xs font-semibold text-[#27384a]"
+                              >
+                                <option value="comun">Padrón Común</option>
+                                <option value="propiedad_horizontal">Propiedad Horizontal (PH)</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                            <Input
+                              label="Superficie edificada (m²)"
+                              type="number"
+                              value={builtSurfaceM2 || surfaceM2}
+                              onChange={(e) => {
+                                const v = Number(e.target.value);
+                                setBuiltSurfaceM2(v);
+                                setSurfaceM2(v);
+                              }}
+                            />
+                            <Input
+                              label="Superficie terreno (m²)"
+                              type="number"
+                              value={landSurfaceM2}
+                              onChange={(e) => setLandSurfaceM2(Number(e.target.value))}
+                            />
+                            <Input
+                              label="Dormitorios"
+                              type="number"
+                              value={bedrooms}
+                              onChange={(e) => setBedrooms(Number(e.target.value))}
+                            />
+                            <Input
+                              label="Baños"
+                              type="number"
+                              value={bathrooms}
+                              onChange={(e) => setBathrooms(Number(e.target.value))}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Caso 3: TERRENO / CAMPO */}
+                      {(propertyType === 'terreno' || propertyType === 'campo') && (
+                        <div className="space-y-3.5">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <Input
+                              label="Número de Padrón (opcional)"
+                              type="text"
+                              value={cadastralNumber}
+                              onChange={(e) => setCadastralNumber(e.target.value)}
+                              placeholder="Ej. 12.345"
+                            />
+                            <Input
+                              label={propertyType === 'campo' ? "Superficie (Hectáreas o m²)" : "Superficie total (m²)"}
+                              type="number"
+                              value={surfaceM2}
+                              onChange={(e) => {
+                                const v = Number(e.target.value);
+                                setSurfaceM2(v);
+                                setLandSurfaceM2(v);
+                              }}
+                            />
+                            <Input
+                              label="Sección Catastral / Paraje (opcional)"
+                              type="text"
+                              value={cadastralSection}
+                              onChange={(e) => setCadastralSection(e.target.value)}
+                              placeholder="Ej. 3ra Sección"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Caso 4: LOCAL COMERCIAL / OTRO */}
+                      {(propertyType === 'local_comercial' || propertyType === 'otro') && (
+                        <div className="space-y-3.5">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <Input
+                              label="Número de Padrón (opcional)"
+                              type="text"
+                              value={cadastralNumber}
+                              onChange={(e) => setCadastralNumber(e.target.value)}
+                              placeholder="Ej. 98.765"
+                            />
+                            <Input
+                              label="Local / Unidad N° (opcional)"
+                              type="text"
+                              value={unitNumber}
+                              onChange={(e) => setUnitNumber(e.target.value)}
+                              placeholder="Ej. Salón 1 / Local 02"
+                            />
+                            <Input
+                              label="Superficie cubierta (m²)"
+                              type="number"
+                              value={surfaceM2}
+                              onChange={(e) => {
+                                const v = Number(e.target.value);
+                                setSurfaceM2(v);
+                                setBuiltSurfaceM2(v);
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div>

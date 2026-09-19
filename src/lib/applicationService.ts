@@ -39,11 +39,19 @@ export interface ApplicationDraftPayload {
     neighborhood?: string;
     address?: string;
     cadastralNumber?: string;
+    cadastralRegime?: string;
+    unitNumber?: string;
+    floor?: string;
+    block?: string;
+    cadastralSection?: string;
     surfaceM2?: number;
+    builtSurfaceM2?: number;
+    landSurfaceM2?: number;
     bedrooms?: number;
     bathrooms?: number;
     estimatedValue: number;
     legalStatus: string;
+    cadastralStatus?: string;
   };
   income?: {
     incomeType?: string;
@@ -166,11 +174,19 @@ export async function saveApplicationDraft(
               neighborhood: payload.property.neighborhood,
               address: payload.property.address,
               cadastral_number: payload.property.cadastralNumber,
+              cadastral_regime: payload.property.cadastralRegime || (payload.property.propertyType === 'apartamento' ? 'propiedad_horizontal' : 'comun'),
+              unit_number: payload.property.unitNumber,
+              floor: payload.property.floor,
+              block: payload.property.block,
+              cadastral_section: payload.property.cadastralSection,
               surface_m2: payload.property.surfaceM2,
+              built_surface_m2: payload.property.builtSurfaceM2 || payload.property.surfaceM2,
+              land_surface_m2: payload.property.landSurfaceM2,
               bedrooms: payload.property.bedrooms,
               bathrooms: payload.property.bathrooms,
               estimated_value: payload.property.estimatedValue,
               legal_status: payload.property.legalStatus,
+              cadastral_status: payload.property.cadastralStatus || 'declarado',
             })
             .select()
             .single()
@@ -190,11 +206,19 @@ export async function saveApplicationDraft(
               neighborhood: payload.property.neighborhood,
               address: payload.property.address,
               cadastral_number: payload.property.cadastralNumber,
+              cadastral_regime: payload.property.cadastralRegime,
+              unit_number: payload.property.unitNumber,
+              floor: payload.property.floor,
+              block: payload.property.block,
+              cadastral_section: payload.property.cadastralSection,
               surface_m2: payload.property.surfaceM2,
+              built_surface_m2: payload.property.builtSurfaceM2,
+              land_surface_m2: payload.property.landSurfaceM2,
               bedrooms: payload.property.bedrooms,
               bathrooms: payload.property.bathrooms,
               estimated_value: payload.property.estimatedValue,
               legal_status: payload.property.legalStatus,
+              cadastral_status: payload.property.cadastralStatus,
               updated_at: new Date().toISOString(),
             })
             .eq('id', propId)
