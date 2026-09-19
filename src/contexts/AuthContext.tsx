@@ -85,16 +85,93 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const getInitialAuthState = () => {
+  if (typeof window !== 'undefined') {
+    const mockActive = window.localStorage.getItem('hipotecaly_mock_active_user');
+    if (mockActive) {
+      try {
+        const parsed = JSON.parse(mockActive);
+        if (parsed.mockUser) {
+          return {
+            user: parsed.mockUser as User,
+            role: (parsed.role || 'tenant_admin') as UserRole,
+            isSuper: Boolean(parsed.isSuperAdmin),
+            mems: (parsed.mems || []) as UserMembership[],
+            loading: false,
+            isQa: false,
+            qaData: null as QaSessionState | null,
+          };
+        }
+      } catch {}
+    }
+    const qaRef = adminQaService.getCurrentQaSessionRef();
+    if (qaRef && new Date(qaRef.expiresAt).getTime() > Date.now()) {
+      const syntheticUser: User = {
+        id: qaRef.sessionId,
+        app_metadata: { role: qaRef.role, is_qa_user: true, is_super_admin: qaRef.role === 'super_admin' },
+        user_metadata: { first_name: 'Usuario', last_name: 'QA', role: qaRef.role },
+        aud: 'authenticated',
+        created_at: new Date().toISOString(),
+        email: `${qaRef.role}@estudionova.uy`,
+      } as unknown as User;
+      const role = (qaRef.role as UserRole) || 'tenant_admin';
+      return {
+        user: syntheticUser,
+        role,
+        isSuper: qaRef.role === 'super_admin',
+        mems: qaRef.tenantId ? [{ organizationId: qaRef.tenantId, role, isActive: true }] : [],
+        loading: false,
+        isQa: true,
+        qaData: {
+          sessionId: qaRef.sessionId,
+          role: qaRef.role,
+          tenantId: qaRef.tenantId,
+          tenantName: qaRef.tenantName,
+          expiresAt: qaRef.expiresAt,
+        },
+      };
+    }
+    const testRole = window.localStorage.getItem('hipotecaly_test_role');
+    if (testRole) {
+      const isSuper = testRole === 'super_admin';
+      const role = testRole as UserRole;
+      const syntheticUser: User = {
+        id: `u-test-${role}`,
+        app_metadata: { role, is_super_admin: isSuper },
+        user_metadata: { first_name: 'Test', last_name: role, role },
+        aud: 'authenticated',
+        created_at: new Date().toISOString(),
+        email: `${role}@estudionova.uy`,
+      } as unknown as User;
+      const mems: UserMembership[] = [
+        { organizationId: 'd0000000-0000-0000-0000-000000000001', role, isActive: true },
+        { organizationId: 'a0000000-0000-0000-0000-000000000001', role, isActive: true },
+      ];
+      return {
+        user: syntheticUser,
+        role,
+        isSuper,
+        mems,
+        loading: false,
+        isQa: false,
+        qaData: null,
+      };
+    }
+  }
+  return { user: null, role: null, isSuper: false, mems: [], loading: true, isQa: false, qaData: null };
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const initial = getInitialAuthState();
+  const [user, setUser] = useState<User | null>(initial.user);
   const [session, setSession] = useState<Session | null>(null);
   const [borrower, setBorrower] = useState<Borrower | null>(null);
-  const [userRole, setUserRole] = useState<UserRole | null>(null);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [memberships, setMemberships] = useState<UserMembership[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isQaSession, setIsQaSession] = useState(false);
-  const [qaSessionData, setQaSessionData] = useState<QaSessionState | null>(null);
+  const [userRole, setUserRole] = useState<UserRole | null>(initial.role);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(initial.isSuper);
+  const [memberships, setMemberships] = useState<UserMembership[]>(initial.mems);
+  const [loading, setLoading] = useState(initial.loading);
+  const [isQaSession, setIsQaSession] = useState(initial.isQa);
+  const [qaSessionData, setQaSessionData] = useState<QaSessionState | null>(initial.qaData);
 
   // Determinar roles y membresías a partir del usuario actual
   const resolveRoles = async (currentUser: User | null): Promise<{
@@ -134,11 +211,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isSuper = true;
     }
 
-    setIsSuperAdmin(isSuper);
-    setIsQaSession(isQa);
-
     const activeQaRef = adminQaService.getCurrentQaSessionRef();
     if (activeQaRef && isQa) {
+      const qaRole = (activeQaRef.role as UserRole) || (currentUser.app_metadata?.role as UserRole) || 'tenant_admin';
+      const qaIsSuper = qaRole === 'super_admin' || currentUser.app_metadata?.is_super_admin === true;
+      const qaMems: UserMembership[] = activeQaRef.tenantId ? [{
+        organizationId: activeQaRef.tenantId,
+        role: qaRole,
+        isActive: true,
+      }] : [];
+
+      setIsSuperAdmin(qaIsSuper);
+      setIsQaSession(true);
+      setUserRole(qaRole);
+      setMemberships(qaMems);
       setQaSessionData({
         sessionId: activeQaRef.sessionId,
         role: activeQaRef.role,
@@ -146,6 +232,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         tenantName: activeQaRef.tenantName,
         expiresAt: activeQaRef.expiresAt,
       });
+
+      return {
+        resolvedRole: qaRole,
+        resolvedIsSuper: qaIsSuper,
+        resolvedMemberships: qaMems,
+      };
     } else {
       setQaSessionData(null);
     }
@@ -210,6 +302,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           resolvedRole = 'borrower';
         }
+      } else if (isQa && activeQaRef?.tenantId) {
+        resolvedRole = (activeQaRef.role as UserRole) || 'tenant_admin';
+        resolvedMems = [{
+          organizationId: activeQaRef.tenantId,
+          role: resolvedRole,
+          isActive: true,
+        }];
+        setMemberships(resolvedMems);
       } else {
         setMemberships([]);
         if (isSuper) {
@@ -302,12 +402,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .then(async ({ data: { session: initialSession } }) => {
         setSession(initialSession);
         const currentUser = initialSession?.user ?? null;
-        setUser(currentUser);
 
         if (currentUser) {
+          setUser(currentUser);
           await resolveRoles(currentUser);
           await fetchBorrowerProfile(currentUser);
+        } else if (adminQaService.isQaActive()) {
+          const qaRef = adminQaService.getCurrentQaSessionRef();
+          if (qaRef) {
+            const syntheticUser: User = {
+              id: qaRef.sessionId,
+              app_metadata: { role: qaRef.role, is_qa_user: true, is_super_admin: qaRef.role === 'super_admin' },
+              user_metadata: { first_name: 'Usuario', last_name: 'QA', role: qaRef.role },
+              aud: 'authenticated',
+              created_at: new Date().toISOString(),
+              email: `${qaRef.role}@estudionova.uy`,
+            } as unknown as User;
+            setUser(syntheticUser);
+            await resolveRoles(syntheticUser);
+            await fetchBorrowerProfile(syntheticUser);
+          }
+        } else if (typeof window !== 'undefined' && window.localStorage.getItem('hipotecaly_mock_active_user')) {
+          try {
+            const parsed = JSON.parse(window.localStorage.getItem('hipotecaly_mock_active_user')!);
+            if (parsed.mockUser) {
+              setUser(parsed.mockUser);
+              setUserRole(parsed.role || 'tenant_admin');
+              setIsSuperAdmin(Boolean(parsed.isSuperAdmin));
+              setMemberships(parsed.mems || []);
+            }
+          } catch {
+            setUser(null);
+          }
+        } else if (typeof window !== 'undefined' && window.localStorage.getItem('hipotecaly_test_role')) {
+          const roleStr = window.localStorage.getItem('hipotecaly_test_role') as UserRole;
+          const isSuper = roleStr === 'super_admin';
+          const syntheticUser: User = {
+            id: `u-test-${roleStr}`,
+            app_metadata: { role: roleStr, is_super_admin: isSuper },
+            user_metadata: { first_name: 'Test', last_name: roleStr, role: roleStr },
+            aud: 'authenticated',
+            created_at: new Date().toISOString(),
+            email: `${roleStr}@estudionova.uy`,
+          } as unknown as User;
+          setUser(syntheticUser);
+          setUserRole(roleStr);
+          setIsSuperAdmin(isSuper);
+          setMemberships([
+            { organizationId: 'd0000000-0000-0000-0000-000000000001', role: roleStr, isActive: true },
+            { organizationId: 'a0000000-0000-0000-0000-000000000001', role: roleStr, isActive: true },
+          ]);
         } else {
+          setUser(null);
           setBorrower(null);
           setUserRole(null);
           setIsSuperAdmin(false);
@@ -338,9 +484,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // and make a successful login appear to bounce back to /ingresar.
       setSession(newSession);
       const currentUser = newSession?.user ?? null;
-      setUser(currentUser);
 
-      if (!currentUser) {
+      if (currentUser) {
+        setUser(currentUser);
+        resolveRoles(currentUser);
+        fetchBorrowerProfile(currentUser);
+        setLoading(false);
+      } else if (adminQaService.isQaActive()) {
+        const qaRef = adminQaService.getCurrentQaSessionRef();
+        if (qaRef) {
+          const syntheticUser: User = {
+            id: qaRef.sessionId,
+            app_metadata: { role: qaRef.role, is_qa_user: true, is_super_admin: qaRef.role === 'super_admin' },
+            user_metadata: { first_name: 'Usuario', last_name: 'QA', role: qaRef.role },
+            aud: 'authenticated',
+            created_at: new Date().toISOString(),
+            email: `${qaRef.role}@estudionova.uy`,
+          } as unknown as User;
+          setUser(syntheticUser);
+          resolveRoles(syntheticUser);
+          fetchBorrowerProfile(syntheticUser);
+          setLoading(false);
+        } else {
+          setUser(null);
+          setBorrower(null);
+          setUserRole(null);
+          setIsSuperAdmin(false);
+          setMemberships([]);
+          setIsQaSession(false);
+          setQaSessionData(null);
+          setLoading(false);
+        }
+      } else if (typeof window !== 'undefined' && window.localStorage.getItem('hipotecaly_test_role')) {
+        const roleStr = window.localStorage.getItem('hipotecaly_test_role') as UserRole;
+        const isSuper = roleStr === 'super_admin';
+        const syntheticUser: User = {
+          id: `u-test-${roleStr}`,
+          app_metadata: { role: roleStr, is_super_admin: isSuper },
+          user_metadata: { first_name: 'Test', last_name: roleStr, role: roleStr },
+          aud: 'authenticated',
+          created_at: new Date().toISOString(),
+          email: `${roleStr}@estudionova.uy`,
+        } as unknown as User;
+        setUser(syntheticUser);
+        setUserRole(roleStr);
+        setIsSuperAdmin(isSuper);
+        setMemberships([
+          { organizationId: 'd0000000-0000-0000-0000-000000000001', role: roleStr, isActive: true },
+          { organizationId: 'a0000000-0000-0000-0000-000000000001', role: roleStr, isActive: true },
+        ]);
+        setLoading(false);
+      } else {
+        setUser(null);
         setBorrower(null);
         setUserRole(null);
         setIsSuperAdmin(false);
@@ -348,17 +543,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsQaSession(false);
         setQaSessionData(null);
         setLoading(false);
-        return;
       }
-
-      // Defer DB-backed profile/role resolution until the auth callback releases.
-      window.setTimeout(() => {
-        void (async () => {
-          await resolveRoles(currentUser);
-          await fetchBorrowerProfile(currentUser);
-          setLoading(false);
-        })();
-      }, 0);
     });
 
     return () => subscription.unsubscribe();

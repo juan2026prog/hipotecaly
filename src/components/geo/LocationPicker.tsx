@@ -7,7 +7,6 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { GeoService } from '../../lib/geo/geoService';
 import { ReverseGeocodeResult } from '../../lib/geo/types';
-import { MapPin } from 'lucide-react';
 
 // Marker Pin Draggable Icon
 const draggablePinIcon = L.divIcon({
@@ -107,55 +106,49 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
     [onLocationChange]
   );
 
+  const currentCenter: [number, number] = hasCoords ? [latitude!, longitude!] : defaultCenter;
+
   return (
     <div className="space-y-2">
       <div className={`relative rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-slate-100 ${className}`}>
-        {!hasCoords ? (
-          <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center text-slate-500">
-            <MapPin className="w-8 h-8 text-slate-400 mb-2 animate-bounce" />
-            <p className="font-bold text-sm text-[#102d49]">Sin ubicación geocodificada</p>
-            <p className="text-xs text-slate-400 mt-1 max-w-xs">
-              Escribí una calle y número o buscá la dirección para posicionar el inmueble en OpenStreetMap.
-            </p>
-          </div>
-        ) : (
-          <MapContainer
-            center={defaultCenter}
-            zoom={16}
-            scrollWheelZoom={false}
-            className="w-full h-full z-0"
+        <MapContainer
+          center={currentCenter}
+          zoom={hasCoords ? 16 : 13}
+          scrollWheelZoom={false}
+          className="w-full h-full z-0"
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            maxZoom={19}
+          />
+
+          <Marker
+            draggable={!readOnly}
+            eventHandlers={!readOnly ? eventHandlers : undefined}
+            position={currentCenter}
+            icon={draggablePinIcon}
+            ref={markerRef}
           >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              maxZoom={19}
-            />
-
-            <Marker
-              draggable={!readOnly}
-              eventHandlers={!readOnly ? eventHandlers : undefined}
-              position={position!}
-              icon={draggablePinIcon}
-              ref={markerRef}
-            >
-              <Popup>
-                <div className="p-1 text-xs space-y-1">
-                  <p className="font-bold text-[#102d49]">{addressLabel || 'Ubicación seleccionada'}</p>
-                  <p className="text-[10px] text-slate-500 font-mono">
-                    {latitude?.toFixed(5)}, {longitude?.toFixed(5)}
+            <Popup>
+              <div className="p-1 text-xs space-y-1">
+                <p className="font-bold text-[#102d49]">
+                  {addressLabel || (hasCoords ? 'Ubicación seleccionada' : 'Ubicar en el mapa')}
+                </p>
+                <p className="text-[10px] text-slate-500 font-mono">
+                  {currentCenter[0].toFixed(5)}, {currentCenter[1].toFixed(5)}
+                </p>
+                {!readOnly && (
+                  <p className="text-[10px] text-amber-700 bg-amber-50 p-1 rounded font-semibold">
+                    Arrastrá el pin para calibrar la ubicación exacta.
                   </p>
-                  {!readOnly && (
-                    <p className="text-[10px] text-amber-700 bg-amber-50 p-1 rounded font-semibold">
-                      Arrastrá el pin para calibrar la ubicación exacta.
-                    </p>
-                  )}
-                </div>
-              </Popup>
-            </Marker>
+                )}
+              </div>
+            </Popup>
+          </Marker>
 
-            <MapCenterController coords={position} />
-          </MapContainer>
-        )}
+          {hasCoords && <MapCenterController coords={position} />}
+        </MapContainer>
       </div>
 
       {hasCoords && !readOnly && (
