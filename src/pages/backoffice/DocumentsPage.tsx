@@ -211,7 +211,7 @@ export const DocumentsPage: React.FC = () => {
 
             <div className="hidden sm:flex items-center space-x-2 text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full font-semibold">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>SHA-256 / Ley 18.600</span>
+              <span>SHA-256 · Evidencia Técnica & Integridad</span>
             </div>
           </div>
         </div>

@@ -224,4 +224,64 @@ test.describe('HIPOTECALY DOCFLOW — Template Lifecycle, Deletion & Traceabilit
     expect(docAfter?.status).toBe('signed');
     expect(docAfter?.file_hash).toBe(doc.file_hash);
   });
+
+  test('6. Snapshot inmutable crítico: Plantilla modificada, versionada y archivada/retirada mantiene el snapshot histórico y hash SHA-256 intacto', async () => {
+    // 1. Crear plantilla original v1
+    const tplOriginal = await DocumentService.createTemplate({
+      tenant_id: testTenantId,
+      name: 'Plantilla Para Prueba de Snapshot Inmutable',
+      slug: 'snapshot-inmutable-test-' + Date.now(),
+      category: 'legal',
+      document_type: 'autorizacion_clearing',
+      template_content: '<p>Contenido Original v1 para {{solicitante_nombre}}</p>',
+      scope: 'tenant',
+      origin_type: 'custom',
+      required_fields: [],
+      output_format: 'pdf',
+      status: 'active',
+      version: 1,
+      requires_signature: false,
+      is_global: false,
+    });
+
+    // 2. Generar documento histórico con v1
+    const genResult = await DocumentService.generateDocument(
+      testCaseId,
+      tplOriginal.id,
+      { organizationId: testTenantId, userId: 'u0000000-0000-0000-0000-000000000001' }
+    );
+    const historicalDoc = genResult.document;
+    const originalHash = historicalDoc.file_hash;
+    const originalContentHtml = historicalDoc.content_html;
+    const originalSnapshotJson = JSON.stringify(historicalDoc.snapshot_json);
+    const originalVersion = historicalDoc.template_version;
+
+    expect(originalHash).toBeTruthy();
+    expect(originalContentHtml).toBeTruthy();
+    expect(originalVersion).toBe(1);
+
+    // 3. Modificar la plantilla creando v2 con contenido completamente diferente
+    const tplV2 = await DocumentService.createNewTemplateVersion(tplOriginal.id, {
+      template_content: '<p>Contenido COMPLETAMENTE DISTINTO v2 con cláusulas adicionales</p>',
+    });
+    expect(tplV2.version).toBe(2);
+
+    // 4. Archivar y retirar la plantilla original v1
+    const retired = await DocumentService.retireTemplate(tplOriginal.id);
+    expect(retired?.status).toBe('retired');
+
+    // 5. Volver a consultar el documento histórico emitido originalmente
+    const fetchedHistoricalDoc = await DocumentService.getDocumentById(historicalDoc.id);
+    expect(fetchedHistoricalDoc).not.toBeNull();
+
+    // 6. Verificación de inmutabilidad estricta:
+    // a. content_html histórico no cambia
+    expect(fetchedHistoricalDoc?.content_html).toBe(originalContentHtml);
+    // b. snapshot_json no cambia
+    expect(JSON.stringify(fetchedHistoricalDoc?.snapshot_json)).toBe(originalSnapshotJson);
+    // c. template_version histórica sigue siendo 1
+    expect(fetchedHistoricalDoc?.template_version).toBe(1);
+    // d. hash SHA-256 sigue exactamente igual
+    expect(fetchedHistoricalDoc?.file_hash).toBe(originalHash);
+  });
 });
