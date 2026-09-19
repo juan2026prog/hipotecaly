@@ -34,8 +34,8 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
   if (!isOpen || !document) return null;
 
   // Reconstruir o renderizar HTML usando el snapshot inmutable
-  let htmlContent = '';
-  if (document.snapshot_json) {
+  let htmlContent = document.content_html || document.snapshot_json?.content_html || '';
+  if (!htmlContent && document.snapshot_json) {
     const tpl = INITIAL_TEMPLATES.find((t) => t.document_type === document.document_type) || INITIAL_TEMPLATES[0];
     htmlContent = renderTemplate(tpl.template_content, document.snapshot_json as any);
   }

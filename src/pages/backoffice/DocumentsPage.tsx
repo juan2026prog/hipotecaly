@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BackofficeLayout } from '../../components/backoffice/BackofficeLayout';
 import { useTenant } from '../../contexts/TenantContext';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   FileText,
   ShieldCheck,
@@ -8,23 +9,22 @@ import {
   Plus,
   Search,
   Layers,
-  Edit,
   Sparkles,
   Building2,
-  Copy,
-  GitBranch,
-  Eye,
-  AlertCircle,
 } from 'lucide-react';
 import { DocumentTemplate, GeneratedDocument } from '../../lib/docflow/types';
 import { DocumentService } from '../../lib/docflow/documentService';
 import { DocumentCard } from '../../components/docflow/DocumentCard';
 import { DocumentPreviewModal } from '../../components/docflow/DocumentPreviewModal';
 import { TemplateEditorModal } from '../../components/docflow/TemplateEditorModal';
+import { TemplateCard } from '../../components/docflow/TemplateCard';
+import { TemplateDeleteModal } from '../../components/docflow/TemplateDeleteModal';
+import { TemplateHistoryModal } from '../../components/docflow/TemplateHistoryModal';
 import { Button } from '../../components/ui/Button';
 
 export const DocumentsPage: React.FC = () => {
   const { tenant } = useTenant();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'globales' | 'propias' | 'expedientes'>('globales');
 
   // Documentos de expedientes
@@ -38,26 +38,43 @@ export const DocumentsPage: React.FC = () => {
   const [tenantTemplates, setTenantTemplates] = useState<DocumentTemplate[]>([]);
   const [tplsLoading, setTplsLoading] = useState(true);
   const [searchTpl, setSearchTpl] = useState('');
+  const [tplStatusFilter, setTplStatusFilter] = useState<'all' | 'active' | 'draft' | 'archived'>('all');
+
+  // Modales
   const [selectedTpl, setSelectedTpl] = useState<DocumentTemplate | null>(null);
   const [showTplEditor, setShowTplEditor] = useState(false);
+  const [deleteModalTpl, setDeleteModalTpl] = useState<DocumentTemplate | null>(null);
+  const [historyModalTpl, setHistoryModalTpl] = useState<DocumentTemplate | null>(null);
 
   // Modal Preview
   const [previewDoc, setPreviewDoc] = useState<GeneratedDocument | null>(null);
   const [derivingId, setDerivingId] = useState<string | null>(null);
 
+  const userContext = {
+    userId: user?.id,
+    userName: user?.user_metadata?.full_name || user?.email || tenant.name,
+    organizationId: tenant.id,
+    isSuperAdmin: user?.app_metadata?.is_super_admin || false,
+  };
+
   const loadDocuments = async () => {
     setDocsLoading(true);
-    const docs = await DocumentService.getDocumentsByTenant(tenant.id);
-    setDocuments(docs);
-    setDocsLoading(false);
+    try {
+      const docs = await DocumentService.getDocumentsByTenant(tenant.id);
+      setDocuments(docs);
+    } catch (err) {
+      console.error('Error loading documents:', err);
+    } finally {
+      setDocsLoading(false);
+    }
   };
 
   const loadTemplates = async () => {
     setTplsLoading(true);
     try {
       const [globals, mine] = await Promise.all([
-        DocumentService.getGlobalTemplates(tenant.id),
-        DocumentService.getTenantTemplates(tenant.id),
+        DocumentService.getGlobalTemplates(tenant.id, undefined, true),
+        DocumentService.getTenantTemplates(tenant.id, undefined, true),
       ]);
       setGlobalTemplates(globals);
       setTenantTemplates(mine);
@@ -82,24 +99,33 @@ export const DocumentsPage: React.FC = () => {
     return matchesSearch && d.status === docFilter;
   });
 
-  const filteredGlobals = globalTemplates.filter(
-    (t) =>
+  const filteredGlobals = globalTemplates.filter((t) => {
+    const matchesSearch =
       t.name.toLowerCase().includes(searchTpl.toLowerCase()) ||
       t.category.toLowerCase().includes(searchTpl.toLowerCase()) ||
-      (t.description || '').toLowerCase().includes(searchTpl.toLowerCase())
-  );
+      (t.description || '').toLowerCase().includes(searchTpl.toLowerCase());
+    return matchesSearch && (t.status === 'active' || t.status === 'draft');
+  });
 
-  const filteredTenantTpls = tenantTemplates.filter(
-    (t) =>
+  const filteredTenantTpls = tenantTemplates.filter((t) => {
+    const matchesSearch =
       t.name.toLowerCase().includes(searchTpl.toLowerCase()) ||
       t.category.toLowerCase().includes(searchTpl.toLowerCase()) ||
-      (t.description || '').toLowerCase().includes(searchTpl.toLowerCase())
-  );
+      (t.description || '').toLowerCase().includes(searchTpl.toLowerCase());
+
+    if (!matchesSearch) return false;
+
+    if (tplStatusFilter === 'all') return true;
+    if (tplStatusFilter === 'active') return t.status === 'active';
+    if (tplStatusFilter === 'draft') return t.status === 'draft';
+    if (tplStatusFilter === 'archived') return t.status === 'archived' || t.status === 'retired';
+    return true;
+  });
 
   const handleDeriveFromGlobal = async (globalTpl: DocumentTemplate) => {
     setDerivingId(globalTpl.id);
     try {
-      const derived = await DocumentService.deriveTemplate(globalTpl.id, tenant.id, tenant.name);
+      const derived = await DocumentService.deriveTemplate(globalTpl.id, tenant.id, tenant.name, undefined, userContext);
       await loadTemplates();
       setActiveTab('propias');
       setSelectedTpl(derived);
@@ -111,18 +137,42 @@ export const DocumentsPage: React.FC = () => {
     }
   };
 
-  const handleDuplicateTemplate = (tpl: DocumentTemplate) => {
+  const handleDuplicateTemplate = async (tpl: DocumentTemplate) => {
+    try {
+      const duplicated = await DocumentService.duplicateTemplate(tpl.id, tenant.id, userContext);
+      await loadTemplates();
+      setSelectedTpl(duplicated);
+      setShowTplEditor(true);
+    } catch (err) {
+      console.error('Error duplicating template:', err);
+    }
+  };
+
+  const handleCreateNewVersion = (tpl: DocumentTemplate) => {
     setSelectedTpl({
       ...tpl,
-      id: '',
-      name: `${tpl.name} (Copia)`,
-      is_global: false,
-      scope: 'tenant',
-      tenant_id: tenant.id,
+      version: (tpl.version || 1) + 1,
       status: 'draft',
-      version: 1,
     });
     setShowTplEditor(true);
+  };
+
+  const handleArchiveTemplate = async (tpl: DocumentTemplate) => {
+    try {
+      await DocumentService.archiveTemplate(tpl.id, userContext);
+      await loadTemplates();
+    } catch (err) {
+      console.error('Error archiving template:', err);
+    }
+  };
+
+  const handleRestoreTemplate = async (tpl: DocumentTemplate) => {
+    try {
+      await DocumentService.restoreTemplate(tpl.id, userContext);
+      await loadTemplates();
+    } catch (err) {
+      console.error('Error restoring template:', err);
+    }
   };
 
   return (
@@ -205,14 +255,14 @@ export const DocumentsPage: React.FC = () => {
           </button>
         </div>
 
-        {/* TAB 1: PLANTILLAS HIPOTECALY (GLOBALES) */}
+        {/* TAB 1: PLANTILLAS HIPOTECALY (GLOBALES / MAESTRAS) */}
         {activeTab === 'globales' && (
           <div className="space-y-6">
             <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-emerald-950">
               <div className="flex items-center space-x-2.5">
                 <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span>
-                  <strong>Biblioteca Maestra Oficial:</strong> Plantillas legales estandarizadas por HIPOTECALY. Tu organización puede usarlas directamente o crear una versión personalizada ("Crear versión para mi organización").
+                  <strong>Biblioteca Maestra Oficial:</strong> Plantillas legales estandarizadas por HIPOTECALY de solo lectura. Tu organización puede previsualizarlas o crear una versión personalizada para tu equipo.
                 </span>
               </div>
             </div>
@@ -247,67 +297,53 @@ export const DocumentsPage: React.FC = () => {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredGlobals.map((tpl) => (
-                  <div
+                  <TemplateCard
                     key={tpl.id}
-                    className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
-                          {tpl.category}
-                        </span>
-                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                          HIPOTECALY v{tpl.version}
-                        </span>
-                      </div>
-
-                      <h4 className="font-bold text-[#102d49] text-sm leading-snug">{tpl.name}</h4>
-                      <p className="text-xs text-slate-500 line-clamp-2">
-                        {tpl.description || 'Plantilla oficial de la plataforma HIPOTECALY.'}
-                      </p>
-
-                      <div className="text-[11px] text-slate-400 pt-1 space-y-0.5">
-                        <p>Campos requeridos: <strong className="text-slate-600">{tpl.required_fields?.length || 0}</strong></p>
-                        <p>Firma electrónica: <strong className="text-slate-600">{tpl.requires_signature ? 'Sí (Ley 18.600)' : 'No requerida'}</strong></p>
-                      </div>
-                    </div>
-
-                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedTpl(tpl);
-                          setShowTplEditor(true);
-                        }}
-                        className="text-xs font-semibold text-slate-700 hover:text-navy"
-                      >
-                        <Eye className="w-3.5 h-3.5 mr-1" /> Ver plantilla
-                      </Button>
-
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => handleDeriveFromGlobal(tpl)}
-                        disabled={derivingId === tpl.id}
-                        className="text-xs font-bold bg-[#102d49] hover:bg-[#102d49]/90 text-white shadow-xs"
-                      >
-                        <GitBranch className="w-3.5 h-3.5 mr-1 text-[#f4b43b]" />
-                        {derivingId === tpl.id ? 'Creando copia...' : 'Crear versión para mi organización'}
-                      </Button>
-                    </div>
-                  </div>
+                    template={tpl}
+                    isGlobal={true}
+                    isDeriving={derivingId === tpl.id}
+                    onEdit={() => {}}
+                    onDuplicate={() => handleDuplicateTemplate(tpl)}
+                    onPreview={(t) => {
+                      setSelectedTpl(t);
+                      setShowTplEditor(true);
+                    }}
+                    onDerive={() => handleDeriveFromGlobal(tpl)}
+                  />
                 ))}
               </div>
             )}
           </div>
         )}
 
-        {/* TAB 2: MIS PLANTILLAS (PROPIAS Y DERIVADAS) */}
+        {/* TAB 2: MIS PLANTILLAS (ORGANIZACIÓN CON MENÚ •••) */}
         {activeTab === 'propias' && (
           <div className="space-y-6">
-            {/* Buscador de plantillas propias */}
+            {/* Filtros de estado & Buscador */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
+              {/* Filtros por estado */}
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { id: 'all', label: 'Todas' },
+                  { id: 'active', label: 'Activas' },
+                  { id: 'draft', label: 'Borradores' },
+                  { id: 'archived', label: 'Archivadas' },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => setTplStatusFilter(f.id as any)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      tplStatusFilter === f.id
+                        ? 'bg-[#102d49] text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Buscador */}
               <div className="relative flex-1 max-w-md">
                 <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
                 <input
@@ -318,10 +354,6 @@ export const DocumentsPage: React.FC = () => {
                   className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs text-[#102d49] focus:ring-2 focus:ring-[#102d49]/20 bg-slate-50 focus:bg-white"
                 />
               </div>
-
-              <span className="text-xs text-slate-500 font-semibold">
-                {filteredTenantTpls.length} plantillas de {tenant.name}
-              </span>
             </div>
 
             {tplsLoading ? (
@@ -331,7 +363,7 @@ export const DocumentsPage: React.FC = () => {
             ) : filteredTenantTpls.length === 0 ? (
               <div className="p-12 text-center bg-white rounded-2xl border border-dashed border-slate-300 space-y-3">
                 <Building2 className="w-10 h-10 text-slate-300 mx-auto" />
-                <h4 className="text-sm font-bold text-slate-700">Aún no tienes plantillas personalizadas</h4>
+                <h4 className="text-sm font-bold text-slate-700">No se encontraron plantillas en esta sección</h4>
                 <p className="text-xs text-slate-400 max-w-md mx-auto">
                   Puedes derivar una plantilla oficial desde la pestaña "Plantillas HIPOTECALY" o crear una nueva plantilla propia desde cero.
                 </p>
@@ -360,89 +392,28 @@ export const DocumentsPage: React.FC = () => {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredTenantTpls.map((tpl) => {
-                  const isDerived = Boolean(tpl.parent_template_id);
-                  const badgeLabel = isDerived ? 'PERSONALIZADA' : 'PROPIA';
-                  const badgeClass = isDerived
-                    ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                    : 'bg-blue-100 text-blue-800 border border-blue-200';
-
-                  // Verificar si existe una versión global más reciente
-                  const parentGlobal = isDerived ? globalTemplates.find((g) => g.id === tpl.parent_template_id) : null;
-                  const hasNewerGlobal = parentGlobal && parentGlobal.version > (tpl.parent_version || 1);
+                  const parentGlobal = tpl.parent_template_id
+                    ? globalTemplates.find((g) => g.id === tpl.parent_template_id)
+                    : null;
+                  const newerGlobalVersion = parentGlobal ? parentGlobal.version : null;
 
                   return (
-                    <div
+                    <TemplateCard
                       key={tpl.id}
-                      className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
-                    >
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 px-2 py-0.5 rounded">
-                            {tpl.category}
-                          </span>
-                          <div className="flex items-center space-x-1.5">
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badgeClass}`}>
-                              {badgeLabel}
-                            </span>
-                            <span
-                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                tpl.status === 'active'
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : 'bg-amber-100 text-amber-800'
-                              }`}
-                            >
-                              v{tpl.version} {tpl.status === 'active' ? 'Activa' : 'Borrador'}
-                            </span>
-                          </div>
-                        </div>
-
-                        <h4 className="font-bold text-[#102d49] text-sm leading-snug">{tpl.name}</h4>
-                        <p className="text-xs text-slate-500 line-clamp-2">
-                          {tpl.description || 'Plantilla de la organización.'}
-                        </p>
-
-                        {/* Banner no destructivo si hay versión global más nueva */}
-                        {hasNewerGlobal && (
-                          <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900 space-y-1">
-                            <div className="flex items-center space-x-1 font-bold">
-                              <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                              <span>Nueva versión global disponible (v{parentGlobal.version})</span>
-                            </div>
-                            <p className="text-[10px] text-amber-700">
-                              Tu versión está basada en v{tpl.parent_version || 1}. Tu plantilla se mantiene intacta.
-                            </p>
-                          </div>
-                        )}
-
-                        <div className="text-[11px] text-slate-400 pt-1 space-y-0.5">
-                          <p>Campos requeridos: <strong className="text-slate-600">{tpl.required_fields?.length || 0}</strong></p>
-                          <p>Firma electrónica: <strong className="text-slate-600">{tpl.requires_signature ? 'Sí (Ley 18.600)' : 'No requerida'}</strong></p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedTpl(tpl);
-                            setShowTplEditor(true);
-                          }}
-                          className="text-xs font-bold text-[#102d49]"
-                        >
-                          <Edit className="w-3.5 h-3.5 mr-1" /> Modificar plantilla
-                        </Button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleDuplicateTemplate(tpl)}
-                          className="text-xs text-slate-400 hover:text-[#102d49] p-1.5 rounded-lg hover:bg-slate-100 transition"
-                          title="Duplicar plantilla"
-                        >
-                          <Copy className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
+                      template={tpl}
+                      isGlobal={false}
+                      newerGlobalVersion={newerGlobalVersion}
+                      onEdit={(t) => {
+                        setSelectedTpl(t);
+                        setShowTplEditor(true);
+                      }}
+                      onDuplicate={(t) => handleDuplicateTemplate(t)}
+                      onNewVersion={(t) => handleCreateNewVersion(t)}
+                      onHistory={(t) => setHistoryModalTpl(t)}
+                      onArchive={(t) => handleArchiveTemplate(t)}
+                      onRestore={(t) => handleRestoreTemplate(t)}
+                      onDelete={(t) => setDeleteModalTpl(t)}
+                    />
                   );
                 })}
               </div>
@@ -457,9 +428,11 @@ export const DocumentsPage: React.FC = () => {
             <div className="flex space-x-1.5 overflow-x-auto pb-1 text-xs font-semibold">
               {[
                 { id: 'todos', label: 'Todos' },
-                { id: 'draft', label: 'Borrador' },
-                { id: 'ready', label: 'Generados' },
+                { id: 'generated', label: 'Generados' },
+                { id: 'ready_for_signature', label: 'Para Firma' },
                 { id: 'signed', label: 'Firmados' },
+                { id: 'superseded', label: 'Reemplazados' },
+                { id: 'voided', label: 'Anulados' },
                 { id: 'archived', label: 'Archivados' },
               ].map((sub) => (
                 <button
@@ -501,9 +474,9 @@ export const DocumentsPage: React.FC = () => {
             ) : filteredDocs.length === 0 ? (
               <div className="p-12 text-center space-y-3 bg-white rounded-2xl border border-slate-200 shadow-xs">
                 <FolderX className="w-10 h-10 text-slate-300 mx-auto" />
-                <h4 className="text-sm font-bold text-[#102d49]">No hay documentos generados aún</h4>
+                <h4 className="text-sm font-bold text-[#102d49]">No hay documentos en esta categoría</h4>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  Los documentos autollenados desde cada expediente aparecerán listados aquí para su auditoría y descarga segura.
+                  Los documentos autollenados desde cada expediente conservan un snapshot inmutable y su hash criptográfico SHA-256.
                 </p>
               </div>
             ) : (
@@ -535,10 +508,29 @@ export const DocumentsPage: React.FC = () => {
         templateToEdit={selectedTpl}
         tenantId={tenant.id}
         tenantName={tenant.name}
-        onClose={() => setShowTplEditor(false)}
+        onClose={() => {
+          setShowTplEditor(false);
+          setSelectedTpl(null);
+        }}
         onSaved={() => {
           loadTemplates();
         }}
+      />
+
+      <TemplateDeleteModal
+        isOpen={Boolean(deleteModalTpl)}
+        template={deleteModalTpl}
+        userContext={userContext}
+        onClose={() => setDeleteModalTpl(null)}
+        onSuccess={() => {
+          loadTemplates();
+        }}
+      />
+
+      <TemplateHistoryModal
+        isOpen={Boolean(historyModalTpl)}
+        template={historyModalTpl}
+        onClose={() => setHistoryModalTpl(null)}
       />
     </BackofficeLayout>
   );

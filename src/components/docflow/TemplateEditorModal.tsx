@@ -250,27 +250,51 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
     try {
       const generatedSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
       const targetStatus = publishAsActive ? 'active' : status;
-      const targetVersion = templateToEdit ? (publishAsActive ? (templateToEdit.version || 1) + 1 : templateToEdit.version || 1) : 1;
+      const usageCount = templateToEdit?.usage_count || 0;
 
       if (templateToEdit?.id) {
         const isGlobalTemplate = templateToEdit.is_global || templateToEdit.scope === 'global';
-        const updated = await DocumentService.updateTemplate(templateToEdit.id, {
-          name,
-          slug: generatedSlug,
-          description,
-          category,
-          template_content: content,
-          requires_signature: requiresSignature,
-          required_fields: requiredFields,
-          status: targetStatus,
-          version: targetVersion,
-          scope: isGlobalTemplate ? 'global' : 'tenant',
-          is_global: isGlobalTemplate,
-          parent_template_id: templateToEdit.parent_template_id,
-          parent_version: templateToEdit.parent_version,
-          origin_type: templateToEdit.origin_type,
-        });
-        if (updated) onSaved(updated);
+        
+        // Si la plantilla ya tiene usos registrados y se publica o modifica el contenido, creamos una nueva versión inmutable
+        if (usageCount > 0 && (publishAsActive || content !== templateToEdit.template_content)) {
+          const newVer = await DocumentService.createNewTemplateVersion(
+            templateToEdit.id,
+            {
+              name,
+              slug: generatedSlug,
+              description,
+              category,
+              template_content: content,
+              requires_signature: requiresSignature,
+              required_fields: requiredFields,
+              status: targetStatus,
+            },
+            { organizationId: tenantId, userName: tenantName }
+          );
+          onSaved(newVer);
+        } else {
+          // Si nunca fue utilizada, se permite la edición directa in-situ de forma segura
+          const updated = await DocumentService.updateTemplate(
+            templateToEdit.id,
+            {
+              name,
+              slug: generatedSlug,
+              description,
+              category,
+              template_content: content,
+              requires_signature: requiresSignature,
+              required_fields: requiredFields,
+              status: targetStatus,
+              scope: isGlobalTemplate ? 'global' : 'tenant',
+              is_global: isGlobalTemplate,
+              parent_template_id: templateToEdit.parent_template_id,
+              parent_version: templateToEdit.parent_version,
+              origin_type: templateToEdit.origin_type,
+            },
+            { organizationId: tenantId, userName: tenantName }
+          );
+          if (updated) onSaved(updated);
+        }
       } else {
         const isGlobal = !tenantId || tenantName === 'HIPOTECALY GLOBAL';
         const created = await DocumentService.createTemplate({
@@ -280,7 +304,7 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
           category,
           document_type: generatedSlug.replace(/-/g, '_'),
           status: targetStatus,
-          version: targetVersion,
+          version: 1,
           output_format: 'pdf',
           template_content: content,
           requires_signature: requiresSignature,
@@ -291,7 +315,7 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
           origin_type: isGlobal ? 'global' : templateToEdit?.parent_template_id ? 'derived' : 'custom',
           parent_template_id: templateToEdit?.parent_template_id || null,
           parent_version: templateToEdit?.parent_version || null,
-        });
+        }, { organizationId: tenantId, userName: tenantName });
         onSaved(created);
       }
       onClose();

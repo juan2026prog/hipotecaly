@@ -15,9 +15,10 @@ export type DocFlowStatus =
   | 'rejected'
   | 'expired'
   | 'superseded'
-  | 'archived';
+  | 'archived'
+  | 'voided';
 
-export type TemplateStatus = 'draft' | 'active' | 'inactive' | 'archived';
+export type TemplateStatus = 'draft' | 'active' | 'inactive' | 'archived' | 'retired';
 
 export type OutputFormat = 'pdf' | 'html' | 'docx';
 
@@ -100,9 +101,12 @@ export interface DocumentTemplate {
   available_tenant_ids?: string[] | null;
   origin_type?: 'global' | 'derived' | 'custom';
   created_by?: string;
+  created_by_name?: string;
   created_at: string;
   updated_at: string;
   archived_at?: string;
+  deleted_at?: string;
+  usage_count?: number;
 }
 
 export interface GeneratedDocument {
@@ -110,6 +114,7 @@ export interface GeneratedDocument {
   tenant_id: string;
   case_id: string;
   template_id?: string | null;
+  template_name?: string;
   template_version: number;
   parent_template_id?: string | null;
   parent_template_version?: number | null;
@@ -125,6 +130,7 @@ export interface GeneratedDocument {
   file_hash?: string;
   file_size?: number;
   mime_type?: string;
+  content_html?: string;
   snapshot_json: Record<string, any>;
   signed_file_url?: string;
   signed_at?: string;
@@ -132,8 +138,25 @@ export interface GeneratedDocument {
   missing_fields: string[];
   change_detected: boolean;
   superseded_by?: string;
+  replaces_document_id?: string;
+  voided_at?: string;
+  void_reason?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface TemplateVersionHistoryItem {
+  id: string;
+  version: number;
+  name: string;
+  status: TemplateStatus;
+  created_at: string;
+  created_by?: string;
+  created_by_name?: string;
+  description?: string;
+  usage_count: number;
+  template_content: string;
+  is_current: boolean;
 }
 
 export interface ResolvedCaseData {

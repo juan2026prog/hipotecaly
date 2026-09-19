@@ -74,13 +74,14 @@ export function evaluateCondition(
  * Valida los campos requeridos de un template contra los datos del caso
  */
 export function validateRequiredFields(
-  requiredKeys: string[],
+  requiredKeys: string[] = [],
   resolvedData: ResolvedCaseData
 ): ValidationResult {
   const missing: Array<{ key: string; label: string; category: string; path: string }> = [];
   let available = 0;
+  const keysToValidate = Array.isArray(requiredKeys) ? requiredKeys : [];
 
-  for (const key of requiredKeys) {
+  for (const key of keysToValidate) {
     const varDef = DOCUMENT_VARIABLES.find((v) => v.key === key);
     const label = varDef ? varDef.label : key;
     const category = varDef ? varDef.category : 'general';

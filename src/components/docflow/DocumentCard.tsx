@@ -40,14 +40,20 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
     switch (status) {
       case 'signed':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-            <CheckCircle2 className="w-3 h-3 mr-1" /> Firmado
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+            <CheckCircle2 className="w-3 h-3 mr-1" /> Firmado (Inmutable)
+          </span>
+        );
+      case 'voided':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300" title={document.void_reason || 'Documento anulado'}>
+            <AlertTriangle className="w-3 h-3 mr-1" /> Anulado
           </span>
         );
       case 'ready_for_signature':
       case 'sent_for_signature':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 animate-pulse">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 animate-pulse border border-amber-300">
             <PenTool className="w-3 h-3 mr-1" /> Pendiente de Firma
           </span>
         );
@@ -67,6 +73,12 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-600">
             Reemplazado (v{document.document_version})
+          </span>
+        );
+      case 'archived':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
+            Archivado
           </span>
         );
       default:
