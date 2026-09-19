@@ -15,6 +15,9 @@ import {
   BuildingCondition,
   AppraisalPhoto,
 } from '../../lib/tasador/appraisal/appraisalTypes';
+import { CanonicalGeoAddress } from '../../lib/geo/types';
+import { AddressFields } from '../../components/geo/AddressFields';
+import { GeoPrecisionBadge } from '../../components/geo/GeoPrecisionBadge';
 import {
   Compass,
   MapPin,
@@ -25,56 +28,11 @@ import {
   Upload,
   Trash2,
   Star,
-  CheckCircle2,
   AlertCircle,
   ArrowRight,
   Info,
   Calendar,
 } from 'lucide-react';
-
-const DEPARTMENTS_URUGUAY = [
-  'Montevideo',
-  'Canelones',
-  'Maldonado',
-  'Colonia',
-  'Rocha',
-  'San José',
-  'Salto',
-  'Paysandú',
-  'Rivera',
-  'Tacuarembó',
-  'Lavalleja',
-  'Soriano',
-  'Florida',
-  'Durazno',
-  'Río Negro',
-  'Treinta y Tres',
-  'Cerro Largo',
-  'Artigas',
-  'Flores',
-];
-
-const MONTEVIDEO_NEIGHBORHOODS = [
-  'Pocitos',
-  'Punta Carretas',
-  'Buceo',
-  'Malvín',
-  'Carrasco',
-  'Parque Rodó',
-  'Cordón',
-  'Centro',
-  'Ciudad Vieja',
-  'Tres Cruces',
-  'La Blanqueada',
-  'Palermo',
-  'Barrio Sur',
-  'Aguada',
-  'Prado',
-  'Unión',
-  'Maroñas',
-  'Sayago',
-  'Colón',
-];
 
 export const TasadorNewAppraisalPage: React.FC = () => {
   const navigate = useNavigate();
@@ -82,18 +40,26 @@ export const TasadorNewAppraisalPage: React.FC = () => {
   const { user } = useAuth();
   const baseRoute = `/demo/${tenant.slug || 'estudio-nova'}/admin`;
 
-  // Bloque A: Ubicación
-  const [country] = useState('Uruguay');
-  const [department, setDepartment] = useState('Montevideo');
-  const [city, setCity] = useState('Montevideo');
-  const [neighborhood, setNeighborhood] = useState('Pocitos');
-  const [streetName, setStreetName] = useState('');
-  const [streetNumber, setStreetNumber] = useState('');
-  const [unitOrApt, setUnitOrApt] = useState('');
-  const [floor, setFloor] = useState('');
-  const [cadastralNumber, setCadastralNumber] = useState('');
-  const [latitude, _setLatitude] = useState<number | null>(-34.915);
-  const [longitude, _setLongitude] = useState<number | null>(-56.148);
+  // Bloque A: Ubicación Geográfica Canónica (GeoCore)
+  const [geoAddress, setGeoAddress] = useState<CanonicalGeoAddress>({
+    country: 'Uruguay',
+    countryCode: 'UY',
+    department: 'Montevideo',
+    locality: 'Montevideo',
+    neighborhood: '',
+    streetName: '',
+    streetNumber: '',
+    unitOrApt: '',
+    floor: '',
+    postalCode: null,
+    cadastralNumber: '',
+    latitude: null,
+    longitude: null,
+    precision: 'UNKNOWN',
+    source: 'ide_uy',
+    verified: false,
+    formattedAddress: '',
+  });
 
   // Bloque B: Tipo de Inmueble
   const [propertyType, setPropertyType] = useState<AppraisalPropertyType>('apartamento');
@@ -200,26 +166,26 @@ export const TasadorNewAppraisalPage: React.FC = () => {
     );
   };
 
-  // Construir objeto de propiedad objetivo
+  // Construir objeto de propiedad objetivo con GeoCore canónico
   const targetProperty: AppraisalPropertyInput = {
-    title: `${propertyType.toUpperCase()} en ${neighborhood || city || department}`,
+    title: `${propertyType.toUpperCase()} en ${geoAddress.neighborhood || geoAddress.locality || geoAddress.department}`,
     propertyType,
     subType: subType || undefined,
     horizontalProperty,
     operationType: 'SALE',
     location: {
-      country,
-      department,
-      city,
-      neighborhood,
-      streetName,
-      streetNumber,
-      unitOrApt: unitOrApt || undefined,
-      floor: floor || undefined,
-      cadastralNumber: cadastralNumber || undefined,
-      latitude,
-      longitude,
-      isGeocodedExact: Boolean(streetName && streetNumber),
+      country: geoAddress.country || 'Uruguay',
+      department: geoAddress.department,
+      city: geoAddress.locality || geoAddress.department,
+      neighborhood: geoAddress.neighborhood,
+      streetName: geoAddress.streetName,
+      streetNumber: geoAddress.streetNumber,
+      unitOrApt: geoAddress.unitOrApt || undefined,
+      floor: geoAddress.floor || undefined,
+      cadastralNumber: geoAddress.cadastralNumber || undefined,
+      latitude: geoAddress.latitude,
+      longitude: geoAddress.longitude,
+      isGeocodedExact: Boolean(geoAddress.verified && geoAddress.latitude && geoAddress.longitude && (geoAddress.precision === 'EXACT_ADDRESS' || geoAddress.precision === 'STREET_NUMBER')),
     },
     surfaces: {
       totalAreaM2: Number(totalAreaM2) || 0,
@@ -315,7 +281,7 @@ export const TasadorNewAppraisalPage: React.FC = () => {
           {/* Columna Principal: Formulario en Bloques */}
           <div className="lg:col-span-2 space-y-6">
 
-            {/* BLOQUE A: UBICACIÓN */}
+            {/* BLOQUE A: UBICACIÓN GEOGRÁFICA (GEOCORE) */}
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center space-x-2.5 pb-3 border-b border-slate-100">
                 <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
@@ -323,165 +289,15 @@ export const TasadorNewAppraisalPage: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-[#102d49]">Bloque A — Ubicación Geográfica</h3>
-                  <p className="text-[11px] text-slate-400">Jurisdicción y dirección del inmueble</p>
+                  <p className="text-[11px] text-slate-400">Jurisdicción, autocompletado y geocodificación oficial IDE Uruguay</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                <div>
-                  <label htmlFor="country-input" className="font-semibold text-slate-700 block mb-1">País</label>
-                  <input
-                    id="country-input"
-                    type="text"
-                    value={country}
-                    disabled
-                    className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed font-medium"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="department-select" className="font-semibold text-slate-700 block mb-1">
-                    Departamento <span className="text-rose-500">*</span>
-                  </label>
-                  <select
-                    id="department-select"
-                    value={department}
-                    onChange={(e) => {
-                      setDepartment(e.target.value);
-                      if (e.target.value === 'Montevideo') {
-                        setCity('Montevideo');
-                      } else {
-                        setCity(e.target.value);
-                        setNeighborhood('');
-                      }
-                    }}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#102d49]/20 font-medium"
-                  >
-                    {DEPARTMENTS_URUGUAY.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label htmlFor="neighborhood-input" className="font-semibold text-slate-700 block mb-1">
-                    Barrio / Zona <span className="text-rose-500">*</span>
-                  </label>
-                  {department === 'Montevideo' ? (
-                    <select
-                      id="neighborhood-input"
-                      value={neighborhood}
-                      onChange={(e) => setNeighborhood(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#102d49]/20 font-medium"
-                    >
-                      <option value="">Seleccionar barrio...</option>
-                      {MONTEVIDEO_NEIGHBORHOODS.map((n) => (
-                        <option key={n} value={n}>
-                          {n}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      id="neighborhood-input"
-                      type="text"
-                      placeholder="Ej: La Barra, Punta del Este..."
-                      value={neighborhood}
-                      onChange={(e) => setNeighborhood(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#102d49]/20"
-                    />
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="city-input" className="font-semibold text-slate-700 block mb-1">Localidad / Ciudad</label>
-                  <input
-                    id="city-input"
-                    type="text"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#102d49]/20 font-medium"
-                  />
-                </div>
-
-                <div className="sm:col-span-2 grid grid-cols-3 gap-2">
-                  <div className="col-span-2">
-                    <label htmlFor="street-name-input" className="font-semibold text-slate-700 block mb-1">Calle / Avenida</label>
-                    <input
-                      id="street-name-input"
-                      type="text"
-                      placeholder="Ej: Bulevar España"
-                      value={streetName}
-                      onChange={(e) => setStreetName(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#102d49]/20"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="street-number-input" className="font-semibold text-slate-700 block mb-1">Nº Puerta</label>
-                    <input
-                      id="street-number-input"
-                      type="text"
-                      placeholder="Ej: 2450"
-                      value={streetNumber}
-                      onChange={(e) => setStreetNumber(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#102d49]/20"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label htmlFor="unit-apt-input" className="font-semibold text-slate-700 block mb-1">Apto / Unidad</label>
-                    <input
-                      id="unit-apt-input"
-                      type="text"
-                      placeholder="Ej: 402"
-                      value={unitOrApt}
-                      onChange={(e) => setUnitOrApt(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#102d49]/20"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="floor-input" className="font-semibold text-slate-700 block mb-1">Piso</label>
-                    <input
-                      id="floor-input"
-                      type="text"
-                      placeholder="Ej: 4"
-                      value={floor}
-                      onChange={(e) => setFloor(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#102d49]/20"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Padrón Catastral (Opcional)</label>
-                  <input
-                    type="text"
-                    placeholder="Ej: 34567"
-                    value={cadastralNumber}
-                    onChange={(e) => setCadastralNumber(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#102d49]/20"
-                  />
-                </div>
-              </div>
-
-              {/* Estado de Geocodificación */}
-              <div className="pt-2">
-                {streetName && streetNumber ? (
-                  <div className="flex items-center space-x-2 text-[11px] text-emerald-700 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-200">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Dirección completa para geolocalización precisa.</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-2 text-[11px] text-amber-700 bg-amber-50 px-3 py-2 rounded-xl border border-amber-200">
-                    <Info className="w-3.5 h-3.5" />
-                    <span>Sin numeración exacta: los comparables se buscarán a nivel de barrio ({neighborhood || department}).</span>
-                  </div>
-                )}
-              </div>
+              <AddressFields
+                address={geoAddress}
+                onChange={setGeoAddress}
+                showMap={true}
+              />
             </div>
 
             {/* BLOQUE B: TIPO DE INMUEBLE */}
@@ -897,12 +713,17 @@ export const TasadorNewAppraisalPage: React.FC = () => {
               </div>
 
               <div>
-                <h3 className="text-lg font-serif font-bold text-[#102d49] capitalize">
-                  {propertyType} en {neighborhood || department}
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-serif font-bold text-[#102d49] capitalize">
+                    {propertyType} en {geoAddress.neighborhood || geoAddress.locality || geoAddress.department}
+                  </h3>
+                </div>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  {[streetName, streetNumber].filter(Boolean).join(' ') || 'Dirección a definir'}, {department}
+                  {[geoAddress.streetName, geoAddress.streetNumber].filter(Boolean).join(' ') || 'Dirección a definir'}, {geoAddress.department}
                 </p>
+                <div className="mt-2">
+                  <GeoPrecisionBadge precision={geoAddress.precision} showDescription={false} />
+                </div>
               </div>
 
               {/* Ficha Rápida */}

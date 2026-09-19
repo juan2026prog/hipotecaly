@@ -737,6 +737,7 @@ export const TasadorComparablesPage: React.FC = () => {
                     comparables={comparables}
                     selectedCandidateId={selectedMapCompId}
                     onSelectCandidate={(candId: string) => setSelectedMapCompId(candId)}
+                    radiusMeters={radiusMeters}
                   />
                 </div>
 
