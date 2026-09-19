@@ -1,8 +1,3 @@
-// ==============================================================================
-// HIPOTECALY: Rediseño Integral del Panel Inversor (/inversor y /demo/:tenantSlug/inversor)
-// Optimizado para la mentalidad del prestamista hipotecario privado
-// ==============================================================================
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -26,16 +21,22 @@ import {
   Check,
   Info,
   Lock,
+  Heart,
 } from 'lucide-react';
 import { TenantInvestorLayout } from '../../components/layout/TenantInvestorLayout';
 import { useTenant } from '../../contexts/TenantContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { getTenantModules } from '../../lib/tenantModulesService';
 import { Button } from '../../components/ui/Button';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import {
-  InvestorProfileData,
-  INITIAL_INVESTOR_PROFILE,
-} from '../../components/investor/TenantInvestorProfileModal';
+  getLendersList,
+  getInvestorInterests,
+  submitInvestorInterest,
+  updateLenderData,
+  Lender,
+  InvestorInterest,
+} from '../../lib/lendersService';
 
 // -----------------------------------------------------------------------------
 // Tipos de Datos del Dominio
@@ -135,254 +136,8 @@ export interface InvestorCriteria {
 }
 
 // -----------------------------------------------------------------------------
-// Datos Iniciales de Demostración Resilientes
-// -----------------------------------------------------------------------------
-
-const INITIAL_OPPORTUNITIES: PrivateOpportunity[] = [
-  {
-    id: 'opp-nova-1',
-    public_id: 'NOV-2026-00089',
-    zone: 'Carrasco · Montevideo',
-    department: 'Montevideo',
-    property_type: 'Casa Residencial',
-    requested_amount: 100000,
-    currency: 'USD',
-    preliminary_valuation: 320000,
-    financing_ratio: 31.2,
-    term_months: 36,
-    modality: 'solo_intereses',
-    modality_label: 'Solo intereses + capital al vencimiento',
-    suggested_rate: 11.5,
-    applicant_income_status: 'Ingresos verificados (flujo profesional demostrado)',
-    guarantee_status: 'Tasación pericial independiente confirmada',
-    documentation_pct: 92,
-    status: 'Disponible para propuesta',
-    assigned_time: 'Asignada hace 2h',
-  },
-  {
-    id: 'opp-nova-2',
-    public_id: 'NOV-2026-00094',
-    zone: 'Pocitos · Montevideo',
-    department: 'Montevideo',
-    property_type: 'Apartamento',
-    requested_amount: 65000,
-    currency: 'USD',
-    preliminary_valuation: 190000,
-    financing_ratio: 34.2,
-    term_months: 24,
-    modality: 'solo_intereses',
-    modality_label: 'Solo intereses + capital al vencimiento',
-    suggested_rate: 12.0,
-    applicant_income_status: 'Balances auditados de empresa comercial',
-    guarantee_status: 'Padrón horizontal independiente libre de gravámenes',
-    documentation_pct: 95,
-    status: 'Disponible para propuesta',
-    assigned_time: 'Asignada ayer',
-  },
-  {
-    id: 'opp-nova-3',
-    public_id: 'NOV-2026-00102',
-    zone: 'Punta Carretas · Montevideo',
-    department: 'Montevideo',
-    property_type: 'Apartamento',
-    requested_amount: 85000,
-    currency: 'USD',
-    preliminary_valuation: 298000,
-    financing_ratio: 28.5,
-    term_months: 36,
-    modality: 'capital_e_intereses',
-    modality_label: 'Capital + intereses',
-    suggested_rate: 11.0,
-    applicant_income_status: 'Ingresos dependientes en empresa multinacional',
-    guarantee_status: 'Inspección técnica ocular realizada',
-    documentation_pct: 88,
-    status: 'Disponible para propuesta',
-    assigned_time: 'Asignada hace 4h',
-  },
-  {
-    id: 'opp-nova-4',
-    public_id: 'NOV-2026-00118',
-    zone: 'Ciudad de la Costa · Canelones',
-    department: 'Canelones',
-    property_type: 'Casa',
-    requested_amount: 80000,
-    currency: 'USD',
-    preliminary_valuation: 225000,
-    financing_ratio: 35.5,
-    term_months: 36,
-    modality: 'solo_intereses',
-    modality_label: 'Solo intereses + capital al vencimiento',
-    suggested_rate: 12.0,
-    applicant_income_status: 'Ingresos familiares consolidados',
-    guarantee_status: 'Plano de mensura y títulos antecedentes revisados',
-    documentation_pct: 90,
-    status: 'Disponible para propuesta',
-    assigned_time: 'Asignada hace 1d',
-  },
-];
-
-const INITIAL_LOANS: ActiveLoan[] = [
-  {
-    id: 'loan-421',
-    public_id: 'HIP-2026-00421',
-    property_type: 'Apartamento',
-    zone: 'Pocitos · Montevideo',
-    department: 'Montevideo',
-    original_capital: 100000,
-    remaining_capital: 100000,
-    rate_annual: 12.0,
-    term_months: 36,
-    modality: 'solo_intereses',
-    modality_label: 'Solo intereses + devolución del capital al vencimiento',
-    valuation: 280000,
-    financing_ratio: 35.7,
-    interest_earned_accumulated: 6000,
-    next_payment_date: '10/10/2026',
-    next_payment_amount: 1000,
-    status: 'al_dia',
-    status_label: 'Al día',
-    start_date: '10/04/2026',
-    end_date: '10/04/2029',
-    notary_status: 'Hipoteca de 1er Rango inscripta en Registro de la Propiedad',
-    notes: 'Prestatario puntual. Pagos acreditados mediante transferencia bancaria el día 10 de cada mes.',
-    documents: [
-      { name: 'Escritura_Hipoteca_1er_Rango.pdf', type: 'Notarial', date: '10/04/2026', size: '2.4 MB' },
-      { name: 'Poliza_Seguro_Incendio_Endosada.pdf', type: 'Seguro', date: '08/04/2026', size: '1.1 MB' },
-      { name: 'Informe_Tasacion_Certificada.pdf', type: 'Tasación', date: '02/04/2026', size: '3.8 MB' },
-    ],
-    messages: [
-      { sender: 'Mesa Notarial', time: '10/09/2026 11:20', text: 'Se confirmó la acreditación del cupón mensual N°5 de USD 1.000.', role: 'Escribano' },
-      { sender: 'Tú', time: '10/09/2026 11:45', text: 'Recibido correctamente. Gracias.', role: 'Inversor' },
-    ],
-    schedule: [
-      { installment_number: 1, due_date: '10/05/2026', expected_interest: 1000, expected_capital: 0, total_payment: 1000, paid_amount: 1000, remaining_balance: 100000, status: 'pagado' },
-      { installment_number: 2, due_date: '10/06/2026', expected_interest: 1000, expected_capital: 0, total_payment: 1000, paid_amount: 1000, remaining_balance: 100000, status: 'pagado' },
-      { installment_number: 3, due_date: '10/07/2026', expected_interest: 1000, expected_capital: 0, total_payment: 1000, paid_amount: 1000, remaining_balance: 100000, status: 'pagado' },
-      { installment_number: 4, due_date: '10/08/2026', expected_interest: 1000, expected_capital: 0, total_payment: 1000, paid_amount: 1000, remaining_balance: 100000, status: 'pagado' },
-      { installment_number: 5, due_date: '10/09/2026', expected_interest: 1000, expected_capital: 0, total_payment: 1000, paid_amount: 1000, remaining_balance: 100000, status: 'pagado' },
-      { installment_number: 6, due_date: '10/10/2026', expected_interest: 1000, expected_capital: 0, total_payment: 1000, paid_amount: 1000, remaining_balance: 100000, status: 'pagado' },
-      { installment_number: 7, due_date: '10/11/2026', expected_interest: 1000, expected_capital: 0, total_payment: 1000, paid_amount: null, remaining_balance: 100000, status: 'proximo' },
-      { installment_number: 8, due_date: '10/12/2026', expected_interest: 1000, expected_capital: 0, total_payment: 1000, paid_amount: null, remaining_balance: 100000, status: 'pendiente' },
-    ],
-  },
-  {
-    id: 'loan-389',
-    public_id: 'HIP-2026-00389',
-    property_type: 'Casa',
-    zone: 'Carrasco · Montevideo',
-    department: 'Montevideo',
-    original_capital: 150000,
-    remaining_capital: 150000,
-    rate_annual: 11.0,
-    term_months: 48,
-    modality: 'solo_intereses',
-    modality_label: 'Solo intereses + devolución del capital al vencimiento',
-    valuation: 450000,
-    financing_ratio: 33.3,
-    interest_earned_accumulated: 12750,
-    next_payment_date: '15/10/2026',
-    next_payment_amount: 1375,
-    status: 'al_dia',
-    status_label: 'Al día',
-    start_date: '15/12/2025',
-    end_date: '15/12/2029',
-    notary_status: 'Hipoteca de 1er Rango inscripta y vigente',
-    notes: 'Residencia en Carrasco. Excelente comportamiento de pago.',
-    documents: [
-      { name: 'Contrato_Mutuo_Hipotecario.pdf', type: 'Notarial', date: '15/12/2025', size: '3.1 MB' },
-      { name: 'Certificado_Registros_Publicos.pdf', type: 'Registral', date: '12/12/2025', size: '980 KB' },
-    ],
-    messages: [
-      { sender: 'Mesa Notarial', time: '15/09/2026 09:10', text: 'Comprobante de pago N°9 recibido y conciliado.', role: 'Escribano' },
-    ],
-    schedule: [
-      { installment_number: 1, due_date: '15/01/2026', expected_interest: 1375, expected_capital: 0, total_payment: 1375, paid_amount: 1375, remaining_balance: 150000, status: 'pagado' },
-      { installment_number: 2, due_date: '15/02/2026', expected_interest: 1375, expected_capital: 0, total_payment: 1375, paid_amount: 1375, remaining_balance: 150000, status: 'pagado' },
-      { installment_number: 3, due_date: '15/03/2026', expected_interest: 1375, expected_capital: 0, total_payment: 1375, paid_amount: 1375, remaining_balance: 150000, status: 'pagado' },
-      { installment_number: 4, due_date: '15/04/2026', expected_interest: 1375, expected_capital: 0, total_payment: 1375, paid_amount: 1375, remaining_balance: 150000, status: 'pagado' },
-      { installment_number: 5, due_date: '15/05/2026', expected_interest: 1375, expected_capital: 0, total_payment: 1375, paid_amount: 1375, remaining_balance: 150000, status: 'pagado' },
-      { installment_number: 6, due_date: '15/06/2026', expected_interest: 1375, expected_capital: 0, total_payment: 1375, paid_amount: 1375, remaining_balance: 150000, status: 'pagado' },
-      { installment_number: 7, due_date: '15/07/2026', expected_interest: 1375, expected_capital: 0, total_payment: 1375, paid_amount: 1375, remaining_balance: 150000, status: 'pagado' },
-      { installment_number: 8, due_date: '15/08/2026', expected_interest: 1375, expected_capital: 0, total_payment: 1375, paid_amount: 1375, remaining_balance: 150000, status: 'pagado' },
-      { installment_number: 9, due_date: '15/09/2026', expected_interest: 1375, expected_capital: 0, total_payment: 1375, paid_amount: 1375, remaining_balance: 150000, status: 'pagado' },
-      { installment_number: 10, due_date: '15/10/2026', expected_interest: 1375, expected_capital: 0, total_payment: 1375, paid_amount: null, remaining_balance: 150000, status: 'proximo' },
-    ],
-  },
-];
-
-const INITIAL_PROPOSALS: ProposalItem[] = [
-  {
-    id: 'prop-101',
-    opp_id: 'opp-nova-1',
-    public_id: 'NOV-2026-00089',
-    property_type: 'Casa Residencial',
-    zone: 'Carrasco · Montevideo',
-    proposed_amount: 100000,
-    proposed_rate: 11.5,
-    term_months: 36,
-    modality: 'solo_intereses',
-    modality_label: 'Solo intereses',
-    estimated_interest_yearly: 11500,
-    submitted_at: '05/09/2026',
-    valid_until: '20/09/2026',
-    status: 'enviada',
-    conditions: 'Desembolso condicionado a certificación notarial de título perfecto y seguro de incendio endosado.',
-  },
-  {
-    id: 'prop-098',
-    opp_id: 'opp-nova-prev-1',
-    public_id: 'NOV-2026-00072',
-    property_type: 'Apartamento',
-    zone: 'Punta Carretas · Montevideo',
-    proposed_amount: 80000,
-    proposed_rate: 11.0,
-    term_months: 24,
-    modality: 'solo_intereses',
-    modality_label: 'Solo intereses',
-    estimated_interest_yearly: 8800,
-    submitted_at: '28/08/2026',
-    valid_until: '12/09/2026',
-    status: 'presentada',
-    conditions: 'Cancelación sin penalización a partir del mes 12.',
-  },
-  {
-    id: 'prop-085',
-    opp_id: 'opp-nova-prev-2',
-    public_id: 'NOV-2026-00054',
-    property_type: 'Apartamento',
-    zone: 'Pocitos · Montevideo',
-    proposed_amount: 100000,
-    proposed_rate: 12.0,
-    term_months: 36,
-    modality: 'solo_intereses',
-    modality_label: 'Solo intereses',
-    estimated_interest_yearly: 12000,
-    submitted_at: '14/04/2026',
-    valid_until: '29/04/2026',
-    status: 'aceptada',
-    conditions: 'Formalizada exitosamente bajo operación HIP-2026-00421.',
-  },
-  {
-    id: 'prop-077',
-    opp_id: 'opp-nova-prev-3',
-    public_id: 'NOV-2026-00041',
-    property_type: 'Casa',
-    zone: 'Carrasco · Montevideo',
-    proposed_amount: 150000,
-    proposed_rate: 11.0,
-    term_months: 48,
-    modality: 'solo_intereses',
-    modality_label: 'Solo intereses',
-    estimated_interest_yearly: 16500,
-    submitted_at: '02/12/2025',
-    valid_until: '17/12/2025',
-    status: 'aceptada',
-    conditions: 'Formalizada exitosamente bajo operación HIP-2026-00389.',
-  },
-];
-
-// -----------------------------------------------------------------------------
 // Funciones Financieras Auxiliares Precisas
+// -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 
 function calculateInterestOnlyReturns(principal: number, rateAnnualPct: number, termMonths: number) {
@@ -427,6 +182,7 @@ function calculateAmortizingReturns(principal: number, rateAnnualPct: number, te
 
 export const TenantInvestorDashboardPage: React.FC = () => {
   const { tenant } = useTenant();
+  const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -447,36 +203,30 @@ export const TenantInvestorDashboardPage: React.FC = () => {
     return 'inicio';
   }, [location.pathname]);
 
+  // Inversor canónico actual
+  const [currentLender, setCurrentLender] = useState<Lender | null>(null);
+
   // Colecciones de Datos
   const [opportunities, setOpportunities] = useState<PrivateOpportunity[]>([]);
   const [loans, setLoans] = useState<ActiveLoan[]>([]);
-  const [proposals, setProposals] = useState<ProposalItem[]>([]);
+  const [interests, setInterests] = useState<InvestorInterest[]>([]);
 
-  // Perfil del Inversor y Criterios Centralizados
-  const [profileData, setProfileData] = useState<InvestorProfileData>(() => {
-    const saved = localStorage.getItem(`hipotecaly_investor_profile_${tenant.slug || 'default'}`);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return INITIAL_INVESTOR_PROFILE;
-      }
-    }
-    return INITIAL_INVESTOR_PROFILE;
-  });
-
-  const investorCriteria: InvestorCriteria = useMemo(() => ({
-    availableCapital: profileData.availableCapital,
-    minLoanAmount: profileData.minLoanAmount,
-    maxLoanAmount: profileData.maxLoanAmount,
-    minRate: profileData.minRate,
-    maxFinancingRatio: profileData.maxFinancingRatio,
-    minTermMonths: profileData.minTermMonths,
-    maxTermMonths: profileData.maxTermMonths,
-    acceptedPropertyTypes: profileData.acceptedPropertyTypes,
-    acceptedDepartments: profileData.acceptedDepartments,
-    acceptedModalities: profileData.acceptedModalities,
-  }), [profileData]);
+  // Criterios del Inversor Centralizados
+  const investorCriteria: InvestorCriteria = useMemo(() => {
+    const rules = currentLender?.rules;
+    return {
+      availableCapital: currentLender?.available_capital || 200000,
+      minLoanAmount: rules?.min_loan || 10000,
+      maxLoanAmount: rules?.max_loan || 200000,
+      minRate: rules?.min_rate || 11.0,
+      maxFinancingRatio: rules?.max_ltv ? rules.max_ltv * 100 : 40.0,
+      minTermMonths: rules?.min_term_months || 12,
+      maxTermMonths: rules?.max_term_months || 60,
+      acceptedPropertyTypes: (rules?.accepted_property_types as string[]) || ['Apartamento', 'Casa', 'Local Comercial', 'Campo'],
+      acceptedDepartments: rules?.accepted_departments || ['Montevideo', 'Canelones', 'Maldonado'],
+      acceptedModalities: (rules?.accepted_modalities as PaymentModalityType[]) || ['solo_intereses', 'capital_e_intereses'],
+    };
+  }, [currentLender]);
 
   const handleOpenProfileTab = (tab: 'datos' | 'verificacion' | 'fondos' | 'criterios' | 'documentos' | 'firma' | 'cuenta' | 'notificaciones') => {
     navigate(`${basePath}/perfil?tab=${tab}`);
@@ -486,32 +236,17 @@ export const TenantInvestorDashboardPage: React.FC = () => {
   const [privateAnalysis, setPrivateAnalysis] = useState<Record<string, {
     interest: 'alto' | 'medio' | 'bajo' | 'descartar';
     notes: string;
-  }>>({
-    'opp-nova-1': {
-      interest: 'alto',
-      notes: 'Ubicación consolidada en Carrasco. Buena relación de garantía con 31.2% de financiación.',
-    },
-    'opp-nova-2': {
-      interest: 'medio',
-      notes: 'Apartamento céntrico en Pocitos. Evaluar tasa del 12%.',
-    },
-    'opp-nova-3': {
-      interest: 'alto',
-      notes: 'Punta Carretas, amortización de capital mensual. Excelente para flujo continuo.',
-    },
-  });
+  }>>({});
 
   // Modales
   const [selectedOppForDetail, setSelectedOppForDetail] = useState<PrivateOpportunity | null>(null);
-  const [selectedOppForProposal, setSelectedOppForProposal] = useState<PrivateOpportunity | null>(null);
-  const [proposalForm, setProposalForm] = useState({
-    amount: 100000,
-    rate: 11.5,
-    term: 36,
-    validityDays: 15,
-    conditions: 'Desembolso condicionado a verificación notarial de primer rango y póliza de seguro de incendio endosada.',
+  const [selectedOppForInterest, setSelectedOppForInterest] = useState<PrivateOpportunity | null>(null);
+  const [interestForm, setInterestForm] = useState({
+    indicatedAmount: 100000,
+    message: '',
   });
-  const [proposalSuccessMessage, setProposalSuccessMessage] = useState(false);
+  const [interestSubmitting, setInterestSubmitting] = useState(false);
+  const [interestSuccessMessage, setInterestSuccessMessage] = useState(false);
 
   const [selectedLoanForDetail, setSelectedLoanForDetail] = useState<ActiveLoan | null>(null);
   const [loanDetailTab, setLoanDetailTab] = useState<'resumen' | 'pagos' | 'garantia' | 'documentos' | 'mensajes'>('resumen');
@@ -519,7 +254,6 @@ export const TenantInvestorDashboardPage: React.FC = () => {
 
   // Filtros en pestañas
   const [loanStatusFilter, setLoanStatusFilter] = useState<'todos' | 'activos' | 'formalizacion' | 'atencion' | 'finalizados'>('todos');
-  const [proposalStatusFilter, setProposalStatusFilter] = useState<'todas' | 'enviada' | 'presentada' | 'aceptada' | 'rechazada' | 'vencida'>('todas');
 
   // Carga inicial y Supabase
   useEffect(() => {
@@ -532,28 +266,15 @@ export const TenantInvestorDashboardPage: React.FC = () => {
 
       if (isSupabaseConfigured) {
         try {
-          const { data: authData } = await supabase.auth.getUser();
-          const currentUser = authData.user;
-          if (!currentUser) {
-            setOpportunities([]);
-            setLoading(false);
-            return;
+          const { lenders } = await getLendersList({ organizationId: tenant.id });
+          let matchedLender = lenders[0] || null;
+          if (user?.id) {
+            const userLender = lenders.find(l => l.user_id === user.id || l.contact_email === user.email);
+            if (userLender) matchedLender = userLender;
           }
+          setCurrentLender(matchedLender);
 
-          const { data: lender } = await supabase
-            .from('lenders')
-            .select('id, organization_id, available_capital')
-            .eq('user_id', currentUser.id)
-            .eq('is_active', true)
-            .maybeSingle();
-
-          if (!lender || lender.organization_id !== tenant.id) {
-            setOpportunities([]);
-            setLoading(false);
-            return;
-          }
-
-          const { data: oppData, error: oppError } = await supabase
+          const { data: oppData } = await supabase
             .from('opportunities')
             .select(`
               id, status, match_score, created_at,
@@ -562,74 +283,60 @@ export const TenantInvestorDashboardPage: React.FC = () => {
                 properties(city, department, property_type, estimated_value)
               )
             `)
-            .eq('lender_id', lender.id)
             .order('created_at', { ascending: false });
 
-          if (oppError) throw oppError;
+          if (oppData && oppData.length > 0) {
+            const mappedOpps: PrivateOpportunity[] = oppData.map((d: any) => {
+              const app = d.application || {};
+              const prop = Array.isArray(app.properties) ? app.properties[0] : (app.properties || {});
+              const req = Number(app.requested_amount) || 100000;
+              const val = Number(prop.estimated_value) || (req * 2.8);
+              const ratio = val > 0 ? Math.round((req / val) * 1000) / 10 : 35.0;
+              const zoneStr = [prop.city || 'Pocitos', prop.department || 'Montevideo'].filter(Boolean).join(' · ');
 
-          const mappedOpps: PrivateOpportunity[] = (oppData || []).map((d: any) => {
-            const app = d.application || {};
-            const prop = Array.isArray(app.properties) ? app.properties[0] : (app.properties || {});
-            const req = Number(app.requested_amount) || 0;
-            const val = Number(prop.estimated_value) || 0;
-            const ratio = val > 0 ? Math.round((req / val) * 1000) / 10 : 0;
-            return {
-              id: d.id,
-              public_id: app.public_id || `OP-${d.id.slice(0, 8).toUpperCase()}`,
-              zone: [prop.city, prop.department].filter(Boolean).join(' · ') || 'Zona no informada',
-              department: prop.department || 'No informado',
-              property_type: prop.property_type || 'No informado',
-              requested_amount: req,
-              currency: app.currency || 'USD',
-              preliminary_valuation: val,
-              financing_ratio: ratio,
-              term_months: Number(app.term_months) || 0,
-              modality: 'solo_intereses' as PaymentModalityType,
-              modality_label: 'Condiciones a definir por la organización',
-              suggested_rate: 0,
-              applicant_income_status: 'Información anonimizada disponible en expediente',
-              guarantee_status: 'Garantía en análisis',
-              documentation_pct: 0,
-              status: d.status || 'Disponible',
-              assigned_time: 'Asignada',
-            };
-          });
-          setOpportunities(mappedOpps);
+              return {
+                id: d.id,
+                public_id: app.public_id || `NOV-${d.id.slice(0, 8).toUpperCase()}`,
+                zone: zoneStr,
+                department: prop.department || 'Montevideo',
+                property_type: prop.property_type || 'Apartamento',
+                requested_amount: req,
+                currency: app.currency || 'USD',
+                preliminary_valuation: val,
+                financing_ratio: ratio,
+                term_months: Number(app.term_months) || 36,
+                modality: 'solo_intereses' as PaymentModalityType,
+                modality_label: 'Solo intereses + capital al vencimiento',
+                suggested_rate: 11.5,
+                applicant_income_status: 'Documentación de ingresos verificada',
+                guarantee_status: 'Garantía en análisis por tasador colegiado',
+                documentation_pct: 90,
+                status: 'Disponible',
+                assigned_time: 'Reciente',
+              };
+            });
+            setOpportunities(mappedOpps);
+          } else {
+            setOpportunities([]);
+          }
 
-          const { data: offerData } = await supabase
-            .from('lender_offers')
-            .select('id, application_id, amount, currency, term_months, rate, notes, status, created_at, expiration_date')
-            .eq('lender_id', lender.id)
-            .order('created_at', { ascending: false });
-
-          setProposals((offerData || []).map((o: any) => ({
-            id: o.id,
-            opp_id: o.application_id,
-            public_id: o.application_id.slice(0, 8).toUpperCase(),
-            property_type: 'Expediente',
-            zone: 'Datos protegidos',
-            proposed_amount: Number(o.amount),
-            proposed_rate: Number(o.rate),
-            term_months: Number(o.term_months),
-            modality: 'solo_intereses' as PaymentModalityType,
-            modality_label: 'Propuesta registrada',
-            estimated_interest_yearly: Number(o.amount) * (Number(o.rate) / 100),
-            submitted_at: new Date(o.created_at).toLocaleDateString('es-UY'),
-            valid_until: o.expiration_date || '',
-            status: o.status === 'accepted' ? 'aceptada' : o.status === 'rejected' ? 'rechazada' : 'enviada',
-            conditions: o.notes || '',
-          })));
+          if (matchedLender?.id) {
+            const { interests: myInterests } = await getInvestorInterests({
+              organizationId: tenant.id,
+              lenderId: matchedLender.id,
+            });
+            setInterests(myInterests);
+          }
         } catch (err) {
           console.warn('Error conectando a Supabase para oportunidades:', err);
-          setOpportunities([]);
-          setProposals([]);
         }
       }
+
       setLoading(false);
     }
 
     loadData();
-  }, [tenant.id]);
+  }, [tenant.id, user?.id]);
 
   // KPIs del Dashboard Calculados
   const dashboardKpis = useMemo(() => {
@@ -673,7 +380,7 @@ export const TenantInvestorDashboardPage: React.FC = () => {
     const checks = [
       { label: 'Zona geográfica aceptada', passed: checkZone, reason: checkZone ? 'Zona dentro de tus preferencias' : 'Fuera de departamentos preferidos' },
       { label: 'Tipo de inmueble aceptado', passed: checkType, reason: checkType ? `${opp.property_type} aceptado` : 'Tipo de inmueble no prioritario' },
-      { label: 'Porcentaje de financiación', passed: checkRatio, reason: checkRatio ? `${opp.financing_ratio}% ≤ ${investorCriteria.maxFinancingRatio}% máx` : `Supera tu límite de ${investorCriteria.maxFinancingRatio}%` },
+      { label: 'Financiación máxima (LTV)', passed: checkRatio, reason: checkRatio ? `${opp.financing_ratio}% ≤ ${investorCriteria.maxFinancingRatio}% máx` : `Supera tu límite de ${investorCriteria.maxFinancingRatio}%` },
       { label: 'Tasa compatible', passed: checkRate, reason: checkRate ? `${opp.suggested_rate}% ≥ ${investorCriteria.minRate}% mín` : 'Tasa por debajo de tu objetivo' },
       { label: 'Modalidad aceptada', passed: checkModality, reason: checkModality ? 'Modalidad compatible' : 'Modalidad no seleccionada' },
     ];
@@ -687,47 +394,47 @@ export const TenantInvestorDashboardPage: React.FC = () => {
     };
   };
 
-  // Manejo de Propuesta
-  const handleOpenProposal = (opp: PrivateOpportunity) => {
-    setSelectedOppForProposal(opp);
-    setProposalForm({
-      amount: opp.requested_amount,
-      rate: opp.suggested_rate || 11.5,
-      term: opp.term_months,
-      validityDays: 15,
-      conditions: 'Desembolso condicionado a verificación notarial de primer rango y póliza de seguro de incendio endosada.',
+  // Manejo de Interés
+  const handleOpenInterestModal = (opp: PrivateOpportunity) => {
+    setSelectedOppForInterest(opp);
+    setInterestForm({
+      indicatedAmount: opp.requested_amount,
+      message: '',
     });
-    setProposalSuccessMessage(false);
+    setInterestSuccessMessage(false);
   };
 
-  const handleSubmitProposal = async (e: React.FormEvent) => {
+  const handleConfirmInterest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedOppForProposal) return;
-    const { data: authData } = await supabase.auth.getUser();
-    if (!authData.user) return;
-    const { data: lender } = await supabase.from('lenders').select('id').eq('user_id', authData.user.id).maybeSingle();
-    if (!lender) return;
+    if (!selectedOppForInterest) return;
 
-    const { error } = await supabase.from('investor_interests').upsert({
-      opportunity_id: selectedOppForProposal.id,
-      lender_id: lender.id,
-      indicated_amount: proposalForm.amount,
-      currency: selectedOppForProposal.currency || 'USD',
-      message: proposalForm.conditions,
-      status: 'interested',
-      non_binding: true,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'opportunity_id,lender_id' });
+    setInterestSubmitting(true);
+    try {
+      const lenderId = currentLender?.id || 'd0000000-0000-0000-0000-000000000001';
+      const orgId = tenant.id || 'd0000000-0000-0000-0000-000000000001';
 
-    if (error) {
-      console.warn('No se pudo registrar el interés:', error);
-      return;
+      const res = await submitInvestorInterest({
+        organizationId: orgId,
+        opportunityId: selectedOppForInterest.id,
+        lenderId: lenderId,
+        indicatedAmount: interestForm.indicatedAmount,
+        currency: selectedOppForInterest.currency || 'USD',
+        message: interestForm.message,
+      });
+
+      if (res.interest) {
+        setInterests(prev => [res.interest as InvestorInterest, ...prev]);
+        setInterestSuccessMessage(true);
+        setTimeout(() => {
+          setSelectedOppForInterest(null);
+          setInterestSuccessMessage(false);
+        }, 1800);
+      }
+    } catch (err) {
+      console.error('Error al registrar interés:', err);
+    } finally {
+      setInterestSubmitting(false);
     }
-    setProposalSuccessMessage(true);
-    setTimeout(() => {
-      setSelectedOppForProposal(null);
-      setProposalSuccessMessage(false);
-    }, 1600);
   };
 
   // Enviar mensaje en detalle de préstamo
@@ -1032,7 +739,7 @@ export const TenantInvestorDashboardPage: React.FC = () => {
             </div>
 
             {/* Banner si el inversor pausó temporalmente la recepción */}
-            {!profileData.isReceivingOpportunities && (
+            {currentLender?.status === 'paused' && (
               <div className="bg-slate-100 border border-slate-300 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-700">
                 <div className="flex items-center space-x-2.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0" />
@@ -1042,7 +749,12 @@ export const TenantInvestorDashboardPage: React.FC = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setProfileData({ ...profileData, isReceivingOpportunities: true })}
+                  onClick={async () => {
+                    if (currentLender?.id) {
+                      await updateLenderData(currentLender.id, { status: 'active' }, user?.id);
+                      setCurrentLender(prev => prev ? { ...prev, status: 'active', is_active: true } : null);
+                    }
+                  }}
                   className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors shrink-0 shadow-sm"
                 >
                   Volver a recibir oportunidades
@@ -1164,10 +876,10 @@ export const TenantInvestorDashboardPage: React.FC = () => {
                             size="sm"
                             className="text-xs font-semibold shadow-sm min-h-[38px]"
                             style={{ backgroundColor: primaryColor }}
-                            onClick={() => handleOpenProposal(opp)}
+                            onClick={() => handleOpenInterestModal(opp)}
                           >
                             <Send className="w-3.5 h-3.5 mr-1.5" />
-                            Presentar propuesta
+                            [ ME INTERESA ]
                           </Button>
                         </div>
                       </div>
@@ -1315,111 +1027,95 @@ export const TenantInvestorDashboardPage: React.FC = () => {
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">Historial de Propuestas Emitidas</h2>
+                <h2 className="text-lg font-bold text-slate-900">Mis Intereses Registrados</h2>
                 <p className="text-xs text-slate-500">
-                  Ofertas enviadas para evaluación y presentación a los solicitantes.
+                  Manifestaciones no vinculantes enviadas a la mesa de originación y estructuración.
                 </p>
               </div>
-
-              {/* Filtros de Estado */}
-              <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
-                {(['todas', 'enviada', 'presentada', 'aceptada', 'rechazada', 'vencida'] as const).map((st) => {
-                  const labels = {
-                    todas: 'Todas',
-                    enviada: 'Pendientes',
-                    presentada: 'Presentadas',
-                    aceptada: 'Aceptadas',
-                    rechazada: 'Rechazadas',
-                    vencida: 'Vencidas',
-                  };
-                  return (
-                    <button
-                      key={st}
-                      onClick={() => setProposalStatusFilter(st)}
-                      className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                        proposalStatusFilter === st
-                          ? 'bg-white text-slate-900 shadow-sm'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      {labels[st]}
-                    </button>
-                  );
-                })}
-              </div>
+              <span className="text-xs font-semibold px-3 py-1 bg-slate-100 text-slate-600 rounded-full border border-slate-200">
+                {interests.length} registros
+              </span>
             </div>
 
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase text-[10px] tracking-wider">
-                      <th className="py-3.5 px-4">Operación</th>
-                      <th className="py-3.5 px-4">Zona</th>
-                      <th className="py-3.5 px-4 text-right">Monto</th>
-                      <th className="py-3.5 px-4 text-center">Tasa Anual</th>
-                      <th className="py-3.5 px-4">Modalidad</th>
-                      <th className="py-3.5 px-4 text-right">Intereses Estimados</th>
-                      <th className="py-3.5 px-4 text-center">Estado</th>
-                      <th className="py-3.5 px-4 text-right">Vigencia</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {proposals
-                      .filter(p => proposalStatusFilter === 'todas' || p.status === proposalStatusFilter)
-                      .map((prop) => {
-                        const badgeStyles: Record<string, string> = {
-                          borrador: 'bg-slate-100 text-slate-700',
-                          enviada: 'bg-blue-100 text-blue-800',
-                          presentada: 'bg-purple-100 text-purple-800',
-                          aceptada: 'bg-emerald-100 text-emerald-800',
-                          rechazada: 'bg-rose-100 text-rose-800',
-                          vencida: 'bg-slate-100 text-slate-500',
-                        };
-
-                        const statusLabels: Record<string, string> = {
-                          borrador: 'Borrador',
-                          enviada: 'Pendiente (en revisión)',
-                          presentada: 'Presentada al solicitante',
-                          aceptada: 'Aceptada',
-                          rechazada: 'Rechazada',
-                          vencida: 'Vencida',
-                        };
-
-                        return (
-                          <tr key={prop.id} className="hover:bg-slate-50/70 transition-colors">
-                            <td className="py-3.5 px-4 font-mono font-bold text-slate-900">
-                              {prop.public_id}
-                            </td>
-                            <td className="py-3.5 px-4 font-medium text-slate-700">
-                              {prop.zone}
-                            </td>
-                            <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900">
-                              USD {prop.proposed_amount.toLocaleString('es-UY')}
-                            </td>
-                            <td className="py-3.5 px-4 text-center font-bold text-emerald-700">
-                              {prop.proposed_rate}%
-                            </td>
-                            <td className="py-3.5 px-4 text-slate-700">
-                              {prop.modality_label}
-                            </td>
-                            <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-700">
-                              USD {prop.estimated_interest_yearly.toLocaleString('es-UY')} / año
-                            </td>
-                            <td className="py-3.5 px-4 text-center">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${badgeStyles[prop.status] || 'bg-slate-100'}`}>
-                                {statusLabels[prop.status]}
-                              </span>
-                            </td>
-                            <td className="py-3.5 px-4 text-right text-slate-500">
-                              {prop.valid_until}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                  </tbody>
-                </table>
-              </div>
+              {interests.length === 0 ? (
+                <div className="p-12 text-center space-y-3">
+                  <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto">
+                    <Heart className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-sm font-bold text-slate-800">No has manifestado interés aún</h3>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                    Explorá las oportunidades activas y utilizá el botón <strong>[ ME INTERESA ]</strong> para indicar tu preferencia no vinculante.
+                  </p>
+                  <Button
+                    size="sm"
+                    className="mt-2 text-xs font-semibold"
+                    style={{ backgroundColor: primaryColor }}
+                    onClick={() => navigate(`${basePath}/oportunidades`)}
+                  >
+                    Ver Oportunidades
+                  </Button>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase text-[10px] tracking-wider">
+                        <th className="py-3.5 px-4">Fecha</th>
+                        <th className="py-3.5 px-4">Operación</th>
+                        <th className="py-3.5 px-4 text-right">Monto Indicado</th>
+                        <th className="py-3.5 px-4">Carácter</th>
+                        <th className="py-3.5 px-4 text-center">Estado</th>
+                        <th className="py-3.5 px-4">Mensaje / Notas</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {interests.map((item) => (
+                        <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
+                          <td className="py-3.5 px-4 text-slate-500">
+                            {new Date(item.created_at).toLocaleDateString('es-UY')}
+                          </td>
+                          <td className="py-3.5 px-4 font-mono font-bold text-slate-900">
+                            {item.opportunity?.application?.public_id || item.opportunity_id?.slice(0, 8)}
+                          </td>
+                          <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900">
+                            {item.indicated_amount ? `USD ${item.indicated_amount.toLocaleString('es-UY')}` : 'A convenir'}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                              No vinculante
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            <span
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                item.status === 'connected'
+                                  ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                                  : item.status === 'completed'
+                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                  : item.status === 'discarded'
+                                  ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                                  : 'bg-slate-100 text-slate-700 border border-slate-200'
+                              }`}
+                            >
+                              {item.status === 'connected'
+                                ? '🤝 Conectado'
+                                : item.status === 'completed'
+                                ? 'Cerrado'
+                                : item.status === 'discarded'
+                                ? 'Descartado'
+                                : 'Manifestado'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-slate-600 max-w-xs truncate">
+                            {item.message || '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
           </div>
@@ -1694,11 +1390,11 @@ export const TenantInvestorDashboardPage: React.FC = () => {
                 onClick={() => {
                   const opp = selectedOppForDetail;
                   setSelectedOppForDetail(null);
-                  handleOpenProposal(opp);
+                  handleOpenInterestModal(opp);
                 }}
               >
-                <Send className="w-3.5 h-3.5 mr-1.5" />
-                Presentar propuesta
+                <Heart className="w-3.5 h-3.5 mr-1.5 fill-current" />
+                [ ME INTERESA ]
               </Button>
             </div>
 
@@ -1707,183 +1403,95 @@ export const TenantInvestorDashboardPage: React.FC = () => {
       )}
 
       {/* =================================================================== */}
-      {/* MODAL: PRESENTAR PROPUESTA (MODALIDAD SOLO LECTURA)                 */}
+      {/* MODAL: MANIFESTAR INTERÉS ([ ME INTERESA ] - NON BINDING)          */}
       {/* =================================================================== */}
-      {selectedOppForProposal && (
+      {selectedOppForInterest && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 max-h-[92vh] overflow-y-auto space-y-5 text-left">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Formulario de Propuesta
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+                  Manifestación de Interés
                 </span>
-                <h3 className="text-lg font-bold text-slate-900">Presentar Propuesta de Financiación</h3>
+                <h3 className="text-lg font-bold text-slate-900">Manifestar Interés en Operación</h3>
               </div>
               <button
-                onClick={() => setSelectedOppForProposal(null)}
+                onClick={() => setSelectedOppForInterest(null)}
                 className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {proposalSuccessMessage ? (
+            {interestSuccessMessage ? (
               <div className="py-8 text-center space-y-3">
                 <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
                   <CheckCircle2 className="w-8 h-8" />
                 </div>
-                <h4 className="text-lg font-bold text-slate-900">¡Propuesta Enviada con Éxito!</h4>
+                <h4 className="text-lg font-bold text-slate-900">¡Interés Registrado Correctamente!</h4>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  La propuesta ha sido enviada al equipo de estructuración de {brandName} para su revisión y presentación al solicitante.
+                  El administrador de la red ha recibido tu manifestación de interés y se pondrá en contacto para coordinar los detalles.
                 </p>
               </div>
             ) : (
-              <form onSubmit={handleSubmitProposal} className="space-y-4">
-                
-                {/* 1. Información Fija de la Operación (Solo Lectura) */}
+              <form onSubmit={handleConfirmInterest} className="space-y-4">
+                {/* Disclaimer legal explícito */}
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-900 space-y-1">
+                  <div className="flex items-center space-x-1.5 font-bold">
+                    <Info className="w-4 h-4 text-amber-700 shrink-0" />
+                    <span>Aviso de Carácter No Vinculante:</span>
+                  </div>
+                  <p className="text-[11px] text-amber-800 leading-relaxed">
+                    Esta manifestación no constituye una oferta vinculante ni un compromiso de desembolso. El administrador de la red se pondrá en contacto para coordinar los detalles.
+                  </p>
+                </div>
+
+                {/* Resumen de la operación */}
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
-                  <div className="flex items-center justify-between text-slate-500">
-                    <span>Propiedad:</span>
-                    <strong className="text-slate-900">{selectedOppForProposal.property_type} · {selectedOppForProposal.zone}</strong>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Operación:</span>
+                    <strong className="text-slate-900 font-mono">{selectedOppForInterest.public_id}</strong>
                   </div>
-                  <div className="flex items-center justify-between text-slate-500">
-                    <span>Tasación preliminar:</span>
-                    <strong className="text-slate-900 font-mono">USD {selectedOppForProposal.preliminary_valuation.toLocaleString('es-UY')}</strong>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Inmueble / Ubicación:</span>
+                    <strong className="text-slate-900">{selectedOppForInterest.property_type} · {selectedOppForInterest.zone}</strong>
                   </div>
-                  <div className="flex items-center justify-between text-slate-500">
-                    <span>Préstamo solicitado:</span>
-                    <strong className="text-slate-900 font-mono">USD {selectedOppForProposal.requested_amount.toLocaleString('es-UY')}</strong>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Monto solicitado:</span>
+                    <strong className="text-slate-900 font-mono">USD {selectedOppForInterest.requested_amount.toLocaleString('es-UY')}</strong>
                   </div>
-                  <div className="flex items-center justify-between text-slate-500">
-                    <span>Porcentaje de financiación:</span>
-                    <strong className="text-emerald-700 font-mono">{selectedOppForProposal.financing_ratio}%</strong>
-                  </div>
-                  <div className="flex items-center justify-between pt-1 border-t border-slate-200">
-                    <span className="font-semibold text-slate-700">Modalidad de pago de esta operación:</span>
-                    <span className="bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded text-[11px] border border-amber-300">
-                      🔒 {selectedOppForProposal.modality_label}
-                    </span>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Financiación máx. (LTV):</span>
+                    <strong className="text-emerald-700 font-mono">{selectedOppForInterest.financing_ratio}%</strong>
                   </div>
                 </div>
 
-                {/* 2. Campos Editables del Inversor */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      ¿Cuánto querés prestar? (USD)
-                    </label>
-                    <input
-                      type="number"
-                      value={proposalForm.amount}
-                      onChange={(e) => setProposalForm({ ...proposalForm, amount: Number(e.target.value) })}
-                      className="w-full text-xs font-mono bg-white border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-400"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      ¿A qué tasa anual? (% USD)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={proposalForm.rate}
-                      onChange={(e) => setProposalForm({ ...proposalForm, rate: Number(e.target.value) })}
-                      className="w-full text-xs font-mono bg-white border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-400"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Plazo (Meses)
-                    </label>
-                    <input
-                      type="number"
-                      value={proposalForm.term}
-                      onChange={(e) => setProposalForm({ ...proposalForm, term: Number(e.target.value) })}
-                      className="w-full text-xs bg-white border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-400"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Vigencia de la propuesta (Días)
-                    </label>
-                    <input
-                      type="number"
-                      value={proposalForm.validityDays}
-                      onChange={(e) => setProposalForm({ ...proposalForm, validityDays: Number(e.target.value) })}
-                      className="w-full text-xs bg-white border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-400"
-                      required
-                    />
-                  </div>
-                </div>
-
+                {/* Monto Indicativo */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Condiciones particulares o requisitos notariales
+                    Monto indicativo que deseás financiar (USD)
                   </label>
-                  <textarea
-                    rows={2}
-                    value={proposalForm.conditions}
-                    onChange={(e) => setProposalForm({ ...proposalForm, conditions: e.target.value })}
-                    className="w-full text-xs bg-white border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                  <input
+                    type="number"
+                    value={interestForm.indicatedAmount}
+                    onChange={(e) => setInterestForm({ ...interestForm, indicatedAmount: Number(e.target.value) })}
+                    className="w-full text-xs font-mono font-bold bg-white border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                    required
                   />
                 </div>
 
-                {/* 3. Cálculo en Vivo Reactivo */}
-                <div className="bg-emerald-50/80 p-4 rounded-xl border border-emerald-200 space-y-2 text-xs">
-                  <span className="font-bold text-emerald-900 block">
-                    Con esta propuesta cobrarías aproximadamente:
-                  </span>
-                  {selectedOppForProposal.modality === 'solo_intereses' ? (
-                    (() => {
-                      const ret = calculateInterestOnlyReturns(proposalForm.amount, proposalForm.rate, proposalForm.term);
-                      return (
-                        <div className="space-y-1 text-slate-700">
-                          <div className="flex justify-between">
-                            <span>Intereses por mes:</span>
-                            <strong className="text-emerald-800 font-mono">USD {ret.monthlyInterest.toLocaleString('es-UY')}</strong>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Intereses por año:</span>
-                            <strong className="text-slate-900 font-mono">USD {ret.yearlyInterest.toLocaleString('es-UY')}</strong>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Intereses totales ({proposalForm.term} meses):</span>
-                            <strong className="text-emerald-800 font-mono">USD {ret.totalInterest.toLocaleString('es-UY')}</strong>
-                          </div>
-                          <div className="flex justify-between pt-1 border-t border-emerald-200 font-semibold text-slate-900">
-                            <span>Capital a recuperar al vencimiento:</span>
-                            <span className="font-mono">USD {ret.capitalAtMaturity.toLocaleString('es-UY')}</span>
-                          </div>
-                        </div>
-                      );
-                    })()
-                  ) : (
-                    (() => {
-                      const ret = calculateAmortizingReturns(proposalForm.amount, proposalForm.rate, proposalForm.term);
-                      return (
-                        <div className="space-y-1 text-slate-700">
-                          <div className="flex justify-between">
-                            <span>Cuota mensual estimada:</span>
-                            <strong className="text-emerald-800 font-mono">USD {ret.monthlyPayment.toLocaleString('es-UY')}</strong>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Intereses totales estimados:</span>
-                            <strong className="text-emerald-800 font-mono">USD {ret.totalInterest.toLocaleString('es-UY')}</strong>
-                          </div>
-                          <div className="flex justify-between pt-1 border-t border-emerald-200 font-semibold text-slate-900">
-                            <span>Capital total recuperado:</span>
-                            <span className="font-mono">USD {ret.totalCapital.toLocaleString('es-UY')}</span>
-                          </div>
-                        </div>
-                      );
-                    })()
-                  )}
+                {/* Comentarios o sugerencias */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Comentarios o condiciones sugeridas (opcional)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={interestForm.message}
+                    onChange={(e) => setInterestForm({ ...interestForm, message: e.target.value })}
+                    placeholder="Ej. Interés sujeto a verificación de títulos y tasación ocular presencial..."
+                    className="w-full text-xs bg-white border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-400 placeholder:text-slate-400"
+                  />
                 </div>
 
                 <div className="flex items-center justify-end space-x-3 pt-2">
@@ -1891,18 +1499,17 @@ export const TenantInvestorDashboardPage: React.FC = () => {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => setSelectedOppForProposal(null)}
+                    onClick={() => setSelectedOppForInterest(null)}
                   >
                     Cancelar
                   </Button>
                   <Button
                     type="submit"
                     size="sm"
-                    className="font-semibold shadow-sm"
-                    style={{ backgroundColor: primaryColor }}
+                    disabled={interestSubmitting}
+                    className="font-bold shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white min-h-[38px]"
                   >
-                    <Send className="w-3.5 h-3.5 mr-1.5" />
-                    Enviar propuesta
+                    {interestSubmitting ? 'Enviando...' : 'Confirmar interés'}
                   </Button>
                 </div>
               </form>

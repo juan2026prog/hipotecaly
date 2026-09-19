@@ -37,6 +37,13 @@ import {
   FundAvailability,
 } from '../../components/investor/TenantInvestorProfileModal';
 
+import {
+  getLendersList,
+  updateLenderData,
+  saveLenderRules,
+  Lender,
+} from '../../lib/lendersService';
+
 // Lista de Barrios de Montevideo
 const MONTEVIDEO_NEIGHBORHOODS = [
   'Pocitos',
@@ -92,6 +99,8 @@ export const TenantInvestorProfilePage: React.FC = () => {
     'datos' | 'verificacion' | 'fondos' | 'criterios' | 'documentos' | 'firma' | 'cuenta' | 'notificaciones'
   >(tabParam || 'datos');
 
+  const [currentLender, setCurrentLender] = useState<Lender | null>(null);
+
   // Estado del Perfil
   const [profile, setProfile] = useState<InvestorProfileData>(() => {
     const saved = localStorage.getItem(`hipotecaly_investor_profile_${tenant.slug || 'default'}`);
@@ -104,6 +113,37 @@ export const TenantInvestorProfilePage: React.FC = () => {
     }
     return INITIAL_INVESTOR_PROFILE;
   });
+
+  // Cargar datos de Supabase si existen
+  useEffect(() => {
+    async function loadDbLender() {
+      if (!tenant.id) return;
+      try {
+        const { lenders } = await getLendersList({ organizationId: tenant.id });
+        if (lenders && lenders.length > 0) {
+          const l = lenders[0];
+          setCurrentLender(l);
+          if (l.rules) {
+            setProfile(prev => ({
+              ...prev,
+              availableCapital: l.available_capital || prev.availableCapital,
+              minLoanAmount: l.rules?.min_loan || prev.minLoanAmount,
+              maxLoanAmount: l.rules?.max_loan || prev.maxLoanAmount,
+              minRate: l.rules?.min_rate || prev.minRate,
+              maxFinancingRatio: l.rules?.max_ltv ? Math.round(l.rules.max_ltv * 100) : prev.maxFinancingRatio,
+              minTermMonths: l.rules?.min_term_months || prev.minTermMonths,
+              maxTermMonths: l.rules?.max_term_months || prev.maxTermMonths,
+              acceptedPropertyTypes: l.rules?.accepted_property_types || prev.acceptedPropertyTypes,
+              acceptedDepartments: l.rules?.accepted_departments || prev.acceptedDepartments,
+            }));
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching lender profile from DB:', err);
+      }
+    }
+    loadDbLender();
+  }, [tenant.id]);
 
   // Modo edición por sección
   const [editingSection, setEditingSection] = useState<string | null>(null);
@@ -142,19 +182,57 @@ export const TenantInvestorProfilePage: React.FC = () => {
     setEditFormData(profile);
   };
 
-  const handleSaveSection = (sectionName: string) => {
+  const handleSaveSection = async (sectionName: string) => {
     setProfile(editFormData);
     localStorage.setItem(`hipotecaly_investor_profile_${tenant.slug || 'default'}`, JSON.stringify(editFormData));
     setEditingSection(null);
+
+    // Persistir a Supabase
+    if (currentLender?.id) {
+      try {
+        await updateLenderData(currentLender.id, {
+          contact_name: `${editFormData.firstName} ${editFormData.lastName}`.trim() || currentLender.contact_name,
+          contact_email: editFormData.email || currentLender.contact_email,
+          contact_phone: editFormData.phone || currentLender.contact_phone,
+          available_capital: editFormData.availableCapital,
+        }, user?.id);
+
+        await saveLenderRules(currentLender.id, {
+          min_loan: editFormData.minLoanAmount,
+          max_loan: editFormData.maxLoanAmount,
+          min_rate: editFormData.minRate,
+          max_ltv: Number((editFormData.maxFinancingRatio / 100).toFixed(2)),
+          min_term_months: editFormData.minTermMonths,
+          max_term_months: editFormData.maxTermMonths,
+          accepted_property_types: editFormData.acceptedPropertyTypes,
+          accepted_departments: editFormData.acceptedDepartments,
+          accepted_modalities: editFormData.acceptedModalities,
+        }, user?.id);
+      } catch (err) {
+        console.error('Error sincronizando perfil con Supabase:', err);
+      }
+    }
+
     setSaveFeedback(`✓ Cambios guardados correctamente en ${sectionName}`);
     setTimeout(() => setSaveFeedback(null), 4000);
   };
 
-  const toggleReceivingOpportunities = () => {
+  const toggleReceivingOpportunities = async () => {
     const nextState = !profile.isReceivingOpportunities;
     const updated = { ...profile, isReceivingOpportunities: nextState };
     setProfile(updated);
     localStorage.setItem(`hipotecaly_investor_profile_${tenant.slug || 'default'}`, JSON.stringify(updated));
+
+    if (currentLender?.id) {
+      try {
+        await updateLenderData(currentLender.id, {
+          status: nextState ? 'active' : 'paused',
+        }, user?.id);
+      } catch (err) {
+        console.error('Error actualizando estado en Supabase:', err);
+      }
+    }
+
     setSaveFeedback(
       nextState
         ? '🟢 Notificaciones de oportunidades activadas.'

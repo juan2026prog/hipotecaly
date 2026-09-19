@@ -41,8 +41,8 @@ const TasadorHomePage = React.lazy(() => import('./pages/tasador/TasadorHomePage
 const TasadorNewAppraisalPage = React.lazy(() => import('./pages/tasador/TasadorNewAppraisalPage').then((m) => ({ default: m.TasadorNewAppraisalPage })));
 const TasadorComparablesPage = React.lazy(() => import('./pages/tasador/TasadorComparablesPage').then((m) => ({ default: m.TasadorComparablesPage })));
 const AuditPage = React.lazy(() => import('./pages/backoffice/AuditPage').then((m) => ({ default: m.AuditPage })));
-const LendersPage = React.lazy(() => import('./pages/backoffice/LendersPage').then((m) => ({ default: m.LendersPage })));
-const LenderDetailPage = React.lazy(() => import('./pages/backoffice/LenderDetailPage').then((m) => ({ default: m.LenderDetailPage })));
+const InvestorsPage = React.lazy(() => import('./pages/backoffice/InvestorsPage').then((m) => ({ default: m.InvestorsPage })));
+const InvestorDetailPage = React.lazy(() => import('./pages/backoffice/InvestorDetailPage').then((m) => ({ default: m.InvestorDetailPage })));
 const UsersManagementPage = React.lazy(() => import('./pages/backoffice/UsersManagementPage').then((m) => ({ default: m.UsersManagementPage })));
 const OrganizationSettingsPage = React.lazy(() => import('./pages/backoffice/OrganizationSettingsPage').then((m) => ({ default: m.OrganizationSettingsPage })));
 const WhiteLabelBackofficePage = React.lazy(() => import('./pages/backoffice/WhiteLabelBackofficePage').then((m) => ({ default: m.WhiteLabelBackofficePage })));
@@ -87,6 +87,7 @@ const TenantOnboardingWizardPage = React.lazy(() => import('./pages/admin/Tenant
 
 // 7. Solutions & Verticales (Lazy Loaded)
 const GenericWhiteLabelLanding = React.lazy(() => import('./pages/landing/GenericWhiteLabelLanding').then((m) => ({ default: m.GenericWhiteLabelLanding })));
+const WhiteLabelInvestPage = React.lazy(() => import('./pages/white-label/WhiteLabelInvestPage').then((m) => ({ default: m.WhiteLabelInvestPage })));
 const LendersSolutionPage = React.lazy(() => import('./pages/solutions/LendersSolutionPage').then((m) => ({ default: m.LendersSolutionPage })));
 const FinancialsSolutionPage = React.lazy(() => import('./pages/solutions/FinancialsSolutionPage').then((m) => ({ default: m.FinancialsSolutionPage })));
 const NotariesSolutionPage = React.lazy(() => import('./pages/solutions/NotariesSolutionPage').then((m) => ({ default: m.NotariesSolutionPage })));
@@ -427,8 +428,10 @@ export const App: React.FC = () => {
               <Route path="/org/:tenantSlug/admin/organizacion" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','super_admin']} requireTenantMatch><OrganizationSettingsPage /></ProtectedRoute>} />
               <Route path="/org/:tenantSlug/admin/whitelabel" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','super_admin']} requireTenantMatch><WhiteLabelBackofficePage /></ProtectedRoute>} />
               <Route path="/org/:tenantSlug/admin/whatsapp" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','super_admin']} requireTenantMatch><WhatsAppSettingsPage /></ProtectedRoute>} />
-              <Route path="/org/:tenantSlug/admin/prestamistas" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','analyst','super_admin']} requireTenantMatch><LendersPage /></ProtectedRoute>} />
-              <Route path="/org/:tenantSlug/admin/prestamistas/:id" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','analyst','super_admin']} requireTenantMatch><LenderDetailPage /></ProtectedRoute>} />
+              <Route path="/org/:tenantSlug/admin/prestamistas" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','analyst','super_admin']} requireTenantMatch><InvestorsPage /></ProtectedRoute>} />
+              <Route path="/org/:tenantSlug/admin/inversores" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','analyst','super_admin']} requireTenantMatch><InvestorsPage /></ProtectedRoute>} />
+              <Route path="/org/:tenantSlug/admin/prestamistas/:id" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','analyst','super_admin']} requireTenantMatch><InvestorDetailPage /></ProtectedRoute>} />
+              <Route path="/org/:tenantSlug/admin/inversores/:id" element={<ProtectedRoute allowedRoles={['tenant_admin','tenant_owner','analyst','super_admin']} requireTenantMatch><InvestorDetailPage /></ProtectedRoute>} />
 
               {/* ========================================================== */}
               {/* 4. ARQUITECTURA DEMO & TENANT DINÁMICO (/demo/:tenantSlug)  */}
@@ -463,6 +466,11 @@ export const App: React.FC = () => {
               {/* Tenant Solicitar */}
               <Route path="/demo/estudio-nova/solicitar" element={<TenantWizardPage />} />
               <Route path="/demo/:tenantSlug/solicitar" element={<TenantWizardPage />} />
+
+              {/* Tenant Invertir (White Label Lead Capture) */}
+              <Route path="/demo/estudio-nova/invertir" element={<WhiteLabelInvestPage />} />
+              <Route path="/demo/:tenantSlug/invertir" element={<WhiteLabelInvestPage />} />
+              <Route path="/org/:tenantSlug/invertir" element={<WhiteLabelInvestPage />} />
 
               {/* Tenant Portal Cliente */}
               <Route
@@ -703,7 +711,7 @@ export const App: React.FC = () => {
                     allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'super_admin']}
                     requireTenantMatch
                   >
-                    <LendersPage />
+                    <InvestorsPage />
                   </ProtectedRoute>
                 }
               />
@@ -714,7 +722,7 @@ export const App: React.FC = () => {
                     allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'super_admin']}
                     requireTenantMatch
                   >
-                    <LendersPage />
+                    <InvestorsPage />
                   </ProtectedRoute>
                 }
               />
@@ -725,7 +733,18 @@ export const App: React.FC = () => {
                     allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'super_admin']}
                     requireTenantMatch
                   >
-                    <LenderDetailPage />
+                    <InvestorDetailPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/demo/:tenantSlug/admin/inversores/:id"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={['tenant_admin', 'tenant_owner', 'analyst', 'super_admin']}
+                    requireTenantMatch
+                  >
+                    <InvestorDetailPage />
                   </ProtectedRoute>
                 }
               />

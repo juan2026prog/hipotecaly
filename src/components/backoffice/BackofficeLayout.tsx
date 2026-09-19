@@ -116,7 +116,7 @@ export const BackofficeLayout: React.FC<{ children: React.ReactNode; title?: str
         ...(can('documents.view') ? [{ name: 'Documentos', href: `${baseRoute}/documentos`, icon: FileCheck }] : []),
         ...(can('appraisals.view') ? [{ name: 'Tasaciones', href: `${baseRoute}/tasaciones`, icon: Compass }] : []),
         ...((modules.investor_portal_enabled || isSuperAdmin) && can('lenders.view')
-          ? [{ name: 'Inversores', href: `${baseRoute}/prestamistas`, icon: UserCheck }]
+          ? [{ name: 'Inversores', href: `${baseRoute}/inversores`, icon: UserCheck }]
           : []),
       ],
     },

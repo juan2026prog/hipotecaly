@@ -1025,9 +1025,9 @@ export const EstudioNovaPage: React.FC = () => {
                 <span className="text-xs font-bold uppercase tracking-wider text-[#245f91] block">INVERSIONISTAS</span>
                 <h4 className="text-lg font-serif font-bold text-[#173a5e]">Estructuración con garantía</h4>
                 <p className="text-xs text-[#718096]">Información sobre expedientes con respaldo hipotecario.</p>
-                <a href={isInvestorEnabled ? `#inversionistas` : `#contacto`} className="inline-flex items-center text-xs font-bold text-[#173a5e] hover:text-[#245f91]">
-                  Ver información <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-                </a>
+                <Link to={`/demo/${effectiveSlug}/invertir`} className="inline-flex items-center text-xs font-bold text-[#173a5e] hover:text-[#245f91]">
+                  Invertir con nosotros <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                </Link>
               </div>
 
             </div>
