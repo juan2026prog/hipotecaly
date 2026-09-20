@@ -1160,7 +1160,7 @@ export class AppraisalService {
     if (appraisal.location?.neighborhood) {
       favorableFactors.push(`Emplazamiento en ${appraisal.location.neighborhood} (alta demanda y liquidez sostenida)`);
     }
-    if (target.layout.garages > 0) {
+    if (target.layout?.garages && target.layout.garages > 0) {
       favorableFactors.push(`Disponibilidad de ${target.layout.garages} plaza(s) de cochera/garaje verificado`);
     }
     if (included.length >= 5) {

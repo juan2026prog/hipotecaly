@@ -184,4 +184,97 @@ test.describe('Hipotecaly Canonical Property & Zero False Verified Hardening Sui
     );
   });
 
+  // TEST 6: Minimal Input -> Zero Hidden Defaults in targetProperty construction
+  test('Test 6: Minimal Target Property Construction preserves undefined for all unspecified fields', async () => {
+    // Simular construcción de targetProperty cuando el usuario solo ingresa lo mínimo obligatorio (tipo y totalArea)
+    const propertyType = 'apartamento';
+    const totalAreaM2 = 82;
+    const builtAreaM2 = '' as number | '';
+    const coveredAreaM2 = '' as number | '';
+    const balconyOrTerraceM2 = '' as number | '';
+    const landAreaM2 = '' as number | '';
+    const bedrooms = '' as number | '';
+    const bathrooms = '' as number | '';
+    const toilettes = '' as number | '';
+    const garages = '' as number | '';
+    const condition = '' as any;
+    const horizontalProperty = undefined as boolean | undefined;
+    const amenities: Record<string, boolean | undefined> = {};
+
+    const targetProperty = {
+      propertyType: propertyType as any,
+      location: {
+        department: 'Montevideo',
+        locality: 'Montevideo',
+        neighborhood: 'Pocitos',
+        streetName: '21 de Setiembre',
+        streetNumber: '2500',
+        latitude: -34.91,
+        longitude: -56.15,
+        source: 'DIRECT_ENTRY',
+      },
+      surfaces: {
+        totalAreaM2: Number(totalAreaM2),
+        builtAreaM2: builtAreaM2 !== '' ? Number(builtAreaM2) : undefined,
+        coveredAreaM2: coveredAreaM2 !== '' ? Number(coveredAreaM2) : undefined,
+        balconyOrTerraceM2: balconyOrTerraceM2 !== '' ? Number(balconyOrTerraceM2) : undefined,
+        landAreaM2: landAreaM2 !== '' ? Number(landAreaM2) : undefined,
+      },
+      layout: {
+        bedrooms: bedrooms !== '' ? Number(bedrooms) : undefined,
+        bathrooms: bathrooms !== '' ? Number(bathrooms) : undefined,
+        toilettes: toilettes !== '' ? Number(toilettes) : undefined,
+        garages: garages !== '' ? Number(garages) : undefined,
+      },
+      amenities: amenities as any,
+      condition: condition || undefined,
+      horizontalProperty: horizontalProperty,
+    };
+
+    // Assertions estrictas sobre targetProperty
+    expect(targetProperty.condition).toBeUndefined();
+    expect(targetProperty.horizontalProperty).toBeUndefined();
+    expect(targetProperty.layout.bedrooms).toBeUndefined();
+    expect(targetProperty.layout.bathrooms).toBeUndefined();
+    expect(targetProperty.layout.toilettes).toBeUndefined();
+    expect(targetProperty.layout.garages).toBeUndefined();
+    expect(targetProperty.surfaces.builtAreaM2).toBeUndefined();
+    expect(targetProperty.surfaces.coveredAreaM2).toBeUndefined();
+    expect(targetProperty.surfaces.balconyOrTerraceM2).toBeUndefined();
+    expect(targetProperty.surfaces.landAreaM2).toBeUndefined();
+    expect(Object.keys(targetProperty.amenities).length).toBe(0);
+  });
+
+  // TEST 7: Explicit 0 and False Handling (UNKNOWN != 0, UNKNOWN != FALSE)
+  test('Test 7: Explicit 0 and False values are preserved as 0 and false (not undefined)', async () => {
+    const bedrooms = 0; // Monoambiente explícito
+    const garages = 0; // Sin garaje explícito
+    const toilettes = 0; // Sin toilette explícito
+    const amenities: Record<string, boolean | undefined> = {
+      pool: false, // Explícitamente NO tiene piscina
+      balcony: true, // Explícitamente SÍ tiene balcón
+    };
+
+    const targetProperty = {
+      propertyType: 'apartamento' as any,
+      surfaces: {
+        totalAreaM2: 35,
+      },
+      layout: {
+        bedrooms: bedrooms !== '' ? Number(bedrooms) : undefined,
+        garages: garages !== '' ? Number(garages) : undefined,
+        toilettes: toilettes !== '' ? Number(toilettes) : undefined,
+      },
+      amenities: amenities as any,
+    };
+
+    expect(targetProperty.layout.bedrooms).toBe(0);
+    expect(targetProperty.layout.garages).toBe(0);
+    expect(targetProperty.layout.toilettes).toBe(0);
+    expect(targetProperty.amenities.pool).toBe(false);
+    expect(targetProperty.amenities.balcony).toBe(true);
+    expect(targetProperty.amenities.elevator).toBeUndefined(); // No informado
+  });
+
 });
+

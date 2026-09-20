@@ -57,53 +57,54 @@ export interface AppraisalLocation {
 }
 
 export interface AppraisalSurfaces {
-  totalAreaM2: number;
-  coveredAreaM2: number;
-  builtAreaM2: number;
+  totalAreaM2?: number;
+  coveredAreaM2?: number;
+  builtAreaM2?: number;
   landAreaM2?: number;
   ownAreaM2?: number;
   balconyOrTerraceM2?: number;
 }
 
 export interface AppraisalLayout {
-  bedrooms: number;
+  bedrooms?: number;
   rooms?: number;
-  bathrooms: number;
+  bathrooms?: number;
   toilettes?: number;
-  garages: number;
+  garages?: number;
   floorsCount?: number;
   floorLevel?: number;
 }
 
-export interface AppraisalAmenities {
-  balcony: boolean;
-  terrace: boolean;
-  patio: boolean;
-  garden: boolean;
-  barbecue: boolean;
-  pool: boolean;
-  elevator: boolean;
-  concierge: boolean;
-  security24h: boolean;
-  heating: boolean;
-  airConditioning: boolean;
-  gym: boolean;
-  seaFront: boolean;
-  openView: boolean;
-  storage: boolean;
-}
+export type AppraisalAmenities = Partial<Record<
+  | 'balcony'
+  | 'terrace'
+  | 'patio'
+  | 'garden'
+  | 'barbecue'
+  | 'pool'
+  | 'elevator'
+  | 'concierge'
+  | 'security24h'
+  | 'heating'
+  | 'airConditioning'
+  | 'gym'
+  | 'seaFront'
+  | 'openView'
+  | 'storage',
+  boolean
+>> & Record<string, boolean | undefined>;
 
 export interface AppraisalPropertyInput {
   title?: string;
   propertyType: AppraisalPropertyType;
   subType?: string;
-  horizontalProperty: boolean;
+  horizontalProperty?: boolean;
   operationType: 'SALE';
   location: AppraisalLocation;
   surfaces: AppraisalSurfaces;
   layout: AppraisalLayout;
   amenities: AppraisalAmenities;
-  condition: BuildingCondition;
+  condition?: BuildingCondition;
   constructionYear?: number;
   ageYears?: number;
   photos: AppraisalPhoto[];
