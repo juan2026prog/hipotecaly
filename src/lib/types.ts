@@ -229,13 +229,34 @@ export interface Application {
 }
 
 export type CadastralRegime =
-  | 'comun'
-  | 'propiedad_horizontal'
-  | 'incorporacion_14261'
-  | 'ley_10751'
-  | 'rural';
+  | 'COMUN'
+  | 'PROPIEDAD_HORIZONTAL'
+  | 'UPH'
+  | 'RURAL'
+  | 'UNKNOWN';
 
-export type CadastralVerificationStatus = 'declarado' | 'verificado' | 'rectificado' | 'observado';
+export type FieldProvenanceSource =
+  | 'DECLARED_BY_CLIENT'
+  | 'DECLARED_BY_OPERATOR'
+  | 'APPRAISAL_ENRICHED'
+  | 'OFFICIAL_REGISTRY_VERIFIED'
+  | 'UNKNOWN';
+
+export type FieldVerificationStatus =
+  | 'UNVERIFIED'
+  | 'VERIFIED'
+  | 'RECTIFIED'
+  | 'OBSERVED';
+
+export interface FieldProvenanceRecord {
+  value: string | number | boolean | null;
+  source: FieldProvenanceSource;
+  verification_status: FieldVerificationStatus;
+  verified_at?: string | null;
+  verified_by?: string | null;
+  evidence_ref?: string | null;
+  notes?: string | null;
+}
 
 export interface Property {
   id: string;
@@ -246,23 +267,52 @@ export interface Property {
   city?: string;
   neighborhood?: string;
   address?: string;
-  cadastral_number?: string;
+  street_name?: string;
+  street_number?: string;
+  postal_code?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+
+  // Identificación Física (Edilicia / Comercial)
+  unit_or_apartment?: string | null;
+  tower_or_building?: string | null;
+  floor?: string | null;
+
+  // Identificación Catastral (DGC / Registral)
+  padron?: string | null;
+  parent_padron?: string | null;
+  cadastral_number?: string | null; // Compatibilidad legacy (refleja padron)
   cadastral_regime?: CadastralRegime | string;
-  unit_number?: string;
-  floor?: string;
-  block?: string;
-  cadastral_section?: string;
+  legal_regime_details?: string | null;
+  cadastral_unit?: string | null;
+  cadastral_block?: string | null;
+  cadastral_level?: string | null;
+  cadastral_section?: string | null;
+  cadastral_locality?: string | null;
+  cadastral_manzana?: string | null;
+  cadastral_solar?: string | null;
+  cadastral_plan?: string | null;
+
+  // Superficies
   surface_m2?: number;
-  built_surface_m2?: number;
-  land_surface_m2?: number;
+  total_surface_m2?: number | null;
+  built_surface_m2?: number | null;
+  land_surface_m2?: number | null;
+  uncovered_surface_m2?: number | null;
+
+  // Distribución
   bedrooms?: number;
   bathrooms?: number;
+  garages?: number | null;
+
+  // Valuación & Situación Legal
   estimated_value: number;
   legal_status: LegalStatus;
-  cadastral_status?: CadastralVerificationStatus;
-  verified_at?: string;
-  verified_by?: string;
-  verified_notes?: string;
+  legal_status_notes?: string | null;
+
+  // Provenance y Verificación Granular por Campo
+  field_provenance?: Record<string, FieldProvenanceRecord>;
+
   notes?: string;
   created_at: string;
   updated_at: string;

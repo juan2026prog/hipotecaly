@@ -17,6 +17,39 @@ function withTimeout<T>(promise: PromiseLike<T>, ms = 1500): Promise<T> {
   ]);
 }
 
+function cleanStr(val: string | null | undefined): string | null {
+  if (val === null || val === undefined) return null;
+  const trimmed = String(val).trim();
+  if (trimmed === '' || trimmed.toLowerCase() === 'n/a' || trimmed.toLowerCase() === 'desconocido') return null;
+  return trimmed;
+}
+
+function buildFieldProvenance(
+  existingProv: Record<string, any> | undefined,
+  fields: Record<string, any>
+): Record<string, any> {
+  const result: Record<string, any> = { ...(existingProv || {}) };
+  for (const [key, val] of Object.entries(fields)) {
+    if (val !== undefined) {
+      const prev = result[key];
+      // Si el campo ya tiene provenance verificado y el valor no cambió, conservar
+      if (prev && prev.verification_status === 'VERIFIED' && prev.value === val) {
+        continue;
+      }
+      result[key] = {
+        value: val,
+        source: prev?.source || 'DECLARED_BY_CLIENT',
+        verification_status: prev?.verification_status || 'UNVERIFIED',
+        verified_at: prev?.verified_at || null,
+        verified_by: prev?.verified_by || null,
+        evidence_ref: prev?.evidence_ref || null,
+        notes: prev?.notes || null,
+      };
+    }
+  }
+  return result;
+}
+
 export interface ApplicationDraftPayload {
   id?: string;
   publicId?: string;
@@ -38,20 +71,49 @@ export interface ApplicationDraftPayload {
     city?: string;
     neighborhood?: string;
     address?: string;
-    cadastralNumber?: string;
-    cadastralRegime?: string;
-    unitNumber?: string;
-    floor?: string;
-    block?: string;
-    cadastralSection?: string;
-    surfaceM2?: number;
-    builtSurfaceM2?: number;
-    landSurfaceM2?: number;
-    bedrooms?: number;
-    bathrooms?: number;
+    streetName?: string;
+    streetNumber?: string;
+    postalCode?: string;
+    latitude?: number | null;
+    longitude?: number | null;
+
+    // Identificación Física
+    unitOrApartment?: string | null;
+    towerOrBuilding?: string | null;
+    floor?: string | null;
+
+    // Identificación Catastral
+    padron?: string | null;
+    parentPadron?: string | null;
+    cadastralNumber?: string | null; // Legacy alias
+    cadastralRegime?: string | null;
+    legalRegimeDetails?: string | null;
+    cadastralUnit?: string | null;
+    cadastralBlock?: string | null;
+    cadastralLevel?: string | null;
+    cadastralSection?: string | null;
+    cadastralLocality?: string | null;
+    cadastralManzana?: string | null;
+    cadastralSolar?: string | null;
+    cadastralPlan?: string | null;
+
+    // Superficies
+    surfaceM2?: number | null;
+    totalSurfaceM2?: number | null;
+    builtSurfaceM2?: number | null;
+    landSurfaceM2?: number | null;
+    uncoveredSurfaceM2?: number | null;
+
+    // Distribución
+    bedrooms?: number | null;
+    bathrooms?: number | null;
+    garages?: number | null;
+
     estimatedValue: number;
     legalStatus: string;
-    cadastralStatus?: string;
+    legalStatusNotes?: string | null;
+
+    fieldProvenance?: Record<string, any>;
   };
   income?: {
     incomeType?: string;
@@ -159,34 +221,108 @@ export async function saveApplicationDraft(
       savedApp = updatedApp;
     }
 
-    // 2. Persistir propiedad en PostgreSQL
+    // 2. Persistir propiedad canónica en PostgreSQL
     let propId = payload.property.id;
     if (appId) {
+      const p = payload.property;
+      const cleanPadron = cleanStr(p.padron) || cleanStr(p.cadastralNumber);
+      const cleanParentPadron = cleanStr(p.parentPadron);
+      const cleanRegime = cleanStr(p.cadastralRegime) || (p.propertyType === 'apartamento' ? 'PROPIEDAD_HORIZONTAL' : p.propertyType === 'campo' ? 'RURAL' : 'COMUN');
+      const cleanUnit = cleanStr(p.unitOrApartment);
+      const cleanTower = cleanStr(p.towerOrBuilding);
+      const cleanFloor = cleanStr(p.floor);
+      const cleanCadUnit = cleanStr(p.cadastralUnit);
+      const cleanCadBlock = cleanStr(p.cadastralBlock);
+      const cleanCadLevel = cleanStr(p.cadastralLevel);
+      const cleanCadSection = cleanStr(p.cadastralSection);
+      const cleanCadLocality = cleanStr(p.cadastralLocality);
+      const cleanCadManzana = cleanStr(p.cadastralManzana);
+      const cleanCadSolar = cleanStr(p.cadastralSolar);
+      const cleanCadPlan = cleanStr(p.cadastralPlan);
+      const cleanLegalNotes = cleanStr(p.legalStatusNotes);
+
+      const fieldValues = {
+        padron: cleanPadron,
+        parent_padron: cleanParentPadron,
+        cadastral_regime: cleanRegime,
+        unit_or_apartment: cleanUnit,
+        tower_or_building: cleanTower,
+        floor: cleanFloor,
+        cadastral_unit: cleanCadUnit,
+        cadastral_block: cleanCadBlock,
+        cadastral_level: cleanCadLevel,
+        cadastral_section: cleanCadSection,
+        cadastral_manzana: cleanCadManzana,
+        cadastral_solar: cleanCadSolar,
+        cadastral_plan: cleanCadPlan,
+        surface_m2: p.surfaceM2 || p.builtSurfaceM2 || null,
+        built_surface_m2: p.builtSurfaceM2 || p.surfaceM2 || null,
+        land_surface_m2: p.landSurfaceM2 || null,
+        uncovered_surface_m2: p.uncoveredSurfaceM2 || null,
+        bedrooms: p.bedrooms || null,
+        bathrooms: p.bathrooms || null,
+        garages: p.garages || null,
+      };
+
+      const computedProvenance = buildFieldProvenance(p.fieldProvenance, fieldValues);
+
+      const propData = {
+        property_type: p.propertyType,
+        department: p.department,
+        city: p.city,
+        neighborhood: p.neighborhood,
+        address: p.address,
+        street_name: p.streetName,
+        street_number: p.streetNumber,
+        postal_code: p.postalCode,
+        latitude: p.latitude,
+        longitude: p.longitude,
+
+        // Identificación Física
+        unit_or_apartment: cleanUnit,
+        tower_or_building: cleanTower,
+        floor: cleanFloor,
+
+        // Identificación Catastral
+        padron: cleanPadron,
+        parent_padron: cleanParentPadron,
+        cadastral_number: cleanPadron, // Compatibilidad legacy
+        cadastral_regime: cleanRegime,
+        legal_regime_details: cleanStr(p.legalRegimeDetails),
+        cadastral_unit: cleanCadUnit,
+        cadastral_block: cleanCadBlock,
+        cadastral_level: cleanCadLevel,
+        cadastral_section: cleanCadSection,
+        cadastral_locality: cleanCadLocality,
+        cadastral_manzana: cleanCadManzana,
+        cadastral_solar: cleanCadSolar,
+        cadastral_plan: cleanCadPlan,
+
+        // Superficies
+        surface_m2: p.surfaceM2 || p.builtSurfaceM2 || null,
+        built_surface_m2: p.builtSurfaceM2 || p.surfaceM2 || null,
+        land_surface_m2: p.landSurfaceM2 || null,
+        uncovered_surface_m2: p.uncoveredSurfaceM2 || null,
+
+        // Distribución
+        bedrooms: p.bedrooms || null,
+        bathrooms: p.bathrooms || null,
+        garages: p.garages || null,
+
+        estimated_value: p.estimatedValue,
+        legal_status: p.legalStatus,
+        legal_status_notes: cleanLegalNotes,
+
+        field_provenance: computedProvenance,
+      };
+
       if (!propId) {
         const { data: newProp, error: propErr } = await withTimeout(
           supabase
             .from('properties')
             .insert({
               application_id: appId,
-              property_type: payload.property.propertyType,
-              department: payload.property.department,
-              city: payload.property.city,
-              neighborhood: payload.property.neighborhood,
-              address: payload.property.address,
-              cadastral_number: payload.property.cadastralNumber,
-              cadastral_regime: payload.property.cadastralRegime || (payload.property.propertyType === 'apartamento' ? 'propiedad_horizontal' : 'comun'),
-              unit_number: payload.property.unitNumber,
-              floor: payload.property.floor,
-              block: payload.property.block,
-              cadastral_section: payload.property.cadastralSection,
-              surface_m2: payload.property.surfaceM2,
-              built_surface_m2: payload.property.builtSurfaceM2 || payload.property.surfaceM2,
-              land_surface_m2: payload.property.landSurfaceM2,
-              bedrooms: payload.property.bedrooms,
-              bathrooms: payload.property.bathrooms,
-              estimated_value: payload.property.estimatedValue,
-              legal_status: payload.property.legalStatus,
-              cadastral_status: payload.property.cadastralStatus || 'declarado',
+              ...propData,
             })
             .select()
             .single()
@@ -200,25 +336,7 @@ export async function saveApplicationDraft(
           supabase
             .from('properties')
             .update({
-              property_type: payload.property.propertyType,
-              department: payload.property.department,
-              city: payload.property.city,
-              neighborhood: payload.property.neighborhood,
-              address: payload.property.address,
-              cadastral_number: payload.property.cadastralNumber,
-              cadastral_regime: payload.property.cadastralRegime,
-              unit_number: payload.property.unitNumber,
-              floor: payload.property.floor,
-              block: payload.property.block,
-              cadastral_section: payload.property.cadastralSection,
-              surface_m2: payload.property.surfaceM2,
-              built_surface_m2: payload.property.builtSurfaceM2,
-              land_surface_m2: payload.property.landSurfaceM2,
-              bedrooms: payload.property.bedrooms,
-              bathrooms: payload.property.bathrooms,
-              estimated_value: payload.property.estimatedValue,
-              legal_status: payload.property.legalStatus,
-              cadastral_status: payload.property.cadastralStatus,
+              ...propData,
               updated_at: new Date().toISOString(),
             })
             .eq('id', propId)

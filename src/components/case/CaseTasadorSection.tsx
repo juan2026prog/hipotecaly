@@ -34,14 +34,32 @@ interface CaseTasadorSectionProps {
   organizationId: string;
   applicantName?: string;
   initialPropertyData?: {
-    cadastralNumber?: string;
+    padron?: string | null;
+    parentPadron?: string | null;
+    cadastralNumber?: string | null;
+    cadastralRegime?: string | null;
+    legalRegimeDetails?: string | null;
+    unitOrApartment?: string | null;
+    towerOrBuilding?: string | null;
+    floor?: string | null;
+    cadastralUnit?: string | null;
+    cadastralBlock?: string | null;
+    cadastralLevel?: string | null;
+    cadastralSection?: string | null;
+    cadastralManzana?: string | null;
+    cadastralSolar?: string | null;
+    cadastralPlan?: string | null;
     department?: string;
     locality?: string;
+    neighborhood?: string;
     address?: string;
     propertyType?: string;
     coveredSurfaceM2?: number;
+    builtSurfaceM2?: number;
+    landSurfaceM2?: number;
     bedrooms?: number;
     bathrooms?: number;
+    fieldProvenance?: Record<string, any>;
   };
 }
 
@@ -92,7 +110,7 @@ export const CaseTasadorSection: React.FC<CaseTasadorSectionProps> = ({
           organizationId,
           department: initialPropertyData.department || 'Montevideo',
           locality: initialPropertyData.locality || 'Centro',
-          cadastralNumber: initialPropertyData.cadastralNumber,
+          cadastralNumber: initialPropertyData.cadastralNumber || undefined,
           address: initialPropertyData.address || 'Inmueble del expediente',
           propertyType: initialPropertyData.propertyType || 'apartamento',
           coveredSurfaceM2: initialPropertyData.coveredSurfaceM2 || 65,

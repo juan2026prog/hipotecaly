@@ -892,6 +892,32 @@ export class DocumentService {
       'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
     ];
 
+    const prop = app?.property;
+    const prov = prop?.field_provenance || {};
+
+    // Helper para extraer valor dando prioridad a registros con estado VERIFIED
+    const getResolvedVal = (fieldName: string, directValue: any): any => {
+      const record = prov[fieldName];
+      if (record && record.verification_status === 'VERIFIED' && record.value !== null && record.value !== undefined) {
+        return record.value;
+      }
+      return directValue ?? record?.value ?? undefined;
+    };
+
+    const resolvedPadron = getResolvedVal('padron', prop?.padron) || prop?.cadastral_number || '142.890';
+    const resolvedParentPadron = getResolvedVal('parent_padron', prop?.parent_padron) || undefined;
+    const resolvedRegime = getResolvedVal('cadastral_regime', prop?.cadastral_regime) || (prop?.property_type === 'apartamento' ? 'PROPIEDAD_HORIZONTAL' : 'COMUN');
+    const resolvedUnit = getResolvedVal('unit_or_apartment', prop?.unit_or_apartment) || prop?.unit_number || undefined;
+    const resolvedFloor = getResolvedVal('floor', prop?.floor) || undefined;
+    const resolvedBlock = getResolvedVal('tower_or_building', prop?.tower_or_building) || prop?.block || undefined;
+    const resolvedCadastralUnit = getResolvedVal('cadastral_unit', prop?.cadastral_unit) || resolvedUnit;
+    const resolvedCadastralBlock = getResolvedVal('cadastral_block', prop?.cadastral_block) || resolvedBlock;
+    const resolvedCadastralLevel = getResolvedVal('cadastral_level', prop?.cadastral_level) || resolvedFloor;
+    const resolvedCadastralSection = getResolvedVal('cadastral_section', prop?.cadastral_section) || undefined;
+    const resolvedCadastralManzana = getResolvedVal('cadastral_manzana', prop?.cadastral_manzana) || undefined;
+    const resolvedCadastralSolar = getResolvedVal('cadastral_solar', prop?.cadastral_solar) || undefined;
+    const resolvedCadastralPlan = getResolvedVal('cadastral_plan', prop?.cadastral_plan) || undefined;
+
     return {
       case: {
         id: app?.id || (typeof caseIdOrApp === 'string' ? caseIdOrApp : 'e0000000-0000-0000-0000-000000000001'),
@@ -927,17 +953,24 @@ export class DocumentService {
         phone: '+598 99 654 321',
       },
       property: {
-        padron: app?.property?.cadastral_number || '142.890',
+        padron: resolvedPadron,
+        parent_padron: resolvedParentPadron,
         department: app?.property?.department || 'Montevideo',
         city: app?.property?.city || app?.property?.locality || 'Montevideo',
         neighborhood: app?.property?.neighborhood || 'Pocitos',
         address: app?.property?.address || 'Benito Blanco 1240 Apt 801',
         type: app?.property?.property_type || 'Apartamento',
-        regime: app?.property?.cadastral_regime ? String(app.property.cadastral_regime).replace('_', ' ') : (app?.property?.property_type === 'apartamento' ? 'Propiedad Horizontal' : 'Padrón Común'),
-        unit: app?.property?.unit_number || undefined,
-        floor: app?.property?.floor || undefined,
-        block: app?.property?.block || undefined,
-        cadastral_section: app?.property?.cadastral_section || undefined,
+        regime: resolvedRegime ? String(resolvedRegime).replace('_', ' ') : undefined,
+        unit: resolvedUnit,
+        floor: resolvedFloor,
+        block: resolvedBlock,
+        cadastral_unit: resolvedCadastralUnit,
+        cadastral_block: resolvedCadastralBlock,
+        cadastral_level: resolvedCadastralLevel,
+        cadastral_section: resolvedCadastralSection,
+        cadastral_manzana: resolvedCadastralManzana,
+        cadastral_solar: resolvedCadastralSolar,
+        cadastral_plan: resolvedCadastralPlan,
         cadastral_status: app?.property?.cadastral_status || 'declarado',
         area_m2: Number(app?.property?.built_surface_m2 || app?.property?.surface_m2) || 85,
         built_surface_m2: Number(app?.property?.built_surface_m2 || app?.property?.surface_m2) || 85,

@@ -196,6 +196,7 @@ export interface ResolvedCaseData {
   };
   property: {
     padron: string;
+    parent_padron?: string;
     department: string;
     city: string;
     neighborhood?: string;
@@ -205,7 +206,13 @@ export interface ResolvedCaseData {
     unit?: string;
     floor?: string;
     block?: string;
+    cadastral_unit?: string;
+    cadastral_block?: string;
+    cadastral_level?: string;
     cadastral_section?: string;
+    cadastral_manzana?: string;
+    cadastral_solar?: string;
+    cadastral_plan?: string;
     cadastral_status?: string;
     area_m2: number;
     built_surface_m2?: number;
