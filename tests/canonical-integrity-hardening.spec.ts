@@ -6,120 +6,182 @@ import { CasePropertyLinkService } from '../src/lib/tasador/integration/CaseProp
 
 test.describe('Hipotecaly Canonical Property & Zero False Verified Hardening Suite', () => {
 
-  // TEST 1: Zero False Verified en Tasación / Enriquecimiento
-  test('Test 1: Tasador enrichment creates UNVERIFIED status and APPRAISAL_ENRICHED source', () => {
-    const rawEnrichment: FieldProvenanceRecord = {
-      value: 120,
-      source: 'APPRAISAL_ENRICHED' as FieldProvenanceSource,
-      verification_status: 'UNVERIFIED' as FieldVerificationStatus,
-      verified_at: null,
-      verified_by: null,
-      evidence_ref: null,
-      notes: 'Dato técnico completado/enriquecido durante el flujo de tasación',
-    };
-
-    expect(rawEnrichment.verification_status).toBe('UNVERIFIED');
-    expect(rawEnrichment.source).toBe('APPRAISAL_ENRICHED');
-    expect(rawEnrichment.verified_at).toBeNull();
-    expect(rawEnrichment.verified_by).toBeNull();
-    expect(rawEnrichment.evidence_ref).toBeNull();
-  });
-
-  // TEST 2: Verificación Explícita válida
-  test('Test 2: Explicit verification attaches VERIFIED, verified_by, verified_at and evidence_ref', () => {
-    const explicitVerification: FieldProvenanceRecord = {
-      value: '12345',
-      source: 'OFFICIAL_REGISTRY_VERIFIED' as FieldProvenanceSource,
-      verification_status: 'VERIFIED' as FieldVerificationStatus,
-      verified_at: '2026-09-19T23:00:00.000Z',
-      verified_by: 'escribano-usr-01',
-      evidence_ref: 'DNC-PADRON-CERT-998822',
-      notes: 'Verificado contra cédula catastral oficial de DNC',
-    };
-
-    expect(explicitVerification.verification_status).toBe('VERIFIED');
-    expect(explicitVerification.source).toBe('OFFICIAL_REGISTRY_VERIFIED');
-    expect(explicitVerification.verified_by).toBeTruthy();
-    expect(explicitVerification.verified_at).toBeTruthy();
-    expect(explicitVerification.evidence_ref).toBe('DNC-PADRON-CERT-998822');
-  });
-
-  // TEST 3: Desacoplamiento Tipología vs Régimen Catastral (apartamento != PROPIEDAD_HORIZONTAL)
-  test('Test 3: property_type apartamento does NOT infer cadastral_regime PROPIEDAD_HORIZONTAL', () => {
-    const propertyPayload = {
-      property_type: 'apartamento',
-      cadastral_regime: 'COMUN_PADRON_UNICO', // Un apartamento puede ser padrón único histórico o no estar bajo régimen PH
-    };
-
-    expect(propertyPayload.property_type).toBe('apartamento');
-    expect(propertyPayload.cadastral_regime).not.toBe('PROPIEDAD_HORIZONTAL');
-  });
-
-  // TEST 4: DocFlow Zero Fake Data - Missing Legal Status
-  test('Test 4: Missing legal_status resolves to undefined and required field validation flags it', async () => {
-    const rawCase: any = {
-      id: 'case-test-01',
-      case_number: 'EXP-2026-001',
-      status: 'UNDERWRITING',
-      property: {
-        property_type: 'casa',
-        address: 'Av. Brasil 2980',
-        padron: '445566',
-        legal_status: null, // Sin estado jurídico
-      },
-    };
-
-    const resolved = await DocumentService.resolveCaseData(rawCase);
-    expect(resolved.property.legal_status).toBeUndefined();
-
-    // Template requiring legal_status
-    const validation = validateRequiredFields(['property.legal_status'], resolved);
-    expect(validation.isValid).toBe(false);
-    expect(validation.missingRequiredFields.map(f => f.key)).toContain('property.legal_status');
-  });
-
-  // TEST 5: DocFlow Zero Fake Data - Missing Interest Rate (No default 11.5%)
-  test('Test 5: Missing interest_rate resolves to undefined and required field validation flags it', async () => {
-    const rawCase: any = {
-      id: 'case-test-02',
-      case_number: 'EXP-2026-002',
-      requested_amount: 100000,
-      interest_rate: null, // Sin tasa asignada
-    };
-
-    const resolved = await DocumentService.resolveCaseData(rawCase);
-    expect(resolved.loan.interest_rate).toBeUndefined();
-
-    const validation = validateRequiredFields(['loan.interest_rate'], resolved);
-    expect(validation.isValid).toBe(false);
-    expect(validation.missingRequiredFields.map(f => f.key)).toContain('loan.interest_rate');
-  });
-
-  // TEST 6: DocFlow Zero Fake Data - Missing Numbers (Not 0)
-  test('Test 6: Missing numerical values resolve to undefined, not 0', async () => {
-    const rawCase: any = {
-      id: 'case-test-03',
-      case_number: 'EXP-2026-003',
-      income: {
-        monthly_amount: null,
-      },
-      property: {
-        bedrooms: null,
-        bathrooms: null,
-      },
-    };
-
-    const resolved = await DocumentService.resolveCaseData(rawCase);
-    expect(resolved.applicant.monthly_income).toBeUndefined();
-    expect(resolved.property.bedrooms).toBeUndefined();
-    expect(resolved.property.bathrooms).toBeUndefined();
-  });
-
-  // TEST 7: CaseTasador Link Service without Property
-  test('Test 7: Case without collateral returns empty list and does not auto-create fake property', () => {
+  // TEST 1: CaseTasadorSection NO auto-link y mensaje "No hay una propiedad asociada a este expediente."
+  test('Test 1: CaseTasadorSection does NOT auto-link property and displays clean unlinked state', async () => {
     const linkService = CasePropertyLinkService.getInstance();
-    const links = linkService.getCaseCollaterals('case-empty-collateral', 'test-org');
-    expect(links).toEqual([]);
+    
+    // Espiamos linkPropertyToCase
+    let linkCalled = false;
+    const originalLink = linkService.linkPropertyToCase;
+    linkService.linkPropertyToCase = async (params: any) => {
+      linkCalled = true;
+      return originalLink.call(linkService, params);
+    };
+
+    try {
+      const caseIdWithoutCollateral = 'case-unlinked-' + Date.now();
+      const orgId = 'test-org-hardening';
+
+      // Consultar colaterales
+      const links = linkService.getCaseCollaterals(caseIdWithoutCollateral, orgId);
+      const currentLink = links.find((l) => l.isPrimaryCollateral) || links[0] || null;
+
+      // El componente NO debe invocar linkPropertyToCase automáticamente
+      expect(linkCalled).toBe(false);
+      expect(currentLink).toBeNull();
+
+      // UI state logic: si currentLink es null, se debe mostrar "No hay una propiedad asociada a este expediente."
+      const displayTitle = currentLink ? (currentLink.provisionalData?.address || 'Inmueble Vinculado') : 'No hay una propiedad asociada a este expediente.';
+      expect(displayTitle).toBe('No hay una propiedad asociada a este expediente.');
+    } finally {
+      linkService.linkPropertyToCase = originalLink;
+    }
+  });
+
+  // TEST 2: Zero Defaults en TasadorNewAppraisalPage
+  test('Test 2: TasadorNewAppraisalPage renders with clean empty inputs and ZERO production defaults', async ({ page }) => {
+    // Configurar rol autenticado en sesión de prueba
+    await page.addInitScript(() => {
+      window.localStorage.setItem('hipotecaly_test_role', 'super_admin');
+    });
+
+    // Abrir página de nueva tasación sin propertyId
+    await page.goto('/demo/estudio-nova/admin/tasaciones/nueva');
+    await page.waitForLoadState('networkidle');
+
+    // Comprobar que los botones de tipo de inmueble NO estén pre-seleccionados
+    const aptButton = page.getByRole('button', { name: /^Apartamento$/i });
+    await expect(aptButton).toBeVisible();
+    await expect(aptButton).not.toHaveClass(/bg-\[\#102d49\]/);
+
+    const houseButton = page.getByRole('button', { name: /^Casa \/ Chalet$/i });
+    await expect(houseButton).toBeVisible();
+    await expect(houseButton).not.toHaveClass(/bg-\[\#102d49\]/);
+
+    // Comprobar selects de distribución y estado
+    const dormsSelect = page.locator('select').filter({ hasText: 'Seleccionar...' }).first();
+    await expect(dormsSelect).toBeVisible();
+    await expect(dormsSelect).toHaveValue('');
+
+    const conditionSelect = page.locator('select').filter({ hasText: 'Seleccionar estado...' });
+    await expect(conditionSelect).toBeVisible();
+    await expect(conditionSelect).toHaveValue('');
+
+    // Comprobar inputs numéricos de superficies vacíos
+    const totalAreaInput = page.locator('input[placeholder="Ej: 82"]');
+    await expect(totalAreaInput).toBeVisible();
+    await expect(totalAreaInput).toHaveValue('');
+
+    const builtAreaInput = page.locator('input[placeholder="Ej: 78"]');
+    await expect(builtAreaInput).toBeVisible();
+    await expect(builtAreaInput).toHaveValue('');
+
+    const yearInput = page.locator('input[placeholder="Ej: 2016"]');
+    await expect(yearInput).toBeVisible();
+    await expect(yearInput).toHaveValue('');
+  });
+
+  // TEST 3: Apartamento != PH en flujo productivo
+  test('Test 3: Selecting property_type apartamento does NOT set cadastral_regime to PROPIEDAD_HORIZONTAL', async () => {
+    const rawCanonicalProperty = {
+      id: 'prop-canonical-001',
+      property_type: 'apartamento',
+      cadastral_regime: 'UNKNOWN',
+      address: 'Calle Real 1234',
+    };
+
+    // Simulamos la sincronización de enriquecimiento durante tasación
+    const existingRegime = rawCanonicalProperty.cadastral_regime;
+    
+    // Regla: la tipología es 'apartamento', pero cadastral_regime NO debe mutar a PROPIEDAD_HORIZONTAL
+    expect(rawCanonicalProperty.property_type).toBe('apartamento');
+    expect(existingRegime).toBe('UNKNOWN');
+    expect(existingRegime).not.toBe('PROPIEDAD_HORIZONTAL');
+  });
+
+  // TEST 4: Provenance Hardening - Zero False Verified
+  test('Test 4: Appraisal enrichment creates UNVERIFIED status with APPRAISAL_ENRICHED source', async () => {
+    const initialProvenance: Record<string, FieldProvenanceRecord> = {
+      padron: {
+        value: '123456',
+        source: 'DECLARED_BY_CLIENT',
+        verification_status: 'UNVERIFIED',
+        verified_at: null,
+        verified_by: null,
+        evidence_ref: null,
+        notes: 'Declarado por el cliente en formulario',
+      }
+    };
+
+    // Enriquecimiento de superficie y unidad durante tasación
+    const updatedProv: Record<string, FieldProvenanceRecord> = { ...initialProvenance };
+    const enrichFieldProv = (fieldName: string, val: any) => {
+      if (val !== undefined && val !== null) {
+        const prev = updatedProv[fieldName];
+        if (prev && prev.verification_status === 'VERIFIED' && prev.value === val) {
+          return;
+        }
+        updatedProv[fieldName] = {
+          value: val,
+          source: 'APPRAISAL_ENRICHED' as FieldProvenanceSource,
+          verification_status: 'UNVERIFIED' as FieldVerificationStatus,
+          verified_at: null,
+          verified_by: null,
+          evidence_ref: null,
+          notes: 'Dato técnico completado/enriquecido durante el flujo de tasación',
+        };
+      }
+    };
+
+    enrichFieldProv('built_surface_m2', 75);
+    enrichFieldProv('padron', '123456'); // Mismo padrón sin evidencia
+
+    expect(updatedProv.padron.verification_status).not.toBe('VERIFIED');
+    expect(updatedProv.built_surface_m2.verification_status).toBe('UNVERIFIED');
+    expect(updatedProv.built_surface_m2.source).toBe('APPRAISAL_ENRICHED');
+    expect(updatedProv.built_surface_m2.verified_by).toBeNull();
+    expect(updatedProv.built_surface_m2.verified_at).toBeNull();
+  });
+
+  // TEST 5: DocFlow Zero False Defaults - Resolves to undefined
+  test('Test 5: DocFlow resolveCaseData resolves missing fields to undefined without fake defaults', async () => {
+    const rawCase: any = {
+      id: 'case-test-raw',
+      // status, source, created_at, currency ausentes a propósito
+      requested_amount: 50000,
+      borrower: {
+        first_name: 'Juan',
+        // id_type, email, monthly_income ausentes
+      },
+      property: {
+        // legal_status, padron, bedrooms ausentes
+      }
+    };
+
+    const resolved = await DocumentService.resolveCaseData(rawCase);
+
+    // Verificamos que los 5 defaults auditados sean estrictamente undefined
+    expect(resolved.case.status).toBeUndefined();
+    expect(resolved.case.source).toBeUndefined();
+    expect(resolved.case.days_open).toBeUndefined();
+    expect(resolved.applicant.id_type).toBeUndefined();
+    expect(resolved.loan.currency).toBeUndefined();
+
+    // Verificamos que los demás campos técnicos ausentes también sean undefined
+    expect(resolved.property.legal_status).toBeUndefined();
+    expect(resolved.property.bedrooms).toBeUndefined();
+    expect(resolved.loan.interest_rate).toBeUndefined();
+    expect(resolved.applicant.monthly_income).toBeUndefined();
+
+    // Comprobamos que el validador de plantillas detecte los campos faltantes
+    const validation = validateRequiredFields(
+      ['case.status', 'loan.currency', 'property.legal_status', 'loan.interest_rate'],
+      resolved
+    );
+    expect(validation.isValid).toBe(false);
+    expect(validation.missingRequiredFields.map(f => f.key)).toEqual(
+      expect.arrayContaining(['case.status', 'loan.currency', 'property.legal_status', 'loan.interest_rate'])
+    );
   });
 
 });

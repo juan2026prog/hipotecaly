@@ -102,24 +102,7 @@ export const CaseTasadorSection: React.FC<CaseTasadorSectionProps> = ({
     try {
       const linkService = CasePropertyLinkService.getInstance();
       const links = linkService.getCaseCollaterals(caseId, organizationId);
-      let currentLink = links.find((l) => l.isPrimaryCollateral) || links[0] || null;
-
-      // Si no existe vinculación y se proporcionaron datos reales de propiedad, vincular
-      if (!currentLink && initialPropertyData && (initialPropertyData.address || initialPropertyData.padron || initialPropertyData.id)) {
-        const matchRes = await linkService.linkPropertyToCase({
-          caseId,
-          organizationId,
-          department: initialPropertyData.department || '',
-          locality: initialPropertyData.locality || '',
-          cadastralNumber: initialPropertyData.cadastralNumber || initialPropertyData.padron || undefined,
-          address: initialPropertyData.address || '',
-          propertyType: initialPropertyData.propertyType || '',
-          coveredSurfaceM2: initialPropertyData.coveredSurfaceM2 || 0,
-          bedrooms: initialPropertyData.bedrooms || 0,
-          bathrooms: initialPropertyData.bathrooms || 0,
-        });
-        currentLink = matchRes.link;
-      }
+      const currentLink = links.find((l) => l.isPrimaryCollateral) || links[0] || null;
 
       setCollateralLink(currentLink);
 
@@ -325,13 +308,13 @@ export const CaseTasadorSection: React.FC<CaseTasadorSectionProps> = ({
                 ? 'bg-amber-100 text-amber-800'
                 : 'bg-slate-100 text-slate-600'
             }`}>
-              {collateralLink?.resolutionStatus || (initialPropertyData ? 'REGISTRADO' : 'SIN PROPIEDAD')}
+              {collateralLink?.resolutionStatus || 'SIN PROPIEDAD'}
             </span>
           </div>
           <p className="font-bold text-navy">
-            {collateralLink?.provisionalData?.address || initialPropertyData?.address || (initialPropertyData?.padron ? `Padrón ${initialPropertyData.padron}` : 'No hay una propiedad asociada a este expediente.')}
+            {collateralLink ? (collateralLink.provisionalData?.address || (initialPropertyData?.padron ? `Padrón ${initialPropertyData.padron}` : 'Inmueble Vinculado')) : 'No hay una propiedad asociada a este expediente.'}
           </p>
-          {(initialPropertyData?.department || initialPropertyData?.coveredSurfaceM2) ? (
+          {collateralLink && (initialPropertyData?.department || initialPropertyData?.coveredSurfaceM2) ? (
             <p className="text-slate-500">
               {initialPropertyData?.department || ''}{initialPropertyData?.locality ? `, ${initialPropertyData.locality}` : ''} {initialPropertyData?.coveredSurfaceM2 ? `— ${initialPropertyData.coveredSurfaceM2} m² edif.` : ''} {initialPropertyData?.bedrooms !== undefined ? `— ${initialPropertyData.bedrooms} dorm.` : ''}
             </p>

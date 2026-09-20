@@ -71,7 +71,7 @@ export const TasadorNewAppraisalPage: React.FC = () => {
   });
 
   // Bloque B: Tipo de Inmueble (Limpio)
-  const [propertyType, setPropertyType] = useState<AppraisalPropertyType>('apartamento');
+  const [propertyType, setPropertyType] = useState<AppraisalPropertyType | ''>('');
   const [subType, _setSubType] = useState('');
   const [horizontalProperty, setHorizontalProperty] = useState(false);
 
@@ -82,9 +82,9 @@ export const TasadorNewAppraisalPage: React.FC = () => {
   const [landAreaM2, setLandAreaM2] = useState<number | ''>('');
   const [balconyOrTerraceM2, setBalconyOrTerraceM2] = useState<number | ''>('');
 
-  // Bloque D: Distribución (Valores iniciales neutrales)
-  const [bedrooms, setBedrooms] = useState<number>(1);
-  const [bathrooms, setBathrooms] = useState<number>(1);
+  // Bloque D: Distribución (Valores limpios sin defaults ficticios)
+  const [bedrooms, setBedrooms] = useState<number | ''>('');
+  const [bathrooms, setBathrooms] = useState<number | ''>('');
   const [toilettes, setToilettes] = useState<number>(0);
   const [garages, setGarages] = useState<number>(0);
   const [floorLevel, _setFloorLevel] = useState<number | ''>('');
@@ -109,7 +109,7 @@ export const TasadorNewAppraisalPage: React.FC = () => {
   });
 
   // Bloque F: Estado
-  const [condition, setCondition] = useState<BuildingCondition>('bueno');
+  const [condition, setCondition] = useState<BuildingCondition | ''>('');
   const [constructionYear, setConstructionYear] = useState<number | ''>('');
 
   // Bloque G: Fotos
@@ -257,8 +257,8 @@ export const TasadorNewAppraisalPage: React.FC = () => {
 
   // Construir objeto de propiedad objetivo con GeoCore canónico
   const targetProperty: AppraisalPropertyInput = {
-    title: `${propertyType.toUpperCase()}${geoAddress.neighborhood || geoAddress.locality || geoAddress.department ? ` en ${geoAddress.neighborhood || geoAddress.locality || geoAddress.department}` : ''}`,
-    propertyType,
+    title: propertyType ? `${propertyType.toUpperCase()}${geoAddress.neighborhood || geoAddress.locality || geoAddress.department ? ` en ${geoAddress.neighborhood || geoAddress.locality || geoAddress.department}` : ''}` : 'Inmueble a Tasar',
+    propertyType: (propertyType || 'apartamento') as AppraisalPropertyType,
     subType: subType || undefined,
     horizontalProperty,
     operationType: 'SALE',
@@ -284,14 +284,14 @@ export const TasadorNewAppraisalPage: React.FC = () => {
       balconyOrTerraceM2: Number(balconyOrTerraceM2) || undefined,
     },
     layout: {
-      bedrooms,
-      bathrooms,
+      bedrooms: typeof bedrooms === 'number' ? bedrooms : 0,
+      bathrooms: typeof bathrooms === 'number' ? bathrooms : 0,
       toilettes,
       garages,
       floorLevel: Number(floorLevel) || undefined,
     },
     amenities,
-    condition,
+    condition: (condition || 'bueno') as BuildingCondition,
     constructionYear: Number(constructionYear) || undefined,
     photos,
     observations: observations || undefined,
@@ -299,6 +299,13 @@ export const TasadorNewAppraisalPage: React.FC = () => {
 
   const handleStartSearch = async () => {
     setValidationError(null);
+
+    if (!propertyType) {
+      setValidationError('Debes seleccionar el tipo de inmueble (ej: Apartamento, Casa).');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     const service = AppraisalService.getInstance();
     const validation = service.validateForComparables(targetProperty);
 
@@ -355,7 +362,7 @@ export const TasadorNewAppraisalPage: React.FC = () => {
           await supabase
             .from('properties')
             .update({
-              property_type: propertyType,
+              property_type: propertyType || null,
               department: geoAddress.department || null,
               city: geoAddress.locality || null,
               neighborhood: geoAddress.neighborhood || null,
@@ -372,8 +379,8 @@ export const TasadorNewAppraisalPage: React.FC = () => {
               surface_m2: Number(coveredAreaM2) || Number(totalAreaM2) || null,
               land_surface_m2: Number(landAreaM2) || null,
               uncovered_surface_m2: Number(balconyOrTerraceM2) || null,
-              bedrooms: bedrooms,
-              bathrooms: bathrooms,
+              bedrooms: typeof bedrooms === 'number' ? bedrooms : null,
+              bathrooms: typeof bathrooms === 'number' ? bathrooms : null,
               garages: garages,
               field_provenance: updatedProv,
               updated_at: nowIso,
@@ -609,9 +616,10 @@ export const TasadorNewAppraisalPage: React.FC = () => {
                   <label className="font-semibold text-slate-700 block mb-1">Dormitorios</label>
                   <select
                     value={bedrooms}
-                    onChange={(e) => setBedrooms(Number(e.target.value))}
+                    onChange={(e) => setBedrooms(e.target.value === '' ? '' : Number(e.target.value))}
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 font-bold focus:outline-none focus:ring-2 focus:ring-[#102d49]/20"
                   >
+                    <option value="">Seleccionar...</option>
                     {[0, 1, 2, 3, 4, 5, 6].map((num) => (
                       <option key={num} value={num}>
                         {num === 0 ? 'Monoambiente (0 dorm)' : `${num} dorm`}
@@ -624,9 +632,10 @@ export const TasadorNewAppraisalPage: React.FC = () => {
                   <label className="font-semibold text-slate-700 block mb-1">Baños Completos</label>
                   <select
                     value={bathrooms}
-                    onChange={(e) => setBathrooms(Number(e.target.value))}
+                    onChange={(e) => setBathrooms(e.target.value === '' ? '' : Number(e.target.value))}
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 font-bold focus:outline-none focus:ring-2 focus:ring-[#102d49]/20"
                   >
+                    <option value="">Seleccionar...</option>
                     {[1, 2, 3, 4, 5].map((num) => (
                       <option key={num} value={num}>
                         {num} {num === 1 ? 'baño' : 'baños'}
@@ -758,9 +767,10 @@ export const TasadorNewAppraisalPage: React.FC = () => {
                   <label className="font-semibold text-slate-700 block mb-1">Estado de Conservación</label>
                   <select
                     value={condition}
-                    onChange={(e) => setCondition(e.target.value as BuildingCondition)}
+                    onChange={(e) => setCondition(e.target.value as BuildingCondition | '')}
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 font-bold focus:outline-none focus:ring-2 focus:ring-[#102d49]/20 capitalize"
                   >
+                    <option value="">Seleccionar estado...</option>
                     <option value="excelente">Excelente (A estrenar / Reciclado premium)</option>
                     <option value="muy_bueno">Muy Bueno</option>
                     <option value="bueno">Bueno (Estándar habitable)</option>
@@ -878,11 +888,11 @@ export const TasadorNewAppraisalPage: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-serif font-bold text-[#102d49] capitalize">
-                    {propertyType} en {geoAddress.neighborhood || geoAddress.locality || geoAddress.department}
+                    {propertyType ? propertyType : 'Inmueble'} {geoAddress.neighborhood || geoAddress.locality || geoAddress.department ? `en ${geoAddress.neighborhood || geoAddress.locality || geoAddress.department}` : ''}
                   </h3>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  {[geoAddress.streetName, geoAddress.streetNumber].filter(Boolean).join(' ') || 'Dirección a definir'}, {geoAddress.department}
+                  {[geoAddress.streetName, geoAddress.streetNumber].filter(Boolean).join(' ') || 'Dirección a definir'}, {geoAddress.department || 'Uruguay'}
                 </p>
                 <div className="mt-2">
                   <GeoPrecisionBadge precision={geoAddress.precision} showDescription={false} />
@@ -901,11 +911,11 @@ export const TasadorNewAppraisalPage: React.FC = () => {
                 </div>
                 <div className="py-2.5 flex justify-between">
                   <span className="text-slate-400">Dormitorios</span>
-                  <span className="font-bold text-slate-800">{bedrooms}</span>
+                  <span className="font-bold text-slate-800">{bedrooms !== '' ? bedrooms : '—'}</span>
                 </div>
                 <div className="py-2.5 flex justify-between">
                   <span className="text-slate-400">Baños</span>
-                  <span className="font-bold text-slate-800">{bathrooms}</span>
+                  <span className="font-bold text-slate-800">{bathrooms !== '' ? bathrooms : '—'}</span>
                 </div>
                 <div className="py-2.5 flex justify-between">
                   <span className="text-slate-400">Garajes</span>
@@ -913,7 +923,7 @@ export const TasadorNewAppraisalPage: React.FC = () => {
                 </div>
                 <div className="py-2.5 flex justify-between">
                   <span className="text-slate-400">Estado</span>
-                  <span className="font-bold text-slate-800 capitalize">{condition.replace(/_/g, ' ')}</span>
+                  <span className="font-bold text-slate-800 capitalize">{condition ? condition.replace(/_/g, ' ') : '—'}</span>
                 </div>
                 {constructionYear && (
                   <div className="py-2.5 flex justify-between">

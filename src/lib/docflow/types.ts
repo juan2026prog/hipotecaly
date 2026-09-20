@@ -162,29 +162,29 @@ export interface TemplateVersionHistoryItem {
 export interface ResolvedCaseData {
   case: {
     id: string;
-    code: string;
-    created_at: string;
-    status: string;
-    days_open: number;
-    source: string;
+    code?: string;
+    created_at?: string;
+    status?: string;
+    days_open?: number;
+    source?: string;
     purpose?: string;
   };
   applicant: {
-    first_name: string;
-    last_name: string;
-    full_name: string;
-    document_id: string;
-    id_type: string;
+    first_name?: string;
+    last_name?: string;
+    full_name?: string;
+    document_id?: string;
+    id_type?: string;
     birth_date?: string;
     phone?: string;
-    email: string;
+    email?: string;
     address?: string;
     city?: string;
-    department: string;
+    department?: string;
     marital_status?: string;
     occupation?: string;
     employer?: string;
-    monthly_income: number;
+    monthly_income?: number;
     clearing_status?: string;
   };
   spouse?: {
@@ -227,7 +227,7 @@ export interface ResolvedCaseData {
   loan: {
     requested_amount?: number;
     approved_amount?: number;
-    currency: string;
+    currency?: string;
     term_months?: number;
     interest_rate?: number;
     monthly_payment?: number;

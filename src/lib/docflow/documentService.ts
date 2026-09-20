@@ -901,9 +901,9 @@ export class DocumentService {
       : undefined;
 
     const createdAt = app?.created_at ? new Date(app.created_at) : undefined;
-    const daysOpen = createdAt
+    const daysOpen = (createdAt && !isNaN(createdAt.getTime()))
       ? Math.max(1, Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24)))
-      : 1;
+      : undefined;
 
     const now = new Date();
     const monthsEs = [
@@ -971,29 +971,29 @@ export class DocumentService {
     return {
       case: {
         id: app?.id || (typeof caseIdOrApp === 'string' ? caseIdOrApp : ''),
-        code: app?.public_id || '',
+        code: app?.public_id || undefined,
         created_at: app?.created_at || undefined,
-        status: app?.status || 'evaluacion',
+        status: app?.status || undefined,
         days_open: daysOpen,
-        source: app?.source || 'native_white_label',
+        source: app?.source || undefined,
         purpose: app?.purpose || undefined,
       },
       applicant: {
-        first_name: applicantFirstName || '',
-        last_name: applicantLastName || '',
-        full_name: applicantFullName || '',
-        document_id: app?.borrower?.document_id || app?.borrower?.id_number || '',
-        id_type: 'CI',
+        first_name: applicantFirstName || undefined,
+        last_name: applicantLastName || undefined,
+        full_name: applicantFullName || undefined,
+        document_id: app?.borrower?.document_id || app?.borrower?.id_number || undefined,
+        id_type: app?.borrower?.id_type || app?.borrower?.document_type || undefined,
         birth_date: app?.borrower?.birth_date || undefined,
         phone: app?.borrower?.phone || undefined,
-        email: app?.borrower?.email || '',
+        email: app?.borrower?.email || undefined,
         address: app?.borrower?.address || undefined,
         city: app?.borrower?.city || undefined,
-        department: app?.borrower?.department || '',
+        department: app?.borrower?.department || undefined,
         marital_status: app?.borrower?.civil_status || undefined,
         occupation: app?.borrower?.occupation || undefined,
         employer: app?.borrower?.employer || undefined,
-        monthly_income: monthlyIncome as any,
+        monthly_income: monthlyIncome,
         clearing_status: app?.borrower?.clearing_status || undefined,
       },
       spouse: app?.borrower?.spouse_full_name || app?.borrower?.spouse_document_id ? {
@@ -1035,7 +1035,7 @@ export class DocumentService {
       loan: {
         requested_amount: requested,
         approved_amount: approvedAmount,
-        currency: app?.currency || 'USD',
+        currency: app?.currency || undefined,
         term_months: term,
         interest_rate: rate,
         monthly_payment: monthlyInt,
