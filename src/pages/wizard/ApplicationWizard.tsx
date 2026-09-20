@@ -90,7 +90,7 @@ export const ApplicationWizard: React.FC = () => {
   // Identificación Catastral (Opcional / No bloqueante)
   const [padron, setPadron] = useState<string>('');
   const [parentPadron, setParentPadron] = useState<string>('');
-  const [cadastralRegime, setCadastralRegime] = useState<string>('PROPIEDAD_HORIZONTAL');
+  const [cadastralRegime, setCadastralRegime] = useState<string>('UNKNOWN');
   const [cadastralUnit, setCadastralUnit] = useState<string>('');
   const [cadastralBlock, setCadastralBlock] = useState<string>('');
   const [cadastralLevel, setCadastralLevel] = useState<string>('');
@@ -220,7 +220,7 @@ export const ApplicationWizard: React.FC = () => {
             // Catastrales
             setPadron(p.padron || p.cadastralNumber || p.cadastral_number || '');
             setParentPadron(p.parentPadron || p.parent_padron || '');
-            setCadastralRegime(p.cadastralRegime || p.cadastral_regime || (p.propertyType === 'apartamento' ? 'PROPIEDAD_HORIZONTAL' : 'COMUN'));
+            setCadastralRegime(p.cadastralRegime || p.cadastral_regime || 'UNKNOWN');
             setCadastralUnit(p.cadastralUnit || p.cadastral_unit || '');
             setCadastralBlock(p.cadastralBlock || p.cadastral_block || '');
             setCadastralLevel(p.cadastralLevel || p.cadastral_level || '');
@@ -401,8 +401,12 @@ export const ApplicationWizard: React.FC = () => {
     const file = e.target.files[0];
     setPhotoUploading(true);
 
-    const tempPropId = propertyId || crypto.randomUUID();
-    const { photo, error } = await uploadPropertyPhoto(tempPropId, file, category);
+    let targetPropId = propertyId;
+    if (!targetPropId) {
+      const draftRes = await persistStep(currentStep);
+      targetPropId = draftRes?.property?.id || propertyId || crypto.randomUUID();
+    }
+    const { photo, error } = await uploadPropertyPhoto(targetPropId, file, category);
     setPhotoUploading(false);
 
     const objectUrl = URL.createObjectURL(file);
@@ -419,8 +423,12 @@ export const ApplicationWizard: React.FC = () => {
   const handleIncomeDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
-    const tempPropId = propertyId || crypto.randomUUID();
-    await uploadPrivateDocument(tempPropId, file, 'comprobante_ingresos');
+    let targetPropId = propertyId;
+    if (!targetPropId) {
+      const draftRes = await persistStep(currentStep);
+      targetPropId = draftRes?.property?.id || propertyId || crypto.randomUUID();
+    }
+    await uploadPrivateDocument(targetPropId, file, 'comprobante_ingresos');
     setUploadedIncomeDoc(file.name);
   };
 
@@ -731,15 +739,7 @@ export const ApplicationWizard: React.FC = () => {
                         <select
                           value={propertyType}
                           onChange={(e) => {
-                            const newType = e.target.value;
-                            setPropertyType(newType);
-                            if (newType === 'apartamento') {
-                              setCadastralRegime('propiedad_horizontal');
-                            } else if (newType === 'campo') {
-                              setCadastralRegime('rural');
-                            } else {
-                              setCadastralRegime('comun');
-                            }
+                            setPropertyType(e.target.value);
                           }}
                           className="w-full min-h-[44px] px-3.5 rounded-xl border border-[#dfe5ea] bg-white text-xs font-semibold text-[#27384a]"
                         >

@@ -874,14 +874,14 @@ export class DocumentService {
       }
     }
 
-    // Default / Sanitized Structure
-    const requested = Number(app?.requested_amount) || 60000;
-    const estVal = Number(app?.property?.estimated_value) || 180000;
+    // Default / Sanitized Structure (Strictly real data or undefined / calculated from real values)
+    const requested = Number(app?.requested_amount) || 0;
+    const estVal = Number(app?.property?.estimated_value) || 0;
     const appVal = Number(app?.valuation?.preliminary_value) || estVal;
-    const ltv = estVal > 0 ? (requested / estVal) * 100 : 33.3;
-    const term = Number(app?.term_months) || 36;
-    const rate = 11.5;
-    const monthlyInt = (requested * (rate / 100)) / 12;
+    const ltv = estVal > 0 ? (requested / estVal) * 100 : 0;
+    const term = Number(app?.term_months) || 0;
+    const rate = Number(app?.interest_rate) || 11.5;
+    const monthlyInt = requested > 0 && rate > 0 ? (requested * (rate / 100)) / 12 : 0;
 
     const createdAt = app?.created_at ? new Date(app.created_at) : new Date();
     const daysOpen = Math.max(1, Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24)));
@@ -904,62 +904,68 @@ export class DocumentService {
       return directValue ?? record?.value ?? undefined;
     };
 
-    const resolvedPadron = getResolvedVal('padron', prop?.padron) || prop?.cadastral_number || '142.890';
+    const resolvedPadron = getResolvedVal('padron', prop?.padron) || prop?.cadastral_number || undefined;
     const resolvedParentPadron = getResolvedVal('parent_padron', prop?.parent_padron) || undefined;
-    const resolvedRegime = getResolvedVal('cadastral_regime', prop?.cadastral_regime) || (prop?.property_type === 'apartamento' ? 'PROPIEDAD_HORIZONTAL' : 'COMUN');
+    const resolvedRegime = getResolvedVal('cadastral_regime', prop?.cadastral_regime) || undefined;
     const resolvedUnit = getResolvedVal('unit_or_apartment', prop?.unit_or_apartment) || prop?.unit_number || undefined;
     const resolvedFloor = getResolvedVal('floor', prop?.floor) || undefined;
     const resolvedBlock = getResolvedVal('tower_or_building', prop?.tower_or_building) || prop?.block || undefined;
-    const resolvedCadastralUnit = getResolvedVal('cadastral_unit', prop?.cadastral_unit) || resolvedUnit;
-    const resolvedCadastralBlock = getResolvedVal('cadastral_block', prop?.cadastral_block) || resolvedBlock;
-    const resolvedCadastralLevel = getResolvedVal('cadastral_level', prop?.cadastral_level) || resolvedFloor;
+    const resolvedCadastralUnit = getResolvedVal('cadastral_unit', prop?.cadastral_unit) || undefined;
+    const resolvedCadastralBlock = getResolvedVal('cadastral_block', prop?.cadastral_block) || undefined;
+    const resolvedCadastralLevel = getResolvedVal('cadastral_level', prop?.cadastral_level) || undefined;
     const resolvedCadastralSection = getResolvedVal('cadastral_section', prop?.cadastral_section) || undefined;
     const resolvedCadastralManzana = getResolvedVal('cadastral_manzana', prop?.cadastral_manzana) || undefined;
     const resolvedCadastralSolar = getResolvedVal('cadastral_solar', prop?.cadastral_solar) || undefined;
     const resolvedCadastralPlan = getResolvedVal('cadastral_plan', prop?.cadastral_plan) || undefined;
 
+    const applicantFirstName = app?.borrower?.first_name || undefined;
+    const applicantLastName = app?.borrower?.last_name || undefined;
+    const applicantFullName = (applicantFirstName || applicantLastName)
+      ? `${applicantFirstName || ''} ${applicantLastName || ''}`.trim()
+      : undefined;
+
     return {
       case: {
-        id: app?.id || (typeof caseIdOrApp === 'string' ? caseIdOrApp : 'e0000000-0000-0000-0000-000000000001'),
-        code: app?.public_id || 'HIP-2026-0001',
+        id: app?.id || (typeof caseIdOrApp === 'string' ? caseIdOrApp : ''),
+        code: app?.public_id || '',
         created_at: app?.created_at || now.toISOString(),
         status: app?.status || 'evaluacion',
         days_open: daysOpen,
         source: app?.source || 'native_white_label',
-        purpose: app?.purpose || 'Préstamo Hipotecario',
+        purpose: app?.purpose || undefined,
       },
       applicant: {
-        first_name: app?.borrower?.first_name || 'Rodrigo',
-        last_name: app?.borrower?.last_name || 'Larrañaga',
-        full_name: `${app?.borrower?.first_name || 'Rodrigo'} ${app?.borrower?.last_name || 'Larrañaga'}`,
-        document_id: app?.borrower?.document_id || '3.987.654-2',
+        first_name: applicantFirstName || '',
+        last_name: applicantLastName || '',
+        full_name: applicantFullName || '',
+        document_id: app?.borrower?.document_id || app?.borrower?.id_number || '',
         id_type: 'CI',
-        birth_date: app?.borrower?.birth_date || '1984-06-15',
-        phone: app?.borrower?.phone || '+598 99 123 456',
-        email: app?.borrower?.email || 'rodrigo.larranaga@ejemplo.com',
-        address: app?.borrower?.address || 'Av. Brasil 2890 Apt 402',
-        city: app?.borrower?.city || 'Montevideo',
-        department: app?.borrower?.department || 'Montevideo',
-        marital_status: app?.borrower?.civil_status || 'Casado',
-        occupation: 'Ingeniero',
-        employer: 'Empresa S.A.',
-        monthly_income: Number(app?.income?.declared_amount) || 120000,
-        clearing_status: 'Normal',
+        birth_date: app?.borrower?.birth_date || undefined,
+        phone: app?.borrower?.phone || undefined,
+        email: app?.borrower?.email || '',
+        address: app?.borrower?.address || undefined,
+        city: app?.borrower?.city || undefined,
+        department: app?.borrower?.department || '',
+        marital_status: app?.borrower?.civil_status || undefined,
+        occupation: app?.borrower?.occupation || undefined,
+        employer: app?.borrower?.employer || undefined,
+        monthly_income: Number(app?.income?.declared_amount || app?.income?.monthly_amount) || 0,
+        clearing_status: app?.borrower?.clearing_status || undefined,
       },
-      spouse: {
-        full_name: 'Mariana Silva Gómez',
-        document_id: '4.123.456-7',
-        email: 'mariana.silva@ejemplo.com',
-        phone: '+598 99 654 321',
-      },
+      spouse: app?.borrower?.spouse_full_name || app?.borrower?.spouse_document_id ? {
+        full_name: app?.borrower?.spouse_full_name || undefined,
+        document_id: app?.borrower?.spouse_document_id || undefined,
+        email: app?.borrower?.spouse_email || undefined,
+        phone: app?.borrower?.spouse_phone || undefined,
+      } : undefined,
       property: {
-        padron: resolvedPadron,
+        padron: resolvedPadron || '',
         parent_padron: resolvedParentPadron,
-        department: app?.property?.department || 'Montevideo',
-        city: app?.property?.city || app?.property?.locality || 'Montevideo',
-        neighborhood: app?.property?.neighborhood || 'Pocitos',
-        address: app?.property?.address || 'Benito Blanco 1240 Apt 801',
-        type: app?.property?.property_type || 'Apartamento',
+        department: app?.property?.department || '',
+        city: app?.property?.city || app?.property?.locality || '',
+        neighborhood: app?.property?.neighborhood || undefined,
+        address: app?.property?.address || '',
+        type: app?.property?.property_type || '',
         regime: resolvedRegime ? String(resolvedRegime).replace('_', ' ') : undefined,
         unit: resolvedUnit,
         floor: resolvedFloor,
@@ -972,19 +978,19 @@ export class DocumentService {
         cadastral_solar: resolvedCadastralSolar,
         cadastral_plan: resolvedCadastralPlan,
         cadastral_status: app?.property?.cadastral_status || 'declarado',
-        area_m2: Number(app?.property?.built_surface_m2 || app?.property?.surface_m2) || 85,
-        built_surface_m2: Number(app?.property?.built_surface_m2 || app?.property?.surface_m2) || 85,
+        area_m2: Number(app?.property?.built_surface_m2 || app?.property?.surface_m2) || 0,
+        built_surface_m2: Number(app?.property?.built_surface_m2 || app?.property?.surface_m2) || undefined,
         land_surface_m2: Number(app?.property?.land_surface_m2) || undefined,
-        bedrooms: Number(app?.property?.bedrooms) || 2,
-        bathrooms: Number(app?.property?.bathrooms) || 1,
+        bedrooms: Number(app?.property?.bedrooms) || 0,
+        bathrooms: Number(app?.property?.bathrooms) || 0,
         estimated_value: estVal,
         appraised_value: appVal,
-        guarantee_value: appVal * 0.85,
+        guarantee_value: appVal > 0 ? appVal * 0.85 : 0,
         legal_status: app?.property?.legal_status ? String(app.property.legal_status).replace('_', ' ') : 'Libre de gravámenes',
       },
       loan: {
         requested_amount: requested,
-        approved_amount: requested,
+        approved_amount: Number(app?.approved_amount) || requested,
         currency: app?.currency || 'USD',
         term_months: term,
         interest_rate: rate,
@@ -992,38 +998,38 @@ export class DocumentService {
         ltv: Math.round(ltv * 10) / 10,
         repayment_mode: app?.repayment_mode || 'Solo Intereses',
       },
-      lender: {
-        name: 'Fondo Inmobiliario del Este',
-        document_id: 'RUT 219876540018',
-        contact_name: 'Lic. Roberto Valdés',
-        contact_email: 'inversiones@fondodeleste.com.uy',
-        contact_phone: '+598 2900 1234',
-      },
-      notary: {
-        user_id: app?.assigned_notary?.notary_user_id || 'u-test-notary',
-        name: app?.assigned_notary?.notary_profile?.full_name || 'Esc. María Pérez Morales',
-        full_name: app?.assigned_notary?.notary_profile?.full_name || 'Esc. María Pérez Morales',
-        document_number: app?.assigned_notary?.notary_profile?.document_number || '3.892.415-8',
-        notarial_fund_affiliate_number: app?.assigned_notary?.notary_profile?.notarial_fund_affiliate_number || '48.291',
-        professional_address: app?.assigned_notary?.notary_profile?.professional_address || 'Rincón 487 Piso 3 Esc. 302',
-        professional_city: app?.assigned_notary?.notary_profile?.professional_city || 'Montevideo',
-        professional_department: app?.assigned_notary?.notary_profile?.professional_department || 'Montevideo',
-        electronic_domicile: app?.assigned_notary?.notary_profile?.electronic_domicile || 'maria.perez@notarios.org.uy',
-        notary_office_name: app?.assigned_notary?.notary_profile?.notary_office?.name || 'Estudio Fernández & Asociados',
-        digital_certificate_identifier: app?.assigned_notary?.notary_profile?.digital_certificate_identifier || 'UY-CA-ABITAB-48291-MP',
-        email: app?.assigned_notary?.notary_profile?.email || 'escribania@estudiofernandez.uy',
-        phone: app?.assigned_notary?.notary_profile?.phone || '099 876 543',
-      },
+      lender: app?.lender ? {
+        name: app.lender.name || '',
+        document_id: app.lender.document_id || undefined,
+        contact_name: app.lender.contact_name || undefined,
+        contact_email: app.lender.contact_email || undefined,
+        contact_phone: app.lender.contact_phone || undefined,
+      } : undefined,
+      notary: app?.assigned_notary?.notary_profile ? {
+        user_id: app?.assigned_notary?.notary_user_id || undefined,
+        name: app.assigned_notary.notary_profile.full_name || '',
+        full_name: app.assigned_notary.notary_profile.full_name || '',
+        document_number: app.assigned_notary.notary_profile.document_number || undefined,
+        notarial_fund_affiliate_number: app.assigned_notary.notary_profile.notarial_fund_affiliate_number || undefined,
+        professional_address: app.assigned_notary.notary_profile.professional_address || undefined,
+        professional_city: app.assigned_notary.notary_profile.professional_city || undefined,
+        professional_department: app.assigned_notary.notary_profile.professional_department || undefined,
+        electronic_domicile: app.assigned_notary.notary_profile.electronic_domicile || undefined,
+        notary_office_name: app.assigned_notary.notary_profile.notary_office?.name || undefined,
+        digital_certificate_identifier: app.assigned_notary.notary_profile.digital_certificate_identifier || undefined,
+        email: app.assigned_notary.notary_profile.email || undefined,
+        phone: app.assigned_notary.notary_profile.phone || undefined,
+      } : undefined,
       tenant: {
-        id: tenantDetails?.id || app?.organization_id || 'a0000000-0000-0000-0000-000000000001',
-        name: tenantDetails?.name || 'HIPOTECALY Uruguay',
-        legal_name: tenantDetails?.legal_name || 'HIPOTECALY S.A.S.',
-        legal_representative: tenantDetails?.legal_representative || 'Dr. Alejandro Méndez',
-        legal_address: tenantDetails?.legal_address || 'Plaza Independencia 848, Montevideo',
-        logo_url: tenantDetails?.logo_url,
-        support_email: tenantDetails?.support_email || 'soporte@hipotecaly.com.uy',
-        support_phone: tenantDetails?.support_phone || '0800 4476',
-        footer_text: 'Documento oficial generado por HIPOTECALY DOCFLOW. Validez legal según Ley N° 18.600.',
+        id: tenantDetails?.id || app?.organization_id || '',
+        name: tenantDetails?.name || 'HIPOTECALY',
+        legal_name: tenantDetails?.legal_name || undefined,
+        legal_representative: tenantDetails?.legal_representative || undefined,
+        legal_address: tenantDetails?.legal_address || undefined,
+        logo_url: tenantDetails?.logo_url || undefined,
+        support_email: tenantDetails?.support_email || undefined,
+        support_phone: tenantDetails?.support_phone || undefined,
+        footer_text: 'Documento generado por HIPOTECALY DOCFLOW.',
       },
       dates: {
         today_iso: now.toISOString(),

@@ -227,7 +227,7 @@ export async function saveApplicationDraft(
       const p = payload.property;
       const cleanPadron = cleanStr(p.padron) || cleanStr(p.cadastralNumber);
       const cleanParentPadron = cleanStr(p.parentPadron);
-      const cleanRegime = cleanStr(p.cadastralRegime) || (p.propertyType === 'apartamento' ? 'PROPIEDAD_HORIZONTAL' : p.propertyType === 'campo' ? 'RURAL' : 'COMUN');
+      const cleanRegime = cleanStr(p.cadastralRegime) || undefined;
       const cleanUnit = cleanStr(p.unitOrApartment);
       const cleanTower = cleanStr(p.towerOrBuilding);
       const cleanFloor = cleanStr(p.floor);
@@ -315,6 +315,19 @@ export async function saveApplicationDraft(
 
         field_provenance: computedProvenance,
       };
+
+      // Si no tenemos propId, verificar primero si la aplicación ya tiene una propiedad existente
+      if (!propId && appId) {
+        const { data: existingAppProp } = await supabase
+          .from('properties')
+          .select('id')
+          .eq('application_id', appId)
+          .maybeSingle();
+
+        if (existingAppProp?.id) {
+          propId = existingAppProp.id;
+        }
+      }
 
       if (!propId) {
         const { data: newProp, error: propErr } = await withTimeout(

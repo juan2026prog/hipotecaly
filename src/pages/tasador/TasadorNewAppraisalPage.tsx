@@ -18,6 +18,7 @@ import {
 import { CanonicalGeoAddress } from '../../lib/geo/types';
 import { AddressFields } from '../../components/geo/AddressFields';
 import { GeoPrecisionBadge } from '../../components/geo/GeoPrecisionBadge';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import {
   Compass,
   MapPin,
@@ -39,6 +40,9 @@ export const TasadorNewAppraisalPage: React.FC = () => {
   const { tenant } = useTenant();
   const { user } = useAuth();
   const baseRoute = `/demo/${tenant.slug || 'estudio-nova'}/admin`;
+
+  // Tracking de propiedad canónica
+  const [canonicalPropertyId, setCanonicalPropertyId] = useState<string | null>(null);
 
   // Bloque A: Ubicación Geográfica Canónica (GeoCore)
   const [geoAddress, setGeoAddress] = useState<CanonicalGeoAddress>({
@@ -112,46 +116,81 @@ export const TasadorNewAppraisalPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  // Pre-carga automática de la propiedad canónica del expediente
+  // Carga autoritativa de la propiedad canónica desde la base de datos (public.properties)
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const qPadron = params.get('cadastralNumber') || params.get('padron');
-    const qDept = params.get('department');
-    const qCity = params.get('city') || params.get('locality');
-    const qNeigh = params.get('neighborhood');
-    const qAddr = params.get('address');
-    const qType = params.get('propertyType') as AppraisalPropertyType | null;
-    const qUnit = params.get('unit') || params.get('unitNumber');
-    const qFloor = params.get('floor');
-    const qBlock = params.get('block');
-    const qSurface = Number(params.get('surfaceM2')) || null;
-    const qBedrooms = Number(params.get('bedrooms')) || null;
-    const qBathrooms = Number(params.get('bathrooms')) || null;
+    const qPropId = params.get('propertyId') || params.get('property_id');
+    const qCaseId = params.get('caseId') || params.get('case_id') || params.get('applicationId') || params.get('application_id');
 
-    if (qPadron || qDept || qAddr || qCity || qUnit || qBlock) {
-      setGeoAddress((prev) => ({
-        ...prev,
-        department: qDept || prev.department,
-        locality: qCity || prev.locality,
-        neighborhood: qNeigh || prev.neighborhood,
-        streetName: qAddr || prev.streetName,
-        unitOrApt: qUnit || prev.unitOrApt,
-        floor: qFloor || prev.floor,
-        cadastralNumber: qPadron || prev.cadastralNumber,
-        formattedAddress: qAddr ? `${qAddr}, ${qCity || qDept || ''}` : prev.formattedAddress,
-      }));
-    }
-    if (qType) {
-      setPropertyType(qType);
-      setHorizontalProperty(qType === 'apartamento');
-    }
-    if (qSurface) {
-      setTotalAreaM2(qSurface);
-      setCoveredAreaM2(qSurface);
-      setBuiltAreaM2(qSurface);
-    }
-    if (qBedrooms) setBedrooms(qBedrooms);
-    if (qBathrooms) setBathrooms(qBathrooms);
+    if (qPropId) setCanonicalPropertyId(qPropId);
+
+    const loadCanonicalProperty = async () => {
+      if (!qPropId && !qCaseId) return;
+
+      try {
+        let propData: any = null;
+
+        if (isSupabaseConfigured) {
+          if (qPropId) {
+            const { data } = await supabase
+              .from('properties')
+              .select('*')
+              .eq('id', qPropId)
+              .maybeSingle();
+            propData = data;
+          } else if (qCaseId) {
+            const { data } = await supabase
+              .from('properties')
+              .select('*')
+              .eq('application_id', qCaseId)
+              .maybeSingle();
+            propData = data;
+          }
+        }
+
+        if (propData) {
+          setCanonicalPropertyId(propData.id);
+
+          setGeoAddress((prev) => ({
+            ...prev,
+            department: propData.department || prev.department,
+            locality: propData.city || propData.neighborhood || prev.locality,
+            neighborhood: propData.neighborhood || prev.neighborhood,
+            streetName: propData.street_name || propData.address || prev.streetName,
+            streetNumber: propData.street_number || prev.streetNumber,
+            unitOrApt: propData.unit_or_apartment || prev.unitOrApt,
+            floor: propData.floor || prev.floor,
+            postalCode: propData.postal_code || prev.postalCode,
+            cadastralNumber: propData.padron || propData.cadastral_number || prev.cadastralNumber,
+            latitude: propData.latitude || prev.latitude,
+            longitude: propData.longitude || prev.longitude,
+            verified: Boolean(propData.latitude && propData.longitude),
+            formattedAddress: propData.address ? `${propData.address}, ${propData.department || ''}` : prev.formattedAddress,
+          }));
+
+          if (propData.property_type) {
+            setPropertyType(propData.property_type as AppraisalPropertyType);
+            setHorizontalProperty(propData.cadastral_regime === 'PROPIEDAD_HORIZONTAL' || propData.property_type === 'apartamento');
+          }
+
+          const sM2 = Number(propData.built_surface_m2 || propData.surface_m2);
+          if (sM2 > 0) {
+            setTotalAreaM2(sM2);
+            setCoveredAreaM2(Number(propData.surface_m2) || sM2);
+            setBuiltAreaM2(Number(propData.built_surface_m2) || sM2);
+          }
+          if (propData.land_surface_m2) setLandAreaM2(Number(propData.land_surface_m2));
+          if (propData.uncovered_surface_m2) setBalconyOrTerraceM2(Number(propData.uncovered_surface_m2));
+          if (propData.bedrooms !== null && propData.bedrooms !== undefined) setBedrooms(Number(propData.bedrooms));
+          if (propData.bathrooms !== null && propData.bathrooms !== undefined) setBathrooms(Number(propData.bathrooms));
+          if (propData.garages !== null && propData.garages !== undefined) setGarages(Number(propData.garages));
+        }
+      } catch (err) {
+        console.warn('[TasadorNewAppraisalPage] Error loading canonical property:', err);
+      }
+    };
+
+    loadCanonicalProperty();
   }, []);
 
   const toggleAmenity = (key: keyof typeof amenities) => {
@@ -262,7 +301,75 @@ export const TasadorNewAppraisalPage: React.FC = () => {
 
     setSaving(true);
     try {
-      // Guardar el borrador con estado READY_FOR_COMPARABLES
+      // 1. Si existe una propiedad canónica asociada, sincronizar sus campos y provenance en public.properties
+      if (canonicalPropertyId && isSupabaseConfigured) {
+        try {
+          const { data: currentProp } = await supabase
+            .from('properties')
+            .select('field_provenance')
+            .eq('id', canonicalPropertyId)
+            .maybeSingle();
+
+          const existingProv = currentProp?.field_provenance || {};
+          const nowIso = new Date().toISOString();
+
+          // Actualizar procedencia con origen pericial/tasador
+          const updatedProv = { ...existingProv };
+          const updateFieldProv = (fieldName: string, val: any) => {
+            if (val !== undefined && val !== null) {
+              updatedProv[fieldName] = {
+                value: val,
+                source: 'APPRAISER_INSPECTION',
+                verification_status: 'VERIFIED',
+                verified_at: nowIso,
+                verified_by: user?.email || user?.id || 'tasador',
+                notes: 'Inspección técnica y tasación profesional',
+              };
+            }
+          };
+
+          if (geoAddress.cadastralNumber) updateFieldProv('padron', geoAddress.cadastralNumber);
+          if (propertyType) updateFieldProv('property_type', propertyType);
+          if (horizontalProperty) updateFieldProv('cadastral_regime', 'PROPIEDAD_HORIZONTAL');
+          if (builtAreaM2) updateFieldProv('built_surface_m2', Number(builtAreaM2));
+          if (coveredAreaM2) updateFieldProv('surface_m2', Number(coveredAreaM2));
+          if (landAreaM2) updateFieldProv('land_surface_m2', Number(landAreaM2));
+          if (geoAddress.unitOrApt) updateFieldProv('unit_or_apartment', geoAddress.unitOrApt);
+          if (geoAddress.floor) updateFieldProv('floor', geoAddress.floor);
+
+          await supabase
+            .from('properties')
+            .update({
+              property_type: propertyType,
+              department: geoAddress.department,
+              city: geoAddress.locality,
+              neighborhood: geoAddress.neighborhood,
+              address: geoAddress.formattedAddress || `${geoAddress.streetName} ${geoAddress.streetNumber}`.trim(),
+              street_name: geoAddress.streetName,
+              street_number: geoAddress.streetNumber,
+              unit_or_apartment: geoAddress.unitOrApt || null,
+              floor: geoAddress.floor || null,
+              padron: geoAddress.cadastralNumber || null,
+              cadastral_number: geoAddress.cadastralNumber || null,
+              latitude: geoAddress.latitude,
+              longitude: geoAddress.longitude,
+              built_surface_m2: Number(builtAreaM2) || Number(totalAreaM2) || null,
+              surface_m2: Number(coveredAreaM2) || Number(totalAreaM2) || null,
+              land_surface_m2: Number(landAreaM2) || null,
+              uncovered_surface_m2: Number(balconyOrTerraceM2) || null,
+              bedrooms: bedrooms,
+              bathrooms: bathrooms,
+              garages: garages,
+              field_provenance: updatedProv,
+              updated_at: nowIso,
+            })
+            .eq('id', canonicalPropertyId);
+        } catch (syncErr) {
+          console.warn('[TasadorNewAppraisalPage] Error updating canonical property:', syncErr);
+        }
+      }
+
+      // 2. Guardar el borrador de tasación con estado READY_FOR_COMPARABLES
       const saved = await service.saveAppraisal({
         organizationId: tenant.id,
         createdBy: user?.id || null,

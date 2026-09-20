@@ -34,6 +34,7 @@ interface CaseTasadorSectionProps {
   organizationId: string;
   applicantName?: string;
   initialPropertyData?: {
+    id?: string;
     padron?: string | null;
     parentPadron?: string | null;
     cadastralNumber?: string | null;
@@ -103,19 +104,19 @@ export const CaseTasadorSection: React.FC<CaseTasadorSectionProps> = ({
       const links = linkService.getCaseCollaterals(caseId, organizationId);
       let currentLink = links.find((l) => l.isPrimaryCollateral) || links[0] || null;
 
-      // Si no existe vinculación y se proporcionaron datos iniciales, auto-vincular
-      if (!currentLink && initialPropertyData) {
+      // Si no existe vinculación y se proporcionaron datos reales de propiedad, vincular
+      if (!currentLink && initialPropertyData && (initialPropertyData.address || initialPropertyData.padron || initialPropertyData.id)) {
         const matchRes = await linkService.linkPropertyToCase({
           caseId,
           organizationId,
           department: initialPropertyData.department || 'Montevideo',
-          locality: initialPropertyData.locality || 'Centro',
-          cadastralNumber: initialPropertyData.cadastralNumber || undefined,
-          address: initialPropertyData.address || 'Inmueble del expediente',
+          locality: initialPropertyData.locality || '',
+          cadastralNumber: initialPropertyData.cadastralNumber || initialPropertyData.padron || undefined,
+          address: initialPropertyData.address || '',
           propertyType: initialPropertyData.propertyType || 'apartamento',
-          coveredSurfaceM2: initialPropertyData.coveredSurfaceM2 || 65,
-          bedrooms: initialPropertyData.bedrooms || 2,
-          bathrooms: initialPropertyData.bathrooms || 1,
+          coveredSurfaceM2: initialPropertyData.coveredSurfaceM2 || 0,
+          bedrooms: initialPropertyData.bedrooms || 0,
+          bathrooms: initialPropertyData.bathrooms || 0,
         });
         currentLink = matchRes.link;
       }
@@ -320,17 +321,21 @@ export const CaseTasadorSection: React.FC<CaseTasadorSectionProps> = ({
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
               collateralLink?.resolutionStatus === 'MATCHED'
                 ? 'bg-emerald-100 text-emerald-800'
-                : 'bg-amber-100 text-amber-800'
+                : collateralLink?.resolutionStatus === 'PROVISIONAL'
+                ? 'bg-amber-100 text-amber-800'
+                : 'bg-slate-100 text-slate-600'
             }`}>
-              {collateralLink?.resolutionStatus || 'SIN VINCULAR'}
+              {collateralLink?.resolutionStatus || (initialPropertyData ? 'REGISTRADO' : 'SIN PROPIEDAD')}
             </span>
           </div>
           <p className="font-bold text-navy">
-            {collateralLink?.provisionalData?.address || initialPropertyData?.address || 'Padrón Catastral en Verificación'}
+            {collateralLink?.provisionalData?.address || initialPropertyData?.address || (initialPropertyData?.padron ? `Padrón ${initialPropertyData.padron}` : 'No hay una propiedad asociada a este expediente.')}
           </p>
-          <p className="text-slate-500">
-            {initialPropertyData?.department || 'Montevideo'} — {initialPropertyData?.coveredSurfaceM2 || 65} m² edif. — {initialPropertyData?.bedrooms || 2} dorm.
-          </p>
+          {(initialPropertyData?.department || initialPropertyData?.coveredSurfaceM2) ? (
+            <p className="text-slate-500">
+              {initialPropertyData?.department || ''}{initialPropertyData?.locality ? `, ${initialPropertyData.locality}` : ''} {initialPropertyData?.coveredSurfaceM2 ? `— ${initialPropertyData.coveredSurfaceM2} m² edif.` : ''} {initialPropertyData?.bedrooms !== undefined ? `— ${initialPropertyData.bedrooms} dorm.` : ''}
+            </p>
+          ) : null}
         </div>
 
         {collateralLink?.resolutionNotes && (
