@@ -109,11 +109,11 @@ export const CaseTasadorSection: React.FC<CaseTasadorSectionProps> = ({
         const matchRes = await linkService.linkPropertyToCase({
           caseId,
           organizationId,
-          department: initialPropertyData.department || 'Montevideo',
+          department: initialPropertyData.department || '',
           locality: initialPropertyData.locality || '',
           cadastralNumber: initialPropertyData.cadastralNumber || initialPropertyData.padron || undefined,
           address: initialPropertyData.address || '',
-          propertyType: initialPropertyData.propertyType || 'apartamento',
+          propertyType: initialPropertyData.propertyType || '',
           coveredSurfaceM2: initialPropertyData.coveredSurfaceM2 || 0,
           bedrooms: initialPropertyData.bedrooms || 0,
           bathrooms: initialPropertyData.bathrooms || 0,

@@ -195,13 +195,13 @@ export interface ResolvedCaseData {
     occupation?: string;
   };
   property: {
-    padron: string;
+    padron?: string;
     parent_padron?: string;
-    department: string;
-    city: string;
+    department?: string;
+    city?: string;
     neighborhood?: string;
-    address: string;
-    type: string;
+    address?: string;
+    type?: string;
     regime?: string;
     unit?: string;
     floor?: string;
@@ -214,25 +214,25 @@ export interface ResolvedCaseData {
     cadastral_solar?: string;
     cadastral_plan?: string;
     cadastral_status?: string;
-    area_m2: number;
+    area_m2?: number;
     built_surface_m2?: number;
     land_surface_m2?: number;
-    bedrooms: number;
-    bathrooms: number;
-    estimated_value: number;
-    appraised_value: number;
-    guarantee_value: number;
-    legal_status: string;
+    bedrooms?: number;
+    bathrooms?: number;
+    estimated_value?: number;
+    appraised_value?: number;
+    guarantee_value?: number;
+    legal_status?: string;
   };
   loan: {
-    requested_amount: number;
-    approved_amount: number;
+    requested_amount?: number;
+    approved_amount?: number;
     currency: string;
-    term_months: number;
-    interest_rate: number;
-    monthly_payment: number;
-    ltv: number;
-    repayment_mode: string;
+    term_months?: number;
+    interest_rate?: number;
+    monthly_payment?: number;
+    ltv?: number;
+    repayment_mode?: string;
   };
   lender?: {
     name: string;

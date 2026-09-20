@@ -163,16 +163,16 @@ export const DocumentGenerationModal: React.FC<DocumentGenerationModalProps> = (
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 pt-1">
                     <div>
-                      <strong>Titular:</strong> {caseData.applicant.full_name} ({caseData.applicant.document_id})
+                      <strong>Titular:</strong> {caseData.applicant.full_name || 'N/A'} {caseData.applicant.document_id ? `(${caseData.applicant.document_id})` : ''}
                     </div>
                     <div>
-                      <strong>Inmueble:</strong> Padrón {caseData.property.padron} ({caseData.property.department})
+                      <strong>Inmueble:</strong> {caseData.property.padron ? `Padrón ${caseData.property.padron}` : 'Sin padrón'} {caseData.property.department ? `(${caseData.property.department})` : ''}
                     </div>
                     <div>
-                      <strong>Monto:</strong> {caseData.loan.currency} {caseData.loan.requested_amount.toLocaleString('es-UY')}
+                      <strong>Monto:</strong> {caseData.loan.currency || 'USD'} {caseData.loan.requested_amount !== undefined && caseData.loan.requested_amount !== null ? caseData.loan.requested_amount.toLocaleString('es-UY') : 'N/A'}
                     </div>
                     <div>
-                      <strong>LTV / Plazo:</strong> {caseData.loan.ltv}% · {caseData.loan.term_months} meses
+                      <strong>LTV / Plazo:</strong> {caseData.loan.ltv !== undefined ? `${caseData.loan.ltv}%` : 'N/A'} · {caseData.loan.term_months !== undefined ? `${caseData.loan.term_months} meses` : 'N/A'}
                     </div>
                   </div>
                 </div>

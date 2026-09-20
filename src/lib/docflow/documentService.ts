@@ -874,17 +874,36 @@ export class DocumentService {
       }
     }
 
-    // Default / Sanitized Structure (Strictly real data or undefined / calculated from real values)
-    const requested = Number(app?.requested_amount) || 0;
-    const estVal = Number(app?.property?.estimated_value) || 0;
-    const appVal = Number(app?.valuation?.preliminary_value) || estVal;
-    const ltv = estVal > 0 ? (requested / estVal) * 100 : 0;
-    const term = Number(app?.term_months) || 0;
-    const rate = Number(app?.interest_rate) || 11.5;
-    const monthlyInt = requested > 0 && rate > 0 ? (requested * (rate / 100)) / 12 : 0;
+    // Default / Sanitized Structure (Strictly real data or undefined - zero fake defaults)
+    const rawRequested = app?.requested_amount !== null && app?.requested_amount !== undefined ? Number(app.requested_amount) : undefined;
+    const requested = rawRequested !== undefined && !isNaN(rawRequested) ? rawRequested : undefined;
 
-    const createdAt = app?.created_at ? new Date(app.created_at) : new Date();
-    const daysOpen = Math.max(1, Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24)));
+    const rawEstVal = app?.property?.estimated_value !== null && app?.property?.estimated_value !== undefined ? Number(app.property.estimated_value) : undefined;
+    const estVal = rawEstVal !== undefined && !isNaN(rawEstVal) ? rawEstVal : undefined;
+
+    const rawAppVal = app?.valuation?.preliminary_value !== null && app?.valuation?.preliminary_value !== undefined
+      ? Number(app.valuation.preliminary_value)
+      : estVal;
+    const appVal = rawAppVal !== undefined && !isNaN(rawAppVal) ? rawAppVal : undefined;
+
+    const ltv = (requested !== undefined && estVal !== undefined && estVal > 0)
+      ? Math.round(((requested / estVal) * 100) * 10) / 10
+      : undefined;
+
+    const rawTerm = app?.term_months !== null && app?.term_months !== undefined ? Number(app.term_months) : undefined;
+    const term = rawTerm !== undefined && !isNaN(rawTerm) ? rawTerm : undefined;
+
+    const rawRate = app?.interest_rate !== null && app?.interest_rate !== undefined ? Number(app.interest_rate) : undefined;
+    const rate = rawRate !== undefined && !isNaN(rawRate) ? rawRate : undefined;
+
+    const monthlyInt = (requested !== undefined && rate !== undefined && rate > 0)
+      ? Math.round((requested * (rate / 100)) / 12)
+      : undefined;
+
+    const createdAt = app?.created_at ? new Date(app.created_at) : undefined;
+    const daysOpen = createdAt
+      ? Math.max(1, Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24)))
+      : 1;
 
     const now = new Date();
     const monthsEs = [
@@ -924,11 +943,36 @@ export class DocumentService {
       ? `${applicantFirstName || ''} ${applicantLastName || ''}`.trim()
       : undefined;
 
+    const rawIncome = app?.income?.declared_amount !== null && app?.income?.declared_amount !== undefined
+      ? Number(app.income.declared_amount)
+      : app?.income?.monthly_amount !== null && app?.income?.monthly_amount !== undefined
+      ? Number(app.income.monthly_amount)
+      : undefined;
+    const monthlyIncome = rawIncome !== undefined && !isNaN(rawIncome) ? rawIncome : undefined;
+
+    const rawArea = prop?.built_surface_m2 !== null && prop?.built_surface_m2 !== undefined
+      ? Number(prop.built_surface_m2)
+      : prop?.surface_m2 !== null && prop?.surface_m2 !== undefined
+      ? Number(prop.surface_m2)
+      : undefined;
+    const areaM2 = rawArea !== undefined && !isNaN(rawArea) ? rawArea : undefined;
+
+    const rawBedrooms = prop?.bedrooms !== null && prop?.bedrooms !== undefined ? Number(prop.bedrooms) : undefined;
+    const bedrooms = rawBedrooms !== undefined && !isNaN(rawBedrooms) ? rawBedrooms : undefined;
+
+    const rawBathrooms = prop?.bathrooms !== null && prop?.bathrooms !== undefined ? Number(prop.bathrooms) : undefined;
+    const bathrooms = rawBathrooms !== undefined && !isNaN(rawBathrooms) ? rawBathrooms : undefined;
+
+    const rawApproved = app?.approved_amount !== null && app?.approved_amount !== undefined ? Number(app.approved_amount) : undefined;
+    const approvedAmount = rawApproved !== undefined && !isNaN(rawApproved) ? rawApproved : undefined;
+
+    const rawRepayment = app?.repayment_mode ? String(app.repayment_mode).replace('_', ' ') : undefined;
+
     return {
       case: {
         id: app?.id || (typeof caseIdOrApp === 'string' ? caseIdOrApp : ''),
         code: app?.public_id || '',
-        created_at: app?.created_at || now.toISOString(),
+        created_at: app?.created_at || undefined,
         status: app?.status || 'evaluacion',
         days_open: daysOpen,
         source: app?.source || 'native_white_label',
@@ -949,7 +993,7 @@ export class DocumentService {
         marital_status: app?.borrower?.civil_status || undefined,
         occupation: app?.borrower?.occupation || undefined,
         employer: app?.borrower?.employer || undefined,
-        monthly_income: Number(app?.income?.declared_amount || app?.income?.monthly_amount) || 0,
+        monthly_income: monthlyIncome as any,
         clearing_status: app?.borrower?.clearing_status || undefined,
       },
       spouse: app?.borrower?.spouse_full_name || app?.borrower?.spouse_document_id ? {
@@ -959,13 +1003,13 @@ export class DocumentService {
         phone: app?.borrower?.spouse_phone || undefined,
       } : undefined,
       property: {
-        padron: resolvedPadron || '',
+        padron: resolvedPadron,
         parent_padron: resolvedParentPadron,
-        department: app?.property?.department || '',
-        city: app?.property?.city || app?.property?.locality || '',
+        department: app?.property?.department || undefined,
+        city: app?.property?.city || app?.property?.locality || undefined,
         neighborhood: app?.property?.neighborhood || undefined,
-        address: app?.property?.address || '',
-        type: app?.property?.property_type || '',
+        address: app?.property?.address || undefined,
+        type: app?.property?.property_type || undefined,
         regime: resolvedRegime ? String(resolvedRegime).replace('_', ' ') : undefined,
         unit: resolvedUnit,
         floor: resolvedFloor,
@@ -977,26 +1021,26 @@ export class DocumentService {
         cadastral_manzana: resolvedCadastralManzana,
         cadastral_solar: resolvedCadastralSolar,
         cadastral_plan: resolvedCadastralPlan,
-        cadastral_status: app?.property?.cadastral_status || 'declarado',
-        area_m2: Number(app?.property?.built_surface_m2 || app?.property?.surface_m2) || 0,
-        built_surface_m2: Number(app?.property?.built_surface_m2 || app?.property?.surface_m2) || undefined,
-        land_surface_m2: Number(app?.property?.land_surface_m2) || undefined,
-        bedrooms: Number(app?.property?.bedrooms) || 0,
-        bathrooms: Number(app?.property?.bathrooms) || 0,
+        cadastral_status: app?.property?.cadastral_status || undefined,
+        area_m2: areaM2,
+        built_surface_m2: prop?.built_surface_m2 !== null && prop?.built_surface_m2 !== undefined ? Number(prop.built_surface_m2) : undefined,
+        land_surface_m2: prop?.land_surface_m2 !== null && prop?.land_surface_m2 !== undefined ? Number(prop.land_surface_m2) : undefined,
+        bedrooms: bedrooms,
+        bathrooms: bathrooms,
         estimated_value: estVal,
         appraised_value: appVal,
-        guarantee_value: appVal > 0 ? appVal * 0.85 : 0,
-        legal_status: app?.property?.legal_status ? String(app.property.legal_status).replace('_', ' ') : 'Libre de gravámenes',
+        guarantee_value: appVal !== undefined && appVal > 0 ? appVal * 0.85 : undefined,
+        legal_status: app?.property?.legal_status ? String(app.property.legal_status).replace('_', ' ') : undefined,
       },
       loan: {
         requested_amount: requested,
-        approved_amount: Number(app?.approved_amount) || requested,
+        approved_amount: approvedAmount,
         currency: app?.currency || 'USD',
         term_months: term,
         interest_rate: rate,
-        monthly_payment: Math.round(monthlyInt),
-        ltv: Math.round(ltv * 10) / 10,
-        repayment_mode: app?.repayment_mode || 'Solo Intereses',
+        monthly_payment: monthlyInt,
+        ltv: ltv,
+        repayment_mode: rawRepayment,
       },
       lender: app?.lender ? {
         name: app.lender.name || '',

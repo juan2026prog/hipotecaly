@@ -18,6 +18,11 @@ import {
 import { CanonicalGeoAddress } from '../../lib/geo/types';
 import { AddressFields } from '../../components/geo/AddressFields';
 import { GeoPrecisionBadge } from '../../components/geo/GeoPrecisionBadge';
+import {
+  FieldProvenanceRecord,
+  FieldProvenanceSource,
+  FieldVerificationStatus,
+} from '../../lib/types';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import {
   Compass,
@@ -44,12 +49,12 @@ export const TasadorNewAppraisalPage: React.FC = () => {
   // Tracking de propiedad canónica
   const [canonicalPropertyId, setCanonicalPropertyId] = useState<string | null>(null);
 
-  // Bloque A: Ubicación Geográfica Canónica (GeoCore)
+  // Bloque A: Ubicación Geográfica Canónica (GeoCore) - Inicializada limpia sin defaults inventados
   const [geoAddress, setGeoAddress] = useState<CanonicalGeoAddress>({
     country: 'Uruguay',
     countryCode: 'UY',
-    department: 'Montevideo',
-    locality: 'Montevideo',
+    department: '',
+    locality: '',
     neighborhood: '',
     streetName: '',
     streetNumber: '',
@@ -65,47 +70,47 @@ export const TasadorNewAppraisalPage: React.FC = () => {
     formattedAddress: '',
   });
 
-  // Bloque B: Tipo de Inmueble
+  // Bloque B: Tipo de Inmueble (Limpio)
   const [propertyType, setPropertyType] = useState<AppraisalPropertyType>('apartamento');
   const [subType, _setSubType] = useState('');
-  const [horizontalProperty, setHorizontalProperty] = useState(true);
+  const [horizontalProperty, setHorizontalProperty] = useState(false);
 
-  // Bloque C: Superficies
-  const [totalAreaM2, setTotalAreaM2] = useState<number | ''>(82);
-  const [builtAreaM2, setBuiltAreaM2] = useState<number | ''>(78);
-  const [coveredAreaM2, setCoveredAreaM2] = useState<number | ''>(75);
+  // Bloque C: Superficies (Limpias / Vacías sin defaults ficticios)
+  const [totalAreaM2, setTotalAreaM2] = useState<number | ''>('');
+  const [builtAreaM2, setBuiltAreaM2] = useState<number | ''>('');
+  const [coveredAreaM2, setCoveredAreaM2] = useState<number | ''>('');
   const [landAreaM2, setLandAreaM2] = useState<number | ''>('');
-  const [balconyOrTerraceM2, setBalconyOrTerraceM2] = useState<number | ''>(4);
+  const [balconyOrTerraceM2, setBalconyOrTerraceM2] = useState<number | ''>('');
 
-  // Bloque D: Distribución
-  const [bedrooms, setBedrooms] = useState<number>(2);
-  const [bathrooms, setBathrooms] = useState<number>(2);
+  // Bloque D: Distribución (Valores iniciales neutrales)
+  const [bedrooms, setBedrooms] = useState<number>(1);
+  const [bathrooms, setBathrooms] = useState<number>(1);
   const [toilettes, setToilettes] = useState<number>(0);
-  const [garages, setGarages] = useState<number>(1);
-  const [floorLevel, _setFloorLevel] = useState<number | ''>(4);
+  const [garages, setGarages] = useState<number>(0);
+  const [floorLevel, _setFloorLevel] = useState<number | ''>('');
 
-  // Bloque E: Amenities
+  // Bloque E: Amenities (Todos desactivados por defecto en producción)
   const [amenities, setAmenities] = useState({
-    balcony: true,
+    balcony: false,
     terrace: false,
     patio: false,
     garden: false,
-    barbecue: true,
+    barbecue: false,
     pool: false,
-    elevator: true,
-    concierge: true,
+    elevator: false,
+    concierge: false,
     security24h: false,
-    heating: true,
-    airConditioning: true,
+    heating: false,
+    airConditioning: false,
     gym: false,
     seaFront: false,
-    openView: true,
-    storage: true,
+    openView: false,
+    storage: false,
   });
 
   // Bloque F: Estado
   const [condition, setCondition] = useState<BuildingCondition>('bueno');
-  const [constructionYear, setConstructionYear] = useState<number | ''>(2016);
+  const [constructionYear, setConstructionYear] = useState<number | ''>('');
 
   // Bloque G: Fotos
   const [photos, setPhotos] = useState<AppraisalPhoto[]>([]);
@@ -153,24 +158,28 @@ export const TasadorNewAppraisalPage: React.FC = () => {
 
           setGeoAddress((prev) => ({
             ...prev,
-            department: propData.department || prev.department,
-            locality: propData.city || propData.neighborhood || prev.locality,
-            neighborhood: propData.neighborhood || prev.neighborhood,
-            streetName: propData.street_name || propData.address || prev.streetName,
-            streetNumber: propData.street_number || prev.streetNumber,
-            unitOrApt: propData.unit_or_apartment || prev.unitOrApt,
-            floor: propData.floor || prev.floor,
-            postalCode: propData.postal_code || prev.postalCode,
-            cadastralNumber: propData.padron || propData.cadastral_number || prev.cadastralNumber,
-            latitude: propData.latitude || prev.latitude,
-            longitude: propData.longitude || prev.longitude,
-            verified: Boolean(propData.latitude && propData.longitude),
-            formattedAddress: propData.address ? `${propData.address}, ${propData.department || ''}` : prev.formattedAddress,
+            department: propData.department || '',
+            locality: propData.city || propData.neighborhood || '',
+            neighborhood: propData.neighborhood || '',
+            streetName: propData.street_name || propData.address || '',
+            streetNumber: propData.street_number || '',
+            unitOrApt: propData.unit_or_apartment || '',
+            floor: propData.floor || '',
+            postalCode: propData.postal_code || null,
+            cadastralNumber: propData.padron || propData.cadastral_number || '',
+            latitude: propData.latitude || null,
+            longitude: propData.longitude || null,
+            verified: Boolean(propData.geo_verified || propData.is_geocoded_exact || (propData.latitude && propData.longitude && propData.precision === 'EXACT_ADDRESS')),
+            formattedAddress: propData.address || '',
           }));
 
           if (propData.property_type) {
             setPropertyType(propData.property_type as AppraisalPropertyType);
-            setHorizontalProperty(propData.cadastral_regime === 'PROPIEDAD_HORIZONTAL' || propData.property_type === 'apartamento');
+          }
+          if (propData.cadastral_regime === 'PROPIEDAD_HORIZONTAL') {
+            setHorizontalProperty(true);
+          } else if (propData.cadastral_regime === 'COMUN' || propData.cadastral_regime === 'RURAL') {
+            setHorizontalProperty(false);
           }
 
           const sM2 = Number(propData.built_surface_m2 || propData.surface_m2);
@@ -248,7 +257,7 @@ export const TasadorNewAppraisalPage: React.FC = () => {
 
   // Construir objeto de propiedad objetivo con GeoCore canónico
   const targetProperty: AppraisalPropertyInput = {
-    title: `${propertyType.toUpperCase()} en ${geoAddress.neighborhood || geoAddress.locality || geoAddress.department}`,
+    title: `${propertyType.toUpperCase()}${geoAddress.neighborhood || geoAddress.locality || geoAddress.department ? ` en ${geoAddress.neighborhood || geoAddress.locality || geoAddress.department}` : ''}`,
     propertyType,
     subType: subType || undefined,
     horizontalProperty,
@@ -301,52 +310,58 @@ export const TasadorNewAppraisalPage: React.FC = () => {
 
     setSaving(true);
     try {
-      // 1. Si existe una propiedad canónica asociada, sincronizar sus campos y provenance en public.properties
+      // 1. Si existe una propiedad canónica asociada, sincronizar sus campos enriquecidos en public.properties con procedencia APPRAISAL_ENRICHED (UNVERIFIED)
       if (canonicalPropertyId && isSupabaseConfigured) {
         try {
           const { data: currentProp } = await supabase
             .from('properties')
-            .select('field_provenance')
+            .select('field_provenance, cadastral_regime')
             .eq('id', canonicalPropertyId)
             .maybeSingle();
 
-          const existingProv = currentProp?.field_provenance || {};
+          const existingProv: Record<string, FieldProvenanceRecord> = currentProp?.field_provenance || {};
           const nowIso = new Date().toISOString();
 
-          // Actualizar procedencia con origen pericial/tasador
-          const updatedProv = { ...existingProv };
-          const updateFieldProv = (fieldName: string, val: any) => {
+          // Enriquecimiento durante tasación: source = APPRAISAL_ENRICHED, status = UNVERIFIED
+          // (No marcar automáticamente como VERIFIED sin acción explícita y evidencia)
+          const updatedProv: Record<string, FieldProvenanceRecord> = { ...existingProv };
+          const enrichFieldProv = (fieldName: string, val: any) => {
             if (val !== undefined && val !== null) {
+              const prev = updatedProv[fieldName];
+              // Si el campo ya contaba con verificación previa y el valor no fue alterado, conservar VERIFIED
+              if (prev && prev.verification_status === 'VERIFIED' && prev.value === val) {
+                return;
+              }
               updatedProv[fieldName] = {
                 value: val,
-                source: 'APPRAISER_INSPECTION',
-                verification_status: 'VERIFIED',
-                verified_at: nowIso,
-                verified_by: user?.email || user?.id || 'tasador',
-                notes: 'Inspección técnica y tasación profesional',
+                source: 'APPRAISAL_ENRICHED' as FieldProvenanceSource,
+                verification_status: 'UNVERIFIED' as FieldVerificationStatus,
+                verified_at: null,
+                verified_by: null,
+                evidence_ref: null,
+                notes: 'Dato técnico completado/enriquecido durante el flujo de tasación',
               };
             }
           };
 
-          if (geoAddress.cadastralNumber) updateFieldProv('padron', geoAddress.cadastralNumber);
-          if (propertyType) updateFieldProv('property_type', propertyType);
-          if (horizontalProperty) updateFieldProv('cadastral_regime', 'PROPIEDAD_HORIZONTAL');
-          if (builtAreaM2) updateFieldProv('built_surface_m2', Number(builtAreaM2));
-          if (coveredAreaM2) updateFieldProv('surface_m2', Number(coveredAreaM2));
-          if (landAreaM2) updateFieldProv('land_surface_m2', Number(landAreaM2));
-          if (geoAddress.unitOrApt) updateFieldProv('unit_or_apartment', geoAddress.unitOrApt);
-          if (geoAddress.floor) updateFieldProv('floor', geoAddress.floor);
+          if (geoAddress.cadastralNumber) enrichFieldProv('padron', geoAddress.cadastralNumber);
+          if (propertyType) enrichFieldProv('property_type', propertyType);
+          if (builtAreaM2) enrichFieldProv('built_surface_m2', Number(builtAreaM2));
+          if (coveredAreaM2) enrichFieldProv('surface_m2', Number(coveredAreaM2));
+          if (landAreaM2) enrichFieldProv('land_surface_m2', Number(landAreaM2));
+          if (geoAddress.unitOrApt) enrichFieldProv('unit_or_apartment', geoAddress.unitOrApt);
+          if (geoAddress.floor) enrichFieldProv('floor', geoAddress.floor);
 
           await supabase
             .from('properties')
             .update({
               property_type: propertyType,
-              department: geoAddress.department,
-              city: geoAddress.locality,
-              neighborhood: geoAddress.neighborhood,
-              address: geoAddress.formattedAddress || `${geoAddress.streetName} ${geoAddress.streetNumber}`.trim(),
-              street_name: geoAddress.streetName,
-              street_number: geoAddress.streetNumber,
+              department: geoAddress.department || null,
+              city: geoAddress.locality || null,
+              neighborhood: geoAddress.neighborhood || null,
+              address: geoAddress.formattedAddress || `${geoAddress.streetName} ${geoAddress.streetNumber}`.trim() || null,
+              street_name: geoAddress.streetName || null,
+              street_number: geoAddress.streetNumber || null,
               unit_or_apartment: geoAddress.unitOrApt || null,
               floor: geoAddress.floor || null,
               padron: geoAddress.cadastralNumber || null,
