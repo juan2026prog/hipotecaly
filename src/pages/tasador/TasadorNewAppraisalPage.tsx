@@ -10,10 +10,10 @@ import { useTenant } from '../../contexts/TenantContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { AppraisalService } from '../../lib/tasador/appraisal/AppraisalService';
 import {
-  AppraisalPropertyInput,
   AppraisalPropertyType,
   BuildingCondition,
   AppraisalPhoto,
+  buildAppraisalTargetProperty,
 } from '../../lib/tasador/appraisal/appraisalTypes';
 import { CanonicalGeoAddress } from '../../lib/geo/types';
 import { AddressFields } from '../../components/geo/AddressFields';
@@ -166,14 +166,28 @@ export const TasadorNewAppraisalPage: React.FC = () => {
             setHorizontalProperty(false);
           }
 
-          const sM2 = Number(propData.built_surface_m2 || propData.surface_m2);
-          if (sM2 > 0) {
-            setTotalAreaM2(sM2);
-            setCoveredAreaM2(Number(propData.surface_m2) || sM2);
-            setBuiltAreaM2(Number(propData.built_surface_m2) || sM2);
+          if (propData.surface_m2 !== null && propData.surface_m2 !== undefined) {
+            const s = Number(propData.surface_m2);
+            if (!isNaN(s) && s > 0) {
+              setCoveredAreaM2(s);
+              setTotalAreaM2(s);
+            }
           }
-          if (propData.land_surface_m2) setLandAreaM2(Number(propData.land_surface_m2));
-          if (propData.uncovered_surface_m2) setBalconyOrTerraceM2(Number(propData.uncovered_surface_m2));
+          if (propData.built_surface_m2 !== null && propData.built_surface_m2 !== undefined) {
+            const b = Number(propData.built_surface_m2);
+            if (!isNaN(b) && b > 0) {
+              setBuiltAreaM2(b);
+              if (!propData.surface_m2) setTotalAreaM2(b);
+            }
+          }
+          if (propData.land_surface_m2 !== null && propData.land_surface_m2 !== undefined) {
+            const l = Number(propData.land_surface_m2);
+            if (!isNaN(l) && l > 0) setLandAreaM2(l);
+          }
+          if (propData.uncovered_surface_m2 !== null && propData.uncovered_surface_m2 !== undefined) {
+            const u = Number(propData.uncovered_surface_m2);
+            if (!isNaN(u) && u >= 0) setBalconyOrTerraceM2(u);
+          }
           if (propData.bedrooms !== null && propData.bedrooms !== undefined) setBedrooms(Number(propData.bedrooms));
           if (propData.bathrooms !== null && propData.bathrooms !== undefined) setBathrooms(Number(propData.bathrooms));
           if (propData.garages !== null && propData.garages !== undefined) setGarages(Number(propData.garages));
@@ -259,13 +273,11 @@ export const TasadorNewAppraisalPage: React.FC = () => {
       return;
     }
 
-    // Construir objeto de propiedad objetivo con GeoCore canónico y ZERO HIDDEN DEFAULTS
-    const targetProperty: AppraisalPropertyInput = {
-      title: `${propertyType.toUpperCase()}${geoAddress.neighborhood || geoAddress.locality || geoAddress.department ? ` en ${geoAddress.neighborhood || geoAddress.locality || geoAddress.department}` : ''}`,
+    // Construir objeto de propiedad objetivo mediante builder puro con ZERO HIDDEN DEFAULTS y ZERO INFERRED SURFACES
+    const targetProperty = buildAppraisalTargetProperty({
       propertyType: propertyType as AppraisalPropertyType,
       subType: subType || undefined,
       horizontalProperty: horizontalProperty !== undefined ? horizontalProperty : undefined,
-      operationType: 'SALE',
       location: {
         country: geoAddress.country || 'Uruguay',
         department: geoAddress.department,
@@ -278,28 +290,29 @@ export const TasadorNewAppraisalPage: React.FC = () => {
         cadastralNumber: geoAddress.cadastralNumber || undefined,
         latitude: geoAddress.latitude,
         longitude: geoAddress.longitude,
-        isGeocodedExact: Boolean(geoAddress.verified && geoAddress.latitude && geoAddress.longitude && (geoAddress.precision === 'EXACT_ADDRESS' || geoAddress.precision === 'STREET_NUMBER')),
+        isGeocodedExact: Boolean(
+          geoAddress.verified &&
+            geoAddress.latitude &&
+            geoAddress.longitude &&
+            (geoAddress.precision === 'EXACT_ADDRESS' || geoAddress.precision === 'STREET_NUMBER')
+        ),
       },
-      surfaces: {
-        totalAreaM2: typeof totalAreaM2 === 'number' ? totalAreaM2 : undefined,
-        builtAreaM2: typeof builtAreaM2 === 'number' ? builtAreaM2 : (typeof totalAreaM2 === 'number' ? totalAreaM2 : undefined),
-        coveredAreaM2: typeof coveredAreaM2 === 'number' ? coveredAreaM2 : (typeof totalAreaM2 === 'number' ? totalAreaM2 : undefined),
-        landAreaM2: typeof landAreaM2 === 'number' ? landAreaM2 : undefined,
-        balconyOrTerraceM2: typeof balconyOrTerraceM2 === 'number' ? balconyOrTerraceM2 : undefined,
-      },
-      layout: {
-        bedrooms: typeof bedrooms === 'number' ? bedrooms : undefined,
-        bathrooms: typeof bathrooms === 'number' ? bathrooms : undefined,
-        toilettes: typeof toilettes === 'number' ? toilettes : undefined,
-        garages: typeof garages === 'number' ? garages : undefined,
-        floorLevel: typeof floorLevel === 'number' ? floorLevel : undefined,
-      },
-      amenities: Object.keys(amenities).length > 0 ? amenities : {},
-      condition: condition ? (condition as BuildingCondition) : undefined,
-      constructionYear: typeof constructionYear === 'number' ? constructionYear : undefined,
+      totalAreaM2,
+      builtAreaM2,
+      coveredAreaM2,
+      landAreaM2,
+      balconyOrTerraceM2,
+      bedrooms,
+      bathrooms,
+      toilettes,
+      garages,
+      floorLevel,
+      amenities,
+      condition,
+      constructionYear,
       photos,
-      observations: observations || undefined,
-    };
+      observations,
+    });
 
     const service = AppraisalService.getInstance();
     const validation = service.validateForComparables(targetProperty);
@@ -325,10 +338,10 @@ export const TasadorNewAppraisalPage: React.FC = () => {
           const nowIso = new Date().toISOString();
 
           // Enriquecimiento durante tasación: source = APPRAISAL_ENRICHED, status = UNVERIFIED
-          // (No marcar automáticamente como VERIFIED sin acción explícita y evidencia)
+          // (Solo registrar provenance si el usuario/tasador efectivamente informó el dato)
           const updatedProv: Record<string, FieldProvenanceRecord> = { ...existingProv };
           const enrichFieldProv = (fieldName: string, val: any) => {
-            if (val !== undefined && val !== null) {
+            if (val !== undefined && val !== null && val !== '') {
               const prev = updatedProv[fieldName];
               // Si el campo ya contaba con verificación previa y el valor no fue alterado, conservar VERIFIED
               if (prev && prev.verification_status === 'VERIFIED' && prev.value === val) {
@@ -348,9 +361,9 @@ export const TasadorNewAppraisalPage: React.FC = () => {
 
           if (geoAddress.cadastralNumber) enrichFieldProv('padron', geoAddress.cadastralNumber);
           if (propertyType) enrichFieldProv('property_type', propertyType);
-          if (builtAreaM2) enrichFieldProv('built_surface_m2', Number(builtAreaM2));
-          if (coveredAreaM2) enrichFieldProv('surface_m2', Number(coveredAreaM2));
-          if (landAreaM2) enrichFieldProv('land_surface_m2', Number(landAreaM2));
+          if (typeof builtAreaM2 === 'number' && !isNaN(builtAreaM2)) enrichFieldProv('built_surface_m2', builtAreaM2);
+          if (typeof coveredAreaM2 === 'number' && !isNaN(coveredAreaM2)) enrichFieldProv('surface_m2', coveredAreaM2);
+          if (typeof landAreaM2 === 'number' && !isNaN(landAreaM2)) enrichFieldProv('land_surface_m2', landAreaM2);
           if (geoAddress.unitOrApt) enrichFieldProv('unit_or_apartment', geoAddress.unitOrApt);
           if (geoAddress.floor) enrichFieldProv('floor', geoAddress.floor);
 
@@ -370,10 +383,10 @@ export const TasadorNewAppraisalPage: React.FC = () => {
               cadastral_number: geoAddress.cadastralNumber || null,
               latitude: geoAddress.latitude,
               longitude: geoAddress.longitude,
-              built_surface_m2: Number(builtAreaM2) || Number(totalAreaM2) || null,
-              surface_m2: Number(coveredAreaM2) || Number(totalAreaM2) || null,
-              land_surface_m2: Number(landAreaM2) || null,
-              uncovered_surface_m2: Number(balconyOrTerraceM2) || null,
+              built_surface_m2: typeof builtAreaM2 === 'number' && !isNaN(builtAreaM2) ? builtAreaM2 : null,
+              surface_m2: typeof coveredAreaM2 === 'number' && !isNaN(coveredAreaM2) ? coveredAreaM2 : null,
+              land_surface_m2: typeof landAreaM2 === 'number' && !isNaN(landAreaM2) ? landAreaM2 : null,
+              uncovered_surface_m2: typeof balconyOrTerraceM2 === 'number' && !isNaN(balconyOrTerraceM2) ? balconyOrTerraceM2 : null,
               bedrooms: typeof bedrooms === 'number' ? bedrooms : null,
               bathrooms: typeof bathrooms === 'number' ? bathrooms : null,
               garages: typeof garages === 'number' ? garages : null,

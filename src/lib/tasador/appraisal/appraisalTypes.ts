@@ -282,3 +282,102 @@ export interface SearchComparablesFilterParams {
   allowPartialEligibility?: boolean;
   maxListingAgeDays?: number;
 }
+
+export interface BuildAppraisalTargetPropertyParams {
+  propertyType: AppraisalPropertyType;
+  subType?: string;
+  horizontalProperty?: boolean;
+  location: AppraisalLocation;
+  totalAreaM2?: number | '';
+  builtAreaM2?: number | '';
+  coveredAreaM2?: number | '';
+  landAreaM2?: number | '';
+  balconyOrTerraceM2?: number | '';
+  bedrooms?: number | '';
+  bathrooms?: number | '';
+  toilettes?: number | '';
+  garages?: number | '';
+  floorLevel?: number | '';
+  amenities?: Record<string, boolean | undefined>;
+  condition?: BuildingCondition | '';
+  constructionYear?: number | '';
+  photos?: AppraisalPhoto[];
+  observations?: string;
+}
+
+/**
+ * Pure builder function for AppraisalPropertyInput enforcing ZERO HIDDEN DEFAULTS
+ * and ZERO INFERRED SURFACES (UNKNOWN != INFERRED).
+ */
+export function buildAppraisalTargetProperty(
+  params: BuildAppraisalTargetPropertyParams
+): AppraisalPropertyInput {
+  const {
+    propertyType,
+    subType,
+    horizontalProperty,
+    location,
+    totalAreaM2,
+    builtAreaM2,
+    coveredAreaM2,
+    landAreaM2,
+    balconyOrTerraceM2,
+    bedrooms,
+    bathrooms,
+    toilettes,
+    garages,
+    floorLevel,
+    amenities = {},
+    condition,
+    constructionYear,
+    photos = [],
+    observations,
+  } = params;
+
+  return {
+    title: `${propertyType.toUpperCase()}${
+      location.neighborhood || location.city || location.department
+        ? ` en ${location.neighborhood || location.city || location.department}`
+        : ''
+    }`,
+    propertyType,
+    subType: subType || undefined,
+    horizontalProperty: horizontalProperty !== undefined ? horizontalProperty : undefined,
+    operationType: 'SALE',
+    location: {
+      country: location.country || 'Uruguay',
+      department: location.department,
+      city: location.city || location.department,
+      neighborhood: location.neighborhood,
+      streetName: location.streetName,
+      streetNumber: location.streetNumber,
+      unitOrApt: location.unitOrApt || undefined,
+      floor: location.floor || undefined,
+      cadastralNumber: location.cadastralNumber || undefined,
+      latitude: location.latitude,
+      longitude: location.longitude,
+      isGeocodedExact: Boolean(location.isGeocodedExact),
+    },
+    surfaces: {
+      totalAreaM2: typeof totalAreaM2 === 'number' && !isNaN(totalAreaM2) ? totalAreaM2 : undefined,
+      builtAreaM2: typeof builtAreaM2 === 'number' && !isNaN(builtAreaM2) ? builtAreaM2 : undefined,
+      coveredAreaM2: typeof coveredAreaM2 === 'number' && !isNaN(coveredAreaM2) ? coveredAreaM2 : undefined,
+      landAreaM2: typeof landAreaM2 === 'number' && !isNaN(landAreaM2) ? landAreaM2 : undefined,
+      balconyOrTerraceM2:
+        typeof balconyOrTerraceM2 === 'number' && !isNaN(balconyOrTerraceM2) ? balconyOrTerraceM2 : undefined,
+    },
+    layout: {
+      bedrooms: typeof bedrooms === 'number' && !isNaN(bedrooms) ? bedrooms : undefined,
+      bathrooms: typeof bathrooms === 'number' && !isNaN(bathrooms) ? bathrooms : undefined,
+      toilettes: typeof toilettes === 'number' && !isNaN(toilettes) ? toilettes : undefined,
+      garages: typeof garages === 'number' && !isNaN(garages) ? garages : undefined,
+      floorLevel: typeof floorLevel === 'number' && !isNaN(floorLevel) ? floorLevel : undefined,
+    },
+    amenities: Object.keys(amenities).length > 0 ? amenities : {},
+    condition: condition ? condition : undefined,
+    constructionYear:
+      typeof constructionYear === 'number' && !isNaN(constructionYear) ? constructionYear : undefined,
+    photos,
+    observations: observations || undefined,
+  };
+}

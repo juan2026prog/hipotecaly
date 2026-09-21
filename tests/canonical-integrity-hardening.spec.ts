@@ -3,6 +3,7 @@ import { DocumentService } from '../src/lib/docflow/documentService';
 import { validateRequiredFields } from '../src/lib/docflow/templateEngine';
 import { FieldProvenanceRecord, FieldProvenanceSource, FieldVerificationStatus } from '../src/lib/types';
 import { CasePropertyLinkService } from '../src/lib/tasador/integration/CasePropertyLinkService';
+import { buildAppraisalTargetProperty } from '../src/lib/tasador/appraisal/appraisalTypes';
 
 test.describe('Hipotecaly Canonical Property & Zero False Verified Hardening Suite', () => {
 
@@ -99,8 +100,8 @@ test.describe('Hipotecaly Canonical Property & Zero False Verified Hardening Sui
     expect(existingRegime).not.toBe('PROPIEDAD_HORIZONTAL');
   });
 
-  // TEST 4: Provenance Hardening - Zero False Verified
-  test('Test 4: Appraisal enrichment creates UNVERIFIED status with APPRAISAL_ENRICHED source', async () => {
+  // TEST 4: Provenance Hardening - Zero False Verified & Only Informed Surfaces
+  test('Test 4: Appraisal enrichment creates UNVERIFIED status with APPRAISAL_ENRICHED source only for informed surfaces', async () => {
     const initialProvenance: Record<string, FieldProvenanceRecord> = {
       padron: {
         value: '123456',
@@ -113,10 +114,12 @@ test.describe('Hipotecaly Canonical Property & Zero False Verified Hardening Sui
       }
     };
 
-    // Enriquecimiento de superficie y unidad durante tasación
+    // Enriquecimiento durante tasación: solo el usuario ingresó builtAreaM2 = 75 (coveredAreaM2 no fue informado)
+    const builtAreaM2 = 75;
+    const coveredAreaM2 = '' as number | '';
     const updatedProv: Record<string, FieldProvenanceRecord> = { ...initialProvenance };
     const enrichFieldProv = (fieldName: string, val: any) => {
-      if (val !== undefined && val !== null) {
+      if (val !== undefined && val !== null && val !== '') {
         const prev = updatedProv[fieldName];
         if (prev && prev.verification_status === 'VERIFIED' && prev.value === val) {
           return;
@@ -133,7 +136,8 @@ test.describe('Hipotecaly Canonical Property & Zero False Verified Hardening Sui
       }
     };
 
-    enrichFieldProv('built_surface_m2', 75);
+    if (typeof builtAreaM2 === 'number' && !isNaN(builtAreaM2)) enrichFieldProv('built_surface_m2', builtAreaM2);
+    if (typeof coveredAreaM2 === 'number' && !isNaN(coveredAreaM2)) enrichFieldProv('surface_m2', coveredAreaM2);
     enrichFieldProv('padron', '123456'); // Mismo padrón sin evidencia
 
     expect(updatedProv.padron.verification_status).not.toBe('VERIFIED');
@@ -141,6 +145,9 @@ test.describe('Hipotecaly Canonical Property & Zero False Verified Hardening Sui
     expect(updatedProv.built_surface_m2.source).toBe('APPRAISAL_ENRICHED');
     expect(updatedProv.built_surface_m2.verified_by).toBeNull();
     expect(updatedProv.built_surface_m2.verified_at).toBeNull();
+
+    // surface_m2 NO debe tener provenance ya que no fue informada
+    expect(updatedProv.surface_m2).toBeUndefined();
   });
 
   // TEST 5: DocFlow Zero False Defaults - Resolves to undefined
@@ -184,90 +191,103 @@ test.describe('Hipotecaly Canonical Property & Zero False Verified Hardening Sui
     );
   });
 
-  // TEST 6: Minimal Input -> Zero Hidden Defaults in targetProperty construction
-  test('Test 6: Minimal Target Property Construction preserves undefined for all unspecified fields', async () => {
-    // Simular construcción de targetProperty cuando el usuario solo ingresa lo mínimo obligatorio (tipo y totalArea)
-    const propertyType = 'apartamento';
-    const totalAreaM2 = 82;
-    const builtAreaM2 = '' as number | '';
-    const coveredAreaM2 = '' as number | '';
-    const balconyOrTerraceM2 = '' as number | '';
-    const landAreaM2 = '' as number | '';
-    const bedrooms = '' as number | '';
-    const bathrooms = '' as number | '';
-    const toilettes = '' as number | '';
-    const garages = '' as number | '';
-    const condition = '' as any;
-    const horizontalProperty = undefined as boolean | undefined;
-    const amenities: Record<string, boolean | undefined> = {};
-
-    const targetProperty = {
-      propertyType: propertyType as any,
+  // TEST 6: Production Builder -> Zero Inferred Surfaces (UNKNOWN != INFERRED)
+  test('Test 6: buildAppraisalTargetProperty preserves undefined for builtAreaM2 and coveredAreaM2 when only totalAreaM2 is provided', () => {
+    const targetProperty = buildAppraisalTargetProperty({
+      propertyType: 'apartamento',
       location: {
+        country: 'Uruguay',
         department: 'Montevideo',
-        locality: 'Montevideo',
+        city: 'Montevideo',
         neighborhood: 'Pocitos',
         streetName: '21 de Setiembre',
         streetNumber: '2500',
-        latitude: -34.91,
-        longitude: -56.15,
-        source: 'DIRECT_ENTRY',
+        isGeocodedExact: true,
       },
-      surfaces: {
-        totalAreaM2: Number(totalAreaM2),
-        builtAreaM2: builtAreaM2 !== '' ? Number(builtAreaM2) : undefined,
-        coveredAreaM2: coveredAreaM2 !== '' ? Number(coveredAreaM2) : undefined,
-        balconyOrTerraceM2: balconyOrTerraceM2 !== '' ? Number(balconyOrTerraceM2) : undefined,
-        landAreaM2: landAreaM2 !== '' ? Number(landAreaM2) : undefined,
-      },
-      layout: {
-        bedrooms: bedrooms !== '' ? Number(bedrooms) : undefined,
-        bathrooms: bathrooms !== '' ? Number(bathrooms) : undefined,
-        toilettes: toilettes !== '' ? Number(toilettes) : undefined,
-        garages: garages !== '' ? Number(garages) : undefined,
-      },
-      amenities: amenities as any,
-      condition: condition || undefined,
-      horizontalProperty: horizontalProperty,
-    };
+      totalAreaM2: 82,
+      builtAreaM2: '', // no informado
+      coveredAreaM2: '', // no informado
+      landAreaM2: '',
+      balconyOrTerraceM2: '',
+      bedrooms: '',
+      bathrooms: '',
+      toilettes: '',
+      garages: '',
+      condition: '',
+      horizontalProperty: undefined,
+      amenities: {},
+    });
 
-    // Assertions estrictas sobre targetProperty
+    // Validamos que NO existan inferencias automáticas de superficies
+    expect(targetProperty.surfaces.totalAreaM2).toBe(82);
+    expect(targetProperty.surfaces.builtAreaM2).toBeUndefined();
+    expect(targetProperty.surfaces.coveredAreaM2).toBeUndefined();
+    expect(targetProperty.surfaces.landAreaM2).toBeUndefined();
+    expect(targetProperty.surfaces.balconyOrTerraceM2).toBeUndefined();
+
+    // Validamos que los demás campos ausentes sean undefined
     expect(targetProperty.condition).toBeUndefined();
     expect(targetProperty.horizontalProperty).toBeUndefined();
     expect(targetProperty.layout.bedrooms).toBeUndefined();
     expect(targetProperty.layout.bathrooms).toBeUndefined();
     expect(targetProperty.layout.toilettes).toBeUndefined();
     expect(targetProperty.layout.garages).toBeUndefined();
-    expect(targetProperty.surfaces.builtAreaM2).toBeUndefined();
-    expect(targetProperty.surfaces.coveredAreaM2).toBeUndefined();
-    expect(targetProperty.surfaces.balconyOrTerraceM2).toBeUndefined();
-    expect(targetProperty.surfaces.landAreaM2).toBeUndefined();
     expect(Object.keys(targetProperty.amenities).length).toBe(0);
   });
 
-  // TEST 7: Explicit 0 and False Handling (UNKNOWN != 0, UNKNOWN != FALSE)
-  test('Test 7: Explicit 0 and False values are preserved as 0 and false (not undefined)', async () => {
-    const bedrooms = 0; // Monoambiente explícito
-    const garages = 0; // Sin garaje explícito
-    const toilettes = 0; // Sin toilette explícito
-    const amenities: Record<string, boolean | undefined> = {
-      pool: false, // Explícitamente NO tiene piscina
-      balcony: true, // Explícitamente SÍ tiene balcón
+  // TEST 7: Canonical Persistence Mapping - Zero Inferred Surfaces in DB Update
+  test('Test 7: Canonical property persistence maps unprovided surfaces strictly to null without substituting totalAreaM2', () => {
+    const totalAreaM2 = 82;
+    const builtAreaM2 = '' as number | '';
+    const coveredAreaM2 = '' as number | '';
+    const landAreaM2 = '' as number | '';
+    const balconyOrTerraceM2 = '' as number | '';
+
+    // Mapeo idéntico al ejecutado en handleStartSearch para supabase.from('properties').update(...)
+    const dbUpdatePayload = {
+      built_surface_m2: typeof builtAreaM2 === 'number' && !isNaN(builtAreaM2) ? builtAreaM2 : null,
+      surface_m2: typeof coveredAreaM2 === 'number' && !isNaN(coveredAreaM2) ? coveredAreaM2 : null,
+      land_surface_m2: typeof landAreaM2 === 'number' && !isNaN(landAreaM2) ? landAreaM2 : null,
+      uncovered_surface_m2: typeof balconyOrTerraceM2 === 'number' && !isNaN(balconyOrTerraceM2) ? balconyOrTerraceM2 : null,
     };
 
-    const targetProperty = {
-      propertyType: 'apartamento' as any,
-      surfaces: {
-        totalAreaM2: 35,
-      },
-      layout: {
-        bedrooms: bedrooms !== '' ? Number(bedrooms) : undefined,
-        garages: garages !== '' ? Number(garages) : undefined,
-        toilettes: toilettes !== '' ? Number(toilettes) : undefined,
-      },
-      amenities: amenities as any,
-    };
+    expect(dbUpdatePayload.built_surface_m2).toBeNull();
+    expect(dbUpdatePayload.surface_m2).toBeNull();
+    expect(dbUpdatePayload.built_surface_m2).not.toBe(82);
+    expect(dbUpdatePayload.surface_m2).not.toBe(82);
+  });
 
+  // TEST 8: Explicit Values and Explicit 0 / False Handling (No Substitutions)
+  test('Test 8: Explicit values (total=82, built=76, covered=70, 0 garages, false pool) are preserved without substitutions', () => {
+    const targetProperty = buildAppraisalTargetProperty({
+      propertyType: 'apartamento',
+      location: {
+        country: 'Uruguay',
+        department: 'Montevideo',
+        city: 'Montevideo',
+        neighborhood: 'Punta Carretas',
+        streetName: 'Ellauri',
+        streetNumber: '350',
+        isGeocodedExact: true,
+      },
+      totalAreaM2: 82,
+      builtAreaM2: 76,
+      coveredAreaM2: 70,
+      bedrooms: 0, // Monoambiente explícito
+      garages: 0, // Sin garaje explícito
+      toilettes: 0, // Sin toilette explícito
+      amenities: {
+        pool: false, // Explícitamente NO tiene piscina
+        balcony: true, // Explícitamente SÍ tiene balcón
+      },
+    });
+
+    // Superficies exactas sin mutaciones
+    expect(targetProperty.surfaces.totalAreaM2).toBe(82);
+    expect(targetProperty.surfaces.builtAreaM2).toBe(76);
+    expect(targetProperty.surfaces.coveredAreaM2).toBe(70);
+
+    // Ceros reales y falsos explícitos
     expect(targetProperty.layout.bedrooms).toBe(0);
     expect(targetProperty.layout.garages).toBe(0);
     expect(targetProperty.layout.toilettes).toBe(0);
