@@ -293,12 +293,13 @@ export interface Property {
   cadastral_solar?: string | null;
   cadastral_plan?: string | null;
 
-  // Superficies
-  surface_m2?: number;
+  // Superficies Canónicas
   total_surface_m2?: number | null;
   built_surface_m2?: number | null;
+  covered_surface_m2?: number | null;
   land_surface_m2?: number | null;
   uncovered_surface_m2?: number | null;
+  surface_m2?: number | null; // LEGACY ONLY: compatibilidad histórica temporal
 
   // Distribución
   bedrooms?: number;

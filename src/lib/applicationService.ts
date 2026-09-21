@@ -24,13 +24,20 @@ function cleanStr(val: string | null | undefined): string | null {
   return trimmed;
 }
 
+function cleanNum(val: number | string | null | undefined): number | null {
+  if (val === null || val === undefined || val === '') return null;
+  const num = typeof val === 'number' ? val : Number(val);
+  if (isNaN(num)) return null;
+  return num;
+}
+
 function buildFieldProvenance(
   existingProv: Record<string, any> | undefined,
   fields: Record<string, any>
 ): Record<string, any> {
   const result: Record<string, any> = { ...(existingProv || {}) };
   for (const [key, val] of Object.entries(fields)) {
-    if (val !== undefined) {
+    if (val !== undefined && val !== null && val !== '') {
       const prev = result[key];
       // Si el campo ya tiene provenance verificado y el valor no cambió, conservar
       if (prev && prev.verification_status === 'VERIFIED' && prev.value === val) {
@@ -97,12 +104,13 @@ export interface ApplicationDraftPayload {
     cadastralSolar?: string | null;
     cadastralPlan?: string | null;
 
-    // Superficies
-    surfaceM2?: number | null;
+    // Superficies Canónicas
     totalSurfaceM2?: number | null;
     builtSurfaceM2?: number | null;
+    coveredSurfaceM2?: number | null;
     landSurfaceM2?: number | null;
     uncoveredSurfaceM2?: number | null;
+    surfaceM2?: number | null; // Legacy alias
 
     // Distribución
     bedrooms?: number | null;
@@ -240,6 +248,14 @@ export async function saveApplicationDraft(
       const cleanCadSolar = cleanStr(p.cadastralSolar);
       const cleanCadPlan = cleanStr(p.cadastralPlan);
       const cleanLegalNotes = cleanStr(p.legalStatusNotes);
+      const cleanTotalSurface = cleanNum(p.totalSurfaceM2 ?? p.surfaceM2);
+      const cleanBuiltSurface = cleanNum(p.builtSurfaceM2);
+      const cleanCoveredSurface = cleanNum(p.coveredSurfaceM2);
+      const cleanLandSurface = cleanNum(p.landSurfaceM2);
+      const cleanUncoveredSurface = cleanNum(p.uncoveredSurfaceM2);
+      const cleanBedrooms = cleanNum(p.bedrooms);
+      const cleanBathrooms = cleanNum(p.bathrooms);
+      const cleanGarages = cleanNum(p.garages);
 
       const fieldValues = {
         padron: cleanPadron,
@@ -252,16 +268,18 @@ export async function saveApplicationDraft(
         cadastral_block: cleanCadBlock,
         cadastral_level: cleanCadLevel,
         cadastral_section: cleanCadSection,
+        cadastral_locality: cleanCadLocality,
         cadastral_manzana: cleanCadManzana,
         cadastral_solar: cleanCadSolar,
         cadastral_plan: cleanCadPlan,
-        surface_m2: p.surfaceM2 || p.builtSurfaceM2 || null,
-        built_surface_m2: p.builtSurfaceM2 || p.surfaceM2 || null,
-        land_surface_m2: p.landSurfaceM2 || null,
-        uncovered_surface_m2: p.uncoveredSurfaceM2 || null,
-        bedrooms: p.bedrooms || null,
-        bathrooms: p.bathrooms || null,
-        garages: p.garages || null,
+        total_surface_m2: cleanTotalSurface,
+        built_surface_m2: cleanBuiltSurface,
+        covered_surface_m2: cleanCoveredSurface,
+        land_surface_m2: cleanLandSurface,
+        uncovered_surface_m2: cleanUncoveredSurface,
+        bedrooms: cleanBedrooms,
+        bathrooms: cleanBathrooms,
+        garages: cleanGarages,
       };
 
       const computedProvenance = buildFieldProvenance(p.fieldProvenance, fieldValues);
@@ -298,16 +316,18 @@ export async function saveApplicationDraft(
         cadastral_solar: cleanCadSolar,
         cadastral_plan: cleanCadPlan,
 
-        // Superficies
-        surface_m2: p.surfaceM2 || p.builtSurfaceM2 || null,
-        built_surface_m2: p.builtSurfaceM2 || p.surfaceM2 || null,
-        land_surface_m2: p.landSurfaceM2 || null,
-        uncovered_surface_m2: p.uncoveredSurfaceM2 || null,
+        // Superficies Canónicas (Cero inferencias cruzadas)
+        total_surface_m2: cleanTotalSurface,
+        built_surface_m2: cleanBuiltSurface,
+        covered_surface_m2: cleanCoveredSurface,
+        land_surface_m2: cleanLandSurface,
+        uncovered_surface_m2: cleanUncoveredSurface,
+        surface_m2: cleanTotalSurface ?? cleanCoveredSurface ?? cleanBuiltSurface ?? null, // LEGACY ONLY
 
         // Distribución
-        bedrooms: p.bedrooms || null,
-        bathrooms: p.bathrooms || null,
-        garages: p.garages || null,
+        bedrooms: cleanBedrooms,
+        bathrooms: cleanBathrooms,
+        garages: cleanGarages,
 
         estimated_value: p.estimatedValue,
         legal_status: p.legalStatus,
