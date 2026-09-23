@@ -202,7 +202,7 @@ export const LoginPage: React.FC = () => {
           </Link>
         </p>
         <p>
-          ¿Querés solicitar financiación?{' '}
+          ¿Querés evaluar una operación?{' '}
           <Link to="/simulador" className="font-semibold text-brand-green hover:underline">
             Iniciar simulación
           </Link>

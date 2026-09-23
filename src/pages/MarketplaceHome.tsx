@@ -286,7 +286,7 @@ export const MarketplaceHome: React.FC = () => {
                   <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 text-center space-y-2">
                     <span className="text-[10px] font-mono text-slate-400 uppercase block">Snippet en tu sitio</span>
                     <div className="px-4 py-2 rounded-lg bg-navy text-white text-xs font-bold shadow-xs inline-flex items-center space-x-1.5">
-                      <span>Solicitar financiación</span>
+                      <span>Iniciar solicitud</span>
                       <ArrowUpRight className="w-3.5 h-3.5 text-brand-green" />
                     </div>
                   </div>

@@ -242,7 +242,7 @@ export const SimulatorPage: React.FC = () => {
                     Paso 1: Estimación de valor y necesidad
                   </h3>
                   <p className="text-xs text-[#718096] mt-1">
-                    Definí el valor estimado de mercado de tu propiedad y cuánto capital deseás solicitar.
+                    Definí el valor estimado de mercado de tu propiedad y el capital a simular.
                   </p>
                 </div>
 
@@ -291,7 +291,7 @@ export const SimulatorPage: React.FC = () => {
                 {/* Pregunta 2: ¿Cuánto dinero necesitás? */}
                 <div>
                   <CurrencyInput
-                    label="¿Cuánto dinero necesitás solicitar?"
+                    label="Monto a simular (capital requerido)"
                     value={requestedAmount}
                     onChange={(val) => setRequestedAmount(val)}
                     error={

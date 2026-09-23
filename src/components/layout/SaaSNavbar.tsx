@@ -58,14 +58,14 @@ export const SaaSNavbar: React.FC = () => {
                 to="/"
                 className="px-2.5 py-0.5 rounded-md font-semibold text-slate-300 hover:text-white transition-all"
               >
-                Para personas
+                Inicio
               </Link>
               <Link
                 to="/saas"
                 className="px-2.5 py-0.5 rounded-md font-semibold bg-brand-green text-white shadow-sm flex items-center space-x-1.5 transition-all"
               >
-                <span>Para empresas</span>
-                <span className="bg-white/20 text-[9px] uppercase tracking-wider px-1 rounded">SaaS</span>
+                <span>Plataforma SaaS</span>
+                <span className="bg-white/20 text-[9px] uppercase tracking-wider px-1 rounded">B2B</span>
               </Link>
             </div>
           </div>
@@ -295,14 +295,14 @@ export const SaaSNavbar: React.FC = () => {
               onClick={() => setMobileMenuOpen(false)}
               className="text-center py-2 rounded-lg text-xs font-bold text-slate-600 hover:text-navy"
             >
-              Para personas
+              Inicio
             </Link>
             <Link
               to="/saas"
               onClick={() => setMobileMenuOpen(false)}
               className="text-center py-2 rounded-lg text-xs font-bold bg-navy text-white shadow-xs"
             >
-              Para empresas
+              Plataforma SaaS
             </Link>
           </div>
 

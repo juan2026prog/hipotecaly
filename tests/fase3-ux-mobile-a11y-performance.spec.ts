@@ -138,7 +138,7 @@ test.describe('FASE 3 — UX 360°, Mobile, Accessibility y Performance', () => 
       const hamburger = page.locator('button[aria-label="Abrir menú"]');
       if (await hamburger.isVisible()) {
         await hamburger.click();
-        await expect(page.locator('header a[href*="/solicitar"]').last()).toBeVisible();
+        await expect(page.locator('header a[href*="/contacto"], header a[href*="/solicitar"]').last()).toBeVisible();
       }
     });
   });
@@ -197,10 +197,10 @@ test.describe('FASE 3 — UX 360°, Mobile, Accessibility y Performance', () => 
   // ==============================================================================
   test.describe('Bloque F & G — Copy, Estados y Botones', () => {
 
-    test('CTA principal del Navbar dice Solicitar Financiación y navega a /solicitar', async ({ page }) => {
+    test('CTA principal del Navbar de Hipotecaly dice Solicitar Demo', async ({ page }) => {
       await page.goto('/');
-      const ctaBtn = page.locator('header a[href*="/solicitar"]');
-      await expect(ctaBtn.first()).toContainText(/Solicitar Financiaci[oó]n/i);
+      const ctaBtn = page.locator('header a[href*="/contacto"]');
+      await expect(ctaBtn.first()).toContainText(/Solicitar Demo/i);
     });
 
     test('Gestión de Documentos usa etiquetas semánticas Ver plantilla y Modificar plantilla', async ({ page }) => {

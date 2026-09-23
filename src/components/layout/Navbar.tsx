@@ -90,13 +90,13 @@ export const Navbar: React.FC = () => {
             </Button>
           </Link>
 
-          <Link to={`/solicitar?source=${tenant.slug}`}>
+          <Link to={isWhiteLabel ? `/solicitar?source=${tenant.slug}` : "/contacto?demo=true"}>
             <Button
               variant={isWhiteLabel ? 'navy' : 'primary'}
               size="sm"
               className={`text-xs font-bold shadow-xs px-4 ${isWhiteLabel ? 'bg-[#173a5e] hover:bg-[#102d49] text-white uppercase tracking-wider' : ''}`}
             >
-              Solicitar Financiación <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+              {isWhiteLabel ? 'Solicitar Financiación' : 'Solicitar Demo'} <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
             </Button>
           </Link>
         </div>
@@ -140,13 +140,13 @@ export const Navbar: React.FC = () => {
           </div>
 
           <div className="pt-3 border-t border-slate-100 flex flex-col gap-2.5">
-            <Link to={`/solicitar?source=${tenant.slug}`} className="w-full" onClick={() => setMobileMenuOpen(false)}>
+            <Link to={isWhiteLabel ? `/solicitar?source=${tenant.slug}` : "/contacto?demo=true"} className="w-full" onClick={() => setMobileMenuOpen(false)}>
               <Button
                 variant={isWhiteLabel ? 'navy' : 'primary'}
                 size="md"
                 className={`w-full font-bold ${isWhiteLabel ? 'bg-[#173a5e] text-white uppercase tracking-wider' : ''}`}
               >
-                Solicitar Financiación <ArrowRight className="w-4 h-4 ml-1.5" />
+                {isWhiteLabel ? 'Solicitar Financiación' : 'Solicitar Demo'} <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
             </Link>
             <Link to="/mi-cuenta" className="w-full" onClick={() => setMobileMenuOpen(false)}>

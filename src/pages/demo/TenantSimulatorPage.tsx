@@ -219,7 +219,7 @@ export const TenantSimulatorPage: React.FC = () => {
               {/* Monto a solicitar */}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                  Monto de préstamo solicitado (USD)
+                  Monto a simular (USD)
                 </label>
                 <CurrencyInput
                   value={loanAmount}
