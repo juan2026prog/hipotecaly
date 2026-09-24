@@ -257,17 +257,20 @@ export const MarketplaceHome: React.FC = () => {
               <p className="text-sm sm:text-base text-slate-muted leading-relaxed">
                 HIPOTECALY se adapta al nivel de integración que necesita cada organización: desde un acceso simple hasta una plataforma completa con identidad propia.
               </p>
+              <div className="inline-block p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 font-semibold mt-2">
+                ✨ En todas las modalidades, la experiencia del solicitante utiliza la identidad de tu organización.
+              </div>
             </div>
 
             {/* 3 Cards de Igual Altura, Ancho y Alineación */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
               
-              {/* Card 01 — BOTÓN */}
+              {/* Card 01 — SOLO BOTÓN */}
               <div className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200 shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between space-y-6">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider">
-                      01 — BOTÓN
+                      01 — SOLO BOTÓN
                     </span>
                     <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
                       Rápido
@@ -275,18 +278,18 @@ export const MarketplaceHome: React.FC = () => {
                   </div>
 
                   <h3 className="text-xl font-bold text-navy">
-                    Botón de Solicitud
+                    Solo Botón
                   </h3>
 
                   <p className="text-xs sm:text-sm text-slate-muted leading-relaxed">
-                    Conservás tu sitio actual y agregás un acceso directo al flujo digital de HIPOTECALY.
+                    Conservás tu sitio actual y agregás un botón CTA hacia el simulador alojado con tu identidad visual.
                   </p>
 
                   {/* Mini Ejemplo Visual */}
                   <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 text-center space-y-2">
                     <span className="text-[10px] font-mono text-slate-400 uppercase block">Snippet en tu sitio</span>
                     <div className="px-4 py-2 rounded-lg bg-navy text-white text-xs font-bold shadow-xs inline-flex items-center space-x-1.5">
-                      <span>Iniciar solicitud</span>
+                      <span>SOLICITAR FINANCIACIÓN</span>
                       <ArrowUpRight className="w-3.5 h-3.5 text-brand-green" />
                     </div>
                   </div>
@@ -294,34 +297,34 @@ export const MarketplaceHome: React.FC = () => {
                   <ul className="space-y-2 text-xs text-slate-700 pt-1">
                     <li className="flex items-center space-x-2">
                       <Check className="w-4 h-4 text-brand-green shrink-0" />
-                      <span>Sin reemplazar tu web actual</span>
+                      <span>Sin tocar tu infraestructura web</span>
                     </li>
                     <li className="flex items-center space-x-2">
                       <Check className="w-4 h-4 text-brand-green shrink-0" />
-                      <span>Flujo de solicitud existente</span>
+                      <span>Derivación directa a simulador brandeado</span>
                     </li>
                     <li className="flex items-center space-x-2">
                       <Check className="w-4 h-4 text-brand-green shrink-0" />
-                      <span>Configuración por organización</span>
+                      <span>Continuidad automática hacia la solicitud</span>
                     </li>
                   </ul>
                 </div>
 
                 <div className="pt-4 border-t border-slate-100">
-                  <Link to="/contacto?mode=boton" className="w-full block">
-                    <Button variant="outline" size="sm" className="w-full font-semibold border-slate-200">
-                      Consultar integración
+                  <Link to="/demo/estudio-nova/integraciones/boton" className="w-full block">
+                    <Button variant="outline" size="sm" className="w-full font-bold border-slate-200 hover:border-slate-300">
+                      Probar integración
                     </Button>
                   </Link>
                 </div>
               </div>
 
-              {/* Card 02 — SIMULADOR + BOTÓN */}
+              {/* Card 02 — SIMULADOR EMBEBIDO */}
               <div className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200 shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between space-y-6">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider">
-                      02 — SIMULADOR + BOTÓN
+                      02 — SIMULADOR EMBEBIDO
                     </span>
                     <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-brand-green-dark">
                       Interactivo
@@ -333,50 +336,50 @@ export const MarketplaceHome: React.FC = () => {
                   </h3>
 
                   <p className="text-xs sm:text-sm text-slate-muted leading-relaxed">
-                    El usuario simula dentro de tu experiencia y continúa directamente al proceso de solicitud.
+                    El usuario calcula cuotas y plazos en tu propia página y continúa directamente a la solicitud.
                   </p>
 
                   {/* Mini Ejemplo Visual */}
                   <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
                     <div className="flex justify-between text-[11px]">
                       <span className="text-slate-500">Monto simulación</span>
-                      <span className="font-bold text-navy">USD 50.000</span>
+                      <span className="font-bold text-navy">USD 80.000</span>
                     </div>
                     <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
                       <div className="bg-brand-green h-full w-2/3" />
                     </div>
                     <div className="flex justify-between text-[10px] text-slate-400">
                       <span>Plazo: 36 meses</span>
-                      <span className="text-brand-green font-semibold">LTV 35%</span>
+                      <span className="text-brand-green font-semibold">LTV 36%</span>
                     </div>
                   </div>
 
                   <ul className="space-y-2 text-xs text-slate-700 pt-1">
                     <li className="flex items-center space-x-2">
                       <Check className="w-4 h-4 text-brand-green shrink-0" />
-                      <span>Simulador parametrizable</span>
+                      <span>Simulador canónico integrado en tu HTML</span>
                     </li>
                     <li className="flex items-center space-x-2">
                       <Check className="w-4 h-4 text-brand-green shrink-0" />
-                      <span>Continuidad sin duplicar datos</span>
+                      <span>Cálculo preliminar con tus reglas de crédito</span>
                     </li>
                     <li className="flex items-center space-x-2">
                       <Check className="w-4 h-4 text-brand-green shrink-0" />
-                      <span>Integración más profunda</span>
+                      <span>Transferencia de datos a la solicitud</span>
                     </li>
                   </ul>
                 </div>
 
                 <div className="pt-4 border-t border-slate-100">
-                  <Link to="/simulador" className="w-full block">
-                    <Button variant="outline" size="sm" className="w-full font-semibold border-slate-200">
+                  <Link to="/demo/estudio-nova/integraciones/embebido" className="w-full block">
+                    <Button variant="outline" size="sm" className="w-full font-bold border-slate-200 hover:border-slate-300">
                       Probar simulador en vivo
                     </Button>
                   </Link>
                 </div>
               </div>
 
-              {/* Card 03 — WHITE LABEL */}
+              {/* Card 03 — SITIO COMPLETO */}
               <div className="bg-white rounded-2xl p-6 sm:p-7 border-2 border-brand-green/40 shadow-card flex flex-col justify-between space-y-6 relative overflow-hidden">
                 <div className="absolute top-0 right-0 bg-brand-green text-white text-[10px] font-bold px-3 py-0.5 rounded-bl-lg uppercase tracking-wider">
                   Integral
@@ -385,40 +388,40 @@ export const MarketplaceHome: React.FC = () => {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-mono font-bold text-brand-green uppercase tracking-wider">
-                      03 — WHITE LABEL
+                      03 — SITIO COMPLETO
                     </span>
                   </div>
 
                   <h3 className="text-xl font-bold text-navy">
-                    White Label Completo
+                    Sitio Completo
                   </h3>
 
                   <p className="text-xs sm:text-sm text-slate-muted leading-relaxed">
-                    Experiencia completa con tu marca, dominio, reglas y configuración utilizando HIPOTECALY como motor.
+                    Portal web institucional completo con tu dominio, simulador, portal del solicitante y backoffice.
                   </p>
 
                   {/* Mini Ejemplo Visual */}
                   <div className="p-3.5 rounded-xl bg-navy text-white text-left space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-mono text-slate-400">portal.tuempresa.com</span>
-                      <span className="text-[9px] font-mono text-brand-green bg-brand-green/20 px-1.5 py-0.2 rounded">WL</span>
+                      <span className="text-[10px] font-mono text-slate-400">estudionova.uy</span>
+                      <span className="text-[9px] font-mono text-brand-green bg-brand-green/20 px-1.5 py-0.2 rounded">FULL</span>
                     </div>
-                    <div className="text-[11px] font-semibold text-slate-200">Plataforma con tu identidad</div>
-                    <div className="text-[10px] text-slate-400">Simulador + Portal + Backoffice</div>
+                    <div className="text-[11px] font-semibold text-slate-200">Experiencia integral con tu marca</div>
+                    <div className="text-[10px] text-slate-400">Home + Simulador + Portal + Backoffice</div>
                   </div>
 
                   <ul className="space-y-2 text-xs text-slate-700 pt-1">
                     <li className="flex items-center space-x-2">
                       <Check className="w-4 h-4 text-brand-green shrink-0" />
-                      <span>Simulador, solicitud y portal</span>
+                      <span>Presencia web institucional completa</span>
                     </li>
                     <li className="flex items-center space-x-2">
                       <Check className="w-4 h-4 text-brand-green shrink-0" />
-                      <span>Backoffice multi-rol & IA</span>
+                      <span>Simulador y portal del solicitante</span>
                     </li>
                     <li className="flex items-center space-x-2">
                       <Check className="w-4 h-4 text-brand-green shrink-0" />
-                      <span>Branding y reglas por tenant</span>
+                      <span>Consola de backoffice y coordinación</span>
                     </li>
                   </ul>
                 </div>
