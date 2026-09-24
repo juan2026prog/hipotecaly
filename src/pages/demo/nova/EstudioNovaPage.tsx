@@ -24,6 +24,7 @@ import {
   Award,
   Eye,
   ArrowLeft,
+  Code2,
 } from 'lucide-react';
 import { useTenant } from '../../../contexts/TenantContext';
 import {
@@ -300,6 +301,13 @@ export const EstudioNovaPage: React.FC = () => {
                 Portal de clientes
               </Link>
             )}
+            <Link
+              to={`/demo/${effectiveSlug}/integraciones`}
+              className="flex items-center text-slate-200 hover:text-white font-semibold transition-colors"
+            >
+              <Code2 className="w-3.5 h-3.5 mr-1" style={{ color: accentColor }} />
+              Modos de Integración
+            </Link>
           </div>
         </div>
       </div>
@@ -1089,6 +1097,7 @@ export const EstudioNovaPage: React.FC = () => {
               {homeSettings.showSimulator && <li><Link to={`/demo/${effectiveSlug}/simulador`} className="hover:text-white">Simulador en Línea</Link></li>}
               {isInvestorEnabled && <li><Link to={`/demo/${effectiveSlug}/inversor`} className="hover:text-white">Red de Inversores</Link></li>}
               {modules.client_portal_enabled && <li><Link to={`/demo/${effectiveSlug}/cliente`} className="hover:text-white">Portal de Clientes</Link></li>}
+              <li><Link to={`/demo/${effectiveSlug}/integraciones`} className="hover:text-white font-medium text-emerald-400">Modos de Integración B2B</Link></li>
               <li><Link to={`/demo/${effectiveSlug}/admin`} className="hover:text-white">Acceso Operativo (Backoffice)</Link></li>
             </ul>
           </div>

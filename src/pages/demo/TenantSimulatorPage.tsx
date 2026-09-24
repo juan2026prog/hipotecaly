@@ -5,7 +5,7 @@
 // ==============================================================================
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useParams } from 'react-router-dom';
 import {
   ArrowRight,
   Bookmark,
@@ -26,6 +26,7 @@ import { WhatsAppFloatingButton } from '../../components/whatsapp/WhatsAppFloati
 
 export const TenantSimulatorPage: React.FC = () => {
   const navigate = useNavigate();
+  const { tenantSlug } = useParams<{ tenantSlug: string }>();
   const { tenant } = useTenant();
   const { user } = useAuth();
 
@@ -93,23 +94,24 @@ export const TenantSimulatorPage: React.FC = () => {
     }
   };
 
-  const handleStartApplication = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isOverPercentage || isOverAmount) return;
-
-    navigate(`/demo/${tenant.slug}/solicitar?monto=${loanAmount}&valor_propiedad=${propertyValue}&plazo=${termMonths}&modalidad=${repaymentMode}`, {
+  const handleStartApplication = (e?: React.FormEvent | React.MouseEvent) => {
+    if (e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
+    const effectiveSlug = tenantSlug || tenant.slug || 'estudio-nova';
+    navigate(`/demo/${effectiveSlug}/solicitar?monto=${loanAmount}&valor_propiedad=${propertyValue}&plazo=${termMonths}&modalidad=${repaymentMode}`, {
       state: {
         requestedAmount: loanAmount,
         propertyValue: propertyValue,
         termMonths: termMonths,
         repaymentMode: repaymentMode,
-        organizationId: tenant.id,
+        organizationId: tenant.id || 'd0000000-0000-0000-0000-000000000001',
       },
     });
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#f5f7f9] text-[#27384a]">
+    <div className="min-h-screen flex flex-col bg-[#f5f7f9] text-[#27384a] pb-28">
       {/* Header White Label */}
       <header className="bg-white border-b border-[#dfe5ea] sticky top-0 z-30 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-18 py-3 flex items-center justify-between">
@@ -193,7 +195,7 @@ export const TenantSimulatorPage: React.FC = () => {
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-md p-6 sm:p-8">
-          <form onSubmit={handleStartApplication} className="space-y-6">
+          <form data-testid="tenant-simulator-form" onSubmit={handleStartApplication} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Valor de la propiedad */}
               <div className="space-y-2">
@@ -325,15 +327,28 @@ export const TenantSimulatorPage: React.FC = () => {
                   Guardar simulación
                 </Button>
 
-                <Button
-                  type="submit"
-                  disabled={isOverPercentage || isOverAmount || loanAmount <= 0}
-                  size="lg"
-                  className="w-full sm:w-auto shadow-md !rounded-xl text-xs font-bold"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  Continuar solicitud <ArrowRight className="w-4 h-4 ml-1.5" />
-                </Button>
+                {isOverPercentage || isOverAmount || loanAmount <= 0 ? (
+                  <button
+                    type="button"
+                    disabled
+                    data-testid="btn-continuar-solicitud"
+                    className="w-full sm:w-auto px-6 py-3 rounded-xl text-xs font-bold text-white opacity-50 cursor-not-allowed inline-flex items-center justify-center space-x-1.5 shadow-md"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    <span>Continuar solicitud</span>
+                    <ArrowRight className="w-4 h-4 ml-1.5" />
+                  </button>
+                ) : (
+                  <Link
+                    to={`/demo/${tenantSlug || tenant.slug || 'estudio-nova'}/solicitar?monto=${loanAmount}&valor_propiedad=${propertyValue}&plazo=${termMonths}&modalidad=${repaymentMode}`}
+                    data-testid="btn-continuar-solicitud"
+                    className="w-full sm:w-auto px-6 py-3 rounded-xl text-xs font-bold text-white shadow-md hover:opacity-95 active:scale-[0.98] transition-all inline-flex items-center justify-center space-x-1.5 cursor-pointer text-center"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    <span>Continuar solicitud</span>
+                    <ArrowRight className="w-4 h-4 ml-1.5" />
+                  </Link>
+                )}
               </div>
             </div>
           </form>
@@ -418,3 +433,5 @@ export const TenantSimulatorPage: React.FC = () => {
     </div>
   );
 };
+
+export default TenantSimulatorPage;

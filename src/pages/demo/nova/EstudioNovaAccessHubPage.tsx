@@ -265,6 +265,90 @@ export const EstudioNovaAccessHubPage: React.FC = () => {
             );
           })}
         </div>
+
+        {/* ============================================================== */}
+        {/* SECCIÓN DEDICADA: DEMOSTRACIÓN DE INTEGRACIONES B2B            */}
+        {/* ============================================================== */}
+        <section className="mt-14 pt-10 border-t border-slate-200">
+          <div className="bg-gradient-to-br from-slate-900 via-[#102d49] to-[#0b1e36] rounded-3xl p-8 sm:p-10 text-white shadow-xl space-y-8 text-left">
+            
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-6">
+              <div className="space-y-2">
+                <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
+                  <Sparkles className="w-3 h-3" />
+                  <span>MODALIDADES PARA EMPRESAS CON WEB EXISTENTE</span>
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-serif font-bold text-white">
+                  Demostración de Integraciones
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+                  {brandName} representa una implementación completa (FULL). Si el cliente B2B ya cuenta con un sitio web institucional, puede integrar Hipotecaly mediante estas dos alternativas:
+                </p>
+              </div>
+
+              <Link
+                to={'/demo/' + slug + '/integraciones'}
+                className="inline-flex items-center px-5 py-2.5 rounded-xl bg-white text-slate-950 hover:bg-slate-100 font-bold text-xs uppercase tracking-wider transition-colors shrink-0 shadow"
+              >
+                <span>Ver Selector de Integraciones</span>
+                <ArrowRight className="w-4 h-4 ml-1.5" />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* Opción A: Simulador Embebido + Botón */}
+              <div className="bg-white/10 border border-white/15 hover:border-white/30 rounded-2xl p-6 transition-all flex flex-col justify-between space-y-5">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-400/30">
+                      Opción A · Embed
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-serif font-bold text-white">
+                    Simulador Embebido + Botón
+                  </h3>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    La web existente del cliente incorpora el simulador paramétrico de Hipotecaly directamente en su interfaz. Al cotizar, el solicitante continúa al portal con marca propia.
+                  </p>
+                </div>
+                <Link
+                  to={'/demo/' + slug + '/integraciones/embebido'}
+                  className="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs uppercase tracking-wider transition-colors shadow-sm"
+                >
+                  <span>Probar Simulador + Botón</span>
+                  <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                </Link>
+              </div>
+
+              {/* Opción B: Solo Botón */}
+              <div className="bg-white/10 border border-white/15 hover:border-white/30 rounded-2xl p-6 transition-all flex flex-col justify-between space-y-5">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                      Opción B · Button
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-serif font-bold text-white">
+                    Solo Botón (CTA)
+                  </h3>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    La web existente solo coloca un botón "Solicitar Financiación" que deriva al simulador alojado bajo la identidad visual de la organización.
+                  </p>
+                </div>
+                <Link
+                  to={'/demo/' + slug + '/integraciones/boton'}
+                  className="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider transition-colors shadow-sm"
+                >
+                  <span>Probar Solo Botón</span>
+                  <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                </Link>
+              </div>
+
+            </div>
+
+          </div>
+        </section>
       </main>
 
       <footer className="border-t border-slate-200 py-6 text-center text-xs text-slate-500 bg-white">

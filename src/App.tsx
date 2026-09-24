@@ -58,6 +58,9 @@ const LenderMessagesPage = React.lazy(() => import('./pages/lender/LenderMessage
 // 4. Tenant Demo ESTUDIO NOVA & Portales Tenant (Lazy Loaded)
 const EstudioNovaPage = React.lazy(() => import('./pages/demo/nova/EstudioNovaPage').then((m) => ({ default: m.EstudioNovaPage })));
 const EstudioNovaAccessHubPage = React.lazy(() => import('./pages/demo/nova/EstudioNovaAccessHubPage').then((m) => ({ default: m.EstudioNovaAccessHubPage })));
+const IntegrationDemoHubPage = React.lazy(() => import('./pages/demo/nova/IntegrationDemoHubPage').then((m) => ({ default: m.IntegrationDemoHubPage })));
+const IntegrationEmbedDemoPage = React.lazy(() => import('./pages/demo/nova/IntegrationEmbedDemoPage').then((m) => ({ default: m.IntegrationEmbedDemoPage })));
+const IntegrationButtonDemoPage = React.lazy(() => import('./pages/demo/nova/IntegrationButtonDemoPage').then((m) => ({ default: m.IntegrationButtonDemoPage })));
 const TenantSimulatorPage = React.lazy(() => import('./pages/demo/TenantSimulatorPage').then((m) => ({ default: m.TenantSimulatorPage })));
 const TenantWizardPage = React.lazy(() => import('./pages/demo/TenantWizardPage').then((m) => ({ default: m.TenantWizardPage })));
 const TenantInvestorDashboardPage = React.lazy(() => import('./pages/demo/TenantInvestorDashboardPage').then((m) => ({ default: m.TenantInvestorDashboardPage })));
@@ -454,6 +457,17 @@ export const App: React.FC = () => {
               {/* Tenant Hub de Demostración & Accesos */}
               <Route path="/demo/estudio-nova/accesos" element={<EstudioNovaAccessHubPage />} />
               <Route path="/demo/:tenantSlug/accesos" element={<EstudioNovaAccessHubPage />} />
+
+              {/* Modos de Integración (Demostración Comercial B2B) */}
+              <Route path="/demo/estudio-nova/integraciones" element={<IntegrationDemoHubPage />} />
+              <Route path="/demo/:tenantSlug/integraciones" element={<IntegrationDemoHubPage />} />
+              <Route path="/demo/estudio-nova/integraciones/embebido" element={<IntegrationEmbedDemoPage />} />
+              <Route path="/demo/:tenantSlug/integraciones/embebido" element={<IntegrationEmbedDemoPage />} />
+              <Route path="/demo/estudio-nova/integraciones/boton" element={<IntegrationButtonDemoPage />} />
+              <Route path="/demo/:tenantSlug/integraciones/boton" element={<IntegrationButtonDemoPage />} />
+              <Route path="/demo/nova/integraciones" element={<Navigate to="/demo/estudio-nova/integraciones" replace />} />
+              <Route path="/demo/nova/embebido" element={<Navigate to="/demo/estudio-nova/integraciones/embebido" replace />} />
+              <Route path="/demo/nova/boton" element={<Navigate to="/demo/estudio-nova/integraciones/boton" replace />} />
 
               {/* Tenant Home Pública */}
               <Route path="/demo/estudio-nova" element={<EstudioNovaPage />} />

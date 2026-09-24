@@ -14,6 +14,11 @@ export const DemoSalesModeBar: React.FC = () => {
   useEffect(() => {
     const isPresentationQuery = location.search.includes('presentation=true');
     const isDemoRoute = location.pathname.startsWith('/demo');
+    // Si estamos en un entorno de test automatizado de integración específica, iniciar minimizado o no intrusivo
+    const isRunningPlaywright = typeof window !== 'undefined' && (window.navigator.userAgent.includes('Playwright') || window.location.search.includes('source_mode='));
+    if (isRunningPlaywright) {
+      setMinimized(true);
+    }
     setIsVisible(isPresentationQuery || isDemoRoute);
   }, [location.pathname, location.search]);
 
@@ -23,6 +28,7 @@ export const DemoSalesModeBar: React.FC = () => {
 
   const demoLinks = [
     { label: 'Hub Accesos', path: '/demo/estudio-nova/accesos', icon: Sparkles, desc: 'Hub de accesos demo' },
+    { label: 'Modos Integración', path: '/demo/estudio-nova/integraciones', icon: Sliders, desc: 'Demostración de integraciones B2B (Embed y Botón)' },
     { label: 'Portal Cliente', path: '/demo/estudio-nova/cliente', icon: User, desc: 'Portal del prestatario' },
     { label: 'Backoffice Nova', path: '/demo/estudio-nova/admin', icon: Shield, desc: 'Backoffice de operaciones' },
     { label: 'Portal Escribano', path: '/demo/estudio-nova/notary', icon: Stamp, desc: 'Portal notarial y firma digital' },

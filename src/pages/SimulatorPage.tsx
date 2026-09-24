@@ -628,6 +628,7 @@ export const SimulatorPage: React.FC = () => {
 
                     <Button
                       type="button"
+                      data-testid="btn-continuar-solicitud"
                       variant={isWhiteLabel ? 'navy' : 'primary'}
                       size="lg"
                       className={`w-full sm:w-auto shadow-md text-sm min-h-[46px] px-6 ${
