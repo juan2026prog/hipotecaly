@@ -116,10 +116,10 @@ export const IntegrationDemoHubPage: React.FC = () => {
 
               <div className="space-y-2 text-left">
                 <span className="text-xs font-bold uppercase tracking-widest text-[#245f91] block">
-                  Modalidad A
+                  Modalidad 02
                 </span>
                 <h2 className="text-2xl font-serif font-bold text-[#173a5e]">
-                  Simulador Embebido + Botón
+                  Simulador Embebido
                 </h2>
                 <p className="text-sm text-slate-600 leading-relaxed">
                   El cotizador paramétrico de Hipotecaly se incrusta visualmente dentro de la web existente de la empresa. El usuario simula en el sitio y continúa hacia el portal brandeado.
@@ -160,7 +160,7 @@ export const IntegrationDemoHubPage: React.FC = () => {
               </ul>
             </div>
 
-            <div className="p-6 bg-slate-50 border-t border-slate-100">
+            <div className="p-6 bg-slate-50 border-t border-slate-100 space-y-2">
               <Link to={`/demo/${slug}/integraciones/embebido`}>
                 <Button
                   variant="primary"
@@ -168,9 +168,12 @@ export const IntegrationDemoHubPage: React.FC = () => {
                   className="w-full text-white font-bold py-3.5 shadow-md uppercase tracking-wider flex items-center justify-center space-x-2"
                   style={{ backgroundColor: primaryColor }}
                 >
-                  <span>PROBAR SIMULADOR + BOTÓN</span>
+                  <span>PROBAR SIMULADOR EN VIVO</span>
                   <ArrowRight className="w-4 h-4" />
                 </Button>
+              </Link>
+              <Link to="/contacto?source=embed-demo&demo=true" className="block text-center text-xs font-semibold text-[#173a5e] hover:underline pt-1">
+                Consultar integración embebida →
               </Link>
             </div>
           </div>
@@ -189,13 +192,13 @@ export const IntegrationDemoHubPage: React.FC = () => {
                   <MousePointerClick className="w-7 h-7 text-white" />
                 </div>
                 <span className="px-3 py-1 rounded-full text-xs font-bold font-mono uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
-                  OPCIÓN B · BUTTON
+                  01 · SOLO BOTÓN
                 </span>
               </div>
 
               <div className="space-y-2 text-left">
                 <span className="text-xs font-bold uppercase tracking-widest text-[#245f91] block">
-                  Modalidad B
+                  Modalidad 01
                 </span>
                 <h2 className="text-2xl font-serif font-bold text-[#173a5e]">
                   Solo Botón
@@ -239,7 +242,7 @@ export const IntegrationDemoHubPage: React.FC = () => {
               </ul>
             </div>
 
-            <div className="p-6 bg-slate-50 border-t border-slate-100">
+            <div className="p-6 bg-slate-50 border-t border-slate-100 space-y-2">
               <Link to={`/demo/${slug}/integraciones/boton`}>
                 <Button
                   variant="primary"
@@ -247,9 +250,12 @@ export const IntegrationDemoHubPage: React.FC = () => {
                   className="w-full text-white font-bold py-3.5 shadow-md uppercase tracking-wider flex items-center justify-center space-x-2"
                   style={{ backgroundColor: secondaryColor }}
                 >
-                  <span>PROBAR SOLO BOTÓN</span>
+                  <span>PROBAR INTEGRACIÓN</span>
                   <ArrowRight className="w-4 h-4" />
                 </Button>
+              </Link>
+              <Link to="/contacto?source=button-demo&demo=true" className="block text-center text-xs font-semibold text-[#173a5e] hover:underline pt-1">
+                Consultar modalidad solo botón →
               </Link>
             </div>
           </div>

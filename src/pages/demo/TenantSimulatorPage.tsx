@@ -20,6 +20,8 @@ import {
   DEFAULT_NOVA_LENDING_RULES,
 } from '../../lib/tenantRulesService';
 import { clientSimulationService } from '../../lib/clientSimulationService';
+import { isDemoMode } from '../../lib/demoControl';
+import { DemoCommercialGateModal } from '../../components/demo/DemoCommercialGateModal';
 import { Button } from '../../components/ui/Button';
 import { CurrencyInput } from '../../components/ui/CurrencyInput';
 import { WhatsAppFloatingButton } from '../../components/whatsapp/WhatsAppFloatingButton';
@@ -33,6 +35,7 @@ export const TenantSimulatorPage: React.FC = () => {
   const brandName = tenant.branding?.public_name || tenant.name || 'Estudio Nova';
   const primaryColor = tenant.branding?.primary_color || '#173a5e';
   const accentColor = tenant.branding?.accent_color || '#f4b43b';
+  const isDemo = isDemoMode({ organizationId: tenant.id, organizationSlug: tenantSlug || tenant.slug, pathname: window?.location?.pathname });
 
   const [rules, setRules] = useState<TenantLendingRules>(DEFAULT_NOVA_LENDING_RULES);
   const [propertyValue, setPropertyValue] = useState<number>(200000);
@@ -40,12 +43,13 @@ export const TenantSimulatorPage: React.FC = () => {
   const [termMonths, setTermMonths] = useState<number>(36);
   const [repaymentMode, setRepaymentMode] = useState<'solo_intereses' | 'amortizable'>('solo_intereses');
 
-  // Estados de Guardado
+  // Estados de Guardado y Gate Comercial
   const [savedSuccessToast, setSavedSuccessToast] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [gateModalOpen, setGateModalOpen] = useState(false);
 
   useEffect(() => {
-    document.title = `${brandName} | Simulador de Financiación`;
+    document.title = `${brandName} | Simulá tu financiación`;
     if (tenant.id) {
       getTenantLendingRules(tenant.id).then((r) => setRules(r));
     }
@@ -98,6 +102,15 @@ export const TenantSimulatorPage: React.FC = () => {
     if (e && typeof e.preventDefault === 'function') {
       e.preventDefault();
     }
+    if (isOverPercentage || isOverAmount || loanAmount <= 0) return;
+
+    // En demo pública, interceptar con el gate comercial
+    if (isDemo) {
+      setGateModalOpen(true);
+      return;
+    }
+
+    // En producción real, continuar con la solicitud
     const effectiveSlug = tenantSlug || tenant.slug || 'estudio-nova';
     navigate(`/demo/${effectiveSlug}/solicitar?monto=${loanAmount}&valor_propiedad=${propertyValue}&plazo=${termMonths}&modalidad=${repaymentMode}`, {
       state: {
@@ -339,15 +352,16 @@ export const TenantSimulatorPage: React.FC = () => {
                     <ArrowRight className="w-4 h-4 ml-1.5" />
                   </button>
                 ) : (
-                  <Link
-                    to={`/demo/${tenantSlug || tenant.slug || 'estudio-nova'}/solicitar?monto=${loanAmount}&valor_propiedad=${propertyValue}&plazo=${termMonths}&modalidad=${repaymentMode}`}
+                  <button
+                    type="button"
+                    onClick={handleStartApplication}
                     data-testid="btn-continuar-solicitud"
                     className="w-full sm:w-auto px-6 py-3 rounded-xl text-xs font-bold text-white shadow-md hover:opacity-95 active:scale-[0.98] transition-all inline-flex items-center justify-center space-x-1.5 cursor-pointer text-center"
                     style={{ backgroundColor: primaryColor }}
                   >
                     <span>Continuar solicitud</span>
                     <ArrowRight className="w-4 h-4 ml-1.5" />
-                  </Link>
+                  </button>
                 )}
               </div>
             </div>
@@ -417,6 +431,21 @@ export const TenantSimulatorPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Modal de Gate Comercial para Demo Pública */}
+      <DemoCommercialGateModal
+        isOpen={gateModalOpen}
+        onClose={() => setGateModalOpen(false)}
+        source="simulador"
+        tenantSlug={tenantSlug || tenant.slug}
+        brandName={brandName}
+        simulationSummary={{
+          requestedAmount: loanAmount,
+          propertyValue: propertyValue,
+          termMonths: termMonths,
+          monthlyPayment: estimatedMonthlyPayment,
+        }}
+      />
 
       {/* Footer */}
       <footer className="border-t border-slate-200 bg-white py-4 px-4 text-center text-xs text-slate-400">

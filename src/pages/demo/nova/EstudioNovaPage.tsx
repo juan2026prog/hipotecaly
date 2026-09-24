@@ -51,6 +51,8 @@ import {
   DEFAULT_MODULES_MAP,
   TenantModuleKey,
 } from '../../../lib/tenantModulesService';
+import { isDemoMode } from '../../../lib/demoControl';
+import { DemoCommercialGateModal } from '../../../components/demo/DemoCommercialGateModal';
 import { OrganizationHero } from '../../../components/organization/OrganizationHero';
 import { Button } from '../../../components/ui/Button';
 import { CurrencyInput } from '../../../components/ui/CurrencyInput';
@@ -85,12 +87,14 @@ export const EstudioNovaPage: React.FC = () => {
     : 'd0000000-0000-0000-0000-000000000001';
 
   const effectiveSlug = tenantSlug || tenant?.slug || 'estudio-nova';
+  const isDemo = isDemoMode({ organizationId: effectiveOrgId, organizationSlug: effectiveSlug, pathname: window?.location?.pathname });
 
   const [rules, setRules] = useState<TenantLendingRules>(DEFAULT_NOVA_LENDING_RULES);
   const [homeSettings, setHomeSettings] = useState<OrganizationHomeSettings>(DEFAULT_ESTUDIO_NOVA_HOME_SETTINGS);
   const [faqs, setFaqs] = useState<OrganizationFaqItem[]>(DEFAULT_ESTUDIO_NOVA_FAQS);
   const [modules, setModules] = useState<Record<TenantModuleKey, boolean>>(DEFAULT_MODULES_MAP);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [gateModalOpen, setGateModalOpen] = useState(false);
 
   // Snapshot Compuesto Editorial: en modo público se leen branding y faqs congelados en la versión
   const compositeSnap = homeSettings.publishedSnapshot as any;
@@ -200,6 +204,13 @@ export const EstudioNovaPage: React.FC = () => {
     e.preventDefault();
     if (isOverPercentage || isOverAmount) return;
 
+    // En demo pública, interceptar con el gate comercial
+    if (isDemo) {
+      setGateModalOpen(true);
+      return;
+    }
+
+    // En producción real, continuar con la solicitud
     navigate(
       `/demo/${effectiveSlug}/solicitar?monto=${loanAmount}&valor_propiedad=${propertyValue}&plazo=${termMonths}&modalidad=${repaymentMode}`,
       {
@@ -298,7 +309,7 @@ export const EstudioNovaPage: React.FC = () => {
                 className="flex items-center text-slate-200 hover:text-white font-medium transition-colors"
               >
                 <User className="w-3.5 h-3.5 mr-1" style={{ color: accentColor }} />
-                Portal de clientes
+                Portal del solicitante
               </Link>
             )}
             <Link
@@ -1121,6 +1132,21 @@ export const EstudioNovaPage: React.FC = () => {
 
       {/* Botón Flotante de WhatsApp Oficial */}
       <WhatsAppFloatingButton tenantId={effectiveOrgId} organizationName={orgName} />
+
+      {/* Modal de Gate Comercial para Demo Pública */}
+      <DemoCommercialGateModal
+        isOpen={gateModalOpen}
+        onClose={() => setGateModalOpen(false)}
+        source="estudio-nova"
+        tenantSlug={effectiveSlug}
+        brandName={orgName}
+        simulationSummary={{
+          requestedAmount: loanAmount,
+          propertyValue: propertyValue,
+          termMonths: termMonths,
+          monthlyPayment: estimatedMonthlyPayment,
+        }}
+      />
 
     </div>
   );

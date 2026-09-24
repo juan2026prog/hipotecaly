@@ -20,6 +20,8 @@ import {
   TenantLendingRules,
   DEFAULT_NOVA_LENDING_RULES,
 } from '../../lib/tenantRulesService';
+import { isDemoMode } from '../../lib/demoControl';
+import { DemoCommercialGateModal } from '../demo/DemoCommercialGateModal';
 
 export interface CanonicalTenantSimulatorProps {
   tenantId?: string;
@@ -63,6 +65,8 @@ export const CanonicalTenantSimulator: React.FC<CanonicalTenantSimulatorProps> =
   onContinue,
 }) => {
   const navigate = useNavigate();
+  const isDemo = isDemoMode({ organizationId: tenantId, organizationSlug: tenantSlug, pathname: window?.location?.pathname });
+  const [gateModalOpen, setGateModalOpen] = useState(false);
   const [rules, setRules] = useState<TenantLendingRules>(DEFAULT_NOVA_LENDING_RULES);
 
   const [propertyValue, setPropertyValue] = useState<number>(initialPropertyValue);
@@ -114,6 +118,13 @@ export const CanonicalTenantSimulator: React.FC<CanonicalTenantSimulatorProps> =
       return;
     }
 
+    // En demo pública, interceptar con el gate comercial unificado
+    if (isDemo) {
+      setGateModalOpen(true);
+      return;
+    }
+
+    // En producción, continuar hacia el flujo real
     const query = new URLSearchParams({
       monto: loanAmount.toString(),
       valor_propiedad: propertyValue.toString(),
@@ -301,6 +312,21 @@ export const CanonicalTenantSimulator: React.FC<CanonicalTenantSimulatorProps> =
           </span>
         </div>
       </form>
+
+      {/* Modal de Gate Comercial para Demo Pública */}
+      <DemoCommercialGateModal
+        isOpen={gateModalOpen}
+        onClose={() => setGateModalOpen(false)}
+        source={sourceMode === 'embed' ? 'embed-demo' : sourceMode === 'button' ? 'button-demo' : 'simulador'}
+        tenantSlug={tenantSlug}
+        brandName={brandName}
+        simulationSummary={{
+          requestedAmount: loanAmount,
+          propertyValue: propertyValue,
+          termMonths: termMonths,
+          monthlyPayment: estimatedMonthlyPayment,
+        }}
+      />
     </div>
   );
 };

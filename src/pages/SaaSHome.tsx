@@ -2,7 +2,6 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
-  Layers,
   BarChart3,
   Globe,
   Clock,
@@ -11,7 +10,6 @@ import {
   Laptop,
   Workflow,
   ShieldCheck,
-  Smartphone,
   CheckCircle2,
 } from 'lucide-react';
 import { SaaSNavbar } from '../components/layout/SaaSNavbar';
@@ -143,7 +141,7 @@ export const SaaSHome: React.FC = () => {
       </section>
 
       {/* ============================================================== */}
-      {/* 2. DOS MODALIDADES COMERCIALES CLARAMENTE DIFERENCIADAS         */}
+      {/* 2. TRES MODALIDADES DE INTEGRACIÓN CLARAMENTE DIFERENCIADAS   */}
       {/* ============================================================== */}
       <section id="modalidades" className="py-16 md:py-24 bg-slate-bg border-y border-slate-border text-left">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -152,187 +150,184 @@ export const SaaSHome: React.FC = () => {
               FLEXIBILIDAD DE IMPLEMENTACIÓN
             </span>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-navy tracking-tight">
-              Elegí cómo querés implementar HIPOTECALY
+              Elegí cómo querés integrar HIPOTECALY
             </h2>
             <p className="text-base text-slate-muted">
-              Dos caminos para el mismo objetivo: transformar tu gestión hipotecaria en una experiencia digital ágil, ordenada y profesional.
+              Tres formas adaptadas a tu infraestructura actual para transformar tu negocio hipotecario en una experiencia digital ágil, ordenada y profesional.
             </p>
           </div>
 
-          {/* LAS DOS GRANDES TARJETAS COMERCIALES */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+          {/* LAS TRES GRANDES TARJETAS COMERCIALES */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
             
-            {/* MODALIDAD A: YA TENGO SITIO WEB */}
-            <div className="bg-white rounded-3xl p-7 sm:p-9 border-2 border-slate-200 hover:border-brand-green transition-all shadow-card flex flex-col justify-between relative group">
-              <div className="space-y-6">
+            {/* MODALIDAD 01: SOLO BOTÓN */}
+            <div className="bg-white rounded-3xl p-7 border-2 border-slate-200 hover:border-brand-green transition-all shadow-card flex flex-col justify-between relative group">
+              <div className="space-y-5">
                 <div className="flex items-center justify-between">
                   <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase bg-brand-green-light text-brand-green">
                     <Workflow className="w-3.5 h-3.5" />
-                    <span>MODALIDAD A</span>
+                    <span>01 — SOLO BOTÓN</span>
                   </span>
-                  <span className="text-xs font-medium text-slate-400">Integración Modular</span>
+                  <span className="text-xs font-medium text-slate-400">Sin desarrollo</span>
                 </div>
 
                 <div>
-                  <h3 className="text-2xl sm:text-3xl font-extrabold text-navy tracking-tight">
-                    Integrá HIPOTECALY a tu web actual
+                  <h3 className="text-xl sm:text-2xl font-extrabold text-navy tracking-tight">
+                    Botón de Solicitud
                   </h3>
-                  <p className="text-sm sm:text-base text-slate-muted mt-3 leading-relaxed">
-                    No necesitás reemplazar tu sitio. Conectamos tu simulador, formulario o botón actual con todo el proceso digital de HIPOTECALY.
+                  <p className="text-xs sm:text-sm text-slate-muted mt-2 leading-relaxed">
+                    Tu organización conserva su sitio actual y agrega un botón tipo <strong>[SOLICITAR FINANCIACIÓN]</strong> que abre el simulador alojado con tu identidad.
                   </p>
                 </div>
 
-                {/* Mensaje Comercial Destacado */}
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 border-l-4 border-l-brand-green">
-                  <p className="text-sm font-bold text-navy">
-                    “Tu web sigue siendo tu web. HIPOTECALY hace todo lo que viene después.”
-                  </p>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Pensado para estudios hipotecarios, financieras y prestamistas que ya tienen web o simulador pero después gestionan por WhatsApp, emails o planillas manuales.
-                  </p>
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 space-y-1.5 font-mono">
+                  <div className="text-[10px] uppercase font-bold text-slate-400 font-sans">Flujo:</div>
+                  <div>Tu web actual → Botón CTA</div>
+                  <div className="text-brand-green font-bold">↓ Abre simulador brandeado</div>
+                  <div className="text-navy font-bold">✓ Continuar solicitud</div>
                 </div>
 
-                {/* Pipeline Visual Resumido */}
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                    Flujo de Integración
-                  </span>
-                  <div className="text-xs text-slate-700 font-medium space-y-1.5">
-                    <div className="flex items-center space-x-2">
-                      <span className="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-[10px] font-bold shrink-0">1</span>
-                      <span>Web existente / Simulador actual</span>
-                    </div>
-                    <div className="flex items-center space-x-2 text-brand-green font-bold">
-                      <ArrowRight className="w-4 h-4 ml-0.5 shrink-0" />
-                      <span>Click en “CONTINUAR SOLICITUD”</span>
-                    </div>
-                    <div className="flex items-center space-x-2 text-navy font-semibold">
-                      <span className="w-5 h-5 rounded-full bg-navy text-white flex items-center justify-center text-[10px] font-bold shrink-0">2</span>
-                      <span>HIPOTECALY White-Label: expediente, documentos, análisis IA, firma y seguimiento</span>
-                    </div>
-                  </div>
-                </div>
-
-                <ul className="space-y-2.5 text-xs text-slate-600">
+                <ul className="space-y-2 text-xs text-slate-600">
                   <li className="flex items-center space-x-2">
                     <CheckCircle2 className="w-4 h-4 text-brand-green shrink-0" />
-                    <span>Conexión por botón, subdominio, ruta, widget o API</span>
+                    <span>Cero desarrollo en tu sitio actual</span>
                   </li>
                   <li className="flex items-center space-x-2">
                     <CheckCircle2 className="w-4 h-4 text-brand-green shrink-0" />
-                    <span>Sin cambiar tu diseño, marca ni proveedor web actual</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-brand-green shrink-0" />
-                    <span>Los datos del simulador pasan automáticamente sin reescritura</span>
+                    <span>Simulador alojado bajo tu dominio/marca</span>
                   </li>
                 </ul>
               </div>
 
-              <div className="pt-8 space-y-2">
-                <Link to="/saas/integracion">
-                  <Button variant="primary" size="lg" fullWidth className="shadow-md">
-                    QUIERO INTEGRARLO <ArrowRight className="w-4 h-4 ml-2" />
+              <div className="pt-6 space-y-2">
+                <Link to="/demo/estudio-nova/integraciones/boton">
+                  <Button variant="primary" size="md" fullWidth className="shadow-md font-bold text-xs">
+                    PROBAR INTEGRACIÓN <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
                   </Button>
                 </Link>
-                <Link to="/demo/estudio-nova">
-                  <Button variant="outline" size="md" fullWidth className="text-xs font-bold border-navy text-navy hover:bg-slate-50">
-                    VER DEMO — ESTUDIO NOVA <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                <Link to="/contacto?source=button-demo&demo=true">
+                  <Button variant="outline" size="sm" fullWidth className="text-xs font-semibold border-slate-300 text-slate-700 hover:bg-slate-50">
+                    Consultar modalidad
                   </Button>
-                </Link>
-                <Link to="/saas/integracion" className="block text-center text-xs font-semibold text-navy hover:text-brand-green pt-1">
-                  Ver detalles de la modalidad de integración →
                 </Link>
               </div>
             </div>
 
-            {/* MODALIDAD B: NECESITO TODO DESDE CERO */}
-            <div className="bg-navy text-white rounded-3xl p-7 sm:p-9 border border-navy-border shadow-floating flex flex-col justify-between relative group">
-              <div className="space-y-6">
+            {/* MODALIDAD 02: SIMULADOR EMBEBIDO */}
+            <div className="bg-white rounded-3xl p-7 border-2 border-slate-200 hover:border-brand-green transition-all shadow-card flex flex-col justify-between relative group">
+              <div className="space-y-5">
                 <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase bg-brand-green text-navy">
-                    <Layers className="w-3.5 h-3.5" />
-                    <span>MODALIDAD B</span>
+                  <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase bg-brand-green-light text-brand-green">
+                    <Laptop className="w-3.5 h-3.5" />
+                    <span>02 — SIMULADOR EMBEBIDO</span>
                   </span>
-                  <span className="text-xs font-medium text-slate-300">Solución Llave en Mano</span>
+                  <span className="text-xs font-medium text-slate-400">Widget / Embed</span>
                 </div>
 
                 <div>
-                  <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                    Tu propia plataforma hipotecaria, lista para operar
+                  <h3 className="text-xl sm:text-2xl font-extrabold text-navy tracking-tight">
+                    Simulador Embebido
                   </h3>
-                  <p className="text-sm sm:text-base text-slate-300 mt-3 leading-relaxed">
-                    Creamos desde cero tu ecosistema digital completo: sitio, simulador, solicitud, portal cliente y backoffice bajo tu propia marca.
+                  <p className="text-xs sm:text-sm text-slate-muted mt-2 leading-relaxed">
+                    Tu organización conserva su sitio actual. El simulador interactivo se integra directamente dentro de tu propia web y conecta con el resto del flujo.
                   </p>
                 </div>
 
-                {/* Mensaje Comercial Destacado */}
-                <div className="p-4 rounded-xl bg-white/10 border border-white/15 border-l-4 border-l-brand-green">
-                  <p className="text-base font-extrabold text-brand-green tracking-wide">
-                    “Tu marca. Tu dominio. Tus clientes. Nuestra tecnología.”
-                  </p>
-                  <p className="text-xs text-slate-300 mt-1">
-                    Para prestamistas, financieras y estudios que quieren dar el salto digital completo sin incurrir en meses de desarrollo a medida.
-                  </p>
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 space-y-1.5 font-mono">
+                  <div className="text-[10px] uppercase font-bold text-slate-400 font-sans">Flujo:</div>
+                  <div>Tu web + Simulador embebido</div>
+                  <div className="text-brand-green font-bold">↓ Usuario cotiza cuota</div>
+                  <div className="text-navy font-bold">✓ Continuar solicitud</div>
                 </div>
 
-                {/* Componentes del Ecosistema */}
-                <div className="grid grid-cols-2 gap-2 text-xs text-slate-200">
-                  <div className="p-2.5 rounded-lg bg-white/5 border border-white/10 flex items-center space-x-2">
-                    <Globe className="w-4 h-4 text-brand-green shrink-0" />
-                    <span>Sitio Institucional</span>
-                  </div>
-                  <div className="p-2.5 rounded-lg bg-white/5 border border-white/10 flex items-center space-x-2">
-                    <Laptop className="w-4 h-4 text-brand-green shrink-0" />
-                    <span>Simulador Propio</span>
-                  </div>
-                  <div className="p-2.5 rounded-lg bg-white/5 border border-white/10 flex items-center space-x-2">
-                    <Smartphone className="w-4 h-4 text-brand-green shrink-0" />
-                    <span>Portal Cliente PWA</span>
-                  </div>
-                  <div className="p-2.5 rounded-lg bg-white/5 border border-white/10 flex items-center space-x-2">
-                    <BarChart3 className="w-4 h-4 text-brand-green shrink-0" />
-                    <span>Backoffice Operativo</span>
-                  </div>
-                </div>
-
-                <ul className="space-y-2.5 text-xs text-slate-300">
+                <ul className="space-y-2 text-xs text-slate-600">
                   <li className="flex items-center space-x-2">
                     <CheckCircle2 className="w-4 h-4 text-brand-green shrink-0" />
-                    <span>100% White-Label: tu logotipo, colores, textos y dominio propio</span>
+                    <span>Incrustación por script o iframe seguro</span>
                   </li>
                   <li className="flex items-center space-x-2">
                     <CheckCircle2 className="w-4 h-4 text-brand-green shrink-0" />
-                    <span>Parámetros comerciales adaptados a tus tasas, plazos y límites</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-brand-green shrink-0" />
-                    <span>Aislamiento estricto de base de datos y auditoría inmutable</span>
+                    <span>Datos precargados sin reescritura</span>
                   </li>
                 </ul>
               </div>
 
-              <div className="pt-8 space-y-2">
-                <Link to="/saas/plataforma-completa">
-                  <Button variant="primary" size="lg" fullWidth className="shadow-lg font-bold">
-                    Quiero mi plataforma <ArrowRight className="w-4 h-4 ml-2" />
+              <div className="pt-6 space-y-2">
+                <Link to="/demo/estudio-nova/integraciones/embebido">
+                  <Button variant="primary" size="md" fullWidth className="shadow-md font-bold text-xs">
+                    PROBAR SIMULADOR EN VIVO <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
                   </Button>
                 </Link>
+                <Link to="/contacto?source=embed-demo&demo=true">
+                  <Button variant="outline" size="sm" fullWidth className="text-xs font-semibold border-slate-300 text-slate-700 hover:bg-slate-50">
+                    Consultar modalidad
+                  </Button>
+                </Link>
+              </div>
+            </div>
+
+            {/* MODALIDAD 03: SITIO COMPLETO */}
+            <div className="bg-navy text-white rounded-3xl p-7 border border-navy-border shadow-floating flex flex-col justify-between relative group">
+              <div className="space-y-5">
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase bg-brand-green text-navy">
+                    <Globe className="w-3.5 h-3.5" />
+                    <span>03 — SITIO COMPLETO</span>
+                  </span>
+                  <span className="text-xs font-medium text-slate-300">Llave en Mano</span>
+                </div>
+
+                <div>
+                  <h3 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+                    Plataforma Completa
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-300 mt-2 leading-relaxed">
+                    HIPOTECALY proporciona la experiencia completa: portal institucional, simulador, portal del solicitante y backoffice operativo.
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-white/10 border border-white/15 text-xs text-slate-200 space-y-1.5 font-mono">
+                  <div className="text-[10px] uppercase font-bold text-slate-400 font-sans">Flujo:</div>
+                  <div>Portal institucional propio</div>
+                  <div className="text-brand-green font-bold">↓ Cotizador + Solicitud</div>
+                  <div className="text-white font-bold">✓ Expediente + Backoffice</div>
+                </div>
+
+                <ul className="space-y-2 text-xs text-slate-300">
+                  <li className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-brand-green shrink-0" />
+                    <span>Ecosistema digital autónomo llave en mano</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-brand-green shrink-0" />
+                    <span>Estudio Nova representa esta modalidad</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="pt-6 space-y-2">
                 <Link to="/demo/estudio-nova">
-                  <Button variant="outline" size="md" fullWidth className="text-xs font-bold border-white/30 text-white hover:bg-white/10">
-                    Ver demo Estudio Nova <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                  <Button variant="primary" size="md" fullWidth className="shadow-lg font-bold text-xs">
+                    VER DEMO ESTUDIO NOVA <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
                   </Button>
                 </Link>
                 <Link to="/saas/plataforma-completa" className="block text-center text-xs font-semibold text-slate-300 hover:text-white pt-1">
-                  Ver detalles de la plataforma completa →
+                  Ver detalles de sitio completo →
                 </Link>
               </div>
             </div>
 
           </div>
 
-          {/* Pipeline Visual debajo de las dos modalidades */}
-          <div className="mt-14 pt-10 border-t border-slate-200">
+          {/* Aclaración Transversal Obligatoria de Marca */}
+          <div className="mt-8 p-4 rounded-2xl bg-white border border-slate-200 shadow-sm text-center max-w-2xl mx-auto">
+            <p className="text-xs sm:text-sm font-semibold text-navy">
+              “En todas las modalidades, la experiencia del solicitante utiliza la identidad de tu organización.”
+            </p>
+          </div>
+
+          {/* Pipeline Visual debajo de las tres modalidades */}
+          <div className="mt-12 pt-8 border-t border-slate-200">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-4">
               EL FLUJO DIGITAL UNIFICADO QUE EXPERIMENTAN TUS CLIENTES
             </span>

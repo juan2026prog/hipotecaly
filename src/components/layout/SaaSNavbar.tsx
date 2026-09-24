@@ -188,23 +188,31 @@ export const SaaSNavbar: React.FC = () => {
 
                 <div className="border-t border-slate-100 my-1 pt-1">
                   <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    Modalidad de despliegue
+                    Modalidades de integración
                   </div>
 
                   <Link
-                    to="/saas/integracion"
+                    to="/demo/estudio-nova/integraciones/boton"
                     className="flex items-center justify-between p-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-navy"
                   >
-                    <span>Integración embebida (Widget)</span>
+                    <span>01 — Solo botón</span>
                     <Workflow className="w-3.5 h-3.5 text-slate-400" />
                   </Link>
 
                   <Link
-                    to="/saas/plataforma-completa"
+                    to="/demo/estudio-nova/integraciones/embebido"
                     className="flex items-center justify-between p-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-navy"
                   >
-                    <span>Plataforma completa (White-Label)</span>
-                    <Layers className="w-3.5 h-3.5 text-brand-green" />
+                    <span>02 — Simulador embebido</span>
+                    <Layers className="w-3.5 h-3.5 text-blue-500" />
+                  </Link>
+
+                  <Link
+                    to="/demo/estudio-nova"
+                    className="flex items-center justify-between p-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-navy"
+                  >
+                    <span>03 — Sitio completo</span>
+                    <Sparkles className="w-3.5 h-3.5 text-brand-green" />
                   </Link>
                 </div>
               </div>

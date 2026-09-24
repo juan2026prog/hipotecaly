@@ -33,6 +33,8 @@ import {
 import { useTenant } from '../contexts/TenantContext';
 import { useAuth } from '../contexts/AuthContext';
 import { clientSimulationService } from '../lib/clientSimulationService';
+import { isDemoMode } from '../lib/demoControl';
+import { DemoCommercialGateModal } from '../components/demo/DemoCommercialGateModal';
 
 export const SimulatorPage: React.FC = () => {
   const navigate = useNavigate();
@@ -40,6 +42,7 @@ export const SimulatorPage: React.FC = () => {
 
   const isNova = tenant.slug === 'estudio-nova' || tenant.slug === 'nova' || tenant.slug === 'estudio_nova';
   const isWhiteLabel = tenant.is_white_label || isNova;
+  const isDemo = isDemoMode({ organizationId: tenant.id, organizationSlug: tenant.slug, pathname: window?.location?.pathname });
 
   // Reglas crediticias activas desde DB / servicio único
   const [rules, setRules] = useState<MarketplaceRuleSet>(DEFAULT_PILOT_RULESET);
@@ -59,9 +62,10 @@ export const SimulatorPage: React.FC = () => {
 
   const { user } = useAuth();
 
-  // Estados de Guardado de Simulación
+  // Estados de Guardado de Simulación y Gate Comercial
   const [savedSuccessToast, setSavedSuccessToast] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [gateModalOpen, setGateModalOpen] = useState(false);
 
   // Paso actual del Progressive Disclosure (1: Valor y Monto, 2: Propiedad y Ubicación, 3: Ingresos y Resumen)
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
@@ -123,6 +127,14 @@ export const SimulatorPage: React.FC = () => {
 
   const handleFinishSimulation = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+
+    // Si estamos en entorno DEMO PÚBLICO, abrir Commercial Gate
+    if (isDemo) {
+      setGateModalOpen(true);
+      return;
+    }
+
+    // Si es organización productiva real, continuar al flujo operativo real
     const sourceParam = isNova ? 'estudio_nova' : tenant.slug;
     navigate(`/solicitar?monto=${requestedAmount}&valor_propiedad=${propertyValue}&source=${sourceParam}`, {
       state: {
@@ -163,10 +175,10 @@ export const SimulatorPage: React.FC = () => {
               {isNova ? 'Estudio Nova · Cotizador' : 'Simulador online'}
             </span>
             <h1 className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${isWhiteLabel ? 'font-serif text-[#173a5e]' : 'text-navy'}`}>
-              Calculá tu capacidad de crédito
+              Simulá tu financiación
             </h1>
             <p className={`text-sm sm:text-base max-w-lg mx-auto ${isWhiteLabel ? 'text-[#718096]' : 'text-slate-muted'}`}>
-              Ingresá el valor estimado de tu propiedad y conocé en segundos el monto al que podés acceder.
+              Conocé de forma preliminar cuánto podrías solicitar utilizando tu inmueble como respaldo.
             </p>
           </div>
 
@@ -740,6 +752,21 @@ export const SimulatorPage: React.FC = () => {
 
         </div>
       </main>
+
+      {/* Modal de Gate Comercial para Demo Pública */}
+      <DemoCommercialGateModal
+        isOpen={gateModalOpen}
+        onClose={() => setGateModalOpen(false)}
+        source="simulador"
+        tenantSlug={tenant.slug}
+        brandName={isNova ? 'Estudio Nova' : tenant.name}
+        simulationSummary={{
+          requestedAmount,
+          propertyValue,
+          termMonths: 36,
+          monthlyPayment: estimatedMonthlyPayment,
+        }}
+      />
 
       <Footer />
     </div>
