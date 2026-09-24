@@ -329,16 +329,18 @@ export const TenantSimulatorPage: React.FC = () => {
               </div>
 
               <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="lg"
-                  onClick={handleSaveSimulation}
-                  className="w-full sm:w-auto text-xs font-bold bg-white border-slate-300 hover:bg-slate-50 flex items-center justify-center !rounded-xl"
-                >
-                  <Bookmark className="w-4 h-4 mr-1.5 text-slate-600" />
-                  Guardar simulación
-                </Button>
+                {!isDemo && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    onClick={handleSaveSimulation}
+                    className="w-full sm:w-auto text-xs font-bold bg-white border-slate-300 hover:bg-slate-50 flex items-center justify-center !rounded-xl"
+                  >
+                    <Bookmark className="w-4 h-4 mr-1.5 text-slate-600" />
+                    Guardar simulación
+                  </Button>
+                )}
 
                 {isOverPercentage || isOverAmount || loanAmount <= 0 ? (
                   <button

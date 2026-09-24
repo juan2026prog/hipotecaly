@@ -16,7 +16,7 @@ test.describe('Hipotecaly Public Demo & Commercial Gate Suite', () => {
     await expect(page.locator('text=Ver demo Estudio Nova')).toBeVisible();
   });
 
-  test('02 — Modalidad 01 Solo Botón: Flow completo hasta Gate Comercial', async ({ page }) => {
+  test('02 — Modalidad 01 Solo Botón: Flow completo hasta Gate Comercial y ausencia de Guardar simulación', async ({ page }) => {
     await page.goto('/demo/estudio-nova/integraciones/boton');
     
     await expect(page.locator('text=DESARROLLOS DEL SUR')).toBeVisible();
@@ -25,7 +25,10 @@ test.describe('Hipotecaly Public Demo & Commercial Gate Suite', () => {
     await page.click('[data-testid=\ btn-solicitar-financiacion\]');
     await expect(page).toHaveURL(/.*\/demo\/estudio-nova\/simulador.*/);
 
-    const continueBtn = page.locator('button:has-text(\CONTINUAR SOLICITUD\), button:has-text(\Continuar solicitud\)').first();
+    // Validar que en PUBLIC_DEMO NO está presente Guardar simulación
+    await expect(page.locator('button:has-text(Guardar simulación)')).toHaveCount(0);
+
+    const continueBtn = page.locator('button:has-text(CONTINUAR SOLICITUD), button:has-text(Continuar solicitud)').first();
     await expect(continueBtn).toBeVisible();
     await continueBtn.click();
 
@@ -43,7 +46,10 @@ test.describe('Hipotecaly Public Demo & Commercial Gate Suite', () => {
     await page.goto('/demo/estudio-nova/integraciones/embebido');
     
     await expect(page.locator('text=INMOBILIARIA DEL ESTE')).toBeVisible();
-    const continueBtn = page.locator('button:has-text(\CONTINUAR SOLICITUD\), button:has-text(\Continuar solicitud\)').first();
+    // Validar ausencia de Guardar simulación en embebido público
+    await expect(page.locator('button:has-text(Guardar simulación)')).toHaveCount(0);
+
+    const continueBtn = page.locator('button:has-text(CONTINUAR SOLICITUD), button:has-text(Continuar solicitud)').first();
     await expect(continueBtn).toBeVisible();
     await continueBtn.click();
 
@@ -54,12 +60,13 @@ test.describe('Hipotecaly Public Demo & Commercial Gate Suite', () => {
     await expect(page).toHaveURL(/.*\/contacto\?source=embed_demo.*/);
   });
 
-  test('04 — Modalidad 03 Sitio Completo (Estudio Nova Home): Gate Comercial activo', async ({ page }) => {
+  test('04 — Modalidad 03 Sitio Completo (Estudio Nova Home): Gate Comercial activo y sin Guardar simulación', async ({ page }) => {
     await page.goto('/demo/estudio-nova');
     
     await expect(page.locator('text=Portal del solicitante').first()).toBeVisible();
+    await expect(page.locator('button:has-text(Guardar simulación)')).toHaveCount(0);
 
-    const continueBtn = page.locator('button:has-text(\CONTINUAR SOLICITUD\), button:has-text(\Continuar solicitud\)').first();
+    const continueBtn = page.locator('button:has-text(CONTINUAR SOLICITUD), button:has-text(Continuar solicitud)').first();
     await expect(continueBtn).toBeVisible();
     await continueBtn.click();
 
