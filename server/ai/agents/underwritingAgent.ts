@@ -3,6 +3,7 @@
 // ==============================================================================
 
 import { UnderwritingOutput } from '../types.js';
+import { ResolvedUnderwritingPolicy, PILOT_FALLBACK_POLICY } from '../underwritingPolicyResolver.js';
 
 export interface UnderwritingPolicyConfig {
   maxLtv: number; // Por ej. 40.0% o 50.0%
@@ -14,27 +15,21 @@ export interface UnderwritingPolicyConfig {
   acceptedDepartments: string[];
   defaultInterestRateAnnual: number; // Por ej. 11.5%
   allowOfflineAnalysis?: boolean;
+  maxDtiRatio?: number;
+  maxBorrowerAgeAtMaturity?: number;
 }
 
 export const DEFAULT_PILOT_UNDERWRITING_POLICY: UnderwritingPolicyConfig = {
-  maxLtv: 40.0, // 40%
-  maxLoanAmount: 200000,
-  minLoanAmount: 10000,
-  minTermMonths: 12,
-  maxTermMonths: 60,
-  acceptedPropertyTypes: ['casa', 'apartamento', 'local_comercial', 'terreno', 'campo'],
-  acceptedDepartments: [
-    'Montevideo',
-    'Canelones',
-    'Maldonado',
-    'Colonia',
-    'San José',
-    'Rocha',
-    'Salto',
-    'Paysandú',
-    'Todos',
-  ],
-  defaultInterestRateAnnual: 11.5,
+  maxLtv: PILOT_FALLBACK_POLICY.maxLtv,
+  maxLoanAmount: PILOT_FALLBACK_POLICY.maxLoanAmount,
+  minLoanAmount: PILOT_FALLBACK_POLICY.minLoanAmount,
+  minTermMonths: PILOT_FALLBACK_POLICY.minTermMonths,
+  maxTermMonths: PILOT_FALLBACK_POLICY.maxTermMonths,
+  acceptedPropertyTypes: PILOT_FALLBACK_POLICY.acceptedPropertyTypes,
+  acceptedDepartments: PILOT_FALLBACK_POLICY.acceptedDepartments,
+  defaultInterestRateAnnual: PILOT_FALLBACK_POLICY.defaultInterestRateAnnual,
+  maxDtiRatio: PILOT_FALLBACK_POLICY.maxDtiRatio,
+  maxBorrowerAgeAtMaturity: PILOT_FALLBACK_POLICY.maxBorrowerAgeAtMaturity,
 };
 
 export class UnderwritingAgent {
@@ -50,7 +45,7 @@ export class UnderwritingAgent {
     propertyType: string,
     _department: string,
     monthlyIncome?: number,
-    policy: UnderwritingPolicyConfig = DEFAULT_PILOT_UNDERWRITING_POLICY
+    policy: UnderwritingPolicyConfig | ResolvedUnderwritingPolicy = DEFAULT_PILOT_UNDERWRITING_POLICY
   ): UnderwritingOutput {
     const effectivePolicy: UnderwritingPolicyConfig = {
       ...DEFAULT_PILOT_UNDERWRITING_POLICY,
@@ -113,20 +108,18 @@ export class UnderwritingAgent {
 
     // 3. Estimación de Cuota Financiera (Solo intereses base + amortización simple)
     const monthlyRate = (effectivePolicy.defaultInterestRateAnnual / 100) / 12;
-    // Cuota mensual aproximada (modalidad solo intereses mensual estándar en mercado hipotecario privado uruguayo)
     const estimatedMonthlyInstallment = Math.round(loanAmount * monthlyRate);
 
     // Relación cuota / ingreso si se conoce
     let dtiRatio: number | undefined;
     if (monthlyIncome && monthlyIncome > 0) {
-      // Si el ingreso está en UYU, asumimos tipo de cambio referencial UYU 40 por USD
       const incomeUsd = monthlyIncome > 10000 ? monthlyIncome / 40 : monthlyIncome;
       dtiRatio = Number(((estimatedMonthlyInstallment / incomeUsd) * 100).toFixed(1));
     }
 
     const eligible = violations.length === 0;
     const notes = eligible
-      ? `Solicitud financiable dentro de los parámetros del prestamista. LTV conservador: ${ltvConservative}%.`
+      ? `Solicitud financiable dentro de los parámetros de la política aplicable. LTV conservador: ${ltvConservative}%.`
       : violations.join(' ');
 
     return {
@@ -137,10 +130,10 @@ export class UnderwritingAgent {
       ltv_conservative: ltvConservative,
       max_allowed_by_ltv: maxAllowedByLtv,
       policy_limits: {
-        max_ltv_allowed: policy.maxLtv,
-        max_loan_allowed: policy.maxLoanAmount,
-        min_loan_allowed: policy.minLoanAmount,
-        max_term_months: policy.maxTermMonths,
+        max_ltv_allowed: effectivePolicy.maxLtv,
+        max_loan_allowed: effectivePolicy.maxLoanAmount,
+        min_loan_allowed: effectivePolicy.minLoanAmount,
+        max_term_months: effectivePolicy.maxTermMonths,
       },
       eligible,
       notes,

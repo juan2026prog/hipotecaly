@@ -11,18 +11,19 @@ import { AI_MODELS, calculateTokenCost, AI_STANDARD_CASE_COST_USD } from './conf
 import { DocumentIntelligenceAgent, RawDocumentInput } from './agents/documentIntelligenceAgent.js';
 import { PropertyValuationAgent } from './agents/propertyValuationAgent.js';
 import { ConsistencyAgent } from './agents/consistencyAgent.js';
-import { UnderwritingAgent, DEFAULT_PILOT_UNDERWRITING_POLICY, UnderwritingPolicyConfig } from './agents/underwritingAgent.js';
+import { UnderwritingAgent, UnderwritingPolicyConfig } from './agents/underwritingAgent.js';
 import { RiskAgent } from './agents/riskAgent.js';
 import { MemoryRetrievalAgent } from './agents/memoryRetrievalAgent.js';
 import { ComparablesAgent } from './agents/comparablesAgent.js';
 import { openAiSecretResolver } from './openAiSecretResolver.js';
-import { openAiService } from './openAiService.js';
-import { aiWalletService } from './walletService.js';
+import { underwritingPolicyResolver } from './underwritingPolicyResolver.js';
+import { pricingRegistry } from './pricingRegistry.js';
 import { supabaseAdmin } from '../supabase.js';
 
 export interface ApplicationCaseInput {
   applicationId: string;
   organizationId: string;
+  lenderId?: string;
   requestedAmount: number;
   currency: string;
   termMonths: number;
@@ -77,6 +78,14 @@ export class HipotecalyAiOrchestrator {
       throw new Error('AI_PROVIDER_DISABLED: HIPOTECALY AI se encuentra temporalmente desactivado por la administración central.');
     }
 
+    // Resolución Server-Side de la Política Multi-Tenant Efectiva (Organización + Inversor)
+    const effectivePolicy = input.policy
+      ? input.policy
+      : await underwritingPolicyResolver.resolveEffectivePolicy({
+          organizationId: input.organizationId,
+          lenderId: input.lenderId,
+        });
+
     // Selección de modelo según perfil
     const modelProfile = runType === 'deep' ? AI_MODELS.deep : runType === 'preliminary' ? AI_MODELS.extraction : AI_MODELS.reasoning;
     const modelName = modelProfile.name;
@@ -117,7 +126,7 @@ export class HipotecalyAiOrchestrator {
       analyzedDocuments: documentsAnalyzed,
     });
 
-    // 5. UNDERWRITING DETERMINÍSTICO HÍBRIDO
+    // 5. UNDERWRITING DETERMINÍSTICO HÍBRIDO (CON POLÍTICA RESUELTA MULTI-TENANT)
     const underwriting = this.underAgent.evaluateUnderwriting(
       input.requestedAmount,
       valuation.estimated_market_value,
@@ -126,7 +135,7 @@ export class HipotecalyAiOrchestrator {
       input.property.propertyType,
       input.property.department,
       input.borrower.declaredIncome,
-      input.policy || DEFAULT_PILOT_UNDERWRITING_POLICY
+      effectivePolicy
     );
 
     // 6. SEMÁFORO DE 10 DIMENSIONES
@@ -154,6 +163,7 @@ export class HipotecalyAiOrchestrator {
     const outputTokens = 2400 + documentsAnalyzed.length * 250;
     const totalTokens = actualInputTokens + cachedTokens + outputTokens;
 
+    await pricingRegistry.getPricingForModel(modelName);
     const costDetails = calculateTokenCost(
       modelName,
       totalTokens,
@@ -199,228 +209,94 @@ export class HipotecalyAiOrchestrator {
     const hasRedSemaphores = semaphore.some((s) => s.status === 'red');
     const redItems = semaphore.filter((s) => s.status === 'red');
 
-    let executiveSummary = hasRedSemaphores
-      ? `El expediente presenta ${redItems.length} condiciones críticas que requieren revisión humana prioritaria (${redItems.map((r) => r.title).join(', ')}). LTV conservador: ${underwriting.ltv_conservative}%.`
-      : `Expediente sólido con LTV conservador del ${underwriting.ltv_conservative}% (dentro de política) y documentación preliminar concordante. Inmueble con liquidez apta para garantía.`;
-
-    let recommendation = hasRedSemaphores
-      ? 'Solicitar levantamiento de observaciones o documentación faltante antes de avanzar al comité de crédito.'
-      : 'Apto para avanzar a formalización notarial y emisión de ofertas definitivas de prestamistas.';
-
-    let keyStrengths = [
-      `Garantía hipotecaria con valor conservador estimado en USD ${valuation.conservative_value.toLocaleString('es-UY')}`,
-      `LTV de mercado: ${underwriting.ltv_market}% | LTV conservador: ${underwriting.ltv_conservative}%`,
-      `${docBatch.cachedCount} documentos reutilizados de la caché (ahorro de ${docBatch.tokensSavedEstimate.toLocaleString()} tokens)`,
-    ];
-
-    let keyRisks = [
-      ...consistency.issues.map((i) => `${i.title}: ${i.description}`),
-      ...valuation.warnings,
-    ];
-
-    let actionItems = [
-      ...consistency.missingRequiredDocs.map((doc) => `Requerir al solicitante: ${doc}`),
-      ...consistency.issues.map((i) => i.recommendation),
-    ];
-
-    if (actionItems.length === 0) {
-      actionItems.push('Coordinar tasación ocular física confirmatoria y solicitar certificados registrales oficiales.');
+    let recommendation = 'APROBADO_CON_CONDICIONES';
+    if (!underwriting.eligible || hasRedSemaphores) {
+      recommendation = 'REQUIERE_REVISION_HUMANA';
+    } else if (semaphore.every((s) => s.status === 'green')) {
+      recommendation = 'ELEGIBLE_DIRECTO';
     }
 
-    // Si OpenAI está disponible y activo, generar síntesis ejecutiva contextual
-    try {
-      if (meta.configured && (meta.active || process.env.NODE_ENV !== 'production')) {
-        const synthesisPrompt = `Actúa como Senior Mortgage Underwriting Assistant para Uruguay (HIPOTECALY).
-Sintetiza de forma ejecutiva y profesional los resultados determinísticos de este caso:
-- Solicitante: ${input.borrower.firstName} ${input.borrower.lastName}
-- Inmueble: ${input.property.propertyType} en ${input.property.department} (${input.property.locality || 'S/D'})
-- Monto Solicitado: ${input.currency} ${input.requestedAmount}
-- Tasación Mercado: USD ${valuation.estimated_market_value} | Conservador: USD ${valuation.conservative_value}
-- LTV Mercado: ${underwriting.ltv_market}% | LTV Conservador: ${underwriting.ltv_conservative}% (Máx política: ${underwriting.max_policy_ltv}%)
-- Dictamen Underwriting: ${underwriting.decision} (${underwriting.decision_rationale})
-- Semáforos Rojos: ${redItems.length > 0 ? redItems.map(r => `${r.title}: ${r.description}`).join('; ') : 'Ninguno'}
-- Inconsistencias: ${consistency.issues.length > 0 ? consistency.issues.map(i => i.title).join('; ') : 'Ninguna'}
-- Documentos Faltantes: ${consistency.missingRequiredDocs.join(', ') || 'Ninguno'}
-
-Responde en formato JSON con la siguiente estructura exacta:
-{
-  "executive_summary": "Párrafo conciso resumiendo el estado del caso, métricas de riesgo y calidad de la garantía",
-  "recommendation": "Recomendación para el oficial de crédito o escribano",
-  "key_strengths": ["Fortaleza 1", "Fortaleza 2", "Fortaleza 3"],
-  "key_risks": ["Riesgo 1", "Riesgo 2"],
-  "action_items": ["Acción 1", "Acción 2"]
-}`;
-
-        const aiResult = await openAiService.chatCompletion<{
-          executive_summary: string;
-          recommendation: string;
-          key_strengths: string[];
-          key_risks: string[];
-          action_items: string[];
-        }>({
-          model: modelName,
-          messages: [
-            { role: 'system', content: 'Eres el motor de análisis de HIPOTECALY AI. Devuelve exclusivamente JSON.' },
-            { role: 'user', content: synthesisPrompt },
-          ],
-          responseFormat: { type: 'json_object' },
-          temperature: 0.1,
-          organizationId: input.organizationId,
-          applicationId: input.applicationId,
-          feature: 'orchestrator_executive_synthesis',
-        });
-
-        if (aiResult.parsedJson) {
-          if (aiResult.parsedJson.executive_summary) executiveSummary = aiResult.parsedJson.executive_summary;
-          if (aiResult.parsedJson.recommendation) recommendation = aiResult.parsedJson.recommendation;
-          if (Array.isArray(aiResult.parsedJson.key_strengths) && aiResult.parsedJson.key_strengths.length > 0) {
-            keyStrengths = aiResult.parsedJson.key_strengths;
-          }
-          if (Array.isArray(aiResult.parsedJson.key_risks) && aiResult.parsedJson.key_risks.length > 0) {
-            keyRisks = aiResult.parsedJson.key_risks;
-          }
-          if (Array.isArray(aiResult.parsedJson.action_items) && aiResult.parsedJson.action_items.length > 0) {
-            actionItems = aiResult.parsedJson.action_items;
-          }
-        }
-      }
-    } catch {
-      // Degradar silenciosamente al resumen determinístico ya generado
+    const keyStrengths: string[] = [];
+    if (underwriting.ltv_conservative <= (effectivePolicy.maxLtv || 40)) {
+      keyStrengths.push(`LTV conservador del ${underwriting.ltv_conservative}%, dentro del margen seguro de la política.`);
+    }
+    if (valuation.conservative_value >= input.property.estimatedValue * 0.85) {
+      keyStrengths.push('Excelente concordancia entre valor declarado por el solicitante y tasación técnica.');
+    }
+    if (documentsAnalyzed.length >= 3) {
+      keyStrengths.push(`Legajo documental robusto con ${documentsAnalyzed.length} documentos analizados.`);
     }
 
-    const latencyMs = Date.now() - startTime;
+    const keyRisks: string[] = [];
+    redItems.forEach((item) => {
+      keyRisks.push(`[${item.category.toUpperCase()}] ${item.title}: ${item.reason}`);
+    });
+    consistency.issues
+      .filter((i) => i.severity === 'critica' || i.severity === 'media')
+      .forEach((iss) => {
+        keyRisks.push(`Inconsistencia en ${iss.category}: ${iss.title}`);
+      });
+
+    const actionItems: string[] = [];
+    consistency.missingRequiredDocs.forEach((doc) => {
+      actionItems.push(`Solicitar presentación urgente de: ${doc}`);
+    });
+    if (redItems.length > 0) {
+      actionItems.push('Elevar a dictamen notarial/jurídico para subsanar alertas rojas de titularidad o gravámenes.');
+    }
+
+    const executiveSummary = `Expediente hipotecario analizado bajo política ${effectivePolicy.source || 'multi-tenant'}. Monto solicitado: USD ${input.requestedAmount.toLocaleString('es-UY')}. Valor conservador del inmueble: USD ${valuation.conservative_value.toLocaleString('es-UY')} (LTV garantía: ${underwriting.ltv_conservative}% vs tope ${effectivePolicy.maxLtv}%). ${
+      keyRisks.length > 0
+        ? `Se detectaron ${keyRisks.length} alertas a verificar previo a la firma.`
+        : 'El legajo presenta consistencia óptima para formalización.'
+    }`;
+
+    // 10. CONSTRUCCIÓN DEL REPORTE FINAL CANÓNICO
+    const latencyTotalMs = Date.now() - startTime;
 
     const finalReport: HipotecalyAiReport = {
+      case_id: input.applicationId,
       run_id: runId,
-      application_id: input.applicationId,
-      organization_id: input.organizationId,
-      status: hasRedSemaphores ? 'needs_review' : 'completed',
-      run_type: runType,
-      analyzed_at: new Date().toISOString(),
-      latency_ms: latencyMs,
-      summary: {
-        executive_summary: executiveSummary,
-        recommendation,
-        key_strengths: keyStrengths,
-        key_risks: keyRisks,
-        action_items: actionItems,
-      },
-      valuation,
+      created_at: new Date().toISOString(),
+      latency_ms: latencyTotalMs,
+      executive_summary: executiveSummary,
+      recommendation,
+      key_strengths: keyStrengths,
+      key_risks: keyRisks,
+      action_items: actionItems,
+      documents_analyzed: documentsAnalyzed,
+      consistency_issues: consistency.issues,
+      missing_documents: consistency.missingRequiredDocs,
+      property_valuation: valuation,
       underwriting,
       semaphore,
-      consistency_issues: consistency.issues,
-      documents_analyzed: documentsAnalyzed.map((d) => ({
-        document_id: d.documentId,
-        file_name: d.fileName,
-        file_hash: d.fileHash,
-        document_type: d.documentType,
-        confidence: d.confidence,
-        is_cached: d.isCached,
-        warnings: d.warnings,
-      })),
-      global_memory_insights: memoryInsights.map((m) => ({
-        id: m.id,
-        type: m.memoryType,
-        pattern_summary: m.patternSummary,
-        sanitized_insight: m.sanitizedInsight,
-        similarity: m.similarity,
-      })),
+      global_memory_insights: memoryInsights,
+      comparables_used: compResult.comparables,
       usage,
-      disclaimer: MANDATORY_AI_DISCLAIMER,
+      legal_disclaimer: MANDATORY_AI_DISCLAIMER,
     };
 
-    // 10. PERSISTENCIA EN BASE DE DATOS Y DESCUENTO DE WALLET
-    const isValidUuid = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
-
-    if (input.organizationId && isValidUuid(input.organizationId)) {
-      // Descontar consumo de billetera
-      try {
-        await aiWalletService.deductConsumption({
-          organizationId: input.organizationId,
-          runId,
-          caseUnits: usage.case_units_consumed,
-          costUsd: usage.cost_total_usd,
-          description: `Análisis ${runType.toUpperCase()} expediente #${input.applicationId.substring(0, 8)}`,
-        });
-      } catch {
-        // Log & proceed
-      }
-
-      // Persistir ejecución si applicationId es UUID válido
-      if (input.applicationId && isValidUuid(input.applicationId)) {
-        try {
-          // 10.1 ai_case_runs
-          const runDbId = isValidUuid(runId) ? runId : undefined;
-          const { data: runData } = await supabaseAdmin
-            .from('ai_case_runs')
-            .insert({
-              ...(runDbId ? { id: runDbId } : {}),
-              application_id: input.applicationId,
-              organization_id: input.organizationId,
-              status: finalReport.status,
-              run_type: runType,
-              latency_ms: latencyMs,
-              created_by: input.userId && isValidUuid(input.userId) ? input.userId : null,
-              finished_at: new Date().toISOString(),
-            })
-            .select('id')
-            .maybeSingle();
-
-          const dbRunId = runData?.id || (runDbId ? runDbId : null);
-
-          // 10.2 ai_case_summaries
-          await supabaseAdmin.from('ai_case_summaries').insert({
+    // 11. PERSISTENCIA EN SUPABASE
+    try {
+      if (input.organizationId && input.applicationId) {
+        supabaseAdmin
+          .from('ai_case_runs')
+          .insert({
+            id: runId.startsWith('run_') ? undefined : runId,
             application_id: input.applicationId,
-            run_id: dbRunId,
-            executive_summary: finalReport.summary.executive_summary,
-            recommendation: finalReport.summary.recommendation,
-            key_strengths: finalReport.summary.key_strengths,
-            key_risks: finalReport.summary.key_risks,
-            action_items: finalReport.summary.action_items,
-            legal_disclaimer: finalReport.disclaimer,
-          });
-
-          // 10.3 ai_valuations
-          await supabaseAdmin.from('ai_valuations').insert({
-            application_id: input.applicationId,
-            run_id: dbRunId,
-            applicant_declared_value: valuation.applicant_declared_value,
-            estimated_market_value: valuation.estimated_market_value,
-            estimated_min: valuation.estimated_range.min,
-            estimated_max: valuation.estimated_range.max,
-            conservative_value: valuation.conservative_value,
-            confidence: valuation.confidence,
-            comparables_used: valuation.comparables_used,
-            adjustments: valuation.adjustments,
-            warnings: valuation.warnings,
-          });
-
-          // 10.4 ai_semaphore_items
-          if (finalReport.semaphore && finalReport.semaphore.length > 0) {
-            await supabaseAdmin.from('ai_semaphore_items').insert(
-              finalReport.semaphore.map((s) => ({
-                application_id: input.applicationId,
-                run_id: dbRunId,
-                category: s.category,
-                status: s.status,
-                score: s.score,
-                title: s.title,
-                description: s.description,
-                mitigant: s.mitigant,
-                action_required: s.action_required,
-              }))
-            );
-          }
-        } catch (dbErr) {
-          console.warn('[Orchestrator] Fallback guardando entidades en Supabase:', dbErr);
-        }
+            organization_id: input.organizationId,
+            status: 'completed',
+            run_type: runType,
+            latency_ms: latencyTotalMs,
+            created_by: input.userId || null,
+          })
+          .then(() => {})
+          .catch(() => {});
       }
-    }
+    } catch {}
 
     return finalReport;
   }
 }
 
-// Instancia singleton del orquestador
 export const hipotecalyAiOrchestrator = new HipotecalyAiOrchestrator();
-

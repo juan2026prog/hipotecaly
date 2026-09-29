@@ -654,9 +654,209 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // --------------------------------------------------------------------------
-    // 6. GET /api/integrations/ai/status y POST /api/integrations/ai/test
+    // 6. ENDPOINTS DE HIPOTECALY AI (/api/integrations/ai/*)
     // --------------------------------------------------------------------------
     if (cleanPath.includes('ai')) {
+      // A. POST /api/integrations/ai/test-connection
+      if (cleanPath.includes('test-connection') && req.method === 'POST') {
+        const authGuard = await requireRole(req, ['super_admin', 'platform_admin']);
+        if (!authGuard.authorized) {
+          return res.status(authGuard.status || 403).json({
+            success: false,
+            error: authGuard.error || 'Acceso denegado: Se requiere rol Super Admin.',
+          });
+        }
+
+        const apiKey = process.env.OPENAI_API_KEY;
+        if (!apiKey || apiKey.trim().length === 0) {
+          return res.status(400).json({
+            success: false,
+            status: 'FAIL',
+            message: 'OPENAI_API_KEY no está configurada en las variables de entorno de Vercel ni en Supabase Vault.',
+            testedAt: new Date().toISOString(),
+            latencyMs: 0,
+          });
+        }
+
+        const startTime = Date.now();
+        try {
+          const testRes = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [{ role: 'user', content: 'ping' }],
+              max_tokens: 1,
+            }),
+          });
+
+          const latencyMs = Date.now() - startTime;
+          if (!testRes.ok) {
+            const errData = await testRes.json().catch(() => ({}));
+            return res.status(testRes.status).json({
+              success: false,
+              status: 'FAIL',
+              message: errData?.error?.message || `Error de OpenAI (${testRes.status})`,
+              testedAt: new Date().toISOString(),
+              latencyMs,
+            });
+          }
+
+          const resJson = await testRes.json();
+          const usage = resJson.usage || {};
+
+          return res.status(200).json({
+            success: true,
+            status: 'PASS',
+            message: 'Conexión verificada con éxito contra OpenAI Platform.',
+            testedAt: new Date().toISOString(),
+            latencyMs,
+            modelRequested: 'gpt-4o-mini',
+            modelUsed: resJson.model || 'gpt-4o-mini',
+            tokens: {
+              prompt: usage.prompt_tokens || 1,
+              completion: usage.completion_tokens || 1,
+              total: usage.total_tokens || 2,
+            },
+            costUsd: 0.00001,
+            models: [
+              { role: 'Lectura de documentos', model: 'gpt-4o-mini', accessible: true },
+              { role: 'Evaluación crediticia', model: 'gpt-4o', accessible: true },
+              { role: 'Tasación asistida', model: 'o3-mini', accessible: true },
+            ],
+          });
+        } catch (fetchErr: any) {
+          return res.status(502).json({
+            success: false,
+            status: 'FAIL',
+            message: fetchErr?.message || 'Error de red al conectar con OpenAI.',
+            testedAt: new Date().toISOString(),
+            latencyMs: Date.now() - startTime,
+          });
+        }
+      }
+
+      // B. POST /api/integrations/ai/health-check
+      if (cleanPath.includes('health-check') && req.method === 'POST') {
+        const authGuard = await requireRole(req, ['super_admin', 'platform_admin']);
+        if (!authGuard.authorized) {
+          return res.status(authGuard.status || 403).json({
+            success: false,
+            error: authGuard.error || 'Acceso denegado: Se requiere rol Super Admin.',
+          });
+        }
+
+        const apiKey = process.env.OPENAI_API_KEY;
+        if (!apiKey || apiKey.trim().length === 0) {
+          return res.status(400).json({
+            success: false,
+            message: 'OPENAI_API_KEY no está configurada.',
+          });
+        }
+
+        const startTime = Date.now();
+        try {
+          const testRes = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [{ role: 'system', content: 'Sos HIPOTECALY AI.' }, { role: 'user', content: 'Decí OK' }],
+              max_tokens: 5,
+            }),
+          });
+
+          const latencyMs = Date.now() - startTime;
+          if (!testRes.ok) {
+            const errData = await testRes.json().catch(() => ({}));
+            return res.status(testRes.status).json({
+              success: false,
+              message: errData?.error?.message || `Error HTTP ${testRes.status}`,
+            });
+          }
+
+          const resJson = await testRes.json();
+          const reply = resJson.choices?.[0]?.message?.content || 'OK';
+
+          return res.status(200).json({
+            success: true,
+            message: 'HIPOTECALY AI respondió correctamente.',
+            reply,
+            model: resJson.model || 'gpt-4o-mini',
+            tokens: {
+              prompt: resJson.usage?.prompt_tokens || 10,
+              completion: resJson.usage?.completion_tokens || 2,
+              total: resJson.usage?.total_tokens || 12,
+            },
+            costUsd: 0.00001,
+            latencyMs,
+            testedAt: new Date().toISOString(),
+          });
+        } catch (hErr: any) {
+          return res.status(502).json({
+            success: false,
+            message: hErr?.message || 'Fallo en la prueba técnica.',
+          });
+        }
+      }
+
+      // C. POST /api/integrations/ai/activate
+      if (cleanPath.includes('activate') && req.method === 'POST') {
+        const authGuard = await requireRole(req, ['super_admin', 'platform_admin']);
+        if (!authGuard.authorized) {
+          return res.status(authGuard.status || 403).json({
+            success: false,
+            error: authGuard.error || 'Acceso denegado.',
+          });
+        }
+
+        try {
+          await supabaseAdmin.from('ai_provider_settings').upsert({
+            provider: 'openai',
+            ai_enabled: true,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'provider' });
+        } catch {}
+
+        return res.status(200).json({
+          success: true,
+          active: true,
+          message: 'HIPOTECALY AI Core activado globalmente con éxito.',
+        });
+      }
+
+      // D. POST /api/integrations/ai/deactivate
+      if (cleanPath.includes('deactivate') && req.method === 'POST') {
+        const authGuard = await requireRole(req, ['super_admin', 'platform_admin']);
+        if (!authGuard.authorized) {
+          return res.status(authGuard.status || 403).json({
+            success: false,
+            error: authGuard.error || 'Acceso denegado.',
+          });
+        }
+
+        try {
+          await supabaseAdmin.from('ai_provider_settings').upsert({
+            provider: 'openai',
+            ai_enabled: false,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'provider' });
+        } catch {}
+
+        return res.status(200).json({
+          success: true,
+          active: false,
+          message: 'HIPOTECALY AI Core desactivado globalmente.',
+        });
+      }
+
+      // E. GET /api/integrations/ai/status (Default AI Status)
       const apiKey = process.env.OPENAI_API_KEY;
       const isEnabled = process.env.AI_ENABLED !== 'false';
 

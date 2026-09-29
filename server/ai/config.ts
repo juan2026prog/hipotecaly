@@ -2,7 +2,7 @@
 // HIPOTECALY AI CORE: Configuración Centralizada de Modelos y Tarifas
 // ==============================================================================
 
-import { MANDATORY_AI_DISCLAIMER } from './types';
+import { MANDATORY_AI_DISCLAIMER } from './types.js';
 
 export { MANDATORY_AI_DISCLAIMER };
 
@@ -15,6 +15,7 @@ export type AiProfileName =
 
 export interface AiModelProfile {
   profile: AiProfileName;
+  internalAlias: string; // Luna, Terra, Sol
   primaryModel: string;
   fallbackModel: string;
   temperature: number;
@@ -31,6 +32,7 @@ export interface AiModelProfile {
 export const AI_MODEL_PROFILES: Record<AiProfileName, AiModelProfile> = {
   FAST_EXTRACTION: {
     profile: 'FAST_EXTRACTION',
+    internalAlias: 'Luna',
     primaryModel: 'gpt-4o-mini',
     fallbackModel: 'gpt-4o-mini',
     temperature: 0.0,
@@ -45,6 +47,7 @@ export const AI_MODEL_PROFILES: Record<AiProfileName, AiModelProfile> = {
   },
   DOCUMENT_ANALYSIS: {
     profile: 'DOCUMENT_ANALYSIS',
+    internalAlias: 'Terra',
     primaryModel: 'gpt-4o',
     fallbackModel: 'gpt-4o-mini',
     temperature: 0.1,
@@ -59,6 +62,7 @@ export const AI_MODEL_PROFILES: Record<AiProfileName, AiModelProfile> = {
   },
   ASSISTANT: {
     profile: 'ASSISTANT',
+    internalAlias: 'Terra',
     primaryModel: 'gpt-4o',
     fallbackModel: 'gpt-4o-mini',
     temperature: 0.2,
@@ -73,6 +77,7 @@ export const AI_MODEL_PROFILES: Record<AiProfileName, AiModelProfile> = {
   },
   DEEP_REASONING: {
     profile: 'DEEP_REASONING',
+    internalAlias: 'Sol',
     primaryModel: 'o3-mini',
     fallbackModel: 'gpt-4o',
     temperature: 0.1,
@@ -87,6 +92,7 @@ export const AI_MODEL_PROFILES: Record<AiProfileName, AiModelProfile> = {
   },
   EMBEDDINGS: {
     profile: 'EMBEDDINGS',
+    internalAlias: 'Vector',
     primaryModel: 'text-embedding-3-small',
     fallbackModel: 'text-embedding-3-small',
     temperature: 0.0,
@@ -178,7 +184,6 @@ export const DEFAULT_MODEL_PRICING: Record<string, ModelPricing> = {
     costPerSearchUsd: 0.00,
     standardCaseCostUsd: AI_STANDARD_CASE_COST_USD,
   },
-  // Mapeos de compatibilidad con configuraciones previas
   'gpt-5.6-luna': {
     costInputPerMillionUsd: 0.15,
     costCachedInputPerMillionUsd: 0.075,
@@ -203,7 +208,7 @@ export const DEFAULT_MODEL_PRICING: Record<string, ModelPricing> = {
 };
 
 /**
- * Normaliza cualquier identificador de modelo al nombre oficial de OpenAI API
+ * Normaliza cualquier identificador o alias de modelo al nombre oficial de OpenAI API
  */
 export function normalizeOpenAiModel(modelName: string): string {
   if (!modelName) return 'gpt-4o-mini';
@@ -235,7 +240,7 @@ export function calculateTokenCost(
   caseUnits: number;
   cacheSavingsUsd: number;
 } {
-  const pricing = DEFAULT_MODEL_PRICING[model] || DEFAULT_MODEL_PRICING['gpt-5.6-terra'];
+  const pricing = DEFAULT_MODEL_PRICING[model] || DEFAULT_MODEL_PRICING['gpt-4o'];
   const regularInput = Math.max(0, inputTokens - cachedInputTokens);
   const costInputUsd = (regularInput / 1_000_000) * pricing.costInputPerMillionUsd;
   const costCachedUsd = (cachedInputTokens / 1_000_000) * pricing.costCachedInputPerMillionUsd;
@@ -246,7 +251,7 @@ export function calculateTokenCost(
   const fullPriceWithoutCache = (cachedInputTokens / 1_000_000) * pricing.costInputPerMillionUsd;
   const cacheSavingsUsd = Number(Math.max(0, fullPriceWithoutCache - costCachedUsd).toFixed(5));
 
-  // Conversión a unidad comercial "CASO AI"
+  // Conversión a unidad comercial "CASO AI" ($0.50 = 1.0 CASO)
   const standardCost = pricing.standardCaseCostUsd || AI_STANDARD_CASE_COST_USD;
   const rawUnits = costTotalUsd / standardCost;
   const caseUnits = Number(Math.max(0.05, Math.round(rawUnits * 100) / 100).toFixed(2));

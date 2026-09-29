@@ -5,6 +5,7 @@
 
 import { openAiSecretResolver } from './openAiSecretResolver.js';
 import { normalizeOpenAiModel, calculateTokenCost } from './config.js';
+import { pricingRegistry } from './pricingRegistry.js';
 import { supabaseAdmin } from '../supabase.js';
 
 export interface ChatMessage {
@@ -20,8 +21,11 @@ export interface ChatCompletionOptions {
   responseFormat?: { type: 'json_object' } | { type: 'text' };
   timeoutMs?: number;
   organizationId?: string;
+  userId?: string;
   applicationId?: string;
   feature?: string;
+  operation?: string;
+  promptKey?: string;
   promptVersion?: string;
 }
 
@@ -37,6 +41,7 @@ export interface ChatCompletionResult<T = any> {
   costUsd: number;
   latencyMs: number;
   requestId: string;
+  pricingStatus: string;
 }
 
 export class OpenAiService {
@@ -112,7 +117,6 @@ export class OpenAiService {
         const status = res.status;
         const msg = errJson?.error?.message || `HTTP ${status} al consultar OpenAI`;
 
-        // Si es error de rate limit (429) o server error (500/503), esperar y reintentar
         if ((status === 429 || status >= 500) && attempt === 1) {
           lastError = new Error(`OpenAI API ${status}: ${msg}`);
           await new Promise((r) => setTimeout(r, 1200));
@@ -134,6 +138,31 @@ export class OpenAiService {
     }
 
     if (!openAiResponse) {
+      // Registrar telemetría de error
+      if (options.organizationId) {
+        supabaseAdmin
+          .from('ai_usage_events')
+          .insert({
+            project: 'HIPOTECALY',
+            organization_id: options.organizationId,
+            user_id: options.userId || null,
+            application_id: options.applicationId || null,
+            feature: options.feature || 'openAiService',
+            operation: options.operation || 'chat_completion',
+            model,
+            prompt_key: options.promptKey || null,
+            prompt_version: options.promptVersion || '1.0.0',
+            latency_ms: Date.now() - startTime,
+            input_tokens: 0,
+            output_tokens: 0,
+            total_tokens: 0,
+            cost_usd: 0,
+            status: 'failed',
+            error_code: lastError?.message || 'OPENAI_CALL_FAILED',
+          })
+          .then(() => {})
+          .catch(() => {});
+      }
       throw lastError || new Error('Error al obtener respuesta de OpenAI.');
     }
 
@@ -142,10 +171,13 @@ export class OpenAiService {
     const rawContent = choice?.message?.content || '';
     const usage = openAiResponse.usage || {};
     const promptTokens = usage.prompt_tokens || usage.input_tokens || 0;
+    const cachedTokens = usage.prompt_tokens_details?.cached_tokens || 0;
     const completionTokens = usage.completion_tokens || usage.output_tokens || 0;
     const totalTokens = usage.total_tokens || promptTokens + completionTokens;
 
-    const costDetails = calculateTokenCost(model, promptTokens, 0, completionTokens);
+    // Calcular costo con tarifa canónica
+    const pricingItem = await pricingRegistry.getPricingForModel(model);
+    const costDetails = calculateTokenCost(model, promptTokens, cachedTokens, completionTokens);
 
     // Parsear JSON estructurado si corresponde
     let parsedJson: T | undefined;
@@ -162,17 +194,30 @@ export class OpenAiService {
       }
     }
 
-    // Registrar telemetría de uso asíncronamente
+    // Registrar telemetría de uso con atribución canónica a HIPOTECALY
     if (options.organizationId) {
       supabaseAdmin
         .from('ai_usage_events')
         .insert({
+          project: 'HIPOTECALY',
+          organization_id: options.organizationId,
+          user_id: options.userId || null,
+          application_id: options.applicationId || null,
           agent_name: options.feature || 'openAiService',
           step_name: options.promptVersion || 'v1.0.0',
+          feature: options.feature || 'ai_core',
+          operation: options.operation || 'chat_completion',
+          model,
+          prompt_key: options.promptKey || null,
+          prompt_version: options.promptVersion || '1.0.0',
           latency_ms: latencyMs,
           input_tokens: promptTokens,
+          cached_input_tokens: cachedTokens,
           output_tokens: completionTokens,
+          total_tokens: totalTokens,
           cost_usd: costDetails.costTotalUsd,
+          pricing_status: pricingItem.status,
+          status: 'success',
         })
         .then(() => {})
         .catch(() => {});
@@ -190,6 +235,7 @@ export class OpenAiService {
       costUsd: costDetails.costTotalUsd,
       latencyMs,
       requestId,
+      pricingStatus: pricingItem.status,
     };
   }
 

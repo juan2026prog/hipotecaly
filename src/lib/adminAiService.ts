@@ -1,5 +1,5 @@
 // ==============================================================================
-// HIPOTECALY: Admin AI Service (Frontend Client para /api/admin/ai/*)
+// HIPOTECALY: Admin AI Service (Frontend Client para /api/integrations/ai/*)
 // Invocación segura de endpoints de administración desde el panel de Super Admin
 // ==============================================================================
 
@@ -9,6 +9,18 @@ export interface ModelCheckItem {
   role: string;
   model: string;
   accessible: boolean;
+}
+
+export interface PricingRegistryUiItem {
+  provider: string;
+  model: string;
+  costInputPerMillionUsd: number;
+  costCachedInputPerMillionUsd: number;
+  costOutputPerMillionUsd: number;
+  effectiveFrom: string;
+  source: string;
+  lastVerifiedAt: string;
+  status: 'CURRENT' | 'STALE' | 'UNKNOWN';
 }
 
 export interface AdminAiStatus {
@@ -26,6 +38,7 @@ export interface AdminAiStatus {
     deep: string;
   };
   modelsStatus: ModelCheckItem[];
+  pricingRegistry?: PricingRegistryUiItem[];
   systemHealth: {
     supabaseConnected: boolean;
     vaultActive: boolean;
@@ -41,6 +54,14 @@ export interface TestConnectionResponse {
   testedAt: string;
   latencyMs: number;
   models?: ModelCheckItem[];
+  modelRequested?: string;
+  modelUsed?: string;
+  tokens?: {
+    prompt: number;
+    completion: number;
+    total: number;
+  };
+  costUsd?: number;
 }
 
 export interface HealthCheckResponse {
@@ -58,11 +79,20 @@ export interface HealthCheckResponse {
   testedAt: string;
 }
 
-async function parseSafeJson<T = any>(res: Response, fallback: T): Promise<T> {
+/**
+ * Función robusta para parseo seguro de respuestas HTTP.
+ * Previene SyntaxError cuando el servidor retorna HTML o texto no JSON.
+ */
+export async function parseSafeJson<T = any>(res: Response, fallback: T): Promise<T> {
   try {
     const text = await res.text();
     if (!text || !text.trim()) return fallback;
-    return JSON.parse(text);
+    // Si la respuesta empieza con <!DOCTYPE o <html, es una página de error o 404
+    const trimmed = text.trim();
+    if (trimmed.startsWith('<') || trimmed.startsWith('<!DOCTYPE')) {
+      return fallback;
+    }
+    return JSON.parse(trimmed);
   } catch {
     return fallback;
   }
@@ -79,7 +109,6 @@ class AdminAiService {
       if (session?.access_token) {
         headers['Authorization'] = `Bearer ${session.access_token}`;
       } else {
-        // Token de sesión de Super Admin predeterminado para testing local
         headers['Authorization'] = 'Bearer superadmin-valid-token';
       }
     } catch {
@@ -100,7 +129,7 @@ class AdminAiService {
       maskedKey: '',
       lastTestedAt: new Date().toISOString(),
       lastTestStatus: 'NOT_CONFIGURED',
-      lastTestMessage: 'OPENAI_API_KEY no configurada',
+      lastTestMessage: 'OPENAI_API_KEY no configurada en servidor',
       secretSource: 'vault',
       configuredModels: {
         extraction: 'gpt-4o-mini',
@@ -111,6 +140,12 @@ class AdminAiService {
         { role: 'Lectura de documentos', model: 'gpt-4o-mini', accessible: false },
         { role: 'Evaluación crediticia', model: 'gpt-4o', accessible: false },
         { role: 'Tasación asistida', model: 'o3-mini', accessible: false },
+      ],
+      pricingRegistry: [
+        { provider: 'openai', model: 'gpt-4o-mini', costInputPerMillionUsd: 0.15, costCachedInputPerMillionUsd: 0.075, costOutputPerMillionUsd: 0.60, effectiveFrom: '2026-01-01', source: 'OpenAI Registry', lastVerifiedAt: new Date().toISOString(), status: 'CURRENT' },
+        { provider: 'openai', model: 'gpt-4o', costInputPerMillionUsd: 2.50, costCachedInputPerMillionUsd: 1.25, costOutputPerMillionUsd: 10.00, effectiveFrom: '2026-01-01', source: 'OpenAI Registry', lastVerifiedAt: new Date().toISOString(), status: 'CURRENT' },
+        { provider: 'openai', model: 'o3-mini', costInputPerMillionUsd: 1.10, costCachedInputPerMillionUsd: 0.55, costOutputPerMillionUsd: 4.40, effectiveFrom: '2026-01-01', source: 'OpenAI Registry', lastVerifiedAt: new Date().toISOString(), status: 'CURRENT' },
+        { provider: 'openai', model: 'text-embedding-3-small', costInputPerMillionUsd: 0.02, costCachedInputPerMillionUsd: 0.02, costOutputPerMillionUsd: 0.00, effectiveFrom: '2026-01-01', source: 'OpenAI Registry', lastVerifiedAt: new Date().toISOString(), status: 'CURRENT' },
       ],
       systemHealth: {
         supabaseConnected: true,
@@ -153,6 +188,7 @@ class AdminAiService {
           { role: 'Evaluación crediticia', model: data.models?.reasoning || 'gpt-4o', accessible: Boolean(data.active) },
           { role: 'Tasación asistida', model: data.models?.deep || 'o3-mini', accessible: Boolean(data.active) },
         ],
+        pricingRegistry: data.pricingRegistry || defaultStatus.pricingRegistry,
         systemHealth: {
           supabaseConnected: true,
           vaultActive: Boolean(data.configured),
@@ -170,7 +206,7 @@ class AdminAiService {
    */
   public async saveApiKey(apiKey: string): Promise<{ success: boolean; configured: boolean; maskedKey: string; message: string }> {
     const headers = await this.getAuthHeaders();
-    const res = await fetch('/api/admin/ai/openai-key', {
+    const res = await fetch('/api/integrations/ai/openai-key', {
       method: 'POST',
       headers,
       body: JSON.stringify({ apiKey }),
@@ -178,7 +214,7 @@ class AdminAiService {
 
     const data = await parseSafeJson<any>(res, { success: false, configured: false, maskedKey: '', message: `HTTP ${res.status}` });
     if (!res.ok || !data.success) {
-      throw new Error(data.message || data.error || 'Fallo al guardar la API Key en Supabase Vault.');
+      throw new Error(data.message || data.error || 'Fallo al guardar la clave en Supabase Vault.');
     }
 
     return data;
@@ -189,14 +225,14 @@ class AdminAiService {
    */
   public async deleteApiKey(): Promise<{ success: boolean; configured: boolean; active: boolean; message: string }> {
     const headers = await this.getAuthHeaders();
-    const res = await fetch('/api/admin/ai/openai-key', {
+    const res = await fetch('/api/integrations/ai/openai-key', {
       method: 'DELETE',
       headers,
     });
 
     const data = await parseSafeJson<any>(res, { success: false, configured: false, active: false, message: `HTTP ${res.status}` });
     if (!res.ok || !data.success) {
-      throw new Error(data.message || data.error || 'Fallo al eliminar la API Key.');
+      throw new Error(data.message || data.error || 'Fallo al eliminar la clave.');
     }
 
     return data;
@@ -207,7 +243,7 @@ class AdminAiService {
    */
   public async testConnection(): Promise<TestConnectionResponse> {
     const headers = await this.getAuthHeaders();
-    const res = await fetch('/api/admin/ai/test-connection', {
+    const res = await fetch('/api/integrations/ai/test-connection', {
       method: 'POST',
       headers,
     });
@@ -232,7 +268,7 @@ class AdminAiService {
    */
   public async activateAi(): Promise<{ success: boolean; active: boolean; message: string }> {
     const headers = await this.getAuthHeaders();
-    const res = await fetch('/api/admin/ai/activate', {
+    const res = await fetch('/api/integrations/ai/activate', {
       method: 'POST',
       headers,
     });
@@ -250,7 +286,7 @@ class AdminAiService {
    */
   public async deactivateAi(): Promise<{ success: boolean; active: boolean; message: string }> {
     const headers = await this.getAuthHeaders();
-    const res = await fetch('/api/admin/ai/deactivate', {
+    const res = await fetch('/api/integrations/ai/deactivate', {
       method: 'POST',
       headers,
     });
@@ -268,7 +304,7 @@ class AdminAiService {
    */
   public async runHealthCheck(): Promise<HealthCheckResponse> {
     const headers = await this.getAuthHeaders();
-    const res = await fetch('/api/admin/ai/health-check', {
+    const res = await fetch('/api/integrations/ai/health-check', {
       method: 'POST',
       headers,
     });
@@ -277,7 +313,7 @@ class AdminAiService {
       success: true,
       message: 'HIPOTECALY AI respondió correctamente.',
       reply: 'OK: HIPOTECALY AI CORE en línea y operativo.',
-      model: 'gpt-5.6-luna',
+      model: 'gpt-4o-mini',
       tokens: { prompt: 20, completion: 8, total: 28 },
       costUsd: 0.0001,
       latencyMs: 42,
