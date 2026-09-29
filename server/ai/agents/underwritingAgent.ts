@@ -3,7 +3,7 @@
 // ==============================================================================
 
 import { UnderwritingOutput } from '../types.js';
-import { ResolvedUnderwritingPolicy, PILOT_FALLBACK_POLICY } from '../underwritingPolicyResolver.js';
+import { EffectiveUnderwritingPolicy, CANONICAL_DEMO_POLICY } from '../underwritingPolicyResolver.js';
 
 export interface UnderwritingPolicyConfig {
   maxLtv: number; // Por ej. 40.0% o 50.0%
@@ -20,16 +20,16 @@ export interface UnderwritingPolicyConfig {
 }
 
 export const DEFAULT_PILOT_UNDERWRITING_POLICY: UnderwritingPolicyConfig = {
-  maxLtv: PILOT_FALLBACK_POLICY.maxLtv,
-  maxLoanAmount: PILOT_FALLBACK_POLICY.maxLoanAmount,
-  minLoanAmount: PILOT_FALLBACK_POLICY.minLoanAmount,
-  minTermMonths: PILOT_FALLBACK_POLICY.minTermMonths,
-  maxTermMonths: PILOT_FALLBACK_POLICY.maxTermMonths,
-  acceptedPropertyTypes: PILOT_FALLBACK_POLICY.acceptedPropertyTypes,
-  acceptedDepartments: PILOT_FALLBACK_POLICY.acceptedDepartments,
-  defaultInterestRateAnnual: PILOT_FALLBACK_POLICY.defaultInterestRateAnnual,
-  maxDtiRatio: PILOT_FALLBACK_POLICY.maxDtiRatio,
-  maxBorrowerAgeAtMaturity: PILOT_FALLBACK_POLICY.maxBorrowerAgeAtMaturity,
+  maxLtv: CANONICAL_DEMO_POLICY.maxLtv,
+  maxLoanAmount: CANONICAL_DEMO_POLICY.maxLoanAmount,
+  minLoanAmount: CANONICAL_DEMO_POLICY.minLoanAmount,
+  minTermMonths: CANONICAL_DEMO_POLICY.minTermMonths,
+  maxTermMonths: CANONICAL_DEMO_POLICY.maxTermMonths,
+  acceptedPropertyTypes: CANONICAL_DEMO_POLICY.acceptedPropertyTypes,
+  acceptedDepartments: CANONICAL_DEMO_POLICY.acceptedDepartments,
+  defaultInterestRateAnnual: CANONICAL_DEMO_POLICY.defaultInterestRateAnnual,
+  maxDtiRatio: CANONICAL_DEMO_POLICY.maxDtiRatio,
+  maxBorrowerAgeAtMaturity: CANONICAL_DEMO_POLICY.maxBorrowerAgeAtMaturity,
 };
 
 export class UnderwritingAgent {
@@ -45,7 +45,7 @@ export class UnderwritingAgent {
     propertyType: string,
     _department: string,
     monthlyIncome?: number,
-    policy: UnderwritingPolicyConfig | ResolvedUnderwritingPolicy = DEFAULT_PILOT_UNDERWRITING_POLICY
+    policy: UnderwritingPolicyConfig | EffectiveUnderwritingPolicy = DEFAULT_PILOT_UNDERWRITING_POLICY
   ): UnderwritingOutput {
     const effectivePolicy: UnderwritingPolicyConfig = {
       ...DEFAULT_PILOT_UNDERWRITING_POLICY,

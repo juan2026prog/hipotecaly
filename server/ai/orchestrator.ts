@@ -16,7 +16,7 @@ import { RiskAgent } from './agents/riskAgent.js';
 import { MemoryRetrievalAgent } from './agents/memoryRetrievalAgent.js';
 import { ComparablesAgent } from './agents/comparablesAgent.js';
 import { openAiSecretResolver } from './openAiSecretResolver.js';
-import { underwritingPolicyResolver } from './underwritingPolicyResolver.js';
+import { underwritingPolicyResolver, CANONICAL_DEMO_POLICY } from './underwritingPolicyResolver.js';
 import { pricingRegistry } from './pricingRegistry.js';
 import { supabaseAdmin } from '../supabase.js';
 
@@ -53,6 +53,7 @@ export interface ApplicationCaseInput {
   runType?: 'preliminary' | 'full' | 'deep';
   aiRunId?: string;
   userId?: string;
+  isDemoMode?: boolean;
 }
 
 export class HipotecalyAiOrchestrator {
@@ -79,12 +80,30 @@ export class HipotecalyAiOrchestrator {
     }
 
     // Resolución Server-Side de la Política Multi-Tenant Efectiva (Organización + Inversor)
-    const effectivePolicy = input.policy
-      ? input.policy
-      : await underwritingPolicyResolver.resolveEffectivePolicy({
-          organizationId: input.organizationId,
-          lenderId: input.lenderId,
-        });
+    let effectivePolicy: UnderwritingPolicyConfig = CANONICAL_DEMO_POLICY;
+    let policyResolutionStatus = 'DEMO_POLICY';
+
+    if (input.policy) {
+      effectivePolicy = input.policy;
+      policyResolutionStatus = 'EXPLICIT_CUSTOM';
+    } else {
+      const policyRes = await underwritingPolicyResolver.resolveEffectivePolicy({
+        organizationId: input.organizationId,
+        lenderId: input.lenderId,
+        isDemoMode: input.isDemoMode,
+      });
+
+      if (policyRes.status === 'RESOLVED' || policyRes.status === 'DEMO_POLICY') {
+        effectivePolicy = policyRes.policy;
+        policyResolutionStatus = policyRes.status;
+      } else if (policyRes.status === 'POLICY_NOT_CONFIGURED') {
+        throw new Error(`POLICY_NOT_CONFIGURED: ${policyRes.message}`);
+      } else if (policyRes.status === 'NO_COMPATIBLE_POLICY') {
+        throw new Error(`NO_COMPATIBLE_POLICY: Incompatibilidad entre organización e inversor (${policyRes.reasons.join(', ')}).`);
+      } else if (policyRes.status === 'POLICY_DATA_ERROR' || policyRes.status === 'POLICY_RESOLUTION_ERROR') {
+        throw new Error(`POLICY_ERROR (${policyRes.errorCode}): ${policyRes.message}`);
+      }
+    }
 
     // Selección de modelo según perfil
     const modelProfile = runType === 'deep' ? AI_MODELS.deep : runType === 'preliminary' ? AI_MODELS.extraction : AI_MODELS.reasoning;
@@ -205,7 +224,7 @@ export class HipotecalyAiOrchestrator {
       cache_savings_usd: costDetails.cacheSavingsUsd,
     };
 
-    // 9. DICTAMEN Y RESUMEN EJECUTIVO (HÍBRIDO CON SÍNTESIS LLM SI ESTÁ DISPONIBLE)
+    // 9. DICTAMEN Y RESUMEN EJECUTIVO
     const hasRedSemaphores = semaphore.some((s) => s.status === 'red');
     const redItems = semaphore.filter((s) => s.status === 'red');
 
@@ -245,7 +264,7 @@ export class HipotecalyAiOrchestrator {
       actionItems.push('Elevar a dictamen notarial/jurídico para subsanar alertas rojas de titularidad o gravámenes.');
     }
 
-    const executiveSummary = `Expediente hipotecario analizado bajo política ${effectivePolicy.source || 'multi-tenant'}. Monto solicitado: USD ${input.requestedAmount.toLocaleString('es-UY')}. Valor conservador del inmueble: USD ${valuation.conservative_value.toLocaleString('es-UY')} (LTV garantía: ${underwriting.ltv_conservative}% vs tope ${effectivePolicy.maxLtv}%). ${
+    const executiveSummary = `Expediente hipotecario analizado bajo política ${policyResolutionStatus}. Monto solicitado: USD ${input.requestedAmount.toLocaleString('es-UY')}. Valor conservador del inmueble: USD ${valuation.conservative_value.toLocaleString('es-UY')} (LTV garantía: ${underwriting.ltv_conservative}% vs tope ${effectivePolicy.maxLtv}%). ${
       keyRisks.length > 0
         ? `Se detectaron ${keyRisks.length} alertas a verificar previo a la firma.`
         : 'El legajo presenta consistencia óptima para formalización.'
