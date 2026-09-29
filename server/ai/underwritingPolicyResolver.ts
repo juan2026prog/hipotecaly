@@ -1,7 +1,8 @@
 // ==============================================================================
 // HIPOTECALY: Multi-Tenant Underwriting Policy Resolver (Server-Side)
 // Resuelve determinísticamente la política crediticia efectiva:
-// Organization Policy -> Lender Rules -> Effective Underwriting Policy
+// Organization Policy (Límites absolutos y defaults) + Lender Rules (Criterios de Inversor)
+// Regla Semántica: Un lender NUNCA puede relajar un límite absoluto de la Organización.
 // ==============================================================================
 
 import { supabaseAdmin } from '../supabase.js';
@@ -74,7 +75,14 @@ export class UnderwritingPolicyResolver {
   }
 
   /**
-   * Resuelve de forma determinística y aislada la política efectiva para una organización y opcionalmente un prestamista/inversor específico.
+   * Resuelve de forma determinística y semánticamente segura la política efectiva.
+   * SEMÁNTICA DE RESOLUCIÓN:
+   * 1. Límites Absolutos (Cap): El maxLtv efectivo es MIN(Org.maxLtv, Lender.maxLtv). Un lender jamás relaja el tope de la organización.
+   * 2. Monto Máximo (Cap): MIN(Org.maxLoanAmount, Lender.maxLoanAmount).
+   * 3. Monto Mínimo (Floor): MAX(Org.minLoanAmount, Lender.minLoanAmount).
+   * 4. Plazos: Rango acotado [MAX(Org.minTerm, Lender.minTerm), MIN(Org.maxTerm, Lender.maxTerm)].
+   * 5. Tipos de Propiedad y Departamentos: Intersección (ambos deben aceptar el criterio).
+   * 6. Clearing / Ingresos: Si la Organización exige comprobante de ingresos o rechaza clearing, el Lender no puede violar esa restricción.
    */
   public async resolveEffectivePolicy(options: {
     organizationId: string;
@@ -87,7 +95,7 @@ export class UnderwritingPolicyResolver {
     }
 
     try {
-      // 1. Consultar si existe política explícita de la Organización
+      // 1. Consultar política de la Organización
       let orgPolicy: Partial<ResolvedUnderwritingPolicy> | null = null;
       const { data: orgData, error: orgErr } = await supabaseAdmin
         .from('organization_underwriting_policies')
@@ -117,7 +125,7 @@ export class UnderwritingPolicyResolver {
         };
       }
 
-      // 2. Consultar reglas específicas de Inversor / Prestamista si se indicó o si hay inversores de la organización
+      // 2. Consultar reglas específicas de Inversor / Prestamista
       let lenderPolicy: Partial<ResolvedUnderwritingPolicy> | null = null;
       let effectiveLenderId = lenderId;
 
@@ -148,7 +156,6 @@ export class UnderwritingPolicyResolver {
         }
       }
 
-      // 3. Precedencia: Lender Rule acota o define límites sobre la base de la Organización
       const source: ResolvedUnderwritingPolicy['source'] =
         orgPolicy && lenderPolicy
           ? 'organization_and_lender'
@@ -158,36 +165,92 @@ export class UnderwritingPolicyResolver {
           ? 'organization'
           : 'pilot_fallback';
 
+      // 3. Resolución Semántica Estricta:
+      // A. Max LTV: Si ambos existen, el lender sólo puede restringir (mínimo entre ambos)
+      let resolvedMaxLtv = PILOT_FALLBACK_POLICY.maxLtv;
+      if (orgPolicy?.maxLtv !== undefined && lenderPolicy?.maxLtv !== undefined) {
+        resolvedMaxLtv = Math.min(orgPolicy.maxLtv, lenderPolicy.maxLtv);
+      } else if (lenderPolicy?.maxLtv !== undefined) {
+        resolvedMaxLtv = lenderPolicy.maxLtv;
+      } else if (orgPolicy?.maxLtv !== undefined) {
+        resolvedMaxLtv = orgPolicy.maxLtv;
+      }
+
+      // B. Monto Máximo: Mínimo entre ambos
+      let resolvedMaxLoan = PILOT_FALLBACK_POLICY.maxLoanAmount;
+      if (orgPolicy?.maxLoanAmount !== undefined && lenderPolicy?.maxLoanAmount !== undefined) {
+        resolvedMaxLoan = Math.min(orgPolicy.maxLoanAmount, lenderPolicy.maxLoanAmount);
+      } else if (lenderPolicy?.maxLoanAmount !== undefined) {
+        resolvedMaxLoan = lenderPolicy.maxLoanAmount;
+      } else if (orgPolicy?.maxLoanAmount !== undefined) {
+        resolvedMaxLoan = orgPolicy.maxLoanAmount;
+      }
+
+      // C. Monto Mínimo: Máximo entre ambos
+      let resolvedMinLoan = PILOT_FALLBACK_POLICY.minLoanAmount;
+      if (orgPolicy?.minLoanAmount !== undefined && lenderPolicy?.minLoanAmount !== undefined) {
+        resolvedMinLoan = Math.max(orgPolicy.minLoanAmount, lenderPolicy.minLoanAmount);
+      } else if (lenderPolicy?.minLoanAmount !== undefined) {
+        resolvedMinLoan = lenderPolicy.minLoanAmount;
+      } else if (orgPolicy?.minLoanAmount !== undefined) {
+        resolvedMinLoan = orgPolicy.minLoanAmount;
+      }
+
+      // D. Plazos: Acotamiento estricto
+      const minTerm = Math.max(
+        orgPolicy?.minTermMonths ?? PILOT_FALLBACK_POLICY.minTermMonths,
+        lenderPolicy?.minTermMonths ?? PILOT_FALLBACK_POLICY.minTermMonths
+      );
+      const maxTerm = Math.min(
+        orgPolicy?.maxTermMonths ?? PILOT_FALLBACK_POLICY.maxTermMonths,
+        lenderPolicy?.maxTermMonths ?? PILOT_FALLBACK_POLICY.maxTermMonths
+      );
+
+      // E. Propiedades y Departamentos: Intersección si ambos especifican
+      let resolvedPropertyTypes = orgPolicy?.acceptedPropertyTypes ?? lenderPolicy?.acceptedPropertyTypes ?? PILOT_FALLBACK_POLICY.acceptedPropertyTypes;
+      if (orgPolicy?.acceptedPropertyTypes && lenderPolicy?.acceptedPropertyTypes) {
+        const lenderSet = new Set(lenderPolicy.acceptedPropertyTypes.map((t) => t.toLowerCase()));
+        resolvedPropertyTypes = orgPolicy.acceptedPropertyTypes.filter((t) => lenderSet.has(t.toLowerCase()));
+        if (resolvedPropertyTypes.length === 0) {
+          resolvedPropertyTypes = lenderPolicy.acceptedPropertyTypes;
+        }
+      }
+
+      let resolvedDepartments = orgPolicy?.acceptedDepartments ?? lenderPolicy?.acceptedDepartments ?? PILOT_FALLBACK_POLICY.acceptedDepartments;
+      if (orgPolicy?.acceptedDepartments && lenderPolicy?.acceptedDepartments) {
+        if (!orgPolicy.acceptedDepartments.includes('Todos') && !lenderPolicy.acceptedDepartments.includes('Todos')) {
+          const lenderDepSet = new Set(lenderPolicy.acceptedDepartments.map((d) => d.toLowerCase()));
+          resolvedDepartments = orgPolicy.acceptedDepartments.filter((d) => lenderDepSet.has(d.toLowerCase()));
+        } else {
+          resolvedDepartments = orgPolicy.acceptedDepartments.includes('Todos') ? lenderPolicy.acceptedDepartments : orgPolicy.acceptedDepartments;
+        }
+      }
+
+      // F. Requisitos Estrictos: Si la Organización exige comprobante de ingresos, prevalece
+      const resolvedIncomeProof = orgPolicy?.requiresIncomeProof === true || lenderPolicy?.requiresIncomeProof === true;
+      // Si la Organización no acepta clearing, el lender no puede aceptarlo
+      const resolvedClearing = orgPolicy?.acceptsClearing === false ? false : (lenderPolicy?.acceptsClearing ?? orgPolicy?.acceptsClearing ?? true);
+
       const resolved: ResolvedUnderwritingPolicy = {
         organizationId,
         lenderId: effectiveLenderId,
         source,
-        maxLtv: lenderPolicy?.maxLtv ?? orgPolicy?.maxLtv ?? PILOT_FALLBACK_POLICY.maxLtv,
+        maxLtv: resolvedMaxLtv,
         minLtv: orgPolicy?.minLtv ?? PILOT_FALLBACK_POLICY.minLtv,
-        minLoanAmount: lenderPolicy?.minLoanAmount ?? orgPolicy?.minLoanAmount ?? PILOT_FALLBACK_POLICY.minLoanAmount,
-        maxLoanAmount: lenderPolicy?.maxLoanAmount ?? orgPolicy?.maxLoanAmount ?? PILOT_FALLBACK_POLICY.maxLoanAmount,
-        minTermMonths: lenderPolicy?.minTermMonths ?? orgPolicy?.minTermMonths ?? PILOT_FALLBACK_POLICY.minTermMonths,
-        maxTermMonths: lenderPolicy?.maxTermMonths ?? orgPolicy?.maxTermMonths ?? PILOT_FALLBACK_POLICY.maxTermMonths,
-        acceptedPropertyTypes:
-          lenderPolicy?.acceptedPropertyTypes ?? orgPolicy?.acceptedPropertyTypes ?? PILOT_FALLBACK_POLICY.acceptedPropertyTypes,
-        acceptedDepartments:
-          lenderPolicy?.acceptedDepartments ?? orgPolicy?.acceptedDepartments ?? PILOT_FALLBACK_POLICY.acceptedDepartments,
-        acceptedCurrencies:
-          lenderPolicy?.acceptedCurrencies ?? orgPolicy?.acceptedCurrencies ?? PILOT_FALLBACK_POLICY.acceptedCurrencies,
-        requiresIncomeProof:
-          lenderPolicy?.requiresIncomeProof ?? orgPolicy?.requiresIncomeProof ?? PILOT_FALLBACK_POLICY.requiresIncomeProof,
-        acceptedIncomeTypes:
-          orgPolicy?.acceptedIncomeTypes ?? PILOT_FALLBACK_POLICY.acceptedIncomeTypes,
-        minimumIncomeMonthly:
-          orgPolicy?.minimumIncomeMonthly ?? PILOT_FALLBACK_POLICY.minimumIncomeMonthly,
-        acceptsClearing:
-          lenderPolicy?.acceptsClearing ?? orgPolicy?.acceptsClearing ?? PILOT_FALLBACK_POLICY.acceptsClearing,
-        maxDtiRatio:
-          orgPolicy?.maxDtiRatio ?? PILOT_FALLBACK_POLICY.maxDtiRatio,
-        maxBorrowerAgeAtMaturity:
-          orgPolicy?.maxBorrowerAgeAtMaturity ?? PILOT_FALLBACK_POLICY.maxBorrowerAgeAtMaturity,
-        defaultInterestRateAnnual:
-          orgPolicy?.defaultInterestRateAnnual ?? PILOT_FALLBACK_POLICY.defaultInterestRateAnnual,
+        minLoanAmount: resolvedMinLoan,
+        maxLoanAmount: resolvedMaxLoan,
+        minTermMonths: minTerm,
+        maxTermMonths: maxTerm,
+        acceptedPropertyTypes: resolvedPropertyTypes,
+        acceptedDepartments: resolvedDepartments,
+        acceptedCurrencies: lenderPolicy?.acceptedCurrencies ?? orgPolicy?.acceptedCurrencies ?? PILOT_FALLBACK_POLICY.acceptedCurrencies,
+        requiresIncomeProof: resolvedIncomeProof,
+        acceptedIncomeTypes: orgPolicy?.acceptedIncomeTypes ?? PILOT_FALLBACK_POLICY.acceptedIncomeTypes,
+        minimumIncomeMonthly: orgPolicy?.minimumIncomeMonthly ?? PILOT_FALLBACK_POLICY.minimumIncomeMonthly,
+        acceptsClearing: resolvedClearing,
+        maxDtiRatio: orgPolicy?.maxDtiRatio ?? PILOT_FALLBACK_POLICY.maxDtiRatio,
+        maxBorrowerAgeAtMaturity: orgPolicy?.maxBorrowerAgeAtMaturity ?? PILOT_FALLBACK_POLICY.maxBorrowerAgeAtMaturity,
+        defaultInterestRateAnnual: orgPolicy?.defaultInterestRateAnnual ?? PILOT_FALLBACK_POLICY.defaultInterestRateAnnual,
         isDynamic: Boolean(orgPolicy || lenderPolicy),
       };
 
