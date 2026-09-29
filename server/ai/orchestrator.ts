@@ -80,29 +80,32 @@ export class HipotecalyAiOrchestrator {
     }
 
     // Resolución Server-Side de la Política Multi-Tenant Efectiva (Organización + Inversor)
-    let effectivePolicy: UnderwritingPolicyConfig = CANONICAL_DEMO_POLICY;
-    let policyResolutionStatus = 'DEMO_POLICY';
+    let effectivePolicy: UnderwritingPolicyConfig | undefined;
+    let policyResolutionStatus = 'UNRESOLVED';
 
-    if (input.policy) {
-      effectivePolicy = input.policy;
-      policyResolutionStatus = 'EXPLICIT_CUSTOM';
-    } else {
-      const policyRes = await underwritingPolicyResolver.resolveEffectivePolicy({
-        organizationId: input.organizationId,
-        lenderId: input.lenderId,
-        isDemoMode: input.isDemoMode,
-      });
+    const policyRes = await underwritingPolicyResolver.resolveEffectivePolicy({
+      organizationId: input.organizationId,
+      lenderId: input.lenderId,
+      isDemoMode: input.isDemoMode,
+    });
 
-      if (policyRes.status === 'RESOLVED' || policyRes.status === 'DEMO_POLICY') {
-        effectivePolicy = policyRes.policy;
-        policyResolutionStatus = policyRes.status;
-      } else if (policyRes.status === 'POLICY_NOT_CONFIGURED') {
-        throw new Error(`POLICY_NOT_CONFIGURED: ${policyRes.message}`);
-      } else if (policyRes.status === 'NO_COMPATIBLE_POLICY') {
-        throw new Error(`NO_COMPATIBLE_POLICY: Incompatibilidad entre organización e inversor (${policyRes.reasons.join(', ')}).`);
-      } else if (policyRes.status === 'POLICY_DATA_ERROR' || policyRes.status === 'POLICY_RESOLUTION_ERROR') {
-        throw new Error(`POLICY_ERROR (${policyRes.errorCode}): ${policyRes.message}`);
-      }
+    if (policyRes.status === 'RESOLVED' || policyRes.status === 'DEMO_POLICY') {
+      effectivePolicy = policyRes.policy;
+      policyResolutionStatus = policyRes.status;
+    } else if (policyRes.status === 'POLICY_NOT_CONFIGURED') {
+      throw new Error(`POLICY_NOT_CONFIGURED: ${policyRes.message}`);
+    } else if (policyRes.status === 'POLICY_INCOMPLETE') {
+      throw new Error(`POLICY_INCOMPLETE: ${policyRes.message}`);
+    } else if (policyRes.status === 'LENDER_INACTIVE') {
+      throw new Error(`LENDER_INACTIVE: ${policyRes.message}`);
+    } else if (policyRes.status === 'NO_COMPATIBLE_POLICY') {
+      throw new Error(`NO_COMPATIBLE_POLICY: Incompatibilidad entre organización e inversor (${policyRes.reasons.join(', ')}).`);
+    } else if (policyRes.status === 'POLICY_DATA_ERROR' || policyRes.status === 'POLICY_RESOLUTION_ERROR') {
+      throw new Error(`POLICY_ERROR (${policyRes.errorCode}): ${policyRes.message}`);
+    }
+
+    if (!effectivePolicy) {
+      throw new Error('POLICY_RESOLUTION_FAILED: No se pudo determinar una política crediticia válida.');
     }
 
     // Selección de modelo según perfil
@@ -204,6 +207,7 @@ export class HipotecalyAiOrchestrator {
     const usage: AiUsageMetrics = {
       provider: 'openai',
       model: modelName,
+      usage_source: 'ESTIMATED_PRELIVE',
       reasoning_level: runType === 'deep' ? 'high' : 'standard',
       input_tokens: actualInputTokens,
       cached_input_tokens: cachedTokens,
@@ -212,7 +216,7 @@ export class HipotecalyAiOrchestrator {
       image_count: imagesCount,
       documents_processed: documentsAnalyzed.length,
       pages_processed: pagesCount,
-      web_search_count: 1,
+      web_search_count: 0,
       cost_input_usd: costDetails.costInputUsd,
       cost_output_usd: costDetails.costOutputUsd,
       cost_tools_usd: costDetails.costToolsUsd,

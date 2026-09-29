@@ -219,6 +219,7 @@ export const AiStageBreakdownSchema = z.object({
 export const AiUsageMetricsSchema = z.object({
   provider: z.string().default('openai'),
   model: z.string(),
+  usage_source: z.enum(['LIVE_OPENAI', 'ESTIMATED_PRELIVE']).default('ESTIMATED_PRELIVE'),
   reasoning_level: z.string().default('standard'),
   input_tokens: z.number(),
   cached_input_tokens: z.number(),

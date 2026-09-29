@@ -7,35 +7,23 @@ import { EffectiveUnderwritingPolicy, CANONICAL_DEMO_POLICY } from '../underwrit
 
 export interface UnderwritingPolicyConfig {
   maxLtv: number; // Por ej. 40.0% o 50.0%
-  maxLoanAmount: number;
-  minLoanAmount: number;
-  minTermMonths: number;
-  maxTermMonths: number;
-  acceptedPropertyTypes: string[];
-  acceptedDepartments: string[];
-  defaultInterestRateAnnual: number; // Por ej. 11.5%
+  maxLoanAmount?: number;
+  minLoanAmount?: number;
+  minTermMonths?: number;
+  maxTermMonths?: number;
+  acceptedPropertyTypes?: string[];
+  acceptedDepartments?: string[];
+  defaultInterestRateAnnual?: number; // Por ej. 11.5%
   allowOfflineAnalysis?: boolean;
   maxDtiRatio?: number;
   maxBorrowerAgeAtMaturity?: number;
 }
 
-export const DEFAULT_PILOT_UNDERWRITING_POLICY: UnderwritingPolicyConfig = {
-  maxLtv: CANONICAL_DEMO_POLICY.maxLtv,
-  maxLoanAmount: CANONICAL_DEMO_POLICY.maxLoanAmount,
-  minLoanAmount: CANONICAL_DEMO_POLICY.minLoanAmount,
-  minTermMonths: CANONICAL_DEMO_POLICY.minTermMonths,
-  maxTermMonths: CANONICAL_DEMO_POLICY.maxTermMonths,
-  acceptedPropertyTypes: CANONICAL_DEMO_POLICY.acceptedPropertyTypes,
-  acceptedDepartments: CANONICAL_DEMO_POLICY.acceptedDepartments,
-  defaultInterestRateAnnual: CANONICAL_DEMO_POLICY.defaultInterestRateAnnual,
-  maxDtiRatio: CANONICAL_DEMO_POLICY.maxDtiRatio,
-  maxBorrowerAgeAtMaturity: CANONICAL_DEMO_POLICY.maxBorrowerAgeAtMaturity,
-};
-
 export class UnderwritingAgent {
   /**
    * Ejecuta el análisis de underwriting determinístico estricto por código.
    * La IA no inventa los números ni los cálculos financieros.
+   * Requiere una política explícita resuelta sin fallbacks silenciosos.
    */
   public evaluateUnderwriting(
     requestedAmount: number,
@@ -45,16 +33,13 @@ export class UnderwritingAgent {
     propertyType: string,
     _department: string,
     monthlyIncome?: number,
-    policy: UnderwritingPolicyConfig | EffectiveUnderwritingPolicy = DEFAULT_PILOT_UNDERWRITING_POLICY
+    policy?: UnderwritingPolicyConfig | EffectiveUnderwritingPolicy
   ): UnderwritingOutput {
-    const effectivePolicy: UnderwritingPolicyConfig = {
-      ...DEFAULT_PILOT_UNDERWRITING_POLICY,
-      ...(policy || {}),
-      acceptedPropertyTypes:
-        policy?.acceptedPropertyTypes && policy.acceptedPropertyTypes.length > 0
-          ? policy.acceptedPropertyTypes
-          : DEFAULT_PILOT_UNDERWRITING_POLICY.acceptedPropertyTypes,
-    };
+    if (!policy || typeof policy.maxLtv !== 'number' || isNaN(policy.maxLtv) || policy.maxLtv <= 0) {
+      throw new Error('INVALID_POLICY: evaluateUnderwriting requiere una política con maxLtv numérico válido.');
+    }
+
+    const effectivePolicy = policy;
 
     // 1. Cálculos Determinísticos Estrictos
     const loanAmount = Number(requestedAmount) || 0;
@@ -66,20 +51,24 @@ export class UnderwritingAgent {
     const ltvConservative = consVal > 0 ? Number(((loanAmount / consVal) * 100).toFixed(2)) : 0;
 
     // Capacidad máxima de financiamiento según LTV conservador
+    const maxByLtv = consVal * (effectivePolicy.maxLtv / 100);
     const maxAllowedByLtv = Number(
-      Math.min(consVal * (effectivePolicy.maxLtv / 100), effectivePolicy.maxLoanAmount).toFixed(2)
+      (effectivePolicy.maxLoanAmount !== undefined
+        ? Math.min(maxByLtv, effectivePolicy.maxLoanAmount)
+        : maxByLtv
+      ).toFixed(2)
     );
 
     // 2. Validación de Límites de Política
     const violations: string[] = [];
 
-    if (loanAmount > effectivePolicy.maxLoanAmount) {
+    if (effectivePolicy.maxLoanAmount !== undefined && loanAmount > effectivePolicy.maxLoanAmount) {
       violations.push(
         `El monto solicitado (USD ${loanAmount.toLocaleString('es-UY')}) supera el tope máximo de la política (USD ${effectivePolicy.maxLoanAmount.toLocaleString('es-UY')}).`
       );
     }
 
-    if (loanAmount < effectivePolicy.minLoanAmount) {
+    if (effectivePolicy.minLoanAmount !== undefined && loanAmount < effectivePolicy.minLoanAmount) {
       violations.push(
         `El monto solicitado está por debajo del monto mínimo admisible (USD ${effectivePolicy.minLoanAmount.toLocaleString('es-UY')}).`
       );
@@ -92,27 +81,38 @@ export class UnderwritingAgent {
       );
     }
 
-    if (termMonths < effectivePolicy.minTermMonths || termMonths > effectivePolicy.maxTermMonths) {
+    if (effectivePolicy.minTermMonths !== undefined && termMonths < effectivePolicy.minTermMonths) {
       violations.push(
-        `El plazo solicitado (${termMonths} meses) se encuentra fuera del rango permitido (${effectivePolicy.minTermMonths} a ${effectivePolicy.maxTermMonths} meses).`
+        `El plazo solicitado (${termMonths} meses) es inferior al plazo mínimo permitido (${effectivePolicy.minTermMonths} meses).`
       );
     }
 
-    const normType = (propertyType || '').toLowerCase();
-    const typeAccepted = effectivePolicy.acceptedPropertyTypes.some((t) =>
-      normType.includes(t.toLowerCase())
-    );
-    if (!typeAccepted) {
-      violations.push(`El tipo de propiedad "${propertyType}" requiere comité especial de crédito.`);
+    if (effectivePolicy.maxTermMonths !== undefined && termMonths > effectivePolicy.maxTermMonths) {
+      violations.push(
+        `El plazo solicitado (${termMonths} meses) supera el plazo máximo permitido (${effectivePolicy.maxTermMonths} meses).`
+      );
     }
 
-    // 3. Estimación de Cuota Financiera (Solo intereses base + amortización simple)
-    const monthlyRate = (effectivePolicy.defaultInterestRateAnnual / 100) / 12;
-    const estimatedMonthlyInstallment = Math.round(loanAmount * monthlyRate);
+    if (effectivePolicy.acceptedPropertyTypes && effectivePolicy.acceptedPropertyTypes.length > 0) {
+      const normType = (propertyType || '').toLowerCase();
+      const typeAccepted = effectivePolicy.acceptedPropertyTypes.some((t) =>
+        normType.includes(t.toLowerCase()) || t.toLowerCase() === 'todos' || t === '*'
+      );
+      if (!typeAccepted) {
+        violations.push(`El tipo de propiedad "${propertyType}" requiere comité especial de crédito.`);
+      }
+    }
+
+    // 3. Estimación de Cuota Financiera (Solo si defaultInterestRateAnnual está configurado)
+    let estimatedMonthlyInstallment = 0;
+    if (effectivePolicy.defaultInterestRateAnnual && effectivePolicy.defaultInterestRateAnnual > 0) {
+      const monthlyRate = (effectivePolicy.defaultInterestRateAnnual / 100) / 12;
+      estimatedMonthlyInstallment = Math.round(loanAmount * monthlyRate);
+    }
 
     // Relación cuota / ingreso si se conoce
     let dtiRatio: number | undefined;
-    if (monthlyIncome && monthlyIncome > 0) {
+    if (monthlyIncome && monthlyIncome > 0 && estimatedMonthlyInstallment > 0) {
       const incomeUsd = monthlyIncome > 10000 ? monthlyIncome / 40 : monthlyIncome;
       dtiRatio = Number(((estimatedMonthlyInstallment / incomeUsd) * 100).toFixed(1));
     }
@@ -131,9 +131,9 @@ export class UnderwritingAgent {
       max_allowed_by_ltv: maxAllowedByLtv,
       policy_limits: {
         max_ltv_allowed: effectivePolicy.maxLtv,
-        max_loan_allowed: effectivePolicy.maxLoanAmount,
-        min_loan_allowed: effectivePolicy.minLoanAmount,
-        max_term_months: effectivePolicy.maxTermMonths,
+        max_loan_allowed: effectivePolicy.maxLoanAmount || 0,
+        min_loan_allowed: effectivePolicy.minLoanAmount || 0,
+        max_term_months: effectivePolicy.maxTermMonths || 0,
       },
       eligible,
       notes,
